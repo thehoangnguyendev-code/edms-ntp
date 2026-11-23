@@ -7,6 +7,7 @@ import type { TrainingSession } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TrainingDateField } from "../../shared/TrainingDateField";
 import { PersonPicker } from "./TrainingActivityPlanning";
+import { tr } from "@/i18n";
 
 export interface SessionChange {
   trainerUserId?: string; externalTrainerName?: string; scheduledOn?: string;
@@ -40,7 +41,7 @@ export function SessionEditDialog({ session, external, busy, onClose, onSave }: 
   return (
     <FormModal
       isOpen onClose={onClose} title={`Change Session ${session.sessionNo}`} confirmText="Save" size="xl" isLoading={busy} confirmDisabled={!ready}
-      description="The trainer, the date and the place can be changed until the training starts. People already notified must be told again."
+      description={tr("The trainer, the date and the place can be changed until the training starts. People already notified must be told again.")}
       onConfirm={() => onSave({
         trainerUserId: !external && instructor === "INTERNAL" ? trainerUserId : undefined,
         externalTrainerName: external || instructor === "EXTERNAL" ? externalName.trim() || undefined : undefined,
@@ -54,31 +55,31 @@ export function SessionEditDialog({ session, external, busy, onClose, onSave }: 
     >
       <div className="space-y-4">
         {external ? (
-          <FormField label="Trainer (outside the company, optional)"><Input value={externalName} maxLength={255} onChange={(e) => setExternalName(e.target.value)} /></FormField>
+          <FormField label={tr("Trainer (outside the company, optional)")}><Input value={externalName} maxLength={255} onChange={(e) => setExternalName(e.target.value)} /></FormField>
         ) : (
           <div className="space-y-3">
-            <RadioGroup label="Instructor" required name="session-edit-instructor" layout="horizontal" value={instructor} onChange={(v) => { setInstructor(String(v) as "INTERNAL" | "EXTERNAL"); setTrainerUserId(""); setExternalName(""); }}
-              options={[{ label: "Internal expert", value: "INTERNAL" }, { label: "External expert/consultant", value: "EXTERNAL" }]} />
+            <RadioGroup label={tr("Instructor")} required name="session-edit-instructor" layout="horizontal" value={instructor} onChange={(v) => { setInstructor(String(v) as "INTERNAL" | "EXTERNAL"); setTrainerUserId(""); setExternalName(""); }}
+              options={[{ label: tr("Internal expert"), value: "INTERNAL" }, { label: tr("External expert/consultant"), value: "EXTERNAL" }]} />
             {instructor === "INTERNAL"
               ? <PersonPicker value={trainerUserId} onChange={setTrainerUserId} />
-              : <Input value={externalName} maxLength={255} placeholder="Name of the external expert or consultant" onChange={(e) => setExternalName(e.target.value)} />}
+              : <Input value={externalName} maxLength={255} placeholder={tr("Name of the external expert or consultant")} onChange={(e) => setExternalName(e.target.value)} />}
           </div>
         )}
-        <TrainingDateField label="Scheduled date" value={scheduledOn} onChange={setScheduledOn} />
+        <TrainingDateField label={tr("Scheduled date")} value={scheduledOn} onChange={setScheduledOn} />
         <div className="space-y-3">
-          <RadioGroup label="Location Type" required name="session-edit-location" layout="horizontal" value={locationType} onChange={(v) => setLocationType(String(v) as "ONSITE" | "ONLINE" | "HYBRID")}
-            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }, { label: "Hybrid (On-site and Online)", value: "HYBRID" }]} />
+          <RadioGroup label={tr("Location Type")} required name="session-edit-location" layout="horizontal" value={locationType} onChange={(v) => setLocationType(String(v) as "ONSITE" | "ONLINE" | "HYBRID")}
+            options={[{ label: tr("On-site (Physical)"), value: "ONSITE" }, { label: tr("Online (Virtual)"), value: "ONLINE" }, { label: tr("Hybrid (On-site and Online)"), value: "HYBRID" }]} />
           {locationType !== "ONLINE" && (
-            <FormField label="Physical Location" required><Input value={venue} maxLength={255} onChange={(e) => setVenue(e.target.value)} /></FormField>
+            <FormField label={tr("Physical Location")} required><Input value={venue} maxLength={255} onChange={(e) => setVenue(e.target.value)} /></FormField>
           )}
           {locationType !== "ONSITE" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
-              <Select label="Platform" value={platform} enableSearch={false} onChange={setPlatform} options={PLATFORMS} />
-              <FormField label="Meeting Link" required><Input value={link} placeholder="https://zoom.us/j/..." onChange={(e) => setLink(e.target.value)} /></FormField>
+              <Select label={tr("Platform")} value={platform} enableSearch={false} onChange={setPlatform} options={PLATFORMS} />
+              <FormField label={tr("Meeting Link")} required><Input value={link} placeholder="https://zoom.us/j/..." onChange={(e) => setLink(e.target.value)} /></FormField>
             </div>
           )}
         </div>
-        <FormField label="Reason for the change" required><Textarea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+        <FormField label={tr("Reason for the change")} required><Textarea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       </div>
     </FormModal>
   );

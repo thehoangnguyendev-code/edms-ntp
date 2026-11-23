@@ -10,19 +10,20 @@ import {
   missingViewAllCodes,
   type DocumentControlVisibilityChoice,
 } from "./documentControlVisibility";
+import { tr, trFormat } from "@/i18n";
 
 const OPTION_TEXT: Record<DocumentControlVisibilityChoice, { label: string; description: string }> = {
   NAMED_IN_FLOW: {
-    label: "Only records where the person is named",
-    description: "The default. Documents and Revisions where the person is named in the flow, and the copies of those revisions.",
+    label: tr("Only records where the person is named"),
+    description: tr("The default. Documents and Revisions where the person is named in the flow, and the copies of those revisions."),
   },
   DEPARTMENT: {
-    label: "Records of the person's department",
-    description: "Adds every Document and Revision of the person's own Department, drafts included (read-only).",
+    label: tr("Records of the person's department"),
+    description: tr("Adds every Document and Revision of the person's own Department, drafts included (read-only)."),
   },
   VIEW_EVERYTHING: {
-    label: "All records",
-    description: "Every Document, Revision and Copy of every department, drafts included (read-only).",
+    label: tr("All records"),
+    description: tr("Every Document, Revision and Copy of every department, drafts included (read-only)."),
   },
 };
 
@@ -78,8 +79,8 @@ export const DocumentControlVisibilityPicker: React.FC<{
 
   return (
     <VisibilityBox
-      title="Which Document Control records can the people with this Access Profile see?"
-      description="A person with several profiles gets the highest level."
+      title={tr("Which Document Control records can the people with this Access Profile see?")}
+      description={tr("A person with several profiles gets the highest level.")}
       testId="record-visibility-picker"
       details={<DetailList items={DETAILS} />}
       className={className}
@@ -97,15 +98,14 @@ export const DocumentControlVisibilityPicker: React.FC<{
             variant="warning"
             description={
               <>
-                This profile grants only part of <b>All records</b> (missing: {missing.join(", ")}), so its people see everything of one kind and only what has
-                their name for the others. Choose a level above to correct it.
+                {tr("This profile grants only part of")} <b>{tr("All records")}</b> {tr("(missing:")} {missing.join(", ")}{tr("), so its people see everything of one kind and only what has their name for the others. Choose a level above to correct it.")}
               </>
             }
           />
         )}
         {floorRank > 0 && grantedBy && (
           <p className="text-xs text-slate-500">
-            Part of this level is granted by the shared Permission Set {grantedBy}. To give the profile a lower level, take that set off the profile.
+            {trFormat("Part of this level is granted by the shared Permission Set {set}. To give the profile a lower level, take that set off the profile.", { set: grantedBy })}
           </p>
         )}
       </>

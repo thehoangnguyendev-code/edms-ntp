@@ -18,6 +18,7 @@ import { Input, Textarea } from "@/features/training-activities/shared/TrainingF
 import { useTrainingRowMenu } from "@/features/training-activities/shared/useTrainingRowMenu";
 import { when } from "@/features/training-activities/shared/trainingLabels";
 import { trainingCodeRulesApi, trainingError, type TrainingCodeRule } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /** The parts a pattern can use, with what each one gives. The server checks the pattern; this list only helps to write it. */
 const PARTS: { token: string; text: string }[] = [
@@ -36,13 +37,13 @@ const NOTE: Record<TrainingCodeRule["entity"], string> = {
 
 const ENTITY_OPTIONS = [
   { label: "All", value: "" },
-  { label: "Training Requirement", value: "REQUIREMENT" },
-  { label: "Training Matrix", value: "MATRIX" },
-  { label: "Training Assessment", value: "ASSESSMENT" },
+  { label: tr("Training Requirement"), value: "REQUIREMENT" },
+  { label: tr("Training Matrix"), value: "MATRIX" },
+  { label: tr("Training Assessment"), value: "ASSESSMENT" },
 ];
 const CHANGED_OPTIONS = [
   { label: "All", value: "" },
-  { label: "Default Rule", value: "DEFAULT" },
+  { label: tr("Default Rule"), value: "DEFAULT" },
   { label: "Changed", value: "CHANGED" },
 ];
 
@@ -91,11 +92,11 @@ export function TrainingCodeRulesView() {
     setSaving(true);
     try {
       await trainingCodeRulesApi.update(editing.rule.entity, { version: editing.rule.version, pattern: editing.pattern.trim(), reason: editing.reason.trim() || undefined });
-      showToast({ type: "success", title: "The rule was saved", message: `${editing.rule.label}: the codes made from now on follow it.` });
+      showToast({ type: "success", title: tr("The rule was saved"), message: `${editing.rule.label}: the codes made from now on follow it.` });
       setEditing(undefined);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The rule was not saved", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The rule was not saved"), message: trainingError(e) });
     } finally {
       setSaving(false);
     }
@@ -109,8 +110,8 @@ export function TrainingCodeRulesView() {
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "label", header: "Code Of", sort: sorted("label"), cell: (r) => <span className="font-medium text-slate-900">{r.label}</span> },
     { id: "pattern", header: "Pattern", sort: sorted("pattern"), cell: (r) => <span className="break-all font-mono text-slate-900">{r.pattern}</span> },
-    { id: "example", header: "Next Code Looks Like", sort: sorted("example"), cell: (r) => <span className="font-mono font-semibold text-emerald-700">{r.example || "—"}</span> },
-    { id: "changed", header: "Last Changed", sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? `${when(r.updatedAt)}${r.updatedByName ? ` by ${r.updatedByName}` : ""}` : "Default rule") },
+    { id: "example", header: tr("Next Code Looks Like"), sort: sorted("example"), cell: (r) => <span className="font-mono font-semibold text-emerald-700">{r.example || "—"}</span> },
+    { id: "changed", header: tr("Last Changed"), sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? `${when(r.updatedAt)}${r.updatedByName ? ` by ${r.updatedByName}` : ""}` : "Default rule") },
     { id: "note", header: "Notes", cell: (r) => <div className="max-w-80 whitespace-normal text-xs text-slate-500">{NOTE[r.entity]}</div> },
   ];
   const { layout, control } = useCustomColumnLayout("training.code.rules", columns, canManage ? rowMenu.action : undefined);
@@ -122,14 +123,14 @@ export function TrainingCodeRulesView() {
 
   return (
     <div className="flex h-full flex-col gap-4 md:gap-6">
-      <PageHeader title="Training Code Rules" breadcrumbItems={[...trainingAdministrationBase(navigate), { label: "Training Code Rules", isActive: true }]} />
+      <PageHeader title={tr("Training Code Rules")} breadcrumbItems={[...trainingAdministrationBase(navigate), { label: tr("Training Code Rules"), isActive: true }]} />
       <WarningBanner
         variant="info"
-        description="SOP.0003 sets the rule of the Training Number only. The codes of the Training Requirement, the Training Matrix and the Training Assessment are set here. A rule applies to the codes made after it; the codes already issued do not change. The number goes on from the last one made: it does not start again when the pattern changes, so a number is never used twice."
+        description={tr("SOP.0003 sets the rule of the Training Number only. The codes of the Training Requirement, the Training Matrix and the Training Assessment are set here. A rule applies to the codes made after it; the codes already issued do not change. The number goes on from the last one made: it does not start again when the pattern changes, so a number is never used twice.")}
       />
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search code, pattern, example or person…"
+        searchPlaceholder={tr("Search code, pattern, example or person…")}
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}
@@ -142,7 +143,7 @@ export function TrainingCodeRulesView() {
           getRowKey={(r) => r.entity}
           isLoading={table.isLoading}
 
-          emptyState={<TableEmptyState title="No Code Rules" description="Try changing your search or filter." />}
+          emptyState={<TableEmptyState title={tr("No Code Rules")} description={tr("Try changing your search or filter.")} />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}
           isDragging={drag.isDragging}
@@ -160,15 +161,15 @@ export function TrainingCodeRulesView() {
       <FormModal
         isOpen={!!editing} onClose={() => setEditing(undefined)} title={`Rule of the ${editing?.rule.label ?? "code"}`} confirmText="Save" size="md" isLoading={saving}
         confirmDisabled={!editing || !editing.pattern.trim() || !!example.error || editing.pattern.trim() === editing.rule.pattern}
-        description="Write the pattern with letters, digits, / . _ - and the parts below. The example is made by the server."
+        description={tr("Write the pattern with letters, digits, / . _ - and the parts below. The example is made by the server.")}
         onConfirm={() => void save()}
       >
         {editing && (
           <div className="grid gap-4">
-            <FormField label="Pattern" required>
-              <Input value={editing.pattern} maxLength={60} className="font-mono" aria-label="Pattern" onChange={(e) => setEditing({ ...editing, pattern: e.target.value })} />
+            <FormField label={tr("Pattern")} required>
+              <Input value={editing.pattern} maxLength={60} className="font-mono" aria-label={tr("Pattern")} onChange={(e) => setEditing({ ...editing, pattern: e.target.value })} />
             </FormField>
-            <div className="flex flex-wrap gap-2" aria-label="Parts of a pattern">
+            <div className="flex flex-wrap gap-2" aria-label={tr("Parts of a pattern")}>
               {PARTS.map((p) => (
                 <button key={p.token} type="button" title={p.text} onClick={() => setEditing({ ...editing, pattern: `${editing.pattern}${p.token}` })}
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs text-slate-700 hover:border-emerald-400 hover:bg-emerald-50">{p.token}</button>
@@ -176,10 +177,10 @@ export function TrainingCodeRulesView() {
             </div>
             <ul className="space-y-1 text-xs text-slate-500">{PARTS.map((p) => <li key={p.token}><span className="font-mono text-slate-700">{p.token}</span> {p.text}</li>)}</ul>
             <div aria-live="polite">
-              <div className="text-xs text-slate-500">The code would look like</div>
+              <div className="text-xs text-slate-500">{tr("The code would look like")}</div>
               {example.error ? <p className="text-sm text-red-700">{example.error}</p> : <p className="font-mono text-base font-semibold text-emerald-700">{example.text || "—"}</p>}
             </div>
-            <FormField label="Reason" hint="Written to the Audit Trail with the change."><Textarea rows={2} maxLength={1000} value={editing.reason} onChange={(e) => setEditing({ ...editing, reason: e.target.value })} /></FormField>
+            <FormField label={tr("Reason")} hint={tr("Written to the Audit Trail with the change.")}><Textarea rows={2} maxLength={1000} value={editing.reason} onChange={(e) => setEditing({ ...editing, reason: e.target.value })} /></FormField>
           </div>
         )}
       </FormModal>

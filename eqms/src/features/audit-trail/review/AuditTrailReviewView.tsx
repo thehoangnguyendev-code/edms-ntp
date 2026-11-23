@@ -33,10 +33,11 @@ import { formatDateUS } from "@/utils/format";
 import { auditTrailReview as auditTrailReviewBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "ALL" },
-  { label: "In Progress", value: "IN_PROGRESS" },
+  { label: tr("In Progress"), value: "IN_PROGRESS" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
@@ -164,7 +165,7 @@ export const AuditTrailReviewView: React.FC = () => {
       setTotalPages(1);
       showToast({
         type: "error",
-        message: "Failed to load audit trail review campaigns",
+        message: tr("Failed to load audit trail review campaigns"),
       });
     } finally {
       setLoading(false);
@@ -217,8 +218,8 @@ export const AuditTrailReviewView: React.FC = () => {
     if (!campaignName.trim() || !startIso || !endIso) {
       showToast({
         type: "error",
-        title: "Validation failed",
-        message: "Name and review period are required",
+        title: tr("Validation failed"),
+        message: tr("Name and review period are required"),
       });
       return;
     }
@@ -234,7 +235,7 @@ export const AuditTrailReviewView: React.FC = () => {
       setIsCreateModalOpen(false);
       showToast({
         type: "success",
-        message: "Audit trail review campaign created",
+        message: tr("Audit trail review campaign created"),
       });
       navigate(`${ROUTES.AUDIT_TRAIL_REVIEW}/${detail.campaign.id}`);
     } catch (error: any) {
@@ -268,7 +269,7 @@ export const AuditTrailReviewView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
-        title="Periodic Review"
+        title={tr("Periodic Review")}
         breadcrumbItems={auditTrailReviewBreadcrumb(navigate)}
         actions={
           canManage ? (
@@ -278,7 +279,7 @@ export const AuditTrailReviewView: React.FC = () => {
               onClick={openCreateModal}
             >
               <Plus className="h-4 w-4" />
-              New Campaign
+              {tr("New Campaign")}
             </Button>
           ) : undefined
         }
@@ -287,8 +288,8 @@ export const AuditTrailReviewView: React.FC = () => {
       {!canView ? (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <TableEmptyState
-            title="Permission denied"
-            description="You do not have permission to view audit trail reviews."
+            title={tr("Permission denied")}
+            description={tr("You do not have permission to view audit trail reviews.")}
           />
         </section>
       ) : (
@@ -296,7 +297,7 @@ export const AuditTrailReviewView: React.FC = () => {
           <div className="flex flex-col px-4 pt-4 md:p-5">
             <div className="-mx-1.5 mb-[-0.375rem] px-1.5 pb-1.5">
               <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-                <label className={labelClass}>Search</label>
+                <label className={labelClass}>{tr("Search")}</label>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-slate-400" />
@@ -306,13 +307,13 @@ export const AuditTrailReviewView: React.FC = () => {
                         setSearch(event.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search campaign, description, reviewer..."
+                      placeholder={tr("Search campaign, description, reviewer...")}
                       className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     {search && (
                       <button
                         type="button"
-                        aria-label="Clear search"
+                        aria-label={tr("Clear search")}
                         onClick={() => {
                           setSearch("");
                           setCurrentPage(1);
@@ -329,14 +330,14 @@ export const AuditTrailReviewView: React.FC = () => {
                     className="h-10 whitespace-nowrap gap-2"
                   >
                     <IconFilter2 className="h-4 w-4" />
-                    Filters
+                    {tr("Filters")}
                   </Button>
                 </div>
               </div>
 
               <div className="hidden grid-cols-1 items-end gap-4 md:grid sm:grid-cols-2 lg:grid-cols-3">
                 <div className="w-full">
-                  <label className={labelClass}>Search</label>
+                  <label className={labelClass}>{tr("Search")}</label>
                   <div className="relative">
                     <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-slate-400" />
                     <input
@@ -345,13 +346,13 @@ export const AuditTrailReviewView: React.FC = () => {
                         setSearch(event.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search campaign, description, reviewer..."
+                      placeholder={tr("Search campaign, description, reviewer...")}
                       className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     {search && (
                       <button
                         type="button"
-                        aria-label="Clear search"
+                        aria-label={tr("Clear search")}
                         onClick={() => {
                           setSearch("");
                           setCurrentPage(1);
@@ -364,7 +365,7 @@ export const AuditTrailReviewView: React.FC = () => {
                   </div>
                 </div>
                 <Select
-                  label="Status"
+                  label={tr("Status")}
                   value={status}
                   onChange={(value) => {
                     setStatus(String(value));
@@ -401,54 +402,54 @@ export const AuditTrailReviewView: React.FC = () => {
                   <TableMarkup.Head className="sticky top-0 z-30">
                     <TableMarkup.Row>
                       <TableMarkup.HeaderCell className="sticky top-0 z-20 w-16 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs font-bold uppercase tracking-wider text-slate-500 md:text-xs">
-                        No.
+                        {tr("No.")}
                       </TableMarkup.HeaderCell>
                       <SortHeader
-                        label="Campaign Number"
+                        label={tr("Campaign Number")}
                         column="campaignNumber"
                         current={sortBy}
                         direction={sortDirection}
                         onSort={changeSort}
                       />
                       <SortHeader
-                        label="Campaign"
+                        label={tr("Campaign")}
                         column="name"
                         current={sortBy}
                         direction={sortDirection}
                         onSort={changeSort}
                       />
                       <SortHeader
-                        label="Review Period"
+                        label={tr("Review Period")}
                         column="reviewPeriodStart"
                         current={sortBy}
                         direction={sortDirection}
                         onSort={changeSort}
                       />
                       <SortHeader
-                        label="Status"
+                        label={tr("Status")}
                         column="status"
                         current={sortBy}
                         direction={sortDirection}
                         onSort={changeSort}
                       />
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
-                        Entries
+                        {tr("Entries")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
-                        Pending
+                        {tr("Pending")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
-                        Reviewer
+                        {tr("Reviewer")}
                       </TableMarkup.HeaderCell>
                       <SortHeader
-                        label="Created"
+                        label={tr("Created")}
                         column="createdAt"
                         current={sortBy}
                         direction={sortDirection}
                         onSort={changeSort}
                       />
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell21}>
-                        Action
+                        {tr("Action")}
                       </TableMarkup.HeaderCell>
                     </TableMarkup.Row>
                   </TableMarkup.Head>
@@ -458,8 +459,8 @@ export const AuditTrailReviewView: React.FC = () => {
                         <TableMarkup.Cell colSpan={10} className="p-0">
                           <TableEmptyState
                            
-                            title="No Audit Trail Review Campaigns"
-                            description="Create a periodic campaign to review audit trail entries."
+                            title={tr("No Audit Trail Review Campaigns")}
+                            description={tr("Create a periodic campaign to review audit trail entries.")}
                           />
                         </TableMarkup.Cell>
                       </TableMarkup.Row>
@@ -559,7 +560,7 @@ export const AuditTrailReviewView: React.FC = () => {
                                     );
                                   }}
                                 >
-                                  View Details
+                                  {tr("View Details")}
                                 </DropdownMenuItem>
                                 {canManage &&
                                   campaign.status === "IN_PROGRESS" && (
@@ -570,7 +571,7 @@ export const AuditTrailReviewView: React.FC = () => {
                                         setCancelTarget(campaign);
                                       }}
                                     >
-                                      Cancel Campaign
+                                      {tr("Cancel Campaign")}
                                     </DropdownMenuItem>
                                   )}
                               </div>
@@ -607,7 +608,7 @@ export const AuditTrailReviewView: React.FC = () => {
         onApply={() => setFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded
           onToggle={() => undefined}
         >
@@ -633,8 +634,8 @@ export const AuditTrailReviewView: React.FC = () => {
           if (!creating) setIsCreateModalOpen(false);
         }}
         onConfirm={() => void createCampaign()}
-        title="New Audit Trail Review Campaign"
-        description="Snapshots every audit trail entry created within the review period (EU-GMP Annex 11 §9)."
+        title={tr("New Audit Trail Review Campaign")}
+        description={tr("Snapshots every audit trail entry created within the review period (EU-GMP Annex 11 §9).")}
         confirmText="Create Campaign"
         isLoading={creating}
         confirmDisabled={
@@ -645,18 +646,18 @@ export const AuditTrailReviewView: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className={labelClass}>
-              Name <span className="text-red-500">*</span>
+              {tr("Name")} <span className="text-red-500">*</span>
             </label>
             <input
               className={inputClass}
               value={campaignName}
               onChange={(event) => setCampaignName(event.target.value)}
-              placeholder="July 2026 Monthly Audit Trail Review"
+              placeholder={tr("July 2026 Monthly Audit Trail Review")}
               autoFocus
             />
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea
               className={textareaClass}
               rows={2}
@@ -669,22 +670,22 @@ export const AuditTrailReviewView: React.FC = () => {
             <DateTimePicker
               label={
                 <>
-                  Review Period Start <span className="text-red-500">*</span>
+                  {tr("Review Period Start")} <span className="text-red-500">*</span>
                 </>
               }
               value={reviewPeriodStart}
               onChange={setReviewPeriodStart}
-              placeholder="Select start date"
+              placeholder={tr("Select start date")}
             />
             <DateTimePicker
               label={
                 <>
-                  Review Period End <span className="text-red-500">*</span>
+                  {tr("Review Period End")} <span className="text-red-500">*</span>
                 </>
               }
               value={reviewPeriodEnd}
               onChange={setReviewPeriodEnd}
-              placeholder="Select end date"
+              placeholder={tr("Select end date")}
             />
           </div>
         </div>
@@ -696,13 +697,13 @@ export const AuditTrailReviewView: React.FC = () => {
         }}
         onConfirm={() => void cancelCampaign()}
         type="warning"
-        title="Cancel Audit Trail Review Campaign"
+        title={tr("Cancel Audit Trail Review Campaign")}
         description={
           cancelTarget
             ? `Are you sure you want to cancel "${cancelTarget.name}"? This action cannot be undone.`
             : ""
         }
-        confirmText="Cancel Campaign"
+        confirmText={tr("Cancel Campaign")}
         cancelText="Back"
         showCancel
         isLoading={cancelling}

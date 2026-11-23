@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { Badge } from "@/components/ui/badge/Badge";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 interface ExpandUserAccessProfilesRowProps {
   userId: string;
@@ -47,14 +48,14 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
                   {accessProfileNames.length > 0 ? (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Access Profiles ({accessProfileNames.length})
+                        {trFormat("Access Profiles ({count})", { count: accessProfileNames.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Access Profile</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>{tr("No.")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Access Profile")}</TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
                           <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
@@ -72,7 +73,7 @@ export const ExpandUserAccessProfilesRow: React.FC<ExpandUserAccessProfilesRowPr
                     </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-xs text-slate-500">
-                      No Access Profile assigned -- this user cannot use any permission-gated function until one is granted.
+                      {tr("No Access Profile assigned -- this user cannot use any permission-gated function until one is granted.")}
                     </div>
                   )}
                 </div>

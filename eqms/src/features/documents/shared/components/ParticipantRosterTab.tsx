@@ -3,6 +3,7 @@ import { Users, Trash2, Search, User, Check, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
+import { trFormat, tr } from "@/i18n";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { securityApi } from "@/services/api/security";
 import { settingsApi } from "@/services/api/settings";
@@ -190,11 +191,11 @@ const UserSelectionModal: React.FC<{
                         {requirementHint}
                         {belowMinimum && (
                             <span className="block mt-0.5 font-medium">
-                                Currently selecting {totalAfterConfirm} of {minRequiredTotal} required — select {minRequiredTotal - totalAfterConfirm} more.
+                                {trFormat("Currently selecting {selected} of {required} required — select {more} more.", { selected: totalAfterConfirm, required: minRequiredTotal, more: minRequiredTotal - totalAfterConfirm })}
                             </span>
                         )}
                         {atMax && !belowMinimum && (
-                            <span className="block mt-0.5 font-medium">Limit reached — remove a selection to change it.</span>
+                            <span className="block mt-0.5 font-medium">{tr("Limit reached — remove a selection to change it.")}</span>
                         )}
                     </div>
                 )}
@@ -202,7 +203,7 @@ const UserSelectionModal: React.FC<{
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, position, or department..."
+                        placeholder={tr("Search by name, position, or department...")}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-9 pl-9 pr-4 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 transition-colors"
@@ -216,7 +217,7 @@ const UserSelectionModal: React.FC<{
                             <div className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3 animate-pulse">
                                 <User className="h-6 w-6 text-slate-300" />
                             </div>
-                            <p className="text-sm font-semibold text-slate-900">Loading {roleLabel.toLowerCase()}s...</p>
+                            <p className="text-sm font-semibold text-slate-900">{trFormat("Loading {role}s...", { role: roleLabel.toLowerCase() })}</p>
                         </div>
                     ) : filteredUsers.length > 0 ? (
                         <div className="space-y-2">
@@ -251,7 +252,7 @@ const UserSelectionModal: React.FC<{
                                         <div className="flex-1 min-w-0">
                                             <div className="font-medium text-slate-900 truncate text-xs md:text-sm flex items-center gap-2">
                                                 {user.fullName}
-                                                {isAlreadyAdded && <Badge color="slate" size="sm">Added</Badge>}
+                                                {isAlreadyAdded && <Badge color="slate" size="sm">{tr("Added")}</Badge>}
                                             </div>
                                             <div className="text-xs text-slate-500 truncate mt-0.5">
                                                 <span className="text-emerald-600 font-medium mr-1.5">{user.employeeCode || "-"}</span>
@@ -268,12 +269,12 @@ const UserSelectionModal: React.FC<{
                                 <User className="h-6 w-6 text-slate-300" />
                             </div>
                             <p className="text-sm font-semibold text-slate-900">
-                                {remoteUsers.length === 0 && !debouncedSearchTerm ? `No users have ${roleLabel} permission yet` : "No users found"}
+                                {remoteUsers.length === 0 && !debouncedSearchTerm ? trFormat("No users have {role} permission yet", { role: roleLabel }) : tr("No users found")}
                             </p>
                             <p className="text-xs text-slate-500 mt-1">
                                 {remoteUsers.length === 0 && !debouncedSearchTerm
                                     ? `Assign the "${permissionCode}" permission via Permission Sets / Access Profiles before selecting a ${roleLabel.toLowerCase()}.`
-                                    : "Try a different search term"}
+                                    : tr("Try a different search term")}
                             </p>
                         </div>
                     )}
@@ -281,7 +282,7 @@ const UserSelectionModal: React.FC<{
                 {hasMoreCandidates && revisionId && (
                     <div className="flex justify-center">
                         <Button size="sm" variant="outline" loading={isLoading} onClick={() => setCandidatePage((page) => page + 1)}>
-                            Load more users
+                            {tr("Load more users")}
                         </Button>
                     </div>
                 )}
@@ -386,7 +387,7 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
         <div className="space-y-4">
             {roleLabel === "Reviewer" && parallelReviewEnabled !== null && (
                 <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span>Review mode:</span>
+                    <span>{tr("Review mode:")}</span>
                     <Badge color={parallelReviewEnabled ? "blue" : "emerald"} size="sm">
                         {parallelReviewEnabled ? "Parallel" : "Sequential"}
                     </Badge>
@@ -403,14 +404,14 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                         <TableMarkup.Root className="w-full">
                             <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                                 <TableMarkup.Row>
-                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>No.</TableMarkup.HeaderCell>
-                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>User</TableMarkup.HeaderCell>
-                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Email</TableMarkup.HeaderCell>
-                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>Position</TableMarkup.HeaderCell>
-                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>Department</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>{tr("No.")}</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>{tr("User")}</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>{tr("Email")}</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>{tr("Position")}</TableMarkup.HeaderCell>
+                                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>{tr("Department")}</TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>{multiSelect ? "Sequence" : "Role"}</TableMarkup.HeaderCell>
                                     {allowRemove && (
-                                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>Action</TableMarkup.HeaderCell>
+                                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>{tr("Action")}</TableMarkup.HeaderCell>
                                     )}
                                 </TableMarkup.Row>
                             </TableMarkup.Head>
@@ -473,7 +474,7 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                     <div className="h-12 w-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 duration-200">
                         <Users className="h-6 w-6 text-slate-400" />
                     </div>
-                    <p className="text-sm font-medium text-slate-500">No {roleLabel}{multiSelect ? "s" : ""} Selected</p>
+                    <p className="text-sm font-medium text-slate-500">{trFormat("No {role} Selected", { role: roleLabel })}</p>
                 </div>
             )}
 

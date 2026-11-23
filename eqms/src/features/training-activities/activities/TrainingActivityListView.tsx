@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconChalkboardTeacher, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus } from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconUsersPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -18,6 +18,7 @@ import { ReportListToolbar, pickerDateToIso, type ReportDateFilter, type ReportS
 import { trainingActivitiesApi, trainingError, type TrainingActivitySummary } from "@/services/api/trainingActivities";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { KIND_LABEL, KIND_REASON_LABEL, METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day, when, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 const STATUSES = ["PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED", "RESERVED"];
 
@@ -75,13 +76,13 @@ export function TrainingActivityListView() {
     { id: "year", label: "Year", value: year, options: [{ label: "All", value: "" }, ...Array.from({ length: 6 }, (_x, i) => String(new Date().getFullYear() - i)).map((y) => ({ label: y, value: y }))], onChange: (v) => reset(() => setYear(v)) },
     { id: "reason", label: "Reason", value: reason, options: [{ label: "All", value: "" }, ...Object.entries(KIND_REASON_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setReason(v)) },
     { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => reset(() => setMethod(v)) },
-    { id: "paper", label: "Paper training", value: paper, options: [{ label: "All", value: "" }, { label: "On paper", value: "yes" }, { label: "Electronic only", value: "no" }], onChange: (v) => reset(() => setPaper(v)) },
-    { id: "overdue", label: "Overdue", value: overdue, options: [{ label: "All", value: "" }, { label: "Overdue only", value: "yes" }], onChange: (v) => reset(() => setOverdue(v)) },
+    { id: "paper", label: tr("Paper training"), value: paper, options: [{ label: "All", value: "" }, { label: "On paper", value: "yes" }, { label: tr("Electronic only"), value: "no" }], onChange: (v) => reset(() => setPaper(v)) },
+    { id: "overdue", label: "Overdue", value: overdue, options: [{ label: "All", value: "" }, { label: tr("Overdue only"), value: "yes" }], onChange: (v) => reset(() => setOverdue(v)) },
   ];
   const dates: ReportDateFilter[] = [
-    { id: "scheduled", label: "Scheduled Date Range", from: scheduledFrom, to: scheduledTo, onChange: (from, to) => reset(() => { setScheduledFrom(from); setScheduledTo(to); }) },
-    { id: "due", label: "Due Date Range", from: dueFrom, to: dueTo, onChange: (from, to) => reset(() => { setDueFrom(from); setDueTo(to); }) },
-    { id: "created", label: "Created Date Range", from: createdFrom, to: createdTo, onChange: (from, to) => reset(() => { setCreatedFrom(from); setCreatedTo(to); }) },
+    { id: "scheduled", label: tr("Scheduled Date Range"), from: scheduledFrom, to: scheduledTo, onChange: (from, to) => reset(() => { setScheduledFrom(from); setScheduledTo(to); }) },
+    { id: "due", label: tr("Due Date Range"), from: dueFrom, to: dueTo, onChange: (from, to) => reset(() => { setDueFrom(from); setDueTo(to); }) },
+    { id: "created", label: tr("Created Date Range"), from: createdFrom, to: createdTo, onChange: (from, to) => reset(() => { setCreatedFrom(from); setCreatedTo(to); }) },
   ];
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
@@ -89,7 +90,7 @@ export function TrainingActivityListView() {
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     {
       id: "number",
-      header: "Training Number",
+      header: tr("Training Number"),
       sort: sorted("trainingNumber"),
       cell: (r) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>
@@ -97,7 +98,7 @@ export function TrainingActivityListView() {
         </button>
       ),
     },
-    { id: "topics", header: "Training Topic", sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
+    { id: "topics", header: tr("Training Topic"), sort: sorted("topics"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.topics ?? "—"}</div> },
     { id: "trainer", header: "Trainer", sort: sorted("trainers"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.trainers ?? r.trainingUnitName ?? "—"}</div> },
     { id: "method", header: "Mode", sort: sorted("methods"), cell: (r) => (r.methods ? r.methods.split(",").map((m) => METHOD_LABEL[m] ?? m).join(", ") + (r.onPaper ? " (paper)" : "") : "—") },
     { id: "scheduled", header: "Scheduled", sort: sorted("scheduledOn"), cell: (r) => (r.scheduledFrom ? (r.scheduledTo && r.scheduledTo !== r.scheduledFrom ? `${day(r.scheduledFrom)} – ${day(r.scheduledTo)}` : day(r.scheduledFrom)) : "—") },
@@ -118,7 +119,7 @@ export function TrainingActivityListView() {
       <button
         type="button"
         ref={menu.getRef(r.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(r.id, event)}
       >
@@ -138,7 +139,7 @@ export function TrainingActivityListView() {
           canOrganize ? (
             <Button size="sm" variant="default" onClick={() => navigate("/training-management/activities/new")}>
               <IconPlus className="mr-2 h-4 w-4" />
-              New Training Activity
+              {tr("New Training Activity")}
             </Button>
           ) : undefined
         }
@@ -149,7 +150,7 @@ export function TrainingActivityListView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search number, Training Topic, trainer, document, creator…"
+        searchPlaceholder={tr("Search number, Training Topic, trainer, document, creator…")}
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);
@@ -182,7 +183,7 @@ export function TrainingActivityListView() {
           getRowKey={(r) => r.id}
           isLoading={table.isLoading}
 
-          emptyState={<TableEmptyState title="No Training Activities Found" description="Training activities will appear here. Try changing your search or filters." />}
+          emptyState={<TableEmptyState title={tr("No Training Activities Found")} description={tr("Training activities will appear here. Try changing your search or filters.")} />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}
           isDragging={drag.isDragging}
@@ -207,15 +208,16 @@ export function TrainingActivityListView() {
         {actionRow && (
           <div className="py-1">
             {[
-              { show: true, icon: <IconInfoCircle className="h-4 w-4" />, label: "View Details", to: `/training-management/activities/${actionRow.id}` },
-              { show: actionRow.actions?.edit, icon: <IconPencilMinus className="h-4 w-4" />, label: "Edit Training Activity", to: `/training-management/activities/${actionRow.id}/edit` },
-              { show: actionRow.actions?.conduct, icon: <IconChalkboardTeacher className="h-4 w-4" />, label: "Conduct Training", to: `/training-management/activities/${actionRow.id}/conduct` },
-              { show: actionRow.actions?.review, icon: <IconCheck className="h-4 w-4" />, label: "Review Training Content", to: `/training-management/activities/${actionRow.id}/review` },
-              { show: actionRow.actions?.approve, icon: <IconChecks className="h-4 w-4" />, label: "Approve Training Content", to: `/training-management/activities/${actionRow.id}/approve` },
-              { show: actionRow.actions?.confirm, icon: <IconChecks className="h-4 w-4" />, label: "Confirm Training Completion", to: `/training-management/activities/${actionRow.id}/confirm` },
-              { show: actionRow.actions?.completeTraining && actionRow.revisionId, icon: <IconChecklist className="h-4 w-4" />, label: "Complete Training (Revision)", to: `/documents/revisions/training/${actionRow.revisionId}` },
+              { show: true, icon: <IconInfoCircle className="h-4 w-4" />, label: tr("View Details"), to: `/training-management/activities/${actionRow.id}` },
+              { show: actionRow.actions?.edit, icon: <IconPencilMinus className="h-4 w-4" />, label: tr("Edit Training Activity"), to: `/training-management/activities/${actionRow.id}/edit` },
+              { show: actionRow.actions?.conduct, icon: <IconChalkboardTeacher className="h-4 w-4" />, label: tr("Conduct Training"), to: `/training-management/activities/${actionRow.id}/conduct` },
+              { show: actionRow.actions?.review, icon: <IconCheck className="h-4 w-4" />, label: tr("Review Training Content"), to: `/training-management/activities/${actionRow.id}/review` },
+              { show: actionRow.actions?.approve, icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Training Content"), to: `/training-management/activities/${actionRow.id}/approve` },
+              { show: actionRow.actions?.confirm, icon: <IconChecks className="h-4 w-4" />, label: tr("Confirm Training Completion"), to: `/training-management/activities/${actionRow.id}/confirm` },
+              { show: actionRow.actions?.supplementary, icon: <IconUsersPlus className="h-4 w-4" />, label: tr("Supplementary Training"), to: `/training-management/activities/${actionRow.id}`, state: { openSupplementary: true } },
+              { show: actionRow.actions?.completeTraining && actionRow.revisionId, icon: <IconChecklist className="h-4 w-4" />, label: tr("Complete Training (Revision)"), to: `/documents/revisions/training/${actionRow.revisionId}` },
             ].filter((item) => item.show).map((item) => (
-              <DropdownMenuItem key={item.label} icon={item.icon} onClick={() => { navigate(item.to); menu.close(); }}>
+              <DropdownMenuItem key={item.label} icon={item.icon} onClick={() => { navigate(item.to, item.state ? { state: item.state } : undefined); menu.close(); }}>
                 {item.label}
               </DropdownMenuItem>
             ))}

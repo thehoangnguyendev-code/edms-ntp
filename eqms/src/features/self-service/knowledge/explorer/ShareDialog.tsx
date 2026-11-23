@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { UserX } from "lucide-react";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -81,7 +82,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
         setOptions(opts);
       } catch (error) {
         if (!alive) return;
-        showToast({ type: "error", title: "Could not open sharing", message: errorMessage(error, "Please try again.") });
+        showToast({ type: "error", title: tr("Could not open sharing"), message: errorMessage(error, "Please try again.") });
         onClose();
       } finally {
         if (alive) setLoading(false);
@@ -93,7 +94,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
 
   const tabs = useMemo<TabItem[]>(() => {
     const items: TabItem[] = [{ id: "people", label: "People" }, { id: "links", label: "Links" }];
-    if (node?.canManageDelegates) items.push({ id: "delegates", label: "Who may share" });
+    if (node?.canManageDelegates) items.push({ id: "delegates", label: tr("Who may share") });
     return items;
   }, [node?.canManageDelegates]);
 

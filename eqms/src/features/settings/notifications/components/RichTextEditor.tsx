@@ -30,6 +30,7 @@ import {
 import { cn } from '@/components/ui/utils';
 import { TokenHighlight, tokenHighlightKey } from './tokenHighlight';
 import './RichTextEditor.css';
+import { tr } from "@/i18n";
 
 /**
  * The editor of the wording of a notification (TipTap, the same engine as the Text-editor-react project the owner asked for, reduced to what a
@@ -130,7 +131,7 @@ const Swatches: React.FC<{ label: string; colours: string[]; onPick: (colour: st
             }}
             className="ml-1 rounded px-1.5 text-xs text-slate-500 hover:bg-slate-100"
           >
-            None
+            {tr("None")}
           </button>
         </div>
       )}
@@ -155,7 +156,7 @@ const LinkControl: React.FC<{ editor: Editor; active: boolean }> = ({ editor, ac
   return (
     <div className="relative">
       <ToolbarButton
-        label="Link"
+        label={tr("Link")}
         active={active}
         onClick={() => {
           setUrl((editor.getAttributes('link').href as string | undefined) ?? '');
@@ -168,7 +169,7 @@ const LinkControl: React.FC<{ editor: Editor; active: boolean }> = ({ editor, ac
         <div className="absolute left-0 top-9 z-20 flex w-72 items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
           <input
             autoFocus
-            aria-label="Link address"
+            aria-label={tr("Link address")}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -182,7 +183,7 @@ const LinkControl: React.FC<{ editor: Editor; active: boolean }> = ({ editor, ac
             className="h-8 min-w-0 flex-1 rounded-md border border-slate-200 px-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           <button type="button" onClick={apply} className="h-8 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700">
-            Apply
+            {tr("Apply")}
           </button>
         </div>
       )}
@@ -215,16 +216,16 @@ const Toolbar: React.FC<{ editor: Editor; disabled?: boolean }> = ({ editor, dis
     if (!disabled) fn();
   };
   return (
-    <div role="toolbar" aria-label="Text formatting" className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 bg-slate-50/70 px-2 py-1.5">
-      <ToolbarButton label="Undo" disabled={disabled || !s.canUndo} onClick={run(() => editor.chain().focus().undo().run())}>
+    <div role="toolbar" aria-label={tr("Text formatting")} className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 bg-slate-50/70 px-2 py-1.5">
+      <ToolbarButton label={tr("Undo")} disabled={disabled || !s.canUndo} onClick={run(() => editor.chain().focus().undo().run())}>
         <Undo2 className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Redo" disabled={disabled || !s.canRedo} onClick={run(() => editor.chain().focus().redo().run())}>
+      <ToolbarButton label={tr("Redo")} disabled={disabled || !s.canRedo} onClick={run(() => editor.chain().focus().redo().run())}>
         <Redo2 className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
       <select
-        aria-label="Text style"
+        aria-label={tr("Text style")}
         disabled={disabled}
         value={s.heading}
         onChange={(e) => {
@@ -234,75 +235,75 @@ const Toolbar: React.FC<{ editor: Editor; disabled?: boolean }> = ({ editor, dis
         }}
         className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none"
       >
-        <option value="0">Paragraph</option>
-        <option value="1">Heading 1</option>
-        <option value="2">Heading 2</option>
-        <option value="3">Heading 3</option>
+        <option value="0">{tr("Paragraph")}</option>
+        <option value="1">{tr("Heading 1")}</option>
+        <option value="2">{tr("Heading 2")}</option>
+        <option value="3">{tr("Heading 3")}</option>
       </select>
       <Divider />
-      <ToolbarButton label="Bold" active={s.bold} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBold().run())}>
+      <ToolbarButton label={tr("Bold")} active={s.bold} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBold().run())}>
         <Bold className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Italic" active={s.italic} disabled={disabled} onClick={run(() => editor.chain().focus().toggleItalic().run())}>
+      <ToolbarButton label={tr("Italic")} active={s.italic} disabled={disabled} onClick={run(() => editor.chain().focus().toggleItalic().run())}>
         <Italic className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Underline" active={s.underline} disabled={disabled} onClick={run(() => editor.chain().focus().toggleUnderline().run())}>
+      <ToolbarButton label={tr("Underline")} active={s.underline} disabled={disabled} onClick={run(() => editor.chain().focus().toggleUnderline().run())}>
         <Underline className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Strikethrough" active={s.strike} disabled={disabled} onClick={run(() => editor.chain().focus().toggleStrike().run())}>
+      <ToolbarButton label={tr("Strikethrough")} active={s.strike} disabled={disabled} onClick={run(() => editor.chain().focus().toggleStrike().run())}>
         <Strikethrough className="h-4 w-4" />
       </ToolbarButton>
-      <Swatches label="Text colour" colours={TEXT_COLOURS} onPick={(c) => (c ? editor.chain().focus().setColor(c).run() : editor.chain().focus().unsetColor().run())}>
+      <Swatches label={tr("Text colour")} colours={TEXT_COLOURS} onPick={(c) => (c ? editor.chain().focus().setColor(c).run() : editor.chain().focus().unsetColor().run())}>
         <Palette className="h-4 w-4" />
       </Swatches>
-      <Swatches label="Highlight" colours={HIGHLIGHTS} onPick={(c) => (c ? editor.chain().focus().setHighlight({ color: c }).run() : editor.chain().focus().unsetHighlight().run())}>
+      <Swatches label={tr("Highlight")} colours={HIGHLIGHTS} onPick={(c) => (c ? editor.chain().focus().setHighlight({ color: c }).run() : editor.chain().focus().unsetHighlight().run())}>
         <Highlighter className="h-4 w-4" />
       </Swatches>
       <Divider />
-      <ToolbarButton label="Bulleted list" active={s.bullet} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBulletList().run())}>
+      <ToolbarButton label={tr("Bulleted list")} active={s.bullet} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBulletList().run())}>
         <List className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Numbered list" active={s.ordered} disabled={disabled} onClick={run(() => editor.chain().focus().toggleOrderedList().run())}>
+      <ToolbarButton label={tr("Numbered list")} active={s.ordered} disabled={disabled} onClick={run(() => editor.chain().focus().toggleOrderedList().run())}>
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Quote" active={s.quote} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBlockquote().run())}>
+      <ToolbarButton label={tr("Quote")} active={s.quote} disabled={disabled} onClick={run(() => editor.chain().focus().toggleBlockquote().run())}>
         <Quote className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
-      <ToolbarButton label="Align left" active={s.left} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('left').run())}>
+      <ToolbarButton label={tr("Align left")} active={s.left} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('left').run())}>
         <AlignLeft className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Align centre" active={s.center} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('center').run())}>
+      <ToolbarButton label={tr("Align centre")} active={s.center} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('center').run())}>
         <AlignCenter className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Align right" active={s.right} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('right').run())}>
+      <ToolbarButton label={tr("Align right")} active={s.right} disabled={disabled} onClick={run(() => editor.chain().focus().setTextAlign('right').run())}>
         <AlignRight className="h-4 w-4" />
       </ToolbarButton>
       <Divider />
       <LinkControl editor={editor} active={s.link} />
-      <ToolbarButton label="Remove link" disabled={disabled || !s.link} onClick={run(() => editor.chain().focus().extendMarkRange('link').unsetLink().run())}>
+      <ToolbarButton label={tr("Remove link")} disabled={disabled || !s.link} onClick={run(() => editor.chain().focus().extendMarkRange('link').unsetLink().run())}>
         <Link2Off className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Insert table" disabled={disabled || s.inTable} onClick={run(() => editor.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run())}>
+      <ToolbarButton label={tr("Insert table")} disabled={disabled || s.inTable} onClick={run(() => editor.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run())}>
         <Table2 className="h-4 w-4" />
       </ToolbarButton>
       {s.inTable && (
         <>
-          <ToolbarButton label="Add row" disabled={disabled} onClick={run(() => editor.chain().focus().addRowAfter().run())}>
-            <span className="text-[11px] font-semibold">+Row</span>
+          <ToolbarButton label={tr("Add row")} disabled={disabled} onClick={run(() => editor.chain().focus().addRowAfter().run())}>
+            <span className="text-[11px] font-semibold">{tr("+Row")}</span>
           </ToolbarButton>
-          <ToolbarButton label="Add column" disabled={disabled} onClick={run(() => editor.chain().focus().addColumnAfter().run())}>
-            <span className="text-[11px] font-semibold">+Col</span>
+          <ToolbarButton label={tr("Add column")} disabled={disabled} onClick={run(() => editor.chain().focus().addColumnAfter().run())}>
+            <span className="text-[11px] font-semibold">{tr("+Col")}</span>
           </ToolbarButton>
-          <ToolbarButton label="Delete table" disabled={disabled} onClick={run(() => editor.chain().focus().deleteTable().run())}>
+          <ToolbarButton label={tr("Delete table")} disabled={disabled} onClick={run(() => editor.chain().focus().deleteTable().run())}>
             <Trash2 className="h-4 w-4" />
           </ToolbarButton>
         </>
       )}
-      <ToolbarButton label="Divider line" disabled={disabled} onClick={run(() => editor.chain().focus().setHorizontalRule().run())}>
+      <ToolbarButton label={tr("Divider line")} disabled={disabled} onClick={run(() => editor.chain().focus().setHorizontalRule().run())}>
         <Minus className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton label="Clear formatting" disabled={disabled} onClick={run(() => editor.chain().focus().unsetAllMarks().clearNodes().run())}>
+      <ToolbarButton label={tr("Clear formatting")} disabled={disabled} onClick={run(() => editor.chain().focus().unsetAllMarks().clearNodes().run())}>
         <Eraser className="h-4 w-4" />
       </ToolbarButton>
     </div>

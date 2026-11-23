@@ -33,6 +33,7 @@ import {
   reportError,
   type ReportTemplate,
 } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 type FieldRow = ReportTemplate["fields"][number];
 type ScopeRow = NonNullable<ReportTemplate["roleScopes"]>[number];
@@ -42,7 +43,7 @@ const LIFECYCLE: Record<
   { label: string; color: "emerald" | "amber" | "slate" }
 > = {
   ACTIVE: { label: "Active", color: "emerald" },
-  PENDING_APPROVAL: { label: "Pending Approval", color: "amber" },
+  PENDING_APPROVAL: { label: tr("Pending Approval"), color: "amber" },
   DRAFT: { label: "Draft", color: "slate" },
   INACTIVE: { label: "Inactive", color: "slate" },
 };
@@ -116,10 +117,10 @@ export function ReportTemplateDetailPage({
 
   const parent = inAdministration
     ? {
-        label: "Report Templates",
+        label: tr("Report Templates"),
         onClick: () => navigate(ROUTES.REPORT.TEMPLATE_MANAGEMENT),
       }
-    : { label: "Report Library", onClick: () => navigate("/report/templates") };
+    : { label: tr("Report Library"), onClick: () => navigate("/report/templates") };
   // The library page is for someone who runs the report; the page of the template is for someone who makes it.
   const title = inAdministration ? "Report Template Details" : "Report Details";
 
@@ -157,7 +158,7 @@ export function ReportTemplateDetailPage({
     { id: "role", header: "Role", cell: (row) => row.roleName ?? "—" },
     {
       id: "scope",
-      header: "Data scope",
+      header: tr("Data scope"),
       cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope,
     },
   ];
@@ -168,7 +169,7 @@ export function ReportTemplateDetailPage({
 
   // The same tab layout as the Document details page; the Audit Trail is a tab and shows the entries of this template only.
   const tabs = useMemo<TabItem[]>(() => {
-    const list: TabItem[] = [{ id: "general", label: "General Information" }];
+    const list: TabItem[] = [{ id: "general", label: tr("General Information") }];
     list.push({
       id: "fields",
       label: "Fields",
@@ -177,11 +178,11 @@ export function ReportTemplateDetailPage({
     if (inAdministration)
       list.push({
         id: "scopes",
-        label: "Role Scopes",
+        label: tr("Role Scopes"),
         count: template?.roleScopes?.length ?? 0,
       });
     if (can("viewAuditTrail") && template?.auditEntityId)
-      list.push({ id: "audit", label: "Audit Trail" });
+      list.push({ id: "audit", label: tr("Audit Trail") });
     return list;
   }, [can, inAdministration, template]);
   const shownTab = tabs.some((tab) => tab.id === activeTab)
@@ -303,23 +304,23 @@ export function ReportTemplateDetailPage({
               {shownTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <ReadonlyField
-                    label="Created Time"
+                    label={tr("Created Time")}
                     value={when(template.createdAt)}
                   />
                   <ReadonlyField
-                    label="Last Updated"
+                    label={tr("Last Updated")}
                     value={when(template.updatedAt)}
                   />
                   <ReadonlyField
-                    label="Report Template Name"
+                    label={tr("Report Template Name")}
                     value={template.displayName}
                   />
                   <ReadonlyField
-                    label="Report Template Number"
+                    label={tr("Report Template Number")}
                     value={template.code}
                   />
                   <ReadonlyField
-                    label="Report Type"
+                    label={tr("Report Type")}
                     value={humanize(template.sourceCode)}
                   />
                   <ReadonlyField
@@ -340,33 +341,33 @@ export function ReportTemplateDetailPage({
                   {/* A revision still being written is for the people who make the template; someone who runs the report sees only what is in force. */}
                   {inAdministration ? (
                     <ReadonlyField
-                      label="Revision In Progress"
+                      label={tr("Revision In Progress")}
                       value={
                         template.openRevision != null
-                          ? `${reportRevisionLabel(template.openRevision, template.openRevisionStatus ?? "DRAFT")} · ${template.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}`
+                          ? `${reportRevisionLabel(template.openRevision, template.openRevisionStatus ?? "DRAFT")} · ${template.openRevisionStatus === "PENDING_APPROVAL" ? tr("Pending Approval") : "Draft"}`
                           : "—"
                       }
                     />
                   ) : (
                     <ReadonlyField
-                      label={template.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : "Approved On"}
+                      label={template.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : tr("Approved On")}
                       value={when(template.approvalBasis === "NOT_REQUIRED" ? template.inUseSince : template.approvedAt)}
                     />
                   )}
                   <ReadonlyField
-                    label="Classification"
+                    label={tr("Classification")}
                     value={humanize(template.classification)}
                   />
                   <ReadonlyField
-                    label="Template Category"
+                    label={tr("Template Category")}
                     value={humanize(template.category)}
                   />
                   <ReadonlyField
-                    label="Output Formats"
+                    label={tr("Output Formats")}
                     value={template.allowedFormats.join(" · ")}
                   />
                   <ReadonlyField
-                    label="Page Orientation"
+                    label={tr("Page Orientation")}
                     value={
                       template.layout?.orientation === "PORTRAIT"
                         ? "Portrait"
@@ -375,13 +376,13 @@ export function ReportTemplateDetailPage({
                   />
                   <div className="flex items-center gap-3">
                     <label className="text-xs font-medium text-slate-700 sm:text-sm">
-                      Used For GMP Decisions?
+                      {tr("Used For GMP Decisions?")}
                     </label>
                     <Checkbox
                       id="gmpUse"
                       checked={Boolean(template.gmpUse)}
                       disabled
-                      aria-label="Used for GMP decisions"
+                      aria-label={tr("Used for GMP decisions")}
                     />
                   </div>
                   {inAdministration && (
@@ -389,10 +390,10 @@ export function ReportTemplateDetailPage({
                       {/* What happened to the revision in force: a person approved it, or it came into force when saved. */}
                       <ReadonlyField
                         label="Approval State"
-                        value={template.approvalBasis === "NOT_REQUIRED" ? "Not required (in force when saved, under the earlier rule)" : codeLabel(template.approvalStatus)}
+                        value={template.approvalBasis === "NOT_REQUIRED" ? tr("Not required (in force when saved, under the earlier rule)") : codeLabel(template.approvalStatus)}
                       />
                       <ReadonlyField
-                        label="Approved Version"
+                        label={tr("Approved Version")}
                         value={
                           template.approvedVersion != null
                             ? `v${template.approvedVersion}`
@@ -400,7 +401,7 @@ export function ReportTemplateDetailPage({
                         }
                       />
                       <ReadonlyField
-                        label="Approved On"
+                        label={tr("Approved On")}
                         value={when(template.approvedAt)}
                       />
                       <ReadonlyField
@@ -412,7 +413,7 @@ export function ReportTemplateDetailPage({
                         }
                       />
                       <ReadonlyField
-                        label="Submitted On"
+                        label={tr("Submitted On")}
                         value={when(template.submittedAt)}
                       />
                       <ReadonlyField
@@ -423,7 +424,7 @@ export function ReportTemplateDetailPage({
                   )}
                   <div className="flex flex-col gap-1.5 md:col-span-2">
                     <label className="text-xs font-medium text-slate-700 sm:text-sm">
-                      Description
+                      {tr("Description")}
                     </label>
                     <textarea
                       value={template.description || "No description."}
@@ -444,7 +445,7 @@ export function ReportTemplateDetailPage({
                       emptyState={
                         <TableEmptyState
                           title="No fields"
-                          description="This template has no fields."
+                          description={tr("This template has no fields.")}
                         />
                       }
                     />
@@ -463,7 +464,7 @@ export function ReportTemplateDetailPage({
                       emptyState={
                         <TableEmptyState
                           title="No role scopes"
-                          description="No role may run this template yet."
+                          description={tr("No role may run this template yet.")}
                         />
                       }
                     />
@@ -531,8 +532,8 @@ export function ReportTemplateDetailPage({
             }
             description={
               action === "enable"
-                ? "The template can be used again at once, with its effective revision."
-                : "The template stops at once: no report can be made from it and its schedules cannot run. Reports already made are kept. The change is recorded in the audit trail."
+                ? tr("The template can be used again at once, with its effective revision.")
+                : tr("The template stops at once: no report can be made from it and its schedules cannot run. Reports already made are kept. The change is recorded in the audit trail.")
             }
             confirmText={action === "enable" ? "Enable" : "Disable"}
             reasonRequired={false}

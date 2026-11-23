@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { motion } from "framer-motion";
 import { useStepperMotion } from "./useStepperMotion";
+import { useLanguage } from "@/i18n";
 
 export interface WorkflowStepperProps {
   steps: readonly string[] | string[];
@@ -29,6 +30,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
   isTerminal = false,
   numbered = false,
 }) => {
+  const { tLabel } = useLanguage();
   const isTerminalStatus = isTerminal;
   const rootRef = useRef<HTMLDivElement>(null);
   useStepperMotion(rootRef, currentStepIndex);
@@ -138,7 +140,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                             : "text-slate-400",
                     )}
                   >
-                    {step}
+                    {tLabel(step)}
                   </span>
                 </div>
                 {!isLast && (
@@ -233,7 +235,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({
                             : "text-slate-400",
                     )}
                   >
-                    {numbered ? `${index + 1}. ${step}` : step}
+                    {numbered ? `${index + 1}. ${tLabel(step)}` : tLabel(step)}
                   </span>
                 </div>
               </div>

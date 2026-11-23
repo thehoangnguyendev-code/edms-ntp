@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface DocumentDetail {
   documentNumber: string;
@@ -103,7 +103,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
             value={document.created}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Auto-generated after save"
+            placeholder={tr("Auto-generated after save")}
           />
         </div>
 
@@ -117,7 +117,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
               value={document.openedBy}
               readOnly
               className={CONTROL_STATE_CLASSES.readonlyField}
-              placeholder="Auto-generated after save"
+              placeholder={tr("Auto-generated after save")}
             />
           </div>
 
@@ -131,7 +131,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
                 options={authorOptions}
                 enableSearch={true}
                 onSearch={onSearchWorkflowUsers}
-                placeholder="Select author..."
+                placeholder={tr("Select author...")}
               />
             ) : (
               <input
@@ -153,7 +153,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
                 options={coAuthorOptions}
                 enableSearch={true}
                 onSearch={onSearchWorkflowUsers}
-                placeholder="Select Co-Authors..."
+                placeholder={tr("Select Co-Authors...")}
                 maxVisibleTags={2}
               />
             ) : (
@@ -171,13 +171,13 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
                       ))}
                     </>
                   ) : (
-                    <span className="text-slate-400 text-left truncate">Select Co-Authors...</span>
+                    <span className="text-slate-400 text-left truncate">{tr("Select Co-Authors...")}</span>
                   )}
                 </div>
                 <div className="ml-1 flex shrink-0 items-center gap-1.5">
                   {hiddenCoAuthors.length > 0 && (
                     <Popover
-                      title="Selected"
+                      title={tr("Selected")}
                       placement="top"
                       triggerAriaLabel={`View ${hiddenCoAuthors.length} more selected items`}
                       trigger={<span className="text-2xs font-medium">+{hiddenCoAuthors.length}</span>}

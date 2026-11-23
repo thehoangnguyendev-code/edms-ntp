@@ -9,6 +9,7 @@ import { useServerTable } from "@/features/settings/shared/hooks/useServerTable"
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingCopyApi, trainingError, type TrainingMyCopy } from "@/services/api/trainingActivities";
 import { day } from "../../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 const TYPE_LABEL = { TRAINING_REQUIREMENT: "Training Requirement", TRAINING_JOB_ASSIGNMENT: "Job Assignment" } as const;
 
@@ -27,7 +28,7 @@ export function MyTrainingCopiesTab() {
       await trainingCopyApi.receive(row.id);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -41,7 +42,7 @@ export function MyTrainingCopiesTab() {
       sort: sorted("reference"),
       cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(r.objectType === "TRAINING_REQUIREMENT" ? `/training-management/requirements/${r.objectId}` : `/training-management/job-assignments/${r.objectId}`)}>{r.objectName}</button>,
     },
-    { id: "from", header: "From department", sort: sorted("fromDepartment"), cell: (r) => r.fromDepartment ?? "—" },
+    { id: "from", header: tr("From department"), sort: sorted("fromDepartment"), cell: (r) => r.fromDepartment ?? "—" },
     { id: "sent", header: "Sent", sort: sorted("sent"), cell: (r) => <div><div>{r.sentByName}</div><div className="text-xs text-slate-500">{day(r.sentAt)}</div></div> },
     { id: "note", header: "Note", sort: sorted("note"), cell: (r) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{r.note ?? "—"}</div> },
     {
@@ -49,13 +50,13 @@ export function MyTrainingCopiesTab() {
       header: "State",
       sort: sorted("state"),
       cell: (r) => (r.receivedAt
-        ? <div><Badge color="emerald">Received</Badge><div className="mt-1 text-xs text-slate-500">{r.receivedByName}, {day(r.receivedAt)}</div></div>
-        : <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void receive(r)}>Confirm received</Button>),
+        ? <div><Badge color="emerald">{tr("Received")}</Badge><div className="mt-1 text-xs text-slate-500">{r.receivedByName}, {day(r.receivedAt)}</div></div>
+        : <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void receive(r)}>{tr("Confirm received")}</Button>),
     },
   ];
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <DataTable rows={table.items} getRowKey={(r) => r.id} columns={columns} isLoading={table.isLoading} pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} emptyState={<TableEmptyState title="No copy" description="Copies of requirements and job assignments sent to your department appear here." />} />
+      <DataTable rows={table.items} getRowKey={(r) => r.id} columns={columns} isLoading={table.isLoading} pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} emptyState={<TableEmptyState title={tr("No copy")} description={tr("Copies of requirements and job assignments sent to your department appear here.")} />} />
     </div>
   );
 }

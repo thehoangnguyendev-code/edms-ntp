@@ -4,6 +4,7 @@ import { BreakdownPanel } from '../shared/BreakdownPanel';
 import { statusSlices, type RankedCount } from '../shared/dashboardMetrics';
 import { DOCUMENT_STATUS, DOCUMENT_STATUS_ORDER } from '../shared/documentStatus';
 import type { DashboardResource } from '../shared/useDashboardResource';
+import { tr } from "@/i18n";
 
 const statusColor = (row: RankedCount) => DOCUMENT_STATUS[row.key]?.color ?? DOCUMENT_STATUS.OTHER.color;
 
@@ -29,7 +30,7 @@ export const DocumentsByStatusPanel: React.FC<{ stats: DashboardResource<Dashboa
   return (
     <BreakdownPanel
       className={className}
-      title="Documents by status"
+      title={tr("Documents by status")}
       idleSubtitle="All documents, per lifecycle status"
       subtitle={(total) => `${total.toLocaleString()} total`}
       resource={resource}
@@ -37,7 +38,7 @@ export const DocumentsByStatusPanel: React.FC<{ stats: DashboardResource<Dashboa
       centerCaption="Documents"
       chartLabel="documents by status"
       emptyLabel="There are no documents yet"
-      errorMessage="Documents by status could not be loaded."
+      errorMessage={tr("Documents by status could not be loaded.")}
       idPrefix="documents-status"
       defaultView="bar"
       colorFor={statusColor}

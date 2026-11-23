@@ -6,6 +6,7 @@ import { getFileIconSrc } from "@/utils/fileIcons";
 import filePlaceholder from "@/assets/images/image-file/file.png";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import type { ParentDocument, RelatedDocument } from "./subtabs/types";
+import { tr, trFormat } from "@/i18n";
 
 export interface UploadedFile {
   id: string;
@@ -61,7 +62,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
         className="w-full flex items-center justify-center h-full text-slate-400 text-xs md:text-sm"
         style={{ height: "calc(100vh - 180px)", minHeight: "720px" }}
       >
-        There is no file available for preview.
+        {tr("There is no file available for preview.")}
       </div>
     );
   }
@@ -99,9 +100,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
       <div className="w-full min-h-0" style={{ height: "calc(100vh - 180px)", minHeight: "720px" }}>
         <div className="flex flex-col items-center justify-center h-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-4 md:p-5">
         <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-        <p className="text-slate-700 font-semibold mb-2">Detailed Preview Unavailable</p>
+        <p className="text-slate-700 font-semibold mb-2">{tr("Detailed Preview Unavailable")}</p>
         <p className="text-slate-500 text-sm max-w-xs mx-auto mb-6">
-          Only PDF files or images can be previewed in-browser. Please download this file to view its contents.
+          {tr("Only PDF files or images can be previewed in-browser. Please download this file to view its contents.")}
         </p>
         <div className="flex flex-col items-center p-4 md:p-5 bg-white rounded-lg border border-slate-200">
           <img src={filePlaceholder} alt="File" className="h-16 w-16 mb-2 opacity-50" />
@@ -144,7 +145,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
               <FileText className="h-8 w-8 text-slate-400" />
             </div>
             <h4 className="text-sm font-semibold text-slate-700 mb-2">
-              There is no attachment to display
+              {tr("There is no attachment to display")}
             </h4>
           </div>
         </div>
@@ -154,7 +155,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
             {uploadedFiles.length > 0 ? (
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-700">
-                  Available Files ({uploadedFiles.length})
+                  {trFormat("Available Files ({count})", { count: uploadedFiles.length })}
                 </h4>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -211,7 +212,7 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
                           {uploadedFile.status === "uploading" && (
                             <div className="mt-1.5">
                               <div className="flex items-center justify-between text-xs text-slate-500 mb-0.5">
-                                <span>Uploading...</span>
+                                <span>{tr("Uploading...")}</span>
                                 <span>{uploadedFile.progress}%</span>
                               </div>
                               <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -240,10 +241,10 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
                       <div className="text-center p-4 md:p-5">
                         <File className="h-12 w-12 md:h-16 md:w-16 text-slate-300 mx-auto mb-3 md:mb-4" />
                         <p className="text-slate-500 font-medium text-sm md:text-base">
-                          No file selected
+                          {tr("No file selected")}
                         </p>
                         <p className="text-xs md:text-sm text-slate-400 mt-1.5 md:mt-2">
-                          Select a file above to preview
+                          {tr("Select a file above to preview")}
                         </p>
                       </div>
                     </div>

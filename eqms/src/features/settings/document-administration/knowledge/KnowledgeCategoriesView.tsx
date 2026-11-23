@@ -44,18 +44,19 @@ import {
 import { formatDateTime } from "@/utils/format";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const COLUMNS = [
   { key: "name", label: "Name", sortable: true },
   {
     key: "determinatorField",
-    label: "Knowledge Base Field Determinator",
+    label: tr("Knowledge Base Field Determinator"),
     sortable: true,
   },
   { key: "levels", label: "Levels", sortable: true },
   { key: "active", label: "Status", sortable: true },
-  { key: "updatedAt", label: "Last Updated", sortable: true },
-  { key: "updatedBy", label: "Updated By", sortable: true },
+  { key: "updatedAt", label: tr("Last Updated"), sortable: true },
+  { key: "updatedBy", label: tr("Updated By"), sortable: true },
 ] as const;
 
 const STATUS_OPTIONS = [
@@ -129,7 +130,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Failed to load",
+        title: tr("Failed to load"),
         message: errorMessage(error, "Unable to load the hierarchies."),
       });
     } finally {
@@ -201,14 +202,14 @@ export const KnowledgeCategoriesView: React.FC = () => {
       await knowledgeApi.setDefault(row.id);
       showToast({
         type: "success",
-        title: "Default changed",
+        title: tr("Default changed"),
         message: `"${row.name}" now drives the Knowledge portal.`,
       });
       await load();
     } catch (error) {
       showToast({
         type: "error",
-        title: "Could not change the default",
+        title: tr("Could not change the default"),
         message: errorMessage(error, "Unable to change the default hierarchy."),
       });
     }
@@ -220,7 +221,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
       await knowledgeApi.deleteHierarchy(deleteTarget.id);
       showToast({
         type: "success",
-        title: "Hierarchy deleted",
+        title: tr("Hierarchy deleted"),
         message: `"${deleteTarget.name}" was deleted.`,
       });
       setDeleteTarget(null);
@@ -229,7 +230,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
       setDeleteTarget(null);
       showToast({
         type: "error",
-        title: "Could not delete",
+        title: tr("Could not delete"),
         message: errorMessage(error, "Unable to delete the hierarchy."),
       });
     }
@@ -250,7 +251,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
           <button
             type="button"
             onClick={() => toggleExpanded(item.id)}
-            aria-label="Show levels"
+            aria-label={tr("Show levels")}
             className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
           >
             <ChevronRight
@@ -276,7 +277,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
           </span>
           {item.isDefault && (
             <Badge size="sm" color="blue" className="ml-2">
-              Default
+              {tr("Default")}
             </Badge>
           )}
           {item.description && (
@@ -287,7 +288,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
         </>
       ),
     },
-    { id: "determinatorField", header: "Knowledge Base Field Determinator", label: "Knowledge Base Field Determinator", sort: { direction: sortKey === "determinatorField" ? sortDir : undefined, onSort: () => handleSort("determinatorField") }, cellClassName: "text-slate-700", cell: (item) => item.determinatorLabel },
+    { id: "determinatorField", header: tr("Knowledge Base Field Determinator"), label: tr("Knowledge Base Field Determinator"), sort: { direction: sortKey === "determinatorField" ? sortDir : undefined, onSort: () => handleSort("determinatorField") }, cellClassName: "text-slate-700", cell: (item) => item.determinatorLabel },
     { id: "levels", header: "Levels", label: "Levels", sort: { direction: sortKey === "levels" ? sortDir : undefined, onSort: () => handleSort("levels") }, cellClassName: "text-slate-700", cell: (item) => item.levels.length },
     {
       id: "active",
@@ -300,8 +301,8 @@ export const KnowledgeCategoriesView: React.FC = () => {
         </Badge>
       ),
     },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => (item.updatedAt ? formatDateTime(item.updatedAt) : "-") },
-    { id: "updatedBy", header: "Updated By", label: "Updated By", sort: { direction: sortKey === "updatedBy" ? sortDir : undefined, onSort: () => handleSort("updatedBy") }, cellClassName: "text-slate-700", cell: (item) => item.updatedByName || "-" },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => (item.updatedAt ? formatDateTime(item.updatedAt) : "-") },
+    { id: "updatedBy", header: tr("Updated By"), label: tr("Updated By"), sort: { direction: sortKey === "updatedBy" ? sortDir : undefined, onSort: () => handleSort("updatedBy") }, cellClassName: "text-slate-700", cell: (item) => item.updatedByName || "-" },
   ];
   const knowledgeAction: DataTableAction<Row> = {
     header: "Action",
@@ -320,7 +321,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Knowledge Categories Hierarchies"
+        title={tr("Knowledge Categories Hierarchies")}
         breadcrumbItems={knowledgeCategories(navigate)}
         actions={
           canManage ? (
@@ -332,7 +333,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
               }
             >
               <Plus className="h-4 w-4" />
-              New
+              {tr("New")}
             </Button>
           ) : undefined
         }
@@ -344,7 +345,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
             {/* Mobile: search + filter drawer */}
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
@@ -353,7 +354,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by name or description..."
+                    placeholder={tr("Search by name or description...")}
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
@@ -379,7 +380,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                   className="whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -389,13 +390,13 @@ export const KnowledgeCategoriesView: React.FC = () => {
   trailing={<div className="hidden md:block">{knowledgeControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setPage(1);
       }}
-      placeholder={"Search by name or description..."}
+      placeholder={tr("Search by name or description...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -414,7 +415,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
   dates={[
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -431,7 +432,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">
-                  Search
+                  {tr("Search")}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
@@ -439,7 +440,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by name or description..."
+                    placeholder={tr("Search by name or description...")}
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
@@ -461,7 +462,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 </div>
               </div>
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={status}
                 onChange={(value) => {
                   setStatus(String(value));
@@ -470,7 +471,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 options={STATUS_OPTIONS}
               />
               <DateRangePicker
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 startDate={updatedFrom}
                 endDate={updatedTo}
                 onStartDateChange={(value) => {
@@ -481,7 +482,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                   setUpdatedTo(value);
                   setPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
                 autoApply
               />
               <div className="filter-actions flex items-end gap-2">
@@ -517,24 +518,24 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 render: (item) => (
                   <div className="ml-9">
                     <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                      Knowledge Category Levels ({item.levels.length})
+                      {trFormat("Knowledge Category Levels ({count})", { count: item.levels.length })}
                     </p>
                     {item.levels.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-xs text-slate-500">
-                        No levels: documents are listed directly under each Knowledge Base.
+                        {tr("No levels: documents are listed directly under each Knowledge Base.")}
                       </div>
                     ) : (
                       <ol className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-700">
                         <li className="flex items-center gap-1.5">
                           <Layers className="h-3.5 w-3.5 text-slate-400" />
-                          <b>{item.determinatorLabel}</b> (Knowledge Base)
+                          <b>{item.determinatorLabel}</b> {tr("(Knowledge Base)")}
                         </li>
                         {item.levels.map((level) => (
                           <li key={level.id} className="flex items-center gap-2">
                             <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                             <span>
                               {level.fieldLabel}{" "}
-                              <span className="text-xs text-slate-500">(order {level.displayOrder})</span>
+                              <span className="text-xs text-slate-500">{trFormat("(order {order})", { order: level.displayOrder })}</span>
                             </span>
                           </li>
                         ))}
@@ -545,8 +546,8 @@ export const KnowledgeCategoriesView: React.FC = () => {
               }}
               emptyState={
                 <TableEmptyState
-                  title="No Hierarchies Found"
-                  description="We couldn't find any hierarchies matching your filters. Try adjusting your search criteria."
+                  title={tr("No Hierarchies Found")}
+                  description={tr("We couldn't find any hierarchies matching your filters. Try adjusting your search criteria.")}
                 />
               }
               pagination={
@@ -602,9 +603,9 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 disabled={menuRow.isDefault || !menuRow.active}
                 title={
                   menuRow.isDefault
-                    ? "This is already the default hierarchy"
+                    ? tr("This is already the default hierarchy")
                     : !menuRow.active
-                      ? "An inactive hierarchy cannot be the default"
+                      ? tr("An inactive hierarchy cannot be the default")
                       : undefined
                 }
                 className={cn(
@@ -615,7 +616,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
               >
                 <Star className="h-4 w-4 flex-shrink-0" />
                 <span className="font-medium text-slate-500">
-                  Set as Default
+                  {tr("Set as Default")}
                 </span>
               </button>
             )}
@@ -629,7 +630,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 disabled={menuRow.isDefault}
                 title={
                   menuRow.isDefault
-                    ? "The default hierarchy cannot be deleted"
+                    ? tr("The default hierarchy cannot be deleted")
                     : undefined
                 }
                 className={cn(
@@ -638,7 +639,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 )}
               >
                 <Trash2 className="h-4 w-4 flex-shrink-0" />
-                <span className="font-medium text-slate-500">Delete Hierarchy</span>
+                <span className="font-medium text-slate-500">{tr("Delete Hierarchy")}</span>
               </button>
             )}
           </div>
@@ -650,7 +651,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
         type="warning"
-        title="Delete Hierarchy"
+        title={tr("Delete Hierarchy")}
         description={`Delete "${deleteTarget?.name ?? ""}" and its levels? This is recorded in the Audit Trail and cannot be undone.`}
         confirmText="Yes, Delete"
         cancelText="Cancel"
@@ -664,7 +665,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
         >
@@ -687,7 +688,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
           </div>
         </FilterAccordionItem>
         <FilterAccordionItem
-          label="Last Updated Range"
+          label={tr("Last Updated Range")}
           isExpanded={expandedSections.has("updated")}
           onToggle={() => toggleSection("updated")}
         >
@@ -704,7 +705,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
                 setUpdatedTo(value);
                 setPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
               autoApply
             />
           </div>

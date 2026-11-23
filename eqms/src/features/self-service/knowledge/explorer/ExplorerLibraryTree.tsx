@@ -5,7 +5,7 @@ import { knowledgeApi } from "@/services/api/knowledge";
 import type { KnowledgePortalOverview } from "@/services/api/knowledge";
 import type { ExplorerNav } from "./explorerModel";
 import { useFolderColor, useFolderLabel } from "./ExplorerIcons";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface ExplorerLibraryTreeProps {
   overview: KnowledgePortalOverview;
@@ -109,7 +109,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
   };
 
   return (
-    <Files open={open} onOpenChange={setOpen} aria-label="Knowledge Bases">
+    <Files open={open} onOpenChange={setOpen} aria-label={tr("Knowledge Bases")}>
       {overview.knowledgeBases.map((kb) => {
         const target = { key: kb.key, label: kb.label };
         const active = nav.kind === "kb" && nav.kb.key === kb.key && nav.path.length === 0;
@@ -124,7 +124,7 @@ export const ExplorerLibraryTree: React.FC<ExplorerLibraryTreeProps> = ({ overvi
               icon={<span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: colorOf(kb.key, kb.label) }} />}
               trailing={
                 <>
-                  {kb.subscribed && <Bell className="h-4 w-4 shrink-0 text-emerald-600 md:h-3 md:w-3" aria-label="Subscribed" />}
+                  {kb.subscribed && <Bell className="h-4 w-4 shrink-0 text-emerald-600 md:h-3 md:w-3" aria-label={tr("Subscribed")} />}
                   <span className="text-xs tabular-nums text-slate-400">{kb.documentCount}</span>
                 </>
               }

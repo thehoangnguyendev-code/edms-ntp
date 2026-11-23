@@ -7,7 +7,7 @@ import { useDebounce } from "@/hooks";
 import { knowledgeApi, type DocumentSuggestion } from "@/services/api/knowledge";
 import { typeBadgeColor } from "./explorerModel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 /** Characters before the server is asked for suggestions, and the pause after the last key press. */
 export const MIN_SUGGEST_LENGTH = 2;
@@ -136,7 +136,7 @@ export const ExplorerSearchBox: React.FC<ExplorerSearchBoxProps> = ({ value, onC
         <div
           id={listId}
           role="listbox"
-          aria-label="Suggested documents"
+          aria-label={tr("Suggested documents")}
           className="absolute left-0 right-0 top-full z-30 mt-1 max-h-[min(24rem,60dvh)] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
           {waiting && <p role="status" className="px-3 py-2 text-xs text-slate-500">{t("knowledge.searching", "Searching...")}</p>}

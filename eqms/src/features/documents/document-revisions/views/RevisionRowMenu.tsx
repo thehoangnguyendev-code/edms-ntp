@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React from "react";
 import { FileStack } from "lucide-react";
 import { IconArrowUpRight, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
@@ -6,13 +7,13 @@ import type { Revision } from "./types";
 import { revisionRowActions, type RevisionRowAction, type RevisionRowActionOptions } from "./revisionRowActions";
 
 const ROW_ACTION_ITEMS: Record<RevisionRowAction, { icon: React.ReactNode; label: string }> = {
-  edit: { icon: <IconPencilMinus className="h-4 w-4" />, label: "Edit Revision" },
-  view: { icon: <IconInfoCircle className="h-4 w-4" />, label: "View Details" },
-  review: { icon: <IconCheck className="h-4 w-4" />, label: "Review Revision" },
-  approve: { icon: <IconChecks className="h-4 w-4" />, label: "Approve Revision" },
-  training: { icon: <IconChecklist className="h-4 w-4" />, label: "Training Revision" },
-  controlledCopy: { icon: <FileStack className="h-4 w-4" />, label: "Request Controlled Copy" },
-  publish: { icon: <IconArrowUpRight className="h-4 w-4" />, label: "Publish Revision" },
+  edit: { icon: <IconPencilMinus className="h-4 w-4" />, label: tr("Edit Revision") },
+  view: { icon: <IconInfoCircle className="h-4 w-4" />, label: tr("View Details") },
+  review: { icon: <IconCheck className="h-4 w-4" />, label: tr("Review Revision") },
+  approve: { icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Revision") },
+  training: { icon: <IconChecklist className="h-4 w-4" />, label: tr("Training Revision") },
+  controlledCopy: { icon: <FileStack className="h-4 w-4" />, label: tr("Request Controlled Copy") },
+  publish: { icon: <IconArrowUpRight className="h-4 w-4" />, label: tr("Publish Revision") },
 };
 
 /** The row's entries for RevisionTableView, which shows the menu button only when there is at least one. */

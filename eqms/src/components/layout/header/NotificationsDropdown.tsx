@@ -20,6 +20,7 @@ import { moduleDisplayName } from '@/utils/moduleDisplay';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useNotificationDock } from './NotificationDockContext';
 import { useNotificationEntrance } from './useNotificationEntrance';
+import { tr, trFormat } from "@/i18n";
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -129,7 +130,7 @@ const NotificationItem: React.FC<{
           <Clock className="h-3 w-3" />
           {formatNotificationDateTime(notification.createdAt)}
         </span>
-        {unread && <span className="sr-only">Unread</span>}
+        {unread && <span className="sr-only">{tr("Unread")}</span>}
       </button>
     </div>
   );
@@ -204,7 +205,7 @@ export const NotificationShowMore: React.FC<{ shown: number; total: number; onCl
       onClick={onClick}
       className="text-xs font-semibold text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:text-sm"
     >
-      Show more ({shown} of {total})
+            {trFormat("Show more ({shown} of {total})", { shown, total })}
     </button>
   </div>
 );
@@ -272,12 +273,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     <div className={cn('flex flex-col', (isDock || isScreen) && 'h-full min-h-0')}>
       <div className={cn('flex shrink-0 items-center gap-1', isScreen ? 'border-b border-slate-200 px-2 py-2' : 'px-4 pt-3')}>
         {onBack && (
-          <button type="button" onClick={onBack} className={cn(iconButton, 'text-slate-600')} aria-label="Back">
+          <button type="button" onClick={onBack} className={cn(iconButton, 'text-slate-600')} aria-label={tr("Back")}>
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
         <div className="min-w-0 flex-1">
-          <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">Notifications</h3>
+          <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">{tr("Notifications")}</h3>
           <p className="text-xs text-slate-500">{counts.unread > 0 ? `${counts.unread} unread` : 'All caught up'}</p>
         </div>
         <button
@@ -285,8 +286,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           className={cn(iconButton, 'text-emerald-600')}
           onClick={onMarkAllRead}
           disabled={counts.unread === 0}
-          aria-label="Mark all as read"
-          title="Mark all as read"
+          aria-label={tr("Mark all as read")}
+          title={tr("Mark all as read")}
         >
           <CheckCheck className="h-4 w-4" />
         </button>
@@ -303,12 +304,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <PinIcon className="h-4 w-4" />
           </button>
         )}
-        <button type="button" className={iconButton} onClick={onOpenSettings} title="Notification settings" aria-label="Notification settings">
+        <button type="button" className={iconButton} onClick={onOpenSettings} title={tr("Notification settings")} aria-label={tr("Notification settings")}>
           <IconSettings2 className="h-4 w-4" />
         </button>
       </div>
 
-      <div role="tablist" aria-label="Show" className="mx-4 my-3 grid shrink-0 grid-cols-4 rounded-xl bg-slate-100 p-1 text-xs font-medium">
+      <div role="tablist" aria-label={tr("Show")} className="mx-4 my-3 grid shrink-0 grid-cols-4 rounded-xl bg-slate-100 p-1 text-xs font-medium">
         {tabs.map((item) => {
           const active = tab === item.id;
           return (
@@ -380,7 +381,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             isScreen ? 'h-11 rounded-xl' : 'h-10 rounded-lg',
           )}
         >
-          Open Notification Center
+          {tr("Open Notification Center")}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
@@ -410,7 +411,7 @@ const MobileNotificationsScreen: React.FC<{
   return createPortal(
     <div
       role="dialog"
-      aria-label="Notifications"
+      aria-label={tr("Notifications")}
       className="fixed inset-0 z-50 bg-white md:hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -498,7 +499,7 @@ const DesktopDropdown: React.FC<{
       <motion.div
         ref={dropdownRef}
         role="dialog"
-        aria-label="Notifications"
+        aria-label={tr("Notifications")}
         initial={{ opacity: 0, scale: 0.95, y: -10, transformOrigin: 'top right' }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -646,7 +647,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                 title={`${unreadCount} unread notifications`}
               >
                 <span aria-hidden="true">{unreadLabel}</span>
-                <span className="sr-only">{unreadCount} unread notifications</span>
+                <span className="sr-only">{unreadCount} {tr("unread notifications")}</span>
               </span>
             )}
           </span>

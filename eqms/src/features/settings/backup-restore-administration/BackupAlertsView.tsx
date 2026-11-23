@@ -30,11 +30,12 @@ import { formatDateTime } from "@/features/backup-restore/format";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { readableCode } from "@/utils/machineText";
+import { tr } from "@/i18n";
 
 const ALL = "ALL";
 const STATE_OPTIONS = [
-  { label: "Not yet acknowledged", value: "OPEN" },
-  { label: "Acknowledged", value: "ACKNOWLEDGED" },
+  { label: tr("Not yet acknowledged"), value: "OPEN" },
+  { label: tr("Acknowledged"), value: "ACKNOWLEDGED" },
   { label: "All", value: "ALL" },
 ];
 const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: readableCode(value), value }))];
@@ -43,7 +44,7 @@ const SEVERITY_COLOR = { CRITICAL: "red", HIGH: "red", WARNING: "amber", INFO: "
 
 const TABS: TabItem[] = [
   { id: "alerts", label: "Alerts" },
-  { id: "recipients", label: "Recipients" },
+  { id: "recipients", label: tr("Recipients") },
   { id: "rules", label: "Rules" },
 ];
 
@@ -114,12 +115,12 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     setBusy(true);
     try {
       await backupRestoreApi.acknowledgeAlert(acknowledging.id, comment.trim());
-      showToast({ type: "success", title: "Alert acknowledged", message: acknowledging.code });
+      showToast({ type: "success", title: tr("Alert acknowledged"), message: acknowledging.code });
       setAcknowledging(undefined);
       setComment("");
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The alert was not acknowledged", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The alert was not acknowledged"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -135,13 +136,13 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
 
   const columns: DataTableColumn<BackupAlertRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
-    { id: "alertNumber", header: "Alert Number", label: "Alert Number", cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.alertNumber ?? "—"}</span> },
+    { id: "alertNumber", header: tr("Alert Number"), label: tr("Alert Number"), cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.alertNumber ?? "—"}</span> },
     { id: "at", header: "When", label: "When", sort: sortFor("at"), cell: (row) => formatDateTime(row.at) },
     { id: "severity", header: "Severity", label: "Severity", sort: sortFor("severity"), cell: (row) => <Badge color={SEVERITY_COLOR[row.severity]}>{row.severityLabel ?? readableCode(row.severity)}</Badge> },
     { id: "code", header: "Alert", label: "Alert", sort: sortFor("code"), cell: (row) => row.codeLabel ?? readableCode(row.code) },
     { id: "detail", header: "Detail", label: "Detail", cell: (row) => <span className="break-words">{row.detail ?? "—"}</span> },
     { id: "ref", header: "Reference", label: "Reference", sort: sortFor("ref"), cell: (row) => row.ref ?? "—" },
-    { id: "ack", header: "Acknowledged", label: "Acknowledged", sort: sortFor("acknowledgedAt"), cell: (row) => (row.acknowledgedAt ? `${row.acknowledgedBy ?? ""} · ${formatDateTime(row.acknowledgedAt)}` : "—") },
+    { id: "ack", header: tr("Acknowledged"), label: tr("Acknowledged"), sort: sortFor("acknowledgedAt"), cell: (row) => (row.acknowledgedAt ? `${row.acknowledgedBy ?? ""} · ${formatDateTime(row.acknowledgedAt)}` : "—") },
   ];
 
   const menu = usePortalDropdown();
@@ -154,7 +155,7 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         <button
         type="button"
         ref={menu.getRef(row.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => { setMenuRow(row); menu.toggle(row.id, event); }}
       >
@@ -167,14 +168,14 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     <>
       <WarningBanner
         variant="info"
-        title="How alerts work"
-        description="The Backup Agent raises an alert when something needs attention. Every alert is recorded and listed here. Acknowledging one records who saw it and when; the alert stays in the history."
+        title={tr("How alerts work")}
+        description={tr("The Backup Agent raises an alert when something needs attention. Every alert is recorded and listed here. Acknowledging one records who saw it and when; the alert stays in the history.")}
       />
       <PortalDropdownMenu isOpen={!!menuRow && menu.openId === menuRow.id} onClose={menu.close} position={menu.position} minWidth={200}>
         {menuRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} disabled={busy} onClick={() => { setAcknowledging(menuRow); menu.close(); }}>
-              Acknowledge
+              {tr("Acknowledge")}
             </DropdownMenuItem>
           </div>
         )}
@@ -190,14 +191,14 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         loading={loading}
         hasLoaded={hasLoaded}
         error={error}
-        emptyTitle="No Alerts"
-        emptyDescription="There are no alerts for this filter."
+        emptyTitle={tr("No Alerts")}
+        emptyDescription={tr("There are no alerts for this filter.")}
         search={search}
         onSearch={setSearch}
         searchLabel="Search alerts"
-        searchPlaceholder="Alert, detail or reference…"
+        searchPlaceholder={tr("Alert, detail or reference…")}
         filters={[
-          { id: "state", label: "State", value: state, options: STATE_OPTIONS, defaultValue: "OPEN", placeholder: "Not yet acknowledged", onChange: setState },
+          { id: "state", label: "State", value: state, options: STATE_OPTIONS, defaultValue: "OPEN", placeholder: tr("Not yet acknowledged"), onChange: setState },
           { id: "severity", label: "Severity", value: severity, options: SEVERITY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setSeverity },
         ]}
         dates={[{ id: "raised", label: "Raised", from: raisedFrom, to: raisedTo, onFromChange: setRaisedFrom, onToChange: setRaisedTo }]}
@@ -220,12 +221,12 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         isOpen={!!acknowledging}
         onClose={() => setAcknowledging(undefined)}
         title={`Acknowledge ${acknowledging?.code ?? "alert"}`}
-        description="Your name and the time are recorded with the alert. A note is optional."
-        confirmText="Acknowledge"
+        description={tr("Your name and the time are recorded with the alert. A note is optional.")}
+        confirmText={tr("Acknowledge")}
         confirmDisabled={busy}
         onConfirm={acknowledge}
       >
-        <FormField label="Note">
+        <FormField label={tr("Note")}>
           <Textarea rows={3} value={comment} maxLength={500} onChange={(event) => setComment(event.target.value)} />
         </FormField>
       </FormModal>
@@ -271,9 +272,9 @@ const RecipientsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
       await backupRestoreApi.addAlertRecipient(username);
       setNewRecipient("");
       setReloadKey((k) => k + 1);
-      showToast({ type: "success", title: "Recipient added", message: username });
+      showToast({ type: "success", title: tr("Recipient added"), message: username });
     } catch (e) {
-      showToast({ type: "error", title: "The recipient was not added", message: getApiErrorMessage(e, "The account must exist and be active.") });
+      showToast({ type: "error", title: tr("The recipient was not added"), message: getApiErrorMessage(e, "The account must exist and be active.") });
     } finally {
       setBusy(false);
     }
@@ -284,9 +285,9 @@ const RecipientsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     try {
       await backupRestoreApi.removeAlertRecipient(username);
       setReloadKey((k) => k + 1);
-      showToast({ type: "success", title: "Recipient removed", message: username });
+      showToast({ type: "success", title: tr("Recipient removed"), message: username });
     } catch (e) {
-      showToast({ type: "error", title: "The recipient was not removed", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The recipient was not removed"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -296,10 +297,10 @@ const RecipientsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     <div className="space-y-4">
       <WarningBanner
         variant="info"
-        title="Who is told"
-        description="Each recipient gets a notification in the application, and an e-mail where the rule asks for one. With no recipient, alerts are only listed."
+        title={tr("Who is told")}
+        description={tr("Each recipient gets a notification in the application, and an e-mail where the rule asks for one. With no recipient, alerts are only listed.")}
       />
-      {error && <WarningBanner variant="error" title="Unable to load" description={error} />}
+      {error && <WarningBanner variant="error" title={tr("Unable to load")} description={error} />}
       <DataTable
         rows={recipients}
         getRowKey={(row) => row.username}
@@ -314,18 +315,18 @@ const RecipientsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
           cell: (row) =>
             canManage ? (
               <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => remove(row.username)}>
-                Remove
+                {tr("Remove")}
               </Button>
             ) : null,
         }}
       />
       {canManage && (
         <div className="flex flex-wrap items-end gap-3">
-          <FormField label="Username">
-            <Input value={newRecipient} placeholder="username" onChange={(event) => setNewRecipient(event.target.value)} />
+          <FormField label={tr("Username")}>
+            <Input value={newRecipient} placeholder={tr("username")} onChange={(event) => setNewRecipient(event.target.value)} />
           </FormField>
           <Button size="sm" disabled={busy || !newRecipient.trim()} onClick={add}>
-            Add recipient
+            {tr("Add recipient")}
           </Button>
         </div>
       )}
@@ -374,11 +375,11 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     setBusy(true);
     try {
       await backupRestoreApi.changeAlertRule(edit.rule.code, { inApp: edit.inApp, email: edit.email, threshold: hasLimit ? limitValue : null, reason: edit.reason.trim() });
-      showToast({ type: "success", title: "Alert rule changed", message: edit.rule.label });
+      showToast({ type: "success", title: tr("Alert rule changed"), message: edit.rule.label });
       setEdit(undefined);
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The rule was not changed", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The rule was not changed"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -390,10 +391,10 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     <div className="space-y-4">
       <WarningBanner
         variant="info"
-        title="What a rule changes"
-        description="Every alert is always recorded and listed, whatever its rule says. A rule chooses who is told: in the application, by e-mail, or neither. Where an alert has a limit, the rule sets it. Changes to the rules, the recipients and acknowledgements are in the Audit Trail."
+        title={tr("What a rule changes")}
+        description={tr("Every alert is always recorded and listed, whatever its rule says. A rule chooses who is told: in the application, by e-mail, or neither. Where an alert has a limit, the rule sets it. Changes to the rules, the recipients and acknowledgements are in the Audit Trail.")}
       />
-      {error && <WarningBanner variant="error" title="Unable to load" description={error} />}
+      {error && <WarningBanner variant="error" title={tr("Unable to load")} description={error} />}
       <DataTable
         rows={rules}
         getRowKey={(row) => row.code}
@@ -411,9 +412,9 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
             ),
           },
           { id: "limit", header: "Limit", cell: (row) => (row.thresholdValue === null ? "—" : `${row.thresholdValue} ${row.thresholdUnit ?? ""}`) },
-          { id: "inApp", header: "In the application", cell: (row) => yesNo(row.inApp) },
+          { id: "inApp", header: tr("In the application"), cell: (row) => yesNo(row.inApp) },
           { id: "email", header: "E-mail", cell: (row) => yesNo(row.email) },
-          { id: "changed", header: "Last changed", cell: (row) => (row.updatedAt ? `${row.updatedBy ?? ""} · ${formatDateTime(row.updatedAt)}` : "Never") },
+          { id: "changed", header: tr("Last changed"), cell: (row) => (row.updatedAt ? `${row.updatedBy ?? ""} · ${formatDateTime(row.updatedAt)}` : "Never") },
         ]}
         action={{
           header: "Actions",
@@ -425,7 +426,7 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
                 disabled={busy}
                 onClick={() => setEdit({ rule: row, inApp: row.inApp, email: row.email, threshold: row.thresholdValue === null ? "" : String(row.thresholdValue), reason: "" })}
               >
-                Change
+                {tr("Change")}
               </Button>
             ) : null,
         }}
@@ -435,18 +436,18 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         isOpen={!!edit}
         onClose={() => setEdit(undefined)}
         title={`Change Rule: ${edit?.rule.label ?? ""}`}
-        description="The change is recorded in the Audit Trail with your name, the time and the reason."
+        description={tr("The change is recorded in the Audit Trail with your name, the time and the reason.")}
         confirmText="Save"
         confirmDisabled={!edit || busy || !edit.reason.trim() || !limitOk || unchanged}
         onConfirm={save}
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-slate-900">Tell the recipients in the application</span>
+            <span className="text-sm font-medium text-slate-900">{tr("Tell the recipients in the application")}</span>
             <Switch size="sm" checked={edit?.inApp ?? false} onChange={(inApp) => edit && setEdit({ ...edit, inApp })} />
           </div>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-slate-900">Tell the recipients by e-mail</span>
+            <span className="text-sm font-medium text-slate-900">{tr("Tell the recipients by e-mail")}</span>
             <Switch size="sm" checked={edit?.email ?? false} onChange={(email) => edit && setEdit({ ...edit, email })} />
           </div>
           {hasLimit && edit && (
@@ -454,7 +455,7 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
               <Input type="number" min={edit.rule.thresholdMin ?? 0} max={edit.rule.thresholdMax ?? undefined} value={edit.threshold} onChange={(event) => setEdit({ ...edit, threshold: event.target.value })} />
             </FormField>
           )}
-          <FormField label="Reason" required>
+          <FormField label={tr("Reason")} required>
             <Textarea rows={3} maxLength={500} value={edit?.reason ?? ""} onChange={(event) => edit && setEdit({ ...edit, reason: event.target.value })} />
           </FormField>
         </div>
@@ -475,7 +476,7 @@ export const BackupAlertsView: React.FC = () => {
   const active = TABS.find((tab) => tab.id === requested)?.id ?? "alerts";
 
   return (
-    <BackupAdminLivePage title="Backup Alerts & Recipients">
+    <BackupAdminLivePage title={tr("Backup Alerts & Recipients")}>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-alerts-tab" ariaLabel="Backup alerts" />
         <div className="space-y-4 p-4 md:p-5">

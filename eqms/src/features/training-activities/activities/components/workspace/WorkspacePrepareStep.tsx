@@ -2,6 +2,7 @@ import { sessionNotStarted } from "@/services/api/trainingActivities";
 import { Button } from "@/components/ui/button/Button";
 import type { TrainingActivityDetail, TrainingCapabilities, TrainingSession } from "@/services/api/trainingActivities";
 import { TrainingPreparationBlock } from "../TrainingPreparationBlock";
+import { tr } from "@/i18n";
 
 /** Step 1 of the session workspace: tick what is ready; the training starts with the first attendance. */
 export function WorkspacePrepareStep({ activityId, scoped, session, caps, onPostpone, onChanged, onPending }: {
@@ -17,7 +18,7 @@ export function WorkspacePrepareStep({ activityId, scoped, session, caps, onPost
     <>
       {sessionNotStarted(session) && caps?.adjustPlan && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={onPostpone}>Postpone</Button>
+          <Button size="sm" variant="outline" onClick={onPostpone}>{tr("Postpone")}</Button>
         </div>
       )}
       <TrainingPreparationBlock activityId={activityId} sessionId={session.id} canManage={Boolean(caps?.adjustPlan)} paper={{ activity: scoped, canPrint: Boolean(caps?.printPaper), onChanged }} onPending={onPending} />

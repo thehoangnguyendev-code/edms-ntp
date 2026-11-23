@@ -30,16 +30,17 @@ import { UncontrolledCopyRecipientTab } from "./tabs/UncontrolledCopyRecipientTa
 import { UncontrolledCopyDocumentTab } from "./tabs/UncontrolledCopyDocumentTab";
 import { UncontrolledCopyTimelineTab } from "./tabs/UncontrolledCopyTimelineTab";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
+import { tr } from "@/i18n";
 
 type DetailTab =
   "information" | "recipient" | "document" | "timeline" | "audit";
 
 const DETAIL_TABS: TabItem[] = [
-  { id: "information", label: "General Information" },
-  { id: "recipient", label: "Recipient & Validity" },
+  { id: "information", label: tr("General Information") },
+  { id: "recipient", label: tr("Recipient & Validity") },
   { id: "document", label: "Document" },
   { id: "timeline", label: "Timeline" },
-  { id: "audit", label: "Audit Trail" },
+  { id: "audit", label: tr("Audit Trail") },
 ];
 
 /** Detail view for one Uncontrolled Copy. Server capabilities remain the authority for every file/action request. */
@@ -106,7 +107,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
     return (
       <div className="flex flex-col gap-4 md:gap-6">
         <PageHeader
-          title="Uncontrolled Copy Details"
+          title={tr("Uncontrolled Copy Details")}
           breadcrumbItems={uncontrolledCopyDetailBreadcrumbs(
             navigateTo,
             location.state?.from,
@@ -119,14 +120,14 @@ export const UncontrolledCopyDetailView: React.FC = () => {
                 variant="outline-emerald"
                 className="whitespace-nowrap"
               >
-                Back
+                {tr("Back")}
               </Button>
             </div>
           }
         />
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
           <TableEmptyState
-            title="Uncontrolled copy unavailable"
+            title={tr("Uncontrolled copy unavailable")}
             description={error || "The record was not found."}
           />
         </div>
@@ -141,7 +142,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
     <div className="w-full space-y-4 md:space-y-6">
       {isNavigating && <FullPageLoading text="Loading..." />}
       <PageHeader
-        title="Uncontrolled Copy Details"
+        title={tr("Uncontrolled Copy Details")}
         breadcrumbItems={uncontrolledCopyDetailBreadcrumbs(
           navigateTo,
           location.state?.from,
@@ -154,7 +155,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
               variant="outline-emerald"
               className="whitespace-nowrap"
             >
-              Back
+              {tr("Back")}
             </Button>
             {caps.canPreview && (
               <Button
@@ -164,7 +165,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
                 disabled={busy}
                 onClick={() => void openFile(copy, "preview")}
               >
-                Preview
+                {tr("Preview")}
               </Button>
             )}
             {caps.canDownload && (
@@ -175,7 +176,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
                 disabled={busy}
                 onClick={() => void openFile(copy, "download")}
               >
-                Download
+                {tr("Download")}
               </Button>
             )}
           </div>
@@ -208,7 +209,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             <AuditTrailTab
               entityId={copy.id}
               entityType="Uncontrolled Copy"
-              emptyMessage="No audit records available for this uncontrolled copy."
+              emptyMessage={tr("No audit records available for this uncontrolled copy.")}
             />
           )}
         </div>
@@ -221,7 +222,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
           variant="outline-emerald"
           className="whitespace-nowrap"
         >
-          Back
+          {tr("Back")}
         </Button>
         {caps.canPreview && (
           <Button
@@ -231,7 +232,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void openFile(copy, "preview")}
           >
-            Preview
+            {tr("Preview")}
           </Button>
         )}
         {caps.canDownload && (
@@ -242,7 +243,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void openFile(copy, "download")}
           >
-            Download
+            {tr("Download")}
           </Button>
         )}
         {caps.canDistribute && (
@@ -253,7 +254,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void runAction(copy, "distribute")}
           >
-             Distribute
+             {tr("Distribute")}
           </Button>
         )}
         {caps.canCancel && (
@@ -264,7 +265,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
             disabled={busy}
             onClick={() => void runAction(copy, "cancel")}
           >
-            Cancel Request
+            {tr("Cancel Request")}
           </Button>
         )}
       </div>

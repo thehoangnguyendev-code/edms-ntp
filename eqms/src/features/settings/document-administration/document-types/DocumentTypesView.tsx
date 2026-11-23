@@ -34,6 +34,7 @@ import { FileIcon } from "@/features/self-service/knowledge/explorer/ExplorerIco
 import { typeColor } from "@/features/self-service/knowledge/explorer/explorerModel";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr, trFormat } from "@/i18n";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -175,7 +176,7 @@ export const DocumentTypesView: React.FC = () => {
       setShowToggleModal(false);
       showToast({
         type: "error",
-        title: "Document Type Status Update Failed",
+        title: tr("Document Type Status Update Failed"),
         message: extractApiMessage(error, "Unable to update document type status."),
       });
     } finally {
@@ -217,24 +218,24 @@ export const DocumentTypesView: React.FC = () => {
   type Row = (typeof items)[number];
   const docTypesColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Document Type Name", label: "Document Type Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
-    { id: "shortCode", header: "Short Code", label: "Short Code", cell: (item) => <Badge color="emerald" size="sm">{item.shortCode}</Badge> },
+    { id: "name", header: tr("Document Type Name"), label: tr("Document Type Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "shortCode", header: tr("Short Code"), label: tr("Short Code"), cell: (item) => <Badge color="emerald" size="sm">{item.shortCode}</Badge> },
     { id: "icon", header: "Icon", label: "Icon", cell: (item) => <FileIcon type={item.name} label={item.iconLabel || item.shortCode} color={item.iconColor || undefined} className="h-7 w-7" /> },
-    { id: "currentSequence", header: "Document Number Sequence", label: "Document Number Sequence", cell: (item) => (<div className="flex flex-col gap-0.5 sm:gap-1"><span className="font-medium text-slate-900">{item.lastIssuedDocumentNumber ?? "No number issued"}</span><span className="text-2xs sm:text-xs text-slate-500">Next: {item.nextDocumentNumber ?? "-"}</span></div>) },
+    { id: "currentSequence", header: tr("Document Number Sequence"), label: tr("Document Number Sequence"), cell: (item) => (<div className="flex flex-col gap-0.5 sm:gap-1"><span className="font-medium text-slate-900">{item.lastIssuedDocumentNumber ?? tr("No number issued")}</span><span className="text-2xs sm:text-xs text-slate-500">{trFormat("Next: {number}", { number: item.nextDocumentNumber ?? "-" })}</span></div>) },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const docTypesAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: docTypesLayout, control: docTypesControl } = useCustomColumnLayout("docTypes", docTypesColumns, docTypesAction);
 
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title="Document Types"
+        title={tr("Document Types")}
         breadcrumbItems={documentTypesAdmin(navigate)}
         actions={
           canManage ? (
@@ -244,7 +245,7 @@ export const DocumentTypesView: React.FC = () => {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              New Document Type
+              {tr("New Document Type")}
             </Button>
           ) : undefined
         }
@@ -256,13 +257,13 @@ export const DocumentTypesView: React.FC = () => {
     <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search document types..."
+                placeholder={tr("Search document types...")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -284,7 +285,7 @@ export const DocumentTypesView: React.FC = () => {
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -293,13 +294,13 @@ export const DocumentTypesView: React.FC = () => {
   trailing={<div className="hidden md:block">{docTypesControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search document types..."}
+      placeholder={tr("Search document types...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -322,7 +323,7 @@ export const DocumentTypesView: React.FC = () => {
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -338,12 +339,12 @@ export const DocumentTypesView: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search document types..."
+                placeholder={tr("Search document types...")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -356,7 +357,7 @@ export const DocumentTypesView: React.FC = () => {
 
           <div className="w-full">
             <Select
-              label="Status"
+              label={tr("Status")}
               value={statusFilter}
               onChange={(value) => {
                 setStatusFilter(value as "All" | "Active" | "Inactive");
@@ -367,13 +368,13 @@ export const DocumentTypesView: React.FC = () => {
                 { label: "Active", value: "Active" },
                 { label: "Inactive", value: "Inactive" },
               ]}
-              placeholder="All"
+              placeholder={tr("All")}
             />
           </div>
 
           <div className="w-full">
             <DateRangePicker
-              label="Modified Date Range"
+              label={tr("Modified Date Range")}
               startDate={modifiedFromDate}
               endDate={modifiedToDate}
               onStartDateChange={(v) => {
@@ -384,7 +385,7 @@ export const DocumentTypesView: React.FC = () => {
                 setModifiedToDate(v);
                 setCurrentPage(1);
               }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
           <div className="filter-actions flex items-end gap-2">
@@ -404,7 +405,7 @@ export const DocumentTypesView: React.FC = () => {
           action={docTypesAction}
           emptyState={
             <TableEmptyState
-  title="No items found" description="Try adjusting your search" />
+  title={tr("No items found")} description={tr("Try adjusting your search")} />
           }
           pagination={
             totalItems > 0 ? (
@@ -427,7 +428,7 @@ export const DocumentTypesView: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Document Type</span>
+            <span>{tr("Edit Document Type")}</span>
           </button>
           <button
             onClick={(e) => {
@@ -440,12 +441,12 @@ export const DocumentTypesView: React.FC = () => {
             {items.find((current) => current.id === openDropdownId)?.isActive ? (
               <>
                 <IconToggleLeft className="h-3.5 w-3.5" />
-                <span>Disable</span>
+                <span>{tr("Disable")}</span>
               </>
             ) : (
               <>
                 <IconToggleRight className="h-3.5 w-3.5" />
-                <span>Enable</span>
+                <span>{tr("Enable")}</span>
               </>
             )}
           </button>
@@ -472,22 +473,22 @@ export const DocumentTypesView: React.FC = () => {
         }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Document Type?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Document Type?")}`}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+              {tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This change will take effect immediately.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This change will take effect immediately.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel
@@ -510,7 +511,7 @@ export const DocumentTypesView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
         >
@@ -536,7 +537,7 @@ export const DocumentTypesView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Modified Date Range"
+          label={tr("Modified Date Range")}
           isExpanded={expandedSections.has("date")}
           onToggle={() => toggleSection("date")}
         >
@@ -553,7 +554,7 @@ export const DocumentTypesView: React.FC = () => {
                 setModifiedToDate(v);
                 setCurrentPage(1);
               }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
         </FilterAccordionItem>
@@ -663,14 +664,14 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Document Type Name<span className="text-red-500 ml-1">*</span>
+            {tr("Document Type Name")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter name"
+            placeholder={tr("Enter name")}
             required
             disabled={isSaving}
           />
@@ -678,7 +679,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Short Code<span className="text-red-500 ml-1">*</span>
+            {tr("Short Code")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -691,21 +692,21 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
               "w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
               shortCodeLocked && CONTROL_STATE_CLASSES.readonlyField
             )}
-            placeholder="e.g., SOP, POL"
+            placeholder={tr("e.g., SOP, POL")}
             required
             readOnly={shortCodeLocked}
             disabled={isSaving || shortCodeLocked}
           />
           <p className="mt-1 text-xs text-slate-500">
             {shortCodeLocked
-              ? "Locked — a document number has already been issued for this Document Type, so the code is frozen into existing document / revision numbers."
-              : "Uppercase letters and digits (hyphen, underscore, slash allowed; no spaces or dots), up to 20 characters. Appears in every document number (e.g. SOP.0006) and cannot be changed once the first document number is issued."}
+                  ? tr("Locked — a document number has already been issued for this Document Type, so the code is frozen into existing document / revision numbers.")
+              : tr("Uppercase letters and digits (hyphen, underscore, slash allowed; no spaces or dots), up to 20 characters. Appears in every document number (e.g. SOP.0006) and cannot be changed once the first document number is issued.")}
           </p>
         </div>
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            {isEdit ? "Issued Sequence" : "Starting Sequence"}
+                  {isEdit ? tr("Issued Sequence") : tr("Starting Sequence")}
             {!isEdit && <span className="text-red-500 ml-1">*</span>}
           </label>
           <input
@@ -722,56 +723,56 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
           />
           {isEdit && (
             <p className="mt-1 text-xs text-slate-500">
-              Issued Sequence is managed automatically when a document number is allocated.
+              {tr("Issued Sequence is managed automatically when a document number is allocated.")}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Document Number Format</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Document Number Format")}</label>
           <Select
             value={formData.nameFormatId ?? ""}
             onChange={(v) => setFormData({ ...formData, nameFormatId: v || null })}
             options={eligibleFormats.map((f) => ({ label: `${f.name} (e.g. ${f.previewExample})`, value: f.id }))}
-            placeholder="Use default (Standard)"
+            placeholder={tr("Use default (Standard)")}
             disabled={isSaving}
           />
           <p className="mt-1 text-xs text-slate-500">
-            Only formats composed of Document Type + Serial Number are eligible for real numbering today. Manage the full catalog under Document Name Formats.
+            {tr("Only formats composed of Document Type + Serial Number are eligible for real numbering today. Manage the full catalog under Document Name Formats.")}
           </p>
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Knowledge Base Icon</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Knowledge Base Icon")}</label>
           <div className="flex flex-wrap items-center gap-3">
             <FileIcon type={formData.name} label={iconText} color={formData.iconColor || undefined} className="h-12 w-[3.25rem] shrink-0 drop-shadow-sm" />
             <input
               type="text"
-              aria-label="Icon text"
+              aria-label={tr("Icon text")}
               value={iconText}
               onChange={(e) => setFormData({ ...formData, iconLabel: e.target.value.toUpperCase().replace(/[^A-Z0-9_/-]/g, "").slice(0, 6) })}
               maxLength={6}
               className="h-9 w-28 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Text"
+              placeholder={tr("Text")}
               disabled={isSaving}
             />
             <div className="w-36">
               <ColorPickerInput value={formData.iconColor || typeColor(formData.name)} onChange={(color) => setFormData({ ...formData, iconColor: color.toLowerCase() })} disabled={isSaving} />
             </div>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormData({ ...formData, iconLabel: "", iconColor: "" })} disabled={isSaving || (!formData.iconLabel && !formData.iconColor)}>
-              Default
+              {tr("Default")}
             </Button>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Description</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Description")}</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter description (optional)"
+            placeholder={tr("Enter description (optional)")}
             disabled={isSaving}
           />
         </div>
@@ -781,7 +782,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
             id="isActive doc-type"
             checked={formData.isActive}
             onChange={(checked) => setFormData({ ...formData, isActive: checked })}
-            label="Active"
+            label={tr("Active")}
             disabled={isSaving}
           />
         </div>

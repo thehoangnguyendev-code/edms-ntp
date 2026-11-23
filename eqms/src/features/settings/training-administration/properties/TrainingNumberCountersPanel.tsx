@@ -10,6 +10,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useToast } from "@/components/ui/toast/Toast";
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingError, trainingSettingsApi, type TrainingNumberCounter } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 const INPUT = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
 
@@ -53,12 +54,12 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
     setBusy(true);
     try {
       await trainingSettingsApi.raiseNumberCounter({ departmentId: raising.departmentId, year: Number(raising.year), lastSerial: Number(raising.lastSerial), reason: raising.reason.trim() });
-      showToast({ type: "success", title: "Counter raised", message: "The next number goes on after the serial you entered." });
+      showToast({ type: "success", title: tr("Counter raised"), message: "The next number goes on after the serial you entered." });
       setRaising(undefined);
       setPage(1);
       load();
     } catch (e) {
-      showToast({ type: "error", title: "The counter was not raised", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The counter was not raised"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -69,8 +70,8 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
     { id: "department", header: "Department", cell: (r) => r.departmentName },
     { id: "code", header: "Code", cell: (r) => r.departmentCode },
     { id: "year", header: "Year", cell: (r) => r.year },
-    { id: "last", header: "Last Serial Issued", cell: (r) => r.lastSerial },
-    { id: "next", header: "Next Number", cell: (r) => <span className="font-mono">{r.nextNumber}</span> },
+    { id: "last", header: tr("Last Serial Issued"), cell: (r) => r.lastSerial },
+    { id: "next", header: tr("Next Number"), cell: (r) => <span className="font-mono">{r.nextNumber}</span> },
   ];
   const valid = Boolean(raising && raising.departmentId && Number(raising.year) >= 2000 && Number(raising.lastSerial) >= 1 && raising.reason.trim());
 
@@ -78,12 +79,11 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-sm text-slate-600">
-          The counter of the Training Numbers of each department and year (TRN/Department Code/Year-Serial). At go-live, raise a counter to the last serial of the paper log so that the numbers the system
-          issues go on after it. A counter can only be raised, never lowered; a number that a paper record already carries is skipped in any case.
+          {tr("The counter of the Training Numbers of each department and year (TRN/Department Code/Year-Serial). At go-live, raise a counter to the last serial of the paper log so that the numbers the system issues go on after it. A counter can only be raised, never lowered; a number that a paper record already carries is skipped in any case.")}
         </p>
         {canManage && (
           <Button size="sm" variant="outline-emerald" onClick={() => setRaising({ departmentId: "", year: String(new Date().getFullYear()), lastSerial: "", reason: "" })}>
-            <IconArrowUp className="h-4 w-4" /> Raise Counter
+            <IconArrowUp className="h-4 w-4" /> {tr("Raise Counter")}
           </Button>
         )}
       </div>
@@ -98,7 +98,7 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
         isLoading={loading}
 
         columns={columns}
-        emptyState={<TableEmptyState title="No counter yet" description="A counter is made when the first Training Number of a department and year is issued." />}
+        emptyState={<TableEmptyState title={tr("No counter yet")} description={tr("A counter is made when the first Training Number of a department and year is issued.")} />}
         pagination={
           total > 0 ? (
             <TablePagination
@@ -119,8 +119,8 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
         isOpen={!!raising}
         onClose={() => setRaising(undefined)}
         onConfirm={() => void raise()}
-        title="Raise the Counter"
-        description="The serial is the last one written in the paper log of the department for the year. The next number the system issues is the one after it."
+        title={tr("Raise the Counter")}
+        description={tr("The serial is the last one written in the paper log of the department for the year. The next number the system issues is the one after it.")}
         confirmText="Raise"
         isLoading={busy}
         confirmDisabled={!valid}
@@ -128,18 +128,18 @@ export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean 
       >
         {raising && (
           <div className="grid gap-4">
-            <FormField label="Department" required>
-              <Select value={raising.departmentId} onChange={(v) => setRaising({ ...raising, departmentId: String(v) })} options={departments} placeholder="Select department..." />
+            <FormField label={tr("Department")} required>
+              <Select value={raising.departmentId} onChange={(v) => setRaising({ ...raising, departmentId: String(v) })} options={departments} placeholder={tr("Select department...")} />
             </FormField>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField label="Year" required>
+              <FormField label={tr("Year")} required>
                 <input type="number" className={INPUT} min={2000} value={raising.year} onChange={(e) => setRaising({ ...raising, year: e.target.value })} />
               </FormField>
-              <FormField label="Last Serial of the Paper Log" required>
+              <FormField label={tr("Last Serial of the Paper Log")} required>
                 <input type="number" className={INPUT} min={1} value={raising.lastSerial} onChange={(e) => setRaising({ ...raising, lastSerial: e.target.value })} />
               </FormField>
             </div>
-            <FormField label="Reason" required>
+            <FormField label={tr("Reason")} required>
               {/* Three lines, fixed: the person cannot drag it to another size; a long reason scrolls inside it. */}
               <textarea
                 rows={3}

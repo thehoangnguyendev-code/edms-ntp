@@ -58,7 +58,7 @@ export function FilterOptionList({ label, value, options, onChange, onSearch, di
     </div>
     {disabled && <p className="shrink-0 text-xs text-slate-500">{tr("This filter is fixed for the current view.")}</p>}
     {loading && <p role="status" className="shrink-0 text-sm text-slate-500">{tr("Loading options...")}</p>}
-    {failed && <div role="alert" className="shrink-0 text-sm text-red-600">Unable to load options. <button type="button" className="underline" onClick={() => setRetry(previous => previous + 1)}>Retry</button></div>}
+    {failed && <div role="alert" className="shrink-0 text-sm text-red-600">{tr("Unable to load options.")} <button type="button" className="underline" onClick={() => setRetry(previous => previous + 1)}>{tr("Retry")}</button></div>}
     <div role="radiogroup" aria-label={label} aria-disabled={disabled} aria-busy={loading} className="max-h-72 overflow-y-auto divide-y divide-slate-100">
       {visible.map(option => <button key={String(option.value)} type="button" role="radio"
         aria-checked={String(option.value) === value} disabled={disabled || loading}

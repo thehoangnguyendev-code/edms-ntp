@@ -16,6 +16,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { formatBytes, formatDateTime } from "../format";
 import { groupAlerts, toAlerts, type Alert, type AlertGroup } from "./backupAlerts";
 import { refreshBackupStatus, useBackupStatus } from "./useBackupStatus";
+import { tr } from "@/i18n";
 
 const OK = "#10b981";
 const WARN = "#f59e0b";
@@ -26,7 +27,7 @@ const GROUPS_SHOWN = 4;
 
 const chartConfig = {
   verified: { label: "Verified", color: OK },
-  unverified: { label: "Completed, not verified", color: WARN },
+  unverified: { label: tr("Completed, not verified"), color: WARN },
   failed: { label: "Failed", color: BAD },
 };
 
@@ -114,9 +115,9 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
   const hidden = groups.length - visible.length;
 
   return (
-    <Card aria-label="Needs attention" role="region">
+    <Card aria-label={tr("Needs attention")} role="region">
       <CardHeader
-        title="Needs attention"
+        title={tr("Needs attention")}
         subtitle={alerts.length === 0 ? "Every backup control is within its target" : `${errors} need action · ${warnings} to review · ${groups.length} kind${groups.length === 1 ? "" : "s"} of problem`}
         badge={
           <Badge color={errors > 0 ? "red" : alerts.length > 0 ? "amber" : "emerald"} size="sm">
@@ -128,7 +129,7 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
         {alerts.length === 0 ? (
           <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-3">
             <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
-            <p className="text-sm text-slate-700">No failed backup, unverified backup or broken ledger.</p>
+            <p className="text-sm text-slate-700">{tr("No failed backup, unverified backup or broken ledger.")}</p>
           </div>
         ) : (
           <>
@@ -205,10 +206,10 @@ const StoreScrubCard: React.FC = () => {
     setStarting(true);
     try {
       await backupRestoreApi.startStoreScrub();
-      showToast({ type: "success", title: "Check started", message: "The result appears here when it ends." });
+      showToast({ type: "success", title: tr("Check started"), message: "The result appears here when it ends." });
       window.setTimeout(() => setReloadKey((k) => k + 1), 4000);
     } catch (e) {
-      showToast({ type: "error", title: "The check was not started", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The check was not started"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setStarting(false);
     }
@@ -216,10 +217,10 @@ const StoreScrubCard: React.FC = () => {
 
   const differences = run ? run.differentFiles + run.missingFiles + run.referenceDifferences : 0;
   return (
-    <Card aria-label="File store check" role="region">
+    <Card aria-label={tr("File store check")} role="region">
       <CardHeader
-        title="File store check"
-        subtitle="Reads the stored files and compares them with the backup. Reports only; nothing is changed."
+        title={tr("File store check")}
+        subtitle={tr("Reads the stored files and compares them with the backup. Reports only; nothing is changed.")}
         badge={
           run ? (
             <Badge color={run.status === "RUNNING" ? "blue" : run.status === "FAILED" || differences > 0 ? "red" : "emerald"} size="sm">
@@ -229,25 +230,25 @@ const StoreScrubCard: React.FC = () => {
         }
       />
       {failed ? (
-        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">The result could not be read.</p>
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">{tr("The result could not be read.")}</p>
       ) : run === undefined ? (
-        <p className="px-4 pb-4 pt-2 text-sm text-slate-500">Reading…</p>
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-500">{tr("Reading…")}</p>
       ) : run === null ? (
-        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">No check has run yet. One runs every Sunday at 03:30.</p>
+        <p className="px-4 pb-4 pt-2 text-sm text-slate-600">{tr("No check has run yet. One runs every Sunday at 03:30.")}</p>
       ) : (
         <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
-          <Fact label="Last check">{formatDateTime(run.finishedAt ?? run.startedAt)}</Fact>
-          <Fact label="Started by">{run.trigger === "SCHEDULED" ? "The weekly schedule" : run.requestedBy}</Fact>
-          <Fact label="Files read">
+          <Fact label={tr("Last check")}>{formatDateTime(run.finishedAt ?? run.startedAt)}</Fact>
+          <Fact label={tr("Started by")}>{run.trigger === "SCHEDULED" ? "The weekly schedule" : run.requestedBy}</Fact>
+          <Fact label={tr("Files read")}>
             <span className="tabular-nums">{run.checkedFiles}</span>
           </Fact>
-          <Fact label="Differ from the backup">
+          <Fact label={tr("Differ from the backup")}>
             <span className="tabular-nums">{run.differentFiles}</span>
           </Fact>
-          <Fact label="Missing from the store">
+          <Fact label={tr("Missing from the store")}>
             <span className="tabular-nums">{run.missingFiles}</span>
           </Fact>
-          <Fact label="Checksum recorded at signing differs">
+          <Fact label={tr("Checksum recorded at signing differs")}>
             <span className="tabular-nums">{run.referenceDifferences}</span>
           </Fact>
         </dl>
@@ -255,7 +256,7 @@ const StoreScrubCard: React.FC = () => {
       {canStart && (
         <div className="px-4 pb-4">
           <Button size="sm" variant="outline-emerald" disabled={starting || run?.status === "RUNNING"} onClick={() => void start()}>
-            Check Now
+            {tr("Check Now")}
           </Button>
         </div>
       )}
@@ -281,8 +282,8 @@ const ManualCopyCard: React.FC = () => {
 
   if (hidden || !status) {
     return (
-      <Card aria-label="Manual copy" role="region">
-        <CardHeader title="Manual copy" subtitle="The copy a person makes by hand." />
+      <Card aria-label={tr("Manual copy")} role="region">
+        <CardHeader title={tr("Manual copy")} subtitle={tr("The copy a person makes by hand.")} />
         <p className="px-4 pb-4 pt-3 text-sm text-slate-500">{hidden ? "The manual copy status could not be read." : "Reading…"}</p>
       </Card>
     );
@@ -290,11 +291,11 @@ const ManualCopyCard: React.FC = () => {
   const tone = status.state === "ON_TIME" ? "emerald" : status.state === "NOT_DECLARED" ? "slate" : status.state === "OVERDUE" ? "red" : "amber";
   const label = { ON_TIME: "On time", OVERDUE: "Overdue", NEVER_RECORDED: "None recorded", NOT_DECLARED: "Not in the policy" }[status.state];
   return (
-    <Card aria-label="Manual copy" role="region">
-      <CardHeader title="Manual copy" subtitle="The copy a person makes by hand. The system cannot see it, so it is recorded." badge={<Badge color={tone} size="sm">{label}</Badge>} />
+    <Card aria-label={tr("Manual copy")} role="region">
+      <CardHeader title={tr("Manual copy")} subtitle={tr("The copy a person makes by hand. The system cannot see it, so it is recorded.")} badge={<Badge color={tone} size="sm">{label}</Badge>} />
       <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
-        <Fact label="Last copy">{status.lastCopiedOn ? formatDateTime(status.lastCopiedOn) : "—"}</Fact>
-        <Fact label="Next one due">{status.nextDueOn ? formatDateTime(status.nextDueOn) : "—"}</Fact>
+        <Fact label={tr("Last copy")}>{status.lastCopiedOn ? formatDateTime(status.lastCopiedOn) : "—"}</Fact>
+        <Fact label={tr("Next one due")}>{status.nextDueOn ? formatDateTime(status.nextDueOn) : "—"}</Fact>
       </dl>
     </Card>
   );
@@ -306,15 +307,15 @@ const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean 
   const dailyConfig = useMemo(() => dailyChartConfiguration(rows), [rows]);
   const runs = rows.reduce((sum, row) => sum + row.total, 0);
   return (
-    <Card aria-label="Last 30 days" role="region">
+    <Card aria-label={tr("Last 30 days")} role="region">
       <CardHeader
-        title="Last 30 days"
-        subtitle="Backup runs per day, by result"
-        badge={points && !failed ? <Badge color="slate" size="sm">{runs} runs</Badge> : undefined}
+        title={tr("Last 30 days")}
+        subtitle={tr("Backup runs per day, by result")}
+        badge={points && !failed ? <Badge color="slate" size="sm">{runs} {tr("runs")}</Badge> : undefined}
       />
       <div className="px-4 pb-4 pt-3">
         {failed ? (
-          <WarningBanner variant="error" title="Could not load the 30-day history." description="No chart is drawn rather than one built on guessed numbers." />
+          <WarningBanner variant="error" title={tr("Could not load the 30-day history.")} description={tr("No chart is drawn rather than one built on guessed numbers.")} />
         ) : !points ? (
           <div className="h-64 animate-pulse rounded-lg bg-slate-50" aria-hidden="true" />
         ) : (
@@ -322,7 +323,7 @@ const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean 
             <div className="h-64 w-full">
               <ChartCanvas config={dailyConfig} ariaLabel="Backup runs per day for the last 30 days, by result" />
             </div>
-            <ul className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600" aria-label="Chart legend">
+            <ul className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600" aria-label={tr("Chart legend")}>
               {LEGEND.map(({ key, color }) => (
                 <li key={key} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} aria-hidden="true" />
@@ -342,7 +343,7 @@ const dash = "—";
 /** A refresh that failed after a good read: the card keeps the last values and says so. */
 const StaleNote: React.FC = () => {
   const { overview, error } = useBackupStatus();
-  return overview && error ? <p className="px-4 pb-2 text-2xs text-amber-700">Showing the last values read. {error}</p> : null;
+  return overview && error ? <p className="px-4 pb-2 text-2xs text-amber-700">{tr("Showing the last values read.")} {error}</p> : null;
 };
 
 /** One figure of the overview. While it is unread it shows a dash, and a failed first read says so with a retry, never a zero. */
@@ -372,13 +373,13 @@ const OverviewCard: React.FC<{ label: string; children: (overview: BackupOvervie
   return (
     <Card aria-busy={!error}>
       <CardHeader title={label} />
-      {error ? <PanelError message={error} onRetry={refreshBackupStatus} /> : <p className="px-4 pb-4 pt-3 text-sm text-slate-500">Reading the backup status…</p>}
+      {error ? <PanelError message={error} onRetry={refreshBackupStatus} /> : <p className="px-4 pb-4 pt-3 text-sm text-slate-500">{tr("Reading the backup status…")}</p>}
     </Card>
   );
 };
 
 const AttentionWidget: React.FC = () => (
-  <OverviewCard label="Needs attention">{(overview) => <AttentionCard alerts={toAlerts(overview)} />}</OverviewCard>
+  <OverviewCard label={tr("Needs attention")}>{(overview) => <AttentionCard alerts={toAlerts(overview)} />}</OverviewCard>
 );
 
 const DailyWidget: React.FC = () => {
@@ -387,12 +388,12 @@ const DailyWidget: React.FC = () => {
 };
 
 const LedgerWidget: React.FC = () => (
-  <OverviewCard label="Backup ledger">
+  <OverviewCard label={tr("Backup ledger")}>
     {(overview) => (
-      <Card aria-label="Backup ledger" role="region">
+      <Card aria-label={tr("Backup ledger")} role="region">
         <CardHeader
-          title="Backup ledger"
-          subtitle="Tamper-evident history, kept outside the eQMS database."
+          title={tr("Backup ledger")}
+          subtitle={tr("Tamper-evident history, kept outside the eQMS database.")}
           badge={
             <Badge color={overview.ledger.ok ? "emerald" : "red"} size="sm">
               {overview.ledger.ok ? "Intact" : "Broken"}
@@ -400,10 +401,10 @@ const LedgerWidget: React.FC = () => (
           }
         />
         <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
-          <Fact label="Events checked">
+          <Fact label={tr("Events checked")}>
             <span className="tabular-nums">{overview.ledger.checked}</span>
           </Fact>
-          <Fact label="Compared with the copy outside the database">{overview.ledger.fileCopyCompared ? "Yes" : "No copy found"}</Fact>
+          <Fact label={tr("Compared with the copy outside the database")}>{overview.ledger.fileCopyCompared ? "Yes" : "No copy found"}</Fact>
         </dl>
       </Card>
     )}
@@ -421,15 +422,15 @@ export function useBackupDashboardWidgets(): DashboardWidget[] {
     () =>
       hasPermission("backup.module.view")
         ? [
-            { id: "backup-last-success", label: "Last successful backup", width: "half", content: <KpiWidget label="Last successful backup" title="Last successful backup" accent={OK} cell={(o) => ({ title: "Last successful backup", accent: o.lastCompleted ? OK : BAD, value: o.lastCompleted ? formatDateTime(o.lastCompleted.finishedAt) : "None yet", footValue: o.lastCompleted ? formatBytes(o.lastCompleted.sizeBytes) : "—", footLabel: o.lastCompleted ? `backup ${o.lastCompleted.backupNumber}` : "no backup has completed" })} /> },
-            { id: "backup-failed", label: "Failed backups", width: "half", content: <KpiWidget label="Failed backups" title="Failed backups" accent={OK} cell={(o) => ({ title: "Failed backups", accent: o.failed > 0 ? BAD : OK, value: o.failed, footValue: o.openAlerts.length, footLabel: "open alerts" })} /> },
-            { id: "backup-attention", label: "Backup: needs attention", width: "half", content: <AttentionWidget /> },
-            { id: "backup-daily", label: "Backup runs, last 30 days", width: "half", content: <DailyWidget /> },
-            { id: "backup-completed", label: "Completed backups", width: "half", defaultVisible: false, content: <KpiWidget label="Completed backups" title="Completed backups" accent={OK} cell={(o) => ({ title: "Completed backups", accent: OK, value: o.completed, footValue: o.running, footLabel: "running now" })} /> },
-            { id: "backup-unverified", label: "Backups without a passing check", width: "half", defaultVisible: false, content: <KpiWidget label="Backups without a passing check" title="Without a passing check" accent={OK} cell={(o) => ({ title: "Without a passing check", accent: o.notVerified > 0 ? WARN : OK, value: o.notVerified, footValue: o.environment, footLabel: "environment" })} /> },
-            { id: "backup-ledger", label: "Backup ledger", width: "half", defaultVisible: false, content: <LedgerWidget /> },
-            { id: "backup-store-check", label: "File store check", width: "half", defaultVisible: false, content: <StoreScrubCard /> },
-            { id: "backup-manual-copy", label: "Manual copy", width: "half", defaultVisible: false, content: <ManualCopyCard /> },
+            { id: "backup-last-success", label: tr("Last successful backup"), width: "half", content: <KpiWidget label={tr("Last successful backup")} title={tr("Last successful backup")} accent={OK} cell={(o) => ({ title: tr("Last successful backup"), accent: o.lastCompleted ? OK : BAD, value: o.lastCompleted ? formatDateTime(o.lastCompleted.finishedAt) : "None yet", footValue: o.lastCompleted ? formatBytes(o.lastCompleted.sizeBytes) : "—", footLabel: o.lastCompleted ? `backup ${o.lastCompleted.backupNumber}` : "no backup has completed" })} /> },
+            { id: "backup-failed", label: tr("Failed backups"), width: "half", content: <KpiWidget label={tr("Failed backups")} title={tr("Failed backups")} accent={OK} cell={(o) => ({ title: tr("Failed backups"), accent: o.failed > 0 ? BAD : OK, value: o.failed, footValue: o.openAlerts.length, footLabel: "open alerts" })} /> },
+            { id: "backup-attention", label: tr("Backup: needs attention"), width: "half", content: <AttentionWidget /> },
+            { id: "backup-daily", label: tr("Backup runs, last 30 days"), width: "half", content: <DailyWidget /> },
+            { id: "backup-completed", label: tr("Completed backups"), width: "half", defaultVisible: false, content: <KpiWidget label={tr("Completed backups")} title={tr("Completed backups")} accent={OK} cell={(o) => ({ title: tr("Completed backups"), accent: OK, value: o.completed, footValue: o.running, footLabel: "running now" })} /> },
+            { id: "backup-unverified", label: tr("Backups without a passing check"), width: "half", defaultVisible: false, content: <KpiWidget label={tr("Backups without a passing check")} title={tr("Without a passing check")} accent={OK} cell={(o) => ({ title: tr("Without a passing check"), accent: o.notVerified > 0 ? WARN : OK, value: o.notVerified, footValue: o.environment, footLabel: "environment" })} /> },
+            { id: "backup-ledger", label: tr("Backup ledger"), width: "half", defaultVisible: false, content: <LedgerWidget /> },
+            { id: "backup-store-check", label: tr("File store check"), width: "half", defaultVisible: false, content: <StoreScrubCard /> },
+            { id: "backup-manual-copy", label: tr("Manual copy"), width: "half", defaultVisible: false, content: <ManualCopyCard /> },
           ]
         : [],
     [hasPermission],

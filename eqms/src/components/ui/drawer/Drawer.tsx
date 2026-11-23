@@ -5,8 +5,7 @@ import { X } from 'lucide-react';
 import { Button } from '../button';
 import { cn } from '../utils';
 import styles from './Drawer.module.css';
-import { useLanguage } from '@/i18n';
-import { tr } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 export interface DrawerHandle { close: () => void }
 export interface DrawerProps {

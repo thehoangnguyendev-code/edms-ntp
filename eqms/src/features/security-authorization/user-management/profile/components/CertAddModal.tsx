@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button/Button";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { cn } from "@/components/ui/utils";
 import type { Certification } from "../../types";
+import { tr } from "@/i18n";
 
 interface CertAddModalProps {
   isOpen: boolean; // Added isOpen prop for external control
@@ -63,20 +64,20 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleSave}
-      title={editing ? "Edit Certificate" : "Add Certificate"}
-      confirmText={editing ? "Save" : "Add Certificate"}
+      title={editing ? tr("Edit Certificate") : tr("Add Certificate")}
+      confirmText={editing ? "Save" : tr("Add Certificate")}
       size="lg"
     >
       <div className="space-y-4">
         {/* Certificate Name */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Certificate Name <span className="text-red-500">*</span>
+            {tr("Certificate Name")} <span className="text-red-500">*</span>
           </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. ISO 9001 Lead Auditor"
+            placeholder={tr("e.g. ISO 9001 Lead Auditor")}
             className={cn(
               "w-full h-9 px-3 text-sm border rounded-lg focus:outline-none focus:ring-1 transition-colors placeholder:text-slate-400",
               errors.name
@@ -90,12 +91,12 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
         {/* Issuing Organization */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Issuing Organization <span className="text-red-500">*</span>
+            {tr("Issuing Organization")} <span className="text-red-500">*</span>
           </label>
           <input
             value={issuingOrg}
             onChange={(e) => setIssuingOrg(e.target.value)}
-            placeholder="e.g. Bureau Veritas"
+            placeholder={tr("e.g. Bureau Veritas")}
             className={cn(
               "w-full h-9 px-3 text-sm border rounded-lg focus:outline-none focus:ring-1 transition-colors placeholder:text-slate-400",
               errors.issuingOrg
@@ -109,12 +110,12 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
         {/* Dates */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <DateTimePicker
-            label="Issue Date"
+            label={tr("Issue Date")}
             value={issueDate}
             onChange={setIssueDate}
           />
           <DateTimePicker
-            label="Expiry Date"
+            label={tr("Expiry Date")}
             value={expiryDate}
             onChange={setExpiryDate}
           />
@@ -123,7 +124,7 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
         {/* File Upload */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Certificate File
+            {tr("Certificate File")}
           </label>
           <div
             className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors cursor-pointer"
@@ -153,14 +154,14 @@ export const CertAddModal: React.FC<CertAddModalProps> = ({ isOpen, onClose, onS
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-sm font-medium text-slate-600 truncate">{editing.fileName}</p>
-                  <p className="text-xs text-slate-400">Click to replace file</p>
+                  <p className="text-xs text-slate-400">{tr("Click to replace file")}</p>
                 </div>
               </div>
             ) : (
               <div className="space-y-1.5">
                 <Upload className="h-6 w-6 text-slate-300 mx-auto" />
-                <p className="text-sm text-slate-500">Click to upload or drag &amp; drop</p>
-                <p className="text-xs text-slate-400">PDF, JPG, PNG, DOCX (max 10MB)</p>
+                <p className="text-sm text-slate-500">{tr("Click to upload or drag &amp; drop")}</p>
+                <p className="text-xs text-slate-400">{tr("PDF, JPG, PNG, DOCX (max 10MB)")}</p>
               </div>
             )}
           </div>

@@ -22,6 +22,7 @@ import {
   type ReportNameInputRule,
   type ReportNamePartType,
 } from "@/services/api/reportNameFormats";
+import { tr, trFormat } from "@/i18n";
 
 /** One part as the editor holds it. Fixed parts use fixedText; input parts use inputLabel, inputRule and maxLength. */
 interface PartDraft {
@@ -135,8 +136,8 @@ export function ReportNameFormatEditView() {
   /** The rule may be saved only when its own rules hold; the server checks them again. */
   const problem = (() => {
     if (!create && !stored) return "";
-    if (!CODE_PATTERN.test(code)) return "Code: 3 to 80 characters, upper case, digits and underscore, starting with a letter.";
-    if (!name.trim() || name.length > 120) return "Name is required (up to 120 characters).";
+    if (!CODE_PATTERN.test(code)) return tr("Code: 3 to 80 characters, upper case, digits and underscore, starting with a letter.");
+    if (!name.trim() || name.length > 120) return tr("Name is required (up to 120 characters).");
     if (!REPORT_NAME_SEPARATORS.includes(separator as (typeof REPORT_NAME_SEPARATORS)[number])) return "Choose a separator.";
     if (parts.length === 0 || parts.length > 10) return "A rule has 1 to 10 parts.";
     if (!parts.some((part) => part.type === "INPUT")) return "A rule needs at least one part typed for each template.";
@@ -191,11 +192,11 @@ export function ReportNameFormatEditView() {
     <div className="h-full flex flex-col gap-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: "Report Name Formats", onClick: goBack })}
+        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: tr("Report Name Formats"), onClick: goBack })}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             {editable && (
               <Button size="sm" variant="outline-emerald" onClick={() => setSaveReason({ reason: "" })} disabled={!canSubmit} className="whitespace-nowrap">
@@ -213,21 +214,21 @@ export function ReportNameFormatEditView() {
       ) : loadError ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
           <p role="alert" className="text-sm font-medium text-amber-800">{loadError}</p>
-          <Button size="sm" variant="outline" onClick={goBack}>Back to list</Button>
+          <Button size="sm" variant="outline" onClick={goBack}>{tr("Back to list")}</Button>
         </div>
       ) : (
         <div className="flex-1 overflow-auto space-y-4 md:space-y-6 pb-6">
-          <FormSection title="General" icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+          <FormSection title={tr("General")} icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>
-                  Name <span className="text-red-500">*</span>
+                  {tr("Name")} <span className="text-red-500">*</span>
                 </label>
-                <input type="text" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Report Title Format" disabled={saving || !editable} />
+                <input type="text" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={tr("e.g. Report Title Format")} disabled={saving || !editable} />
               </div>
               <div>
                 <label className={labelClass}>
-                  Code <span className="text-red-500">*</span>
+                  {tr("Code")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -235,14 +236,14 @@ export function ReportNameFormatEditView() {
                   maxLength={80}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   className={inputClass}
-                  placeholder="e.g. REPORT_TITLE"
+                  placeholder={tr("e.g. REPORT_TITLE")}
                   disabled={saving || !editable || !create}
                 />
-                {!create && <p className="mt-1.5 text-xs text-slate-500">The code does not change after the format is created.</p>}
+                {!create && <p className="mt-1.5 text-xs text-slate-500">{tr("The code does not change after the format is created.")}</p>}
               </div>
               <div>
                 <label className={labelClass}>
-                  Separator <span className="text-red-500">*</span>
+                  {tr("Separator")} <span className="text-red-500">*</span>
                 </label>
                 <Select
                   value={separator}
@@ -252,14 +253,14 @@ export function ReportNameFormatEditView() {
                 />
               </div>
               <div className="sm:col-span-3">
-                <label className={labelClass}>Description</label>
+                <label className={labelClass}>{tr("Description")}</label>
                 <textarea
                   value={description}
                   maxLength={500}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
                   className={textareaClass}
-                  placeholder="The name shown to people who choose this rule for a template"
+                  placeholder={tr("The name shown to people who choose this rule for a template")}
                   disabled={saving || !editable}
                 />
               </div>
@@ -267,8 +268,8 @@ export function ReportNameFormatEditView() {
           </FormSection>
 
           <FormSection
-            title="Parts"
-            description="Add parts in the order they should appear. Fixed parts are written as they are; typed parts are filled in for each template and must follow their rule. Use the arrows to reorder."
+            title={tr("Parts")}
+            description={tr("Add parts in the order they should appear. Fixed parts are written as they are; typed parts are filled in for each template and must follow their rule. Use the arrows to reorder.")}
             contentClassName="p-4 md:p-5"
             headerRight={
               editable && (
@@ -281,7 +282,7 @@ export function ReportNameFormatEditView() {
                   className="gap-1.5 whitespace-nowrap shrink-0"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  New Part
+                  {tr("New Part")}
                 </Button>
               )
             }
@@ -294,7 +295,7 @@ export function ReportNameFormatEditView() {
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       {part.type === "FIXED" ? (
                         <>
-                          <span className="text-sm font-medium text-slate-900 truncate">Fixed text</span>
+                          <span className="text-sm font-medium text-slate-900 truncate">{tr("Fixed text")}</span>
                           <code className="text-2xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 whitespace-nowrap">{part.fixedText || "…"}</code>
                         </>
                       ) : (
@@ -302,27 +303,27 @@ export function ReportNameFormatEditView() {
                           <span className="text-sm font-medium text-slate-900 truncate">{part.inputLabel || "…"}</span>
                           <code className="text-2xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 whitespace-nowrap">{"{{typed}}"}</code>
                           <span className="hidden sm:inline text-2xs text-slate-500 truncate">
-                            {RULE_LABEL[part.inputRule].split(" (")[0]}, up to {part.maxLength} characters
+                            {trFormat("{rule}, up to {count} characters", { rule: RULE_LABEL[part.inputRule].split(" (")[0], count: part.maxLength })}
                           </span>
                         </>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {editable && (
-                        <button type="button" aria-label="Edit part" onClick={() => setEditing({ index, draft: { ...part } })} className={iconButtonClass}>
+                        <button type="button" aria-label={tr("Edit part")} onClick={() => setEditing({ index, draft: { ...part } })} className={iconButtonClass}>
                           <Pencil className="h-3.5 w-3.5 text-slate-500" />
                         </button>
                       )}
-                      <button type="button" aria-label="Move up" onClick={() => move(index, index - 1)} disabled={index === 0 || !editable} className={iconButtonClass}>
+                      <button type="button" aria-label={tr("Move up")} onClick={() => move(index, index - 1)} disabled={index === 0 || !editable} className={iconButtonClass}>
                         <ArrowUp className="h-3.5 w-3.5 text-slate-500" />
                       </button>
-                      <button type="button" aria-label="Move down" onClick={() => move(index, index + 1)} disabled={index === parts.length - 1 || !editable} className={iconButtonClass}>
+                      <button type="button" aria-label={tr("Move down")} onClick={() => move(index, index + 1)} disabled={index === parts.length - 1 || !editable} className={iconButtonClass}>
                         <ArrowDown className="h-3.5 w-3.5 text-slate-500" />
                       </button>
                       {editable && (
                         <button
                           type="button"
-                          aria-label="Remove part"
+                          aria-label={tr("Remove part")}
                           onClick={() => setParts((current) => current.filter((_, i) => i !== index))}
                           disabled={parts.length <= 1}
                           className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -339,7 +340,7 @@ export function ReportNameFormatEditView() {
             {problem && editable && <p className="mb-3 text-xs sm:text-sm text-amber-700">{problem}</p>}
 
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-              <p className="text-xs sm:text-sm font-medium text-emerald-700 mb-1">Preview</p>
+              <p className="text-xs sm:text-sm font-medium text-emerald-700 mb-1">{tr("Preview")}</p>
               <p className="text-sm text-emerald-900 break-all">{example(parts, separator)}</p>
             </div>
           </FormSection>
@@ -349,7 +350,7 @@ export function ReportNameFormatEditView() {
         isOpen={!!editing}
         onClose={() => setEditing(undefined)}
         title={editing?.index === null ? "New Part" : "Edit Part"}
-        description="A fixed part is written as it is. A typed part is filled in for each template and must follow its rule."
+        description={tr("A fixed part is written as it is. A typed part is filled in for each template and must follow its rule.")}
         confirmText={editing?.index === null ? "Add Part" : "Apply"}
         confirmDisabled={!editing || !!draftProblem(editing.draft)}
         onConfirm={applyEditing}
@@ -357,12 +358,12 @@ export function ReportNameFormatEditView() {
         {editing && (
           <div className="space-y-4">
             <div>
-              <label className={labelClass}>Type</label>
+              <label className={labelClass}>{tr("Type")}</label>
               <Select
                 value={editing.draft.type}
                 options={[
-                  { value: "INPUT", label: "Typed for each template" },
-                  { value: "FIXED", label: "Fixed text" },
+                  { value: "INPUT", label: tr("Typed for each template") },
+                  { value: "FIXED", label: tr("Fixed text") },
                 ]}
                 onChange={(value) => setEditing((current) => current && { ...current, draft: { ...current.draft, type: value as ReportNamePartType } })}
               />
@@ -370,7 +371,7 @@ export function ReportNameFormatEditView() {
             {editing.draft.type === "FIXED" ? (
               <div>
                 <label className={labelClass}>
-                  Text <span className="text-red-500">*</span>
+                  {tr("Text")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -378,14 +379,14 @@ export function ReportNameFormatEditView() {
                   maxLength={100}
                   onChange={(e) => setEditing((current) => current && { ...current, draft: { ...current.draft, fixedText: e.target.value } })}
                   className={inputClass}
-                  placeholder="e.g. EQMS"
+                  placeholder={tr("e.g. EQMS")}
                 />
               </div>
             ) : (
               <>
                 <div>
                   <label className={labelClass}>
-                    Label <span className="text-red-500">*</span>
+                    {tr("Label")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -393,12 +394,12 @@ export function ReportNameFormatEditView() {
                     maxLength={100}
                     onChange={(e) => setEditing((current) => current && { ...current, draft: { ...current.draft, inputLabel: e.target.value } })}
                     className={inputClass}
-                    placeholder="e.g. Report title"
+                    placeholder={tr("e.g. Report title")}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className={labelClass}>Rule</label>
+                    <label className={labelClass}>{tr("Rule")}</label>
                     <Select
                       value={editing.draft.inputRule}
                       options={(Object.keys(RULE_LABEL) as ReportNameInputRule[]).map((rule) => ({ value: rule, label: RULE_LABEL[rule] }))}
@@ -406,7 +407,7 @@ export function ReportNameFormatEditView() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Longest (characters)</label>
+                    <label className={labelClass}>{tr("Longest (characters)")}</label>
                     <input
                       type="number"
                       min={1}
@@ -428,12 +429,12 @@ export function ReportNameFormatEditView() {
         isOpen={!!saveReason}
         onClose={() => setSaveReason(undefined)}
         title={create ? "Create name format" : "Save name format"}
-        description="Templates already named by this rule keep their names. Say why this rule changes. The reason is recorded with your name and the time."
+        description={tr("Templates already named by this rule keep their names. Say why this rule changes. The reason is recorded with your name and the time.")}
         confirmText="Save"
         confirmDisabled={!saveReason?.reason.trim() || saving}
         onConfirm={() => saveReason && void save(saveReason.reason.trim())}
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea rows={3} maxLength={1000} value={saveReason?.reason ?? ""} onChange={(event) => setSaveReason((current) => current && { ...current, reason: event.target.value })} />
         </FormField>
       </FormModal>

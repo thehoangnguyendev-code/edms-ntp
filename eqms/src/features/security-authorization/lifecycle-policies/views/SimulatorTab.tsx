@@ -10,32 +10,33 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationEngineDecision } from "@/services/api/security";
 import { ActorPickerModal, type SimulatorActor } from "./ActorPickerModal";
+import { tr, trFormat } from "@/i18n";
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "Document", value: "DOCUMENT" },
   { label: "Revision", value: "REVISION" },
-  { label: "Controlled Copy", value: "CONTROLLED_COPY" },
-  { label: "Controlled Copy Batch", value: "CONTROLLED_COPY_BATCH" },
-  { label: "Report Template (review)", value: "REPORT_TEMPLATE" },
-  { label: "Training Requirement", value: "TRAINING_REQUIREMENT" },
-  { label: "Training Matrix Version", value: "TRAINING_MATRIX_VERSION" },
-  { label: "Training Activity", value: "TRAINING_ACTIVITY" },
-  { label: "Training Participant", value: "TRAINING_PARTICIPANT" },
-  { label: "Training Assessment", value: "TRAINING_ASSESSMENT" },
-  { label: "Training Job Assignment", value: "TRAINING_JOB_ASSIGNMENT" },
-  { label: "Training Personnel Review", value: "TRAINING_PERSONNEL_REVIEW" },
-  { label: "Training Record Export", value: "TRAINING_RECORD_EXPORT" },
-  { label: "Training Record Export Batch", value: "TRAINING_RECORD_EXPORT_BATCH" },
-  { label: "Training Trainer Exception", value: "TRAINING_TRAINER_EXCEPTION" },
-  { label: "Training Suspension", value: "TRAINING_SUSPENSION" },
-  { label: "Training Vendor", value: "TRAINING_VENDOR" },
-  { label: "Training Record", value: "TRAINING_RECORD" },
-  { label: "Report Schedule", value: "REPORT_SCHEDULE" },
-  { label: "Report Run", value: "REPORT_RUN" },
-  { label: "Report File (legal hold)", value: "REPORT_ARTIFACT" },
-  { label: "Access Review Campaign", value: "ACCESS_REVIEW_CAMPAIGN" },
-  { label: "Audit Trail Review Campaign", value: "AUDIT_REVIEW_CAMPAIGN" },
-  { label: "Uncontrolled Copy", value: "UNCONTROLLED_COPY" },
+  { label: tr("Controlled Copy"), value: "CONTROLLED_COPY" },
+  { label: tr("Controlled Copy Batch"), value: "CONTROLLED_COPY_BATCH" },
+  { label: tr("Report Template (review)"), value: "REPORT_TEMPLATE" },
+  { label: tr("Training Requirement"), value: "TRAINING_REQUIREMENT" },
+  { label: tr("Training Matrix Version"), value: "TRAINING_MATRIX_VERSION" },
+  { label: tr("Training Activity"), value: "TRAINING_ACTIVITY" },
+  { label: tr("Training Participant"), value: "TRAINING_PARTICIPANT" },
+  { label: tr("Training Assessment"), value: "TRAINING_ASSESSMENT" },
+  { label: tr("Training Job Assignment"), value: "TRAINING_JOB_ASSIGNMENT" },
+  { label: tr("Training Personnel Review"), value: "TRAINING_PERSONNEL_REVIEW" },
+  { label: tr("Training Record Export"), value: "TRAINING_RECORD_EXPORT" },
+  { label: tr("Training Record Export Batch"), value: "TRAINING_RECORD_EXPORT_BATCH" },
+  { label: tr("Training Trainer Exception"), value: "TRAINING_TRAINER_EXCEPTION" },
+  { label: tr("Training Suspension"), value: "TRAINING_SUSPENSION" },
+  { label: tr("Training Vendor"), value: "TRAINING_VENDOR" },
+  { label: tr("Training Record"), value: "TRAINING_RECORD" },
+  { label: tr("Report Schedule"), value: "REPORT_SCHEDULE" },
+  { label: tr("Report Run"), value: "REPORT_RUN" },
+  { label: tr("Report File (legal hold)"), value: "REPORT_ARTIFACT" },
+  { label: tr("Access Review Campaign"), value: "ACCESS_REVIEW_CAMPAIGN" },
+  { label: tr("Audit Trail Review Campaign"), value: "AUDIT_REVIEW_CAMPAIGN" },
+  { label: tr("Uncontrolled Copy"), value: "UNCONTROLLED_COPY" },
 ];
 
 const ACTIONS_BY_RESOURCE_TYPE: Record<string, SelectOption[]> = {
@@ -115,13 +116,13 @@ const ActorField: React.FC<{ actor: SimulatorActor | null; onPick: () => void; o
           <span className="block truncate text-sm font-semibold text-slate-800">{actor.fullName}</span>
           <span className="block truncate text-xs text-slate-500">{[actor.employeeCode, actor.department].filter(Boolean).join(" · ") || actor.email}</span>
         </span>
-        <Button size="xs" variant="outline" onClick={onPick}>Change</Button>
-        <button type="button" onClick={onClear} className="rounded-lg p-1 text-slate-400 transition hover:bg-white hover:text-slate-600" aria-label="Clear selected actor"><X className="h-4 w-4" /></button>
+        <Button size="xs" variant="outline" onClick={onPick}>{tr("Change")}</Button>
+        <button type="button" onClick={onClear} className="rounded-lg p-1 text-slate-400 transition hover:bg-white hover:text-slate-600" aria-label={tr("Clear selected actor")}><X className="h-4 w-4" /></button>
       </div>
     ) : (
       <button type="button" onClick={onPick} className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40 focus:outline-none focus:ring-1 focus:ring-emerald-500">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm"><UserRound className="h-4 w-4" /></span>
-        <span><span className="block text-sm font-medium text-slate-700">Choose a person</span><span className="block text-xs text-slate-500">Search active users</span></span>
+        <span><span className="block text-sm font-medium text-slate-700">{tr("Choose a person")}</span><span className="block text-xs text-slate-500">{tr("Search active users")}</span></span>
       </button>
     )}
   </div>
@@ -204,13 +205,13 @@ export const SimulatorTab: React.FC = () => {
   /* ------------------------------ shared pieces ------------------------------ */
   const typeField = (
     <Select
-      label="Resource type"
+      label={tr("Resource type")}
       value={resourceType}
       onChange={(value) => { setResourceType(value); setActionCode(""); setResourceId(""); setChosen(null); setResourceSearch(""); setFound([]); }}
       options={[]}
       groups={RESOURCE_GROUPS}
       enableSearch
-      searchPlaceholder="Search resource type..."
+      searchPlaceholder={tr("Search resource type...")}
     />
   );
 
@@ -238,23 +239,23 @@ export const SimulatorTab: React.FC = () => {
     <div className="min-w-0">
       <span className={slotLabel}>{byCode ? "Template code" : "Record"}</span>
       {byCode ? (
-        <input type="text" value={resourceId} onChange={(e) => setResourceId(e.target.value)} placeholder="e.g. RPT.0004" className={inputClass} />
+        <input type="text" value={resourceId} onChange={(e) => setResourceId(e.target.value)} placeholder={tr("e.g. RPT.0004")} className={inputClass} />
       ) : chosen ? (
         <div className="flex min-h-9 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 py-1.5 pl-3 pr-1.5">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-slate-800" title={chosen.label}>{chosen.label}</span>
-            {chosen.state && <span className="block text-2xs text-slate-500">State: {chosen.state}</span>}
+                  {chosen.state && <span className="block text-2xs text-slate-500">{tr("State:")} {chosen.state}</span>}
           </span>
-          <Button size="xs" variant="outline" onClick={() => { setChosen(null); setResourceId(""); }}>Change</Button>
+          <Button size="xs" variant="outline" onClick={() => { setChosen(null); setResourceId(""); }}>{tr("Change")}</Button>
         </div>
       ) : (
-        <input type="text" value={resourceSearch} onChange={(e) => setResourceSearch(e.target.value)} placeholder="Search by number or name" className={inputClass} />
+        <input type="text" value={resourceSearch} onChange={(e) => setResourceSearch(e.target.value)} placeholder={tr("Search by number or name")} className={inputClass} />
       )}
     </div>
   );
 
   const actionField = (
-    <Select label="Action" value={actionCode} onChange={setActionCode} options={actionOptions} enableSearch placeholder="Select action..." />
+    <Select label={tr("Action")} value={actionCode} onChange={setActionCode} options={actionOptions} enableSearch placeholder={tr("Select action...")} />
   );
 
   const runButton = (cls?: string) => (
@@ -287,26 +288,26 @@ export const SimulatorTab: React.FC = () => {
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-        <div className="min-w-0"><dt className="text-xs text-slate-500">Resource state</dt><dd className="mt-0.5 break-words font-medium text-slate-900">{d.resourceState ?? "—"}</dd></div>
-        <div className="min-w-0"><dt className="text-xs text-slate-500">Policy version</dt><dd className="mt-0.5 font-medium text-slate-900">{d.matchedPolicyVersion ?? "—"}</dd></div>
-        <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500">Required permission</dt><dd className="mt-0.5 break-all font-mono text-xs font-medium text-slate-900">{d.requiredPermission ?? "—"}</dd></div>
+        <div className="min-w-0"><dt className="text-xs text-slate-500">{tr("Resource state")}</dt><dd className="mt-0.5 break-words font-medium text-slate-900">{d.resourceState ?? "—"}</dd></div>
+        <div className="min-w-0"><dt className="text-xs text-slate-500">{tr("Policy version")}</dt><dd className="mt-0.5 font-medium text-slate-900">{d.matchedPolicyVersion ?? "—"}</dd></div>
+        <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500">{tr("Required permission")}</dt><dd className="mt-0.5 break-all font-mono text-xs font-medium text-slate-900">{d.requiredPermission ?? "—"}</dd></div>
       </dl>
       <div className="grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
         <div>
-          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Matched relations</p>
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">{tr("Matched relations")}</p>
           <div className="flex flex-wrap gap-1">
-            {d.matchedRelations.length > 0 ? d.matchedRelations.map((r) => <Badge key={r} semantic="info" size="xs">{r}</Badge>) : <span className="text-sm text-slate-400">None</span>}
+            {d.matchedRelations.length > 0 ? d.matchedRelations.map((r) => <Badge key={r} semantic="info" size="xs">{r}</Badge>) : <span className="text-sm text-slate-400">{tr("None")}</span>}
           </div>
         </div>
         <div>
-          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">Required controls</p>
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-500">{tr("Required controls")}</p>
           {d.requiredControls && Object.keys(d.requiredControls).length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {Object.entries(d.requiredControls).map(([key, value]) => (
                 <span key={key} className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600">{key}={String(value)}</span>
               ))}
             </div>
-          ) : <span className="text-sm text-slate-400">None</span>}
+          ) : <span className="text-sm text-slate-400">{tr("None")}</span>}
         </div>
       </div>
     </div>
@@ -314,8 +315,8 @@ export const SimulatorTab: React.FC = () => {
 
   const decisionArea = (d: AuthorizationEngineDecision | null, who: string, emptyHint = "Fill in the request and click Evaluate.") =>
     running ? <SectionLoading />
-      : error ? <TableEmptyState title="Evaluation Failed" description={error} />
-      : !d ? <TableEmptyState title="No Decision Yet" description={emptyHint} />
+      : error ? <TableEmptyState title={tr("Evaluation Failed")} description={error} />
+      : !d ? <TableEmptyState title={tr("No Decision Yet")} description={emptyHint} />
       : verdictBody(d, who);
 
   const decisionCard = (title = "Decision") => (
@@ -326,18 +327,18 @@ export const SimulatorTab: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 md:gap-6 xl:grid-cols-2">
-      <FormSection title="Simulate a decision" icon={<FlaskConical className="h-4 w-4" />} description="Runs the hybrid engine only. Nothing is executed." contentClassName="space-y-5 p-4 md:p-5">
-        <Step n={1} title="Who is acting?">
+      <FormSection title={tr("Simulate a decision")} icon={<FlaskConical className="h-4 w-4" />} description={tr("Runs the hybrid engine only. Nothing is executed.")} contentClassName="space-y-5 p-4 md:p-5">
+        <Step n={1} title={tr("Who is acting?")}>
           <ActorField actor={actor} onPick={() => setIsActorPickerOpen(true)} onClear={() => { setActor(null); setActorId(""); }} />
         </Step>
         <div className="border-t border-slate-100" />
-        <Step n={2} title="On which record?">
+        <Step n={2} title={tr("On which record?")}>
           {typeField}
           {recordInput}
           {recordList}
         </Step>
         <div className="border-t border-slate-100" />
-        <Step n={3} title="What do they want to do?">{actionField}</Step>
+        <Step n={3} title={tr("What do they want to do?")}>{actionField}</Step>
         {runButton("pt-1")}
       </FormSection>
       <div className="xl:sticky xl:top-4">{decisionCard()}</div>

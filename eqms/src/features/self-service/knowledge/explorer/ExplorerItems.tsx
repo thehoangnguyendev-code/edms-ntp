@@ -15,7 +15,7 @@ import { formatFileSize, pluralize, typeBadgeColor, type FolderEntry, type Selec
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useMediaQuery } from "./useMediaQuery";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface ExplorerItemsProps {
   folders: FolderEntry[];
@@ -179,7 +179,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
       {folders.length > 0 && (
         <Section title={t("knowledge.folders", "Folders")} count={folders.length} className="mb-3" bare={tableMode}>
           {compact && view === "list" ? (
-            <div role="listbox" aria-label="Folders" className="space-y-1">
+            <div role="listbox" aria-label={tr("Folders")} className="space-y-1">
               {folders.map((folder) => {
                 const sel = { type: "folder", key: folder.key } as const;
                 const selected = isFolderSelected(folder.key);
@@ -214,7 +214,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                 );
               })}
             </div>
-          ) : view === "grid" ? <div role="listbox" aria-label="Folders" className={GRID}>
+          ) : view === "grid" ? <div role="listbox" aria-label={tr("Folders")} className={GRID}>
             {folders.map((folder) => {
               const sel = { type: "folder", key: folder.key } as const;
               const selected = isFolderSelected(folder.key);
@@ -293,7 +293,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
       {docs.length > 0 && (
         <Section title={t("knowledge.documents", "Documents")} count={totalDocs} bare={tableMode}>
           {compact && view === "list" ? (
-            <div role="listbox" aria-label="Documents" className="space-y-1">
+            <div role="listbox" aria-label={tr("Documents")} className="space-y-1">
               {docs.map((item) => {
                 const doc = item.document;
                 const sel = { type: "doc", id: doc.id } as const;
@@ -327,7 +327,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               })}
             </div>
           ) : view === "grid" ? (
-            <div role="listbox" aria-label="Documents" className={GRID}>
+            <div role="listbox" aria-label={tr("Documents")} className={GRID}>
               {docs.map((item) => {
                 const doc = item.document;
                 const sel = { type: "doc", id: doc.id } as const;

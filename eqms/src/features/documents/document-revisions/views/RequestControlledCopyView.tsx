@@ -33,6 +33,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { IconUsersGroup } from "@tabler/icons-react";
 import type { ControlledCopyRequestRouteState } from "@/features/documents/shared/controlledCopyRequest";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type DistributionScope = "business-unit" | "department" | "individual";
@@ -693,7 +694,7 @@ export const RequestControlledCopyView: React.FC = () => {
     if (requestBlocked) {
       showToast({
         type: "error",
-        title: "Request unavailable",
+        title: tr("Request unavailable"),
         message:
           requestContext?.message ||
           "Request Controlled Copy is not available for this revision.",
@@ -717,7 +718,7 @@ export const RequestControlledCopyView: React.FC = () => {
     if (requestBlocked) {
       showToast({
         type: "error",
-        title: "Request unavailable",
+        title: tr("Request unavailable"),
         message:
           requestContext?.message ||
           "Request Controlled Copy is not available for this revision.",
@@ -799,7 +800,7 @@ export const RequestControlledCopyView: React.FC = () => {
       console.error("Failed to request controlled copy", error);
       showToast({
         type: "error",
-        title: "Request failed",
+        title: tr("Request failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -813,9 +814,9 @@ export const RequestControlledCopyView: React.FC = () => {
 
     showToast({
       type: "success",
-      title: "Request Submitted Successfully",
+      title: tr("Request Submitted Successfully"),
       message:
-        "The controlled copy is ready for distribution. You can monitor the status on the All Controlled Copies screen.",
+        tr("The controlled copy is ready for distribution. You can monitor the status on the All Controlled Copies screen."),
       duration: 5000,
     });
 
@@ -830,9 +831,9 @@ export const RequestControlledCopyView: React.FC = () => {
 
   // Prepare select options for distribution
   const distributionScopeOptions = [
-    { value: "business-unit", label: "Business Unit" },
+    { value: "business-unit", label: tr("Business Unit") },
     { value: "department", label: "Department" },
-    { value: "individual", label: "Individual" },
+    { value: "individual", label: tr("Individual") },
   ];
 
   const locationOptions = useMemo(() => {
@@ -862,7 +863,7 @@ export const RequestControlledCopyView: React.FC = () => {
   const searchLocationOptions = useCallback(async (scope: DistributionScope, query: string) => {
     if (scope === "business-unit") {
       const page = await dictionaryApi.getBusinessUnitsPage({ search: query, status: "Active", limit: 50 });
-      return page.data.map((b) => ({ value: b.id, label: `${b.abbreviation} - ${b.name}`, description: "Business Unit" }));
+      return page.data.map((b) => ({ value: b.id, label: `${b.abbreviation} - ${b.name}`, description: tr("Business Unit") }));
     }
     const page = await dictionaryApi.getDepartmentsPage({ search: query, status: "Active", limit: 50 });
     return page.data.map((d) => ({ value: d.id, label: `${d.abbreviation} - ${d.name}`, description: d.departmentHeadName ? `Manager: ${d.departmentHeadName}` : "Department-level distribution" }));
@@ -951,7 +952,7 @@ export const RequestControlledCopyView: React.FC = () => {
       {/* Header: Title + Breadcrumb + Actions */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Request Controlled Copy"
+          title={tr("Request Controlled Copy")}
           breadcrumbItems={requestControlledCopy(
             navigateTo,
             location.state?.from,
@@ -965,7 +966,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 onClick={handleCancel}
                 className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
               >
-                Cancel
+                {tr("Cancel")}
               </Button>
               <Button
                 type="submit"
@@ -975,7 +976,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 form="controlled-copy-form"
                 className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
               >
-                Submit Request
+                {tr("Submit Request")}
               </Button>
             </>
           }
@@ -990,14 +991,14 @@ export const RequestControlledCopyView: React.FC = () => {
       >
         {/* Document Info - Full Width */}
         <FormSection
-          title="Document Information"
+          title={tr("Document Information")}
           icon={<Info className="h-4 w-4" />}
         >
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Document Number
+                  {tr("Document Number")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
                   {displayDocumentNumber}
@@ -1005,7 +1006,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Document Name
+                  {tr("Document Name")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
                   {displayDocumentName}
@@ -1013,7 +1014,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Document Type
+                  {tr("Document Type")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
                   {displayDocumentType}
@@ -1024,7 +1025,7 @@ export const RequestControlledCopyView: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Revision Number
+                  {tr("Revision Number")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
                   {displayRevisionNumber}
@@ -1032,7 +1033,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Revision Name
+                  {tr("Revision Name")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
                   {displayRevisionName}
@@ -1040,7 +1041,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Status
+                  {tr("Status")}
                 </label>
                 <div className="flex-1">
                   <Badge color="emerald">{toTitleCase(displayStatus)}</Badge>
@@ -1051,7 +1052,7 @@ export const RequestControlledCopyView: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Effective Date
+                  {tr("Effective Date")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
                   {displayEffectiveDate}
@@ -1059,7 +1060,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Valid Until
+                  {tr("Valid Until")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-all">
                   {displayValidUntil}
@@ -1067,7 +1068,7 @@ export const RequestControlledCopyView: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <label className="text-xs sm:text-sm font-medium text-slate-500 w-36 shrink-0 capitalize">
-                  Business Unit
+                  {tr("Business Unit")}
                 </label>
                 <p className="text-xs sm:text-sm font-semibold text-slate-900 break-words">
                   {displayBusinessUnit}
@@ -1091,16 +1092,14 @@ export const RequestControlledCopyView: React.FC = () => {
         {/* Distribution Details */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <FormSection
-            title="Distribution Details"
+            title={tr("Distribution Details")}
             icon={<MapPin className="h-4 w-4" />}
           >
             <div className="space-y-5">
               {!canRequestForOthers && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-start gap-2">
                   <p className="text-xs sm:text-sm text-emerald-800">
-                    Self-service request: you are requesting <span className="font-semibold">1 copy for yourself</span>.
-                    Requesting on behalf of other recipients or external distribution requires the
-                    server-granted workspace-management capability.
+                    {tr("Self-service request: you are requesting")} <span className="font-semibold">{tr("1 copy for yourself")}</span>{tr(". Requesting on behalf of other recipients or external distribution requires the server-granted workspace-management capability.")}
                   </p>
                 </div>
               )}
@@ -1125,7 +1124,7 @@ export const RequestControlledCopyView: React.FC = () => {
                   {/* Distribution Scope */}
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                      Recipient <span className="text-red-600">*</span>
+                      {tr("Recipient")} <span className="text-red-600">*</span>
                     </label>
                     <Select
                       value={distributionScope}
@@ -1137,7 +1136,7 @@ export const RequestControlledCopyView: React.FC = () => {
                         }
                       }}
                       options={distributionScopeOptions}
-                      placeholder="Select distribution scope"
+                      placeholder={tr("Select distribution scope")}
                     />
                   </div>
 
@@ -1176,7 +1175,7 @@ export const RequestControlledCopyView: React.FC = () => {
               ) : (
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                    External Recipients <span className="text-red-600">*</span>
+                    {tr("External Recipients")} <span className="text-red-600">*</span>
                   </label>
                   <div
                     className={cn(
@@ -1250,7 +1249,7 @@ export const RequestControlledCopyView: React.FC = () => {
                         placeholder={
                           externalRecipients.length
                             ? "Add more emails..."
-                            : "Enter email and press Enter"
+                            : tr("Enter email and press Enter")
                         }
                         className="min-w-[220px] flex-1 border-0 bg-transparent px-1 py-1 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
                       />
@@ -1270,19 +1269,19 @@ export const RequestControlledCopyView: React.FC = () => {
               <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 space-y-1">
                 <p className="text-xs sm:text-sm text-slate-700">
                   {displayValidUntil && displayValidUntil !== "-"
-                    ? <>This Controlled Copy is valid until <span className="font-semibold text-slate-900">{displayValidUntil}</span>, the Valid Until date of the document.</>
-                    : "This document has no Valid Until date, so the Controlled Copy stays valid as long as the document does."}
+                    ? <>{tr("This Controlled Copy is valid until")} <span className="font-semibold text-slate-900">{displayValidUntil}</span>{tr(", the Valid Until date of the document.")}</>
+                    : tr("This document has no Valid Until date, so the Controlled Copy stays valid as long as the document does.")}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-700">
                   {requestContext?.expiryDurationValue
-                    ? <>The link in the distribution e-mail works for <span className="font-semibold text-slate-900">{formatExpiryDuration(requestContext.expiryDurationValue, requestContext.expiryDurationUnit)}</span> after it is sent.</>
-                    : "Resolving the e-mail link validity from the Controlled Copies Policy..."}
+                    ? <>{tr("The link in the distribution e-mail works for")} <span className="font-semibold text-slate-900">{formatExpiryDuration(requestContext.expiryDurationValue, requestContext.expiryDurationUnit)}</span> {tr("after it is sent.")}</>
+                    : tr("Resolving the e-mail link validity from the Controlled Copies Policy...")}
                 </p>
               </div>
 
               {/* Usage purpose: exactly one, no default */}
               <RadioGroup
-                label="Usage Purpose"
+                label={tr("Usage Purpose")}
                 required
                 variant="card"
                 layout="horizontal"
@@ -1305,7 +1304,7 @@ export const RequestControlledCopyView: React.FC = () => {
               {/* Reason */}
               <div>
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                  Reason for Request <span className="text-red-600">*</span>
+                  {tr("Reason for Request")} <span className="text-red-600">*</span>
                 </label>
                 <textarea
                   value={reason}
@@ -1315,7 +1314,7 @@ export const RequestControlledCopyView: React.FC = () => {
                       setErrors({ ...errors, reason: "" });
                     }
                   }}
-                  placeholder="Enter the reason for this request..."
+                  placeholder={tr("Enter the reason for this request...")}
                   rows={4}
                   className={cn(
                     "w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors resize-none",
@@ -1328,18 +1327,18 @@ export const RequestControlledCopyView: React.FC = () => {
                   <p className="text-xs text-red-600 mt-1">{errors.reason}</p>
                 )}
                 <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
-                  Recorded in audit trail for compliance tracking.
+                  {tr("Recorded in audit trail for compliance tracking.")}
                 </p>
               </div>
             </div>
           </FormSection>
 
           <FormSection
-            title="Distribution Recipient List"
+            title={tr("Distribution Recipient List")}
             icon={<IconUsersGroup className="h-4 w-4" />}
             headerRight={
               <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
-                Total Quantity ={" "}
+                {tr("Total Quantity =")}{" "}
                 <span className="font-semibold text-slate-900">
                   {selectedRecipientCount}
                 </span>
@@ -1353,27 +1352,27 @@ export const RequestControlledCopyView: React.FC = () => {
                     <TableMarkup.Head className="sticky top-0 z-10 bg-slate-50">
                       <TableMarkup.Row>
                         <TableMarkup.HeaderCell className="w-14 py-3 px-4 text-center text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
-                          No.
+                          {tr("No.")}
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
-                          Recipient
+                          {tr("Recipient")}
                         </TableMarkup.HeaderCell>
                         {distributionMode === "internal" ? (
                           <>
                             <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
-                              Username
+                              {tr("Username")}
                             </TableMarkup.HeaderCell>
                             <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
-                              Position
+                              {tr("Position")}
                             </TableMarkup.HeaderCell>
                           </>
                         ) : (
                           <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell19}>
-                            Detail
+                            {tr("Detail")}
                           </TableMarkup.HeaderCell>
                         )}
                         <TableMarkup.HeaderCell className="w-32 py-3 px-4 text-left text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap">
-                          Quantity
+                          {tr("Quantity")}
                         </TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>
@@ -1412,7 +1411,7 @@ export const RequestControlledCopyView: React.FC = () => {
                       ) : (
                         <TableMarkup.Row>
                           <TableMarkup.Cell colSpan={distributionMode === "internal" ? 5 : 4} className="p-0">
-                            <TableEmptyState title="No recipients selected yet." />
+                            <TableEmptyState title={tr("No recipients selected yet.")} />
                           </TableMarkup.Cell>
                         </TableMarkup.Row>
                       )}
@@ -1428,12 +1427,12 @@ export const RequestControlledCopyView: React.FC = () => {
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 md:p-5">
           <h3 className="text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Submission Summary
+            {tr("Submission Summary")}
           </h3>
           <ul className="space-y-2 text-xs sm:text-sm text-emerald-800 list-disc pl-5 marker:text-emerald-600">
             <li>
               <span>
-                Distribution target:{" "}
+                {tr("Distribution target:")}{" "}
                 <span className="font-semibold">
                   {distributionMode === "internal"
                     ? selectedLocationOptions.length > 0
@@ -1447,14 +1446,13 @@ export const RequestControlledCopyView: React.FC = () => {
             </li>
             <li>
               <span>
-                Total prints to be generated:{" "}
+                    {tr("Total prints to be generated:")}{" "}
                 <span className="font-semibold">{selectedRecipientCount}</span>.
               </span>
             </li>
             <li>
               <span>
-                Each copy will be uniquely numbered and must be returned upon
-                revision.
+                {tr("Each copy will be uniquely numbered and must be returned upon revision.")}
               </span>
             </li>
           </ul>
@@ -1470,7 +1468,7 @@ export const RequestControlledCopyView: React.FC = () => {
           onClick={handleCancel}
           className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
         >
-          Cancel
+          {tr("Cancel")}
         </Button>
         <Button
           type="submit"
@@ -1480,7 +1478,7 @@ export const RequestControlledCopyView: React.FC = () => {
           form="controlled-copy-form"
           className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
         >
-          Submit Request
+          {tr("Submit Request")}
         </Button>
       </div>
 
@@ -1502,10 +1500,10 @@ export const RequestControlledCopyView: React.FC = () => {
         onConfirm={handleCancelConfirm}
         mode="discard"
         currentPageTitle="Request Controlled Copy"
-        title="Discard Changes?"
+        title={tr("Discard Changes?")}
         primaryActionLabel="Discard"
-        secondaryActionLabel="Keep editing"
-        description="Are you sure you want to cancel? All entered data will be lost."
+        secondaryActionLabel={tr("Keep editing")}
+        description={tr("Are you sure you want to cancel? All entered data will be lost.")}
       />
 
       {(isRouteNavigating ||

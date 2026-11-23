@@ -36,6 +36,7 @@ import { ExpandedDocumentNameFormatRow } from "./ExpandedDocumentNameFormatRow";
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 /**
  * List/filter table for Document Name Formats. New/Edit navigate to the dedicated
@@ -110,7 +111,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
       });
     } catch (error) {
       setShowToggleModal(false);
-      showToast({ type: "error", title: "Status Update Failed", message: extractApiMessage(error, "Unable to update format status.") });
+      showToast({ type: "error", title: tr("Status Update Failed"), message: extractApiMessage(error, "Unable to update format status.") });
     } finally {
       setIsSubmitting(false);
     }
@@ -143,15 +144,15 @@ export const DocumentNameFormatsTab: React.FC = () => {
   const nameFormatsColumns: DataTableColumn<Row>[] = [
     { id: "expand", header: "", label: "Expand", locked: true, cell: (item) => (<div onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => handleExpandFormat(item.id)} className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"><ChevronRight className={cn("h-3.5 w-3.5 text-slate-500 transition-transform", expandedFormatId === item.id ? "rotate-90" : "rotate-0")} /></button></div>) },
     { id: "no", header: "No.", label: "No.", headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Name", label: "Name", cell: (item) => (<div className="flex flex-col gap-0.5"><span className="font-medium text-emerald-700 hover:underline">{item.name}</span>{item.previewExample && (<span className="text-2xs sm:text-xs text-slate-500">e.g. {item.previewExample}</span>)}</div>) },
+    { id: "name", header: "Name", label: "Name", cell: (item) => (<div className="flex flex-col gap-0.5"><span className="font-medium text-emerald-700 hover:underline">{item.name}</span>{item.previewExample && (<span className="text-2xs sm:text-xs text-slate-500">{tr("e.g.")} {item.previewExample}</span>)}</div>) },
     { id: "separator", header: "Separator", label: "Separator", cell: (item) => <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{item.separator || "(none)"}</code> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const nameFormatsAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: nameFormatsLayout, control: nameFormatsControl } = useCustomColumnLayout("nameFormats", nameFormatsColumns, nameFormatsAction);
 
@@ -159,13 +160,13 @@ export const DocumentNameFormatsTab: React.FC = () => {
     <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search formats..."
+                placeholder={tr("Search formats...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-10 pl-10 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -178,7 +179,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -187,13 +188,13 @@ export const DocumentNameFormatsTab: React.FC = () => {
   trailing={<div className="hidden md:block">{nameFormatsControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search formats..."}
+      placeholder={tr("Search formats...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -216,7 +217,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -232,12 +233,12 @@ export const DocumentNameFormatsTab: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search formats..."
+                placeholder={tr("Search formats...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-9 pl-10 pr-4 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -246,21 +247,21 @@ export const DocumentNameFormatsTab: React.FC = () => {
           </div>
           <div className="w-full">
             <Select
-              label="Status"
+              label={tr("Status")}
               value={statusFilter}
               onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
               options={[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
-              placeholder="All"
+              placeholder={tr("All")}
             />
           </div>
           <div className="w-full">
             <DateRangePicker
-              label="Modified Date Range"
+              label={tr("Modified Date Range")}
               startDate={modifiedFromDate}
               endDate={modifiedToDate}
               onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
               onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
           <div className="filter-actions flex items-end gap-2">
@@ -282,7 +283,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
           expandedRow={{ isExpanded: (item) => expandedFormatId === item.id, render: (item) => (<ExpandedDocumentNameFormatRow format={item} isExpanded={true} visibleColumnsLength={8} componentCatalog={componentCatalog} onComponentCatalogLoaded={setComponentCatalog} />), asRow: false }}
           emptyState={
             <TableEmptyState
-  title="No items found" description="Try adjusting your search" />
+  title={tr("No items found")} description={tr("Try adjusting your search")} />
           }
           pagination={
             totalItems > 0 ? (
@@ -303,7 +304,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Format</span>
+            <span>{tr("Edit Format")}</span>
           </button>
           <button
             onClick={(e) => {
@@ -315,8 +316,8 @@ export const DocumentNameFormatsTab: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             {items.find((current) => current.id === openDropdownId)?.isActive
-              ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>)
-              : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
+              ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>{tr("Disable")}</span></>)
+              : (<><IconToggleRight className="h-3.5 w-3.5" /><span>{tr("Enable")}</span></>)}
           </button>
         </div>
       </PortalDropdownMenu>
@@ -326,26 +327,26 @@ export const DocumentNameFormatsTab: React.FC = () => {
         onClose={() => { setShowToggleModal(false); setSelectedItem(null); }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Document Name Format?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Document Name Format?")}`}
         description={
           <div className="space-y-3">
-            <p>Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"} <strong>{selectedItem?.name}</strong>?</p>
+            <p>{tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")} <strong>{selectedItem?.name}</strong>?</p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This does not change any document number already issued — only formats not yet in use for numbering.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This does not change any document number already issued — only formats not yet in use for numbering.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel
       />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
               <button
@@ -359,7 +360,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Modified Date Range" isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
+        <FilterAccordionItem label={tr("Modified Date Range")} isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
               label=""
@@ -367,7 +368,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
               endDate={modifiedToDate}
               onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
               onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
         </FilterAccordionItem>

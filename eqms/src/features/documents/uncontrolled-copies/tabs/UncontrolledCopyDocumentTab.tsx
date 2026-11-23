@@ -6,6 +6,7 @@ import {
   uncontrolledCopyApi,
   type UncontrolledCopy,
 } from "@/services/api/uncontrolledCopy";
+import { tr } from "@/i18n";
 
 /** Loads the server-authorized uncontrolled-copy preview only while the Document tab is open. */
 export const UncontrolledCopyDocumentTab: React.FC<{
@@ -60,8 +61,7 @@ export const UncontrolledCopyDocumentTab: React.FC<{
     <div className="space-y-4 md:space-y-5">
       {!copy.capabilities.canPreview ? (
         <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-600">
-          The generated file is not available for preview in your current access
-          scope.
+          {tr("The generated file is not available for preview in your current access scope.")}
         </div>
       ) : loading ? (
         <FullPageLoading text="Loading uncontrolled copy document..." />

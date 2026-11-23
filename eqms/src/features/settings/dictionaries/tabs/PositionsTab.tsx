@@ -26,6 +26,7 @@ import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 export const PositionsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -174,7 +175,7 @@ export const PositionsTab = React.forwardRef<
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: "Position Status Update Failed",
+          title: tr("Position Status Update Failed"),
           message: extractApiMessage(error, "Unable to update position status."),
         });
       });
@@ -188,7 +189,7 @@ export const PositionsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-          title: "Position Deleted",
+          title: tr("Position Deleted"),
           message: `Position "${selectedItem.name}" has been deleted successfully.`,
         });
       }
@@ -198,7 +199,7 @@ export const PositionsTab = React.forwardRef<
       if (import.meta.env.DEV) console.error("Failed to delete position", error);
       showToast({
         type: "error",
-        title: "Position Delete Failed",
+        title: tr("Position Delete Failed"),
         message: extractApiMessage(error, "Unable to delete position."),
       });
       setShowDeleteModal(false);
@@ -237,17 +238,17 @@ export const PositionsTab = React.forwardRef<
   type Row = (typeof items)[number];
   const positionsColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Position Name", label: "Position Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
-    { id: "businessUnit", header: "Business Unit", label: "Business Unit", cell: (item) => item.businessUnit },
+    { id: "name", header: tr("Position Name"), label: tr("Position Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "businessUnit", header: tr("Business Unit"), label: tr("Business Unit"), cell: (item) => item.businessUnit },
     { id: "department", header: "Department", label: "Department", cell: (item) => item.department },
     { id: "employeeCount", header: "Employees", label: "Employees", cellClassName: "text-slate-700", cell: (item) => new Intl.NumberFormat("en-US").format(item.employeeCount ?? 0) },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const positionsAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: positionsLayout, control: positionsControl } = useCustomColumnLayout("positions", positionsColumns, positionsAction);
 
@@ -257,13 +258,13 @@ export const PositionsTab = React.forwardRef<
       <div className="bg-white w-full">
         {/* Mobile */}
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search positions..."
+                placeholder={tr("Search positions...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-10 pl-10 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -279,7 +280,7 @@ export const PositionsTab = React.forwardRef<
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -289,20 +290,20 @@ export const PositionsTab = React.forwardRef<
   trailing={<div className="hidden md:block">{positionsControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search positions..."}
+      placeholder={tr("Search positions...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
   filters={[
     {
       id: "businessUnitFilter",
-      label: "Business Unit",
+      label: tr("Business Unit"),
       value: String(businessUnitFilter),
       resetOnChange: { departmentFilter: "All" },
       options: [{ label: "All", value: "All" }, ...businessUnits],
@@ -349,7 +350,7 @@ export const PositionsTab = React.forwardRef<
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -365,12 +366,12 @@ export const PositionsTab = React.forwardRef<
 >
 <div className="hidden md:grid grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search positions..."
+                placeholder={tr("Search positions...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-9 pl-10 pr-4 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -380,31 +381,31 @@ export const PositionsTab = React.forwardRef<
 
           <div className="w-full">
             <Select
-              label="Business Unit"
+              label={tr("Business Unit")}
               value={businessUnitFilter}
               onChange={(value) => { setBusinessUnitFilter(value as "All" | BusinessUnit); setDepartmentFilter("All"); setCurrentPage(1); }}
               options={[
                 { label: "All", value: "All" },
                 ...businessUnits,
               ]}
-              placeholder="All"
+              placeholder={tr("All")}
             />
           </div>
 
           <div className="w-full">
             <Select
-              label="Department"
+              label={tr("Department")}
               value={departmentFilter}
               onChange={(value) => { setDepartmentFilter(value); setCurrentPage(1); }}
               options={availableDepartments.map((d) => ({ label: d === "All" ? "All" : d, value: d }))}
-              placeholder="All"
+              placeholder={tr("All")}
               disabled={businessUnitFilter === "All"}
             />
           </div>
 
           <div className="w-full">
             <Select
-              label="Status"
+              label={tr("Status")}
               value={statusFilter}
               onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
               options={[
@@ -412,18 +413,18 @@ export const PositionsTab = React.forwardRef<
                 { label: "Active", value: "Active" },
                 { label: "Inactive", value: "Inactive" },
               ]}
-              placeholder="All"
+              placeholder={tr("All")}
             />
           </div>
 
           <div className="w-full">
             <DateRangePicker
-              label="Modified Date Range"
+              label={tr("Modified Date Range")}
               startDate={modifiedFromDate}
               endDate={modifiedToDate}
               onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
               onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
 
@@ -445,7 +446,7 @@ export const PositionsTab = React.forwardRef<
           action={positionsAction}
           emptyState={
             <TableEmptyState
-  title="No positions found" description="Try adjusting your search or filters" />
+  title={tr("No positions found")} description={tr("Try adjusting your search or filters")} />
           }
           pagination={
             totalItems > 0 ? (
@@ -463,16 +464,16 @@ export const PositionsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Position</span>
+            <span>{tr("Edit Position")}</span>
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleRequestToggleStatus(items.find((i) => i.id === openDropdownId)!); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             {items.find((i) => i.id === openDropdownId)?.isActive ? (
-              <><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>
+              <><IconToggleLeft className="h-3.5 w-3.5" /><span>{tr("Disable")}</span></>
             ) : (
-              <><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>
+              <><IconToggleRight className="h-3.5 w-3.5" /><span>{tr("Enable")}</span></>
             )}
           </button>
           <button
@@ -480,7 +481,7 @@ export const PositionsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
+            <span>{tr("Delete")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
@@ -528,17 +529,17 @@ export const PositionsTab = React.forwardRef<
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleConfirmDelete}
         type="warning"
-        title="Delete Position?"
+        title={tr("Delete Position?")}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to delete{" "}
+              {tr("Are you sure you want to delete")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This action cannot be undone.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This action cannot be undone.")}
               </p>
             </div>
           </div>
@@ -557,22 +558,22 @@ export const PositionsTab = React.forwardRef<
         }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Position?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Position?")}`}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+              {tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This change will take effect immediately.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This change will take effect immediately.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel
@@ -596,7 +597,7 @@ export const PositionsTab = React.forwardRef<
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Business Unit" isExpanded={expandedSections.has("businessUnit")} onToggle={() => toggleSection("businessUnit")}>
+        <FilterAccordionItem label={tr("Business Unit")} isExpanded={expandedSections.has("businessUnit")} onToggle={() => toggleSection("businessUnit")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
               { label: "All", value: "All" },
@@ -614,7 +615,7 @@ export const PositionsTab = React.forwardRef<
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Department" isExpanded={expandedSections.has("department")} onToggle={() => toggleSection("department")}>
+        <FilterAccordionItem label={tr("Department")} isExpanded={expandedSections.has("department")} onToggle={() => toggleSection("department")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {availableDepartments.map((dept) => (
               <button
@@ -629,7 +630,7 @@ export const PositionsTab = React.forwardRef<
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
               { label: "All", value: "All" },
@@ -648,7 +649,7 @@ export const PositionsTab = React.forwardRef<
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Modified Date Range" isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
+        <FilterAccordionItem label={tr("Modified Date Range")} isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
               label=""
@@ -656,7 +657,7 @@ export const PositionsTab = React.forwardRef<
               endDate={modifiedToDate}
               onStartDateChange={(v) => { setModifiedFromDate(v); setCurrentPage(1); }}
               onEndDateChange={(v) => { setModifiedToDate(v); setCurrentPage(1); }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
         </FilterAccordionItem>
@@ -736,7 +737,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
       dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "New"} Position`}
+        title={`${isEdit ? tr("Edit") : tr("New")} ${tr("Position")}`}
       isLoading={isSaving}
       size="lg"
     >
@@ -744,7 +745,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
         {/* Business Unit */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Business Unit <span className="text-red-500 ml-1">*</span>
+            {tr("Business Unit")} <span className="text-red-500 ml-1">*</span>
           </label>
           <Select
             value={formData.businessUnit}
@@ -759,7 +760,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
         {/* Department */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Department <span className="text-red-500 ml-1">*</span>
+            {tr("Department")} <span className="text-red-500 ml-1">*</span>
           </label>
           <Select
             value={formData.department}
@@ -768,12 +769,12 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
               setErrors((prev) => ({ ...prev, department: "" }));
             }}
             options={[
-              { label: "Select Department", value: "" },
+              { label: tr("Select Department"), value: "" },
               ...allDepartments
                 .filter((d) => d.businessUnit === formData.businessUnit)
                 .map((d) => ({ label: d.name, value: d.name })),
             ]}
-            placeholder="Select Department"
+            placeholder={tr("Select Department")}
             disabled={isSaving}
           />
           {errors.department && <p className="text-xs text-red-600 mt-1.5">{errors.department}</p>}
@@ -782,7 +783,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
         {/* Position Name */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Position Name <span className="text-red-500 ml-1">*</span>
+            {tr("Position Name")} <span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -792,7 +793,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
               "w-full h-9 px-3 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500",
               errors.name ? "border-red-300 bg-red-50" : "border-slate-200"
             )}
-            placeholder="e.g. QA Specialist"
+            placeholder={tr("e.g. QA Specialist")}
             disabled={isSaving}
           />
           {errors.name && <p className="text-xs text-red-600 mt-1.5">{errors.name}</p>}
@@ -801,14 +802,14 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
         {/* Description */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Description
+            {tr("Description")}
           </label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             rows={3}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter position description (optional)"
+            placeholder={tr("Enter position description (optional)")}
             disabled={isSaving}
           />
         </div>
@@ -819,7 +820,7 @@ const PositionModal: React.FC<PositionModalProps> = ({ isOpen, onClose, item, is
             id="isActive-position"
             checked={formData.isActive}
             onChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))}
-            label="Active"
+            label={tr("Active")}
             disabled={isSaving}
           />
         </div>

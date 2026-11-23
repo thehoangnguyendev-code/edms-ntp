@@ -13,6 +13,7 @@ import { systemInfoApi, type SystemInfoResponse } from "@/services/api/systemInf
 import { formatDateTime } from "@/utils/format";
 import metadata from "../../../../metadata.json";
 import packageJson from "../../../../package.json";
+import { tr } from "@/i18n";
 
 /* ------------------------------------------------------------------ */
 /*  Brand logo marks (inline SVG — crisp, offline, CSP-safe)          */
@@ -184,10 +185,10 @@ const formatBytes = (n: number) => {
 type TabId = "application" | "server" | "database" | "stack" | "routing";
 
 const TABS: readonly TabItem[] = [
-  { id: "application", label: "Application", icon: AppWindow },
+  { id: "application", label: tr("Application"), icon: AppWindow },
   { id: "server", label: "Server", icon: Server },
   { id: "database", label: "Database", icon: Database },
-  { id: "stack", label: "Technology Stack", icon: Layers },
+  { id: "stack", label: tr("Technology Stack"), icon: Layers },
   { id: "routing", label: "Routing", icon: Route },
 ];
 
@@ -227,9 +228,9 @@ export const SystemInformationView: React.FC = () => {
   const cells = React.useMemo<KpiCellData[]>(() => {
     if (!server || !db) return [];
     return [
-      { title: "Application version", accent: "#10b981", value: packageJson.version, footValue: import.meta.env.MODE, footLabel: "runtime mode" },
-      { title: "Backend version", accent: "#3b82f6", value: server.version, footValue: server.activeProfiles.length ? server.activeProfiles.join(", ") : "default", footLabel: "active profiles" },
-      { title: "Schema migration", accent: "#8b5cf6", value: `v${db.schemaMigrationVersion}`, footValue: db.appliedMigrations, footLabel: "applied migrations" },
+      { title: tr("Application version"), accent: "#10b981", value: packageJson.version, footValue: import.meta.env.MODE, footLabel: "runtime mode" },
+      { title: tr("Backend version"), accent: "#3b82f6", value: server.version, footValue: server.activeProfiles.length ? server.activeProfiles.join(", ") : "default", footLabel: "active profiles" },
+      { title: tr("Schema migration"), accent: "#8b5cf6", value: `v${db.schemaMigrationVersion}`, footValue: db.appliedMigrations, footLabel: "applied migrations" },
       { title: "Database", accent: "#f59e0b", value: stripRange(db.productVersion).split(" ")[0], footValue: db.product, footLabel: "engine" },
     ];
   }, [server, db]);
@@ -239,15 +240,15 @@ export const SystemInformationView: React.FC = () => {
       return (
         <>
           <FieldGrid>
-            <Field label="Application name" value={metadata.name} />
-            <Field label="Frontend version" value={packageJson.version} mono />
-            <Field label="Package name" value={packageJson.name} mono />
-            <Field label="Module type" value={packageJson.type} />
-            <Field label="Runtime mode" value={import.meta.env.MODE} />
-            <Field label="Private package" value={String(packageJson.private)} />
+            <Field label={tr("Application name")} value={metadata.name} />
+            <Field label={tr("Frontend version")} value={packageJson.version} mono />
+            <Field label={tr("Package name")} value={packageJson.name} mono />
+            <Field label={tr("Module type")} value={packageJson.type} />
+            <Field label={tr("Runtime mode")} value={import.meta.env.MODE} />
+            <Field label={tr("Private package")} value={String(packageJson.private)} />
           </FieldGrid>
           <div className="py-2.5">
-            <p className="mb-1 text-xs font-medium text-slate-500">Description</p>
+            <p className="mb-1 text-xs font-medium text-slate-500">{tr("Description")}</p>
             <p className="text-sm leading-relaxed text-slate-700">{metadata.description}</p>
           </div>
         </>
@@ -256,47 +257,47 @@ export const SystemInformationView: React.FC = () => {
     if (tab === "routing") {
       return (
         <FieldGrid>
-          <Field label="System information route" value={ROUTES.SETTINGS.SYSTEM_INFO} mono />
-          <Field label="Settings route keys" value={String(Object.keys(ROUTES.SETTINGS).length)} />
-          <Field label="Top-level route groups" value={String(Object.keys(ROUTES).length)} />
+          <Field label={tr("System information route")} value={ROUTES.SETTINGS.SYSTEM_INFO} mono />
+          <Field label={tr("Settings route keys")} value={String(Object.keys(ROUTES.SETTINGS).length)} />
+          <Field label={tr("Top-level route groups")} value={String(Object.keys(ROUTES).length)} />
         </FieldGrid>
       );
     }
     // The server, database and stack tabs need what the server reported.
     if (loading) return <RowsSkeleton rows={5} />;
-    if (!ready || !server || !db || !data) return <p className="py-2 text-sm text-slate-500">Server information is not available.</p>;
+    if (!ready || !server || !db || !data) return <p className="py-2 text-sm text-slate-500">{tr("Server information is not available.")}</p>;
     if (tab === "server") {
       return (
         <FieldGrid>
-          <Field label="Service name" value={server.applicationName} mono />
-          <Field label="Backend version" value={server.version} mono />
-          <Field label="Active profiles" value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"} mono />
-          <Field label="Java" value={`${server.javaVersion} · ${server.javaVendor}`} />
+          <Field label={tr("Service name")} value={server.applicationName} mono />
+          <Field label={tr("Backend version")} value={server.version} mono />
+          <Field label={tr("Active profiles")} value={server.activeProfiles.length ? server.activeProfiles.join(", ") : "default"} mono />
+          <Field label={tr("Java")} value={`${server.javaVersion} · ${server.javaVendor}`} />
           <Field label="JVM" value={server.jvmName} />
-          <Field label="Operating system" value={`${server.osName} (${server.osArch})`} />
+          <Field label={tr("Operating system")} value={`${server.osName} (${server.osArch})`} />
           <Field label="CPU" value={`${server.availableProcessors} vCPU`} />
-          <Field label="Max heap" value={formatBytes(server.heapMaxBytes)} />
-          <Field label="Time zone" value={server.timeZone} />
-          <Field label="Started at" value={formatDateTime(server.startedAt)} />
+          <Field label={tr("Max heap")} value={formatBytes(server.heapMaxBytes)} />
+          <Field label={tr("Time zone")} value={server.timeZone} />
+          <Field label={tr("Started at")} value={formatDateTime(server.startedAt)} />
         </FieldGrid>
       );
     }
     if (tab === "database") {
       return (
         <FieldGrid>
-          <Field label="Engine" value={`${db.product} ${stripRange(db.productVersion).split(" ")[0]}`} />
-          <Field label="Full version" value={db.productVersion} mono />
-          <Field label="JDBC driver" value={`${db.driverName} ${db.driverVersion}`} />
-          <Field label="Schema migration" value={`v${db.schemaMigrationVersion}`} mono />
-          <Field label="Applied migrations" value={String(db.appliedMigrations)} />
-          <Field label="Connection pool size" value={db.poolMax == null ? "—" : `${db.poolMax} max`} />
+          <Field label={tr("Engine")} value={`${db.product} ${stripRange(db.productVersion).split(" ")[0]}`} />
+          <Field label={tr("Full version")} value={db.productVersion} mono />
+          <Field label={tr("JDBC driver")} value={`${db.driverName} ${db.driverVersion}`} />
+          <Field label={tr("Schema migration")} value={`v${db.schemaMigrationVersion}`} mono />
+          <Field label={tr("Applied migrations")} value={String(db.appliedMigrations)} />
+          <Field label={tr("Connection pool size")} value={db.poolMax == null ? "—" : `${db.poolMax} max`} />
         </FieldGrid>
       );
     }
     return (
       <div className="space-y-4">
         <div>
-          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Frontend</p>
+          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">{tr("Frontend")}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {FRONTEND_STACK.map(({ id, name, category, version, Mark }) => (
               <TechTile key={id} name={name} category={category} version={stripRange(version)} Mark={Mark} />
@@ -304,7 +305,7 @@ export const SystemInformationView: React.FC = () => {
           </div>
         </div>
         <div>
-          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">Backend</p>
+          <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-slate-500">{tr("Backend")}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {data.techStack.map((t) => (
               <TechTile key={t.id} name={t.name} category={t.category} version={t.version} Mark={BACKEND_MARKS[t.id]} FallbackIcon={CATEGORY_ICON[t.category] ?? Layers} />
@@ -317,23 +318,23 @@ export const SystemInformationView: React.FC = () => {
 
   return (
     <div className="flex w-full flex-1 flex-col space-y-4 md:space-y-6">
-      <PageHeader title="System Information" breadcrumbItems={systemInformation(navigate)} />
+      <PageHeader title={tr("System Information")} breadcrumbItems={systemInformation(navigate)} />
 
       {loading && (
-        <Card aria-label="Reading server information">
+        <Card aria-label={tr("Reading server information")}>
           <RowsSkeleton rows={5} />
         </Card>
       )}
 
       {!loading && error && (
         <Card role="alert" className="border-red-200">
-          <PanelError message="Unable to load server and database information." onRetry={load} />
+          <PanelError message={tr("Unable to load server and database information.")} onRetry={load} />
         </Card>
       )}
 
-      {ready && <KpiStrip cells={cells} label="Version summary" />}
+      {ready && <KpiStrip cells={cells} label={tr("Version summary")} />}
 
-      <Card aria-label="System details">
+      <Card aria-label={tr("System details")}>
         <TabNav
           tabs={TABS}
           activeTab={tab}

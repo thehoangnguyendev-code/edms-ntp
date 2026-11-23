@@ -2,12 +2,9 @@ package com.eqms.service.training;
 
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.UserAccountRepository;
-import com.eqms.service.ElectronicSignatureService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -19,30 +16,25 @@ import java.util.UUID;
 
 /**
  * "Work suspended" after a failed assessment (SOP.0003 5.3.7, D-12). When a trainee does not pass, a flag is raised and the person, the unit heads and the organizer are told. It is a flag
- * and a notice: no other function is blocked. It is cleared by itself when the person passes the retraining (or passes the assessment again), or by the head of the unit with a
- * reason and an electronic signature. Every step is in the Audit Trail of the training activity.
+ * and a notice: no other function is blocked. It is cleared only by itself, when the person passes the retraining (or passes the assessment again); nobody can resume the work by hand
+ * (decision of the owner, 2026-11-23, replacing the earlier D-12 way of resuming). Every step is in the Audit Trail of the training activity.
  */
 @Service
 public class TrainingSuspensionService {
     static final String TYPE = "TRAINING_WORK_SUSPENSION";
-    public record ResumeRequest(String reason, String signatureToken) {}
 
     private final JdbcTemplate jdbc;
-    private final TrainingShadow shadow;
     private final TrainingAccess access;
     private final TrainingStore store;
-    private final ElectronicSignatureService signatures;
     private final UserAccountRepository users;
     private final TrainingNotifier notifier;
     private final TrainingRecipients recipients;
 
-    public TrainingSuspensionService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, ElectronicSignatureService signatures, UserAccountRepository users,
-                                     TrainingNotifier notifier, TrainingRecipients recipients, TrainingShadow shadow) {
+    public TrainingSuspensionService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, UserAccountRepository users,
+                                     TrainingNotifier notifier, TrainingRecipients recipients) {
         this.jdbc = jdbc;
-        this.shadow = shadow;
         this.access = access;
         this.store = store;
-        this.signatures = signatures;
         this.users = users;
         this.notifier = notifier;
         this.recipients = recipients;
@@ -138,37 +130,10 @@ public class TrainingSuspensionService {
                 + " s.cleared_at, s.clear_basis, s.clear_reason, cu.full_name as cleared_by_name, ca.training_number as clear_training_number" + from + where
                 + TrainingRows.orderBy(sortBy, sortDirection, Map.of("fullName", "u.full_name", "employeeCode", "u.employee_code", "position", "u.position", "trainingNumber", "a.training_number", "topic", "s.topic_text",
                         "percent", "s.percent", "status", "s.status", "raisedAt", "s.raised_at", "clearedAt", "s.cleared_at"), "s.raised_at desc") + " limit ? offset ?", args.toArray());
-        boolean manage = access.has(actor, "training.job_assignment.manage");
-        for (Map<String, Object> row : rows) row.put("can_resume", manage && "OPEN".equals(row.get("status")) && !actor.getId().equals(row.get("person_user_id")));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
         result.put("pagination", Map.of("page", safePage, "limit", safeLimit, "total", count, "totalPages", Math.max(1, (count + safeLimit - 1) / safeLimit)));
         return result;
-    }
-
-    /** The head of the unit decides that the work may resume: a reason and an electronic signature, never the person concerned. */
-    @Transactional
-    public Map<String, Object> resume(UserAccount actor, UUID id, ResumeRequest request) {
-        return shadow.around(actor, "TRAINING_SUSPENSION", id, "RESUME", true, () -> resumeInner(actor, id, request));
-    }
-
-    private Map<String, Object> resumeInner(UserAccount actor, UUID id, ResumeRequest request) {
-        // who may resume (the permission, the department of the person, and not the person suspended) is decided by the Hybrid engine (TrainingShadow, TRAINING_SUSPENSION)
-        Map<String, Object> row = jdbc.queryForList("select * from training_work_suspensions where id=? for update", id).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        UUID person = (UUID) row.get("person_user_id");
-        if (!"OPEN".equals(row.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_SUSPENSION_NOT_OPEN");
-        if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
-        Map<String, Object> activity = store.activity((UUID) row.get("activity_id")).orElseThrow();
-        UUID signature = signatures.createEntitySignature(TYPE, id, activity.get("training_number") + " work suspension", actor, request.signatureToken(), "TRAINING_WORK_RESUMED",
-                "Training Management: work resumed after a failed assessment", null, null, null).getId();
-        jdbc.update("update training_work_suspensions set status='CLEARED', cleared_at=now(), cleared_by=?, clear_basis='RESUMED_BY_HEAD', clear_reason=?, signature_id=? where id=?", actor.getId(), request.reason().trim(), signature, id);
-        String name = users.findById(person).map(UserAccount::getFullName).orElse(String.valueOf(person));
-        store.auditActivity(actor, activity, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED", name + ": work resumed by " + actor.getFullName() + ". Reason: " + request.reason().trim(),
-                java.util.List.of(TrainingStore.change("Reason for Resuming Work", null, request.reason().trim())));
-        users.findById(person).ifPresent(p -> notifier.send("TRAINING_WORK_RESUMED", p, actor, "Training: work resumed", "The head of your unit decided that the work suspended after the assessment of "
-                + activity.get("training_topics") + " may resume.", TrainingStore.OBJECT_ACTIVITY, (UUID) activity.get("id"), "resume:" + id));
-        return Map.of("id", id, "status", "CLEARED");
     }
 }

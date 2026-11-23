@@ -3,6 +3,7 @@ import type { AuditTrailRecord } from "@/features/audit-trail/types";
 import { ControlledCopy } from "../../types";
 import { formatDateTime } from "@/utils/format";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { tr } from "@/i18n";
 
 export interface SignatureRecord {
   actionBy: string;
@@ -188,15 +189,15 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
         {hasReportConfirmation && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reported By</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Reported By")}</label>
               <input type="text" value={displayValue(controlledCopy.destroyedBy)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reported On</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Reported On")}</label>
               <input type="text" value={formatDateTimeDisplay(controlledCopy.destroyedDate)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Witnessed By</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Witnessed By")}</label>
               <input type="text" value={displayValue(controlledCopy.witnessedBy)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
           </>

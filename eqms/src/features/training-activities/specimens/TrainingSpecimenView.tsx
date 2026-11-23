@@ -41,6 +41,7 @@ import {
   trainingBreadcrumbs,
   TRAINING_PAGES } from "../shared/trainingLabels";
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
+import { tr } from "@/i18n";
 
 
 /** Specimen signatures. The image is never in the list: it is opened on request, with a check each time, and the opening is recorded in the Audit Trail. */
@@ -110,7 +111,7 @@ export function TrainingSpecimenView() {
       );
       showToast({
         type: "success",
-        title: "Specimen signature uploaded",
+        title: tr("Specimen signature uploaded"),
         message: "It is now the current record of the person.",
       });
       setUploading(false);
@@ -122,7 +123,7 @@ export function TrainingSpecimenView() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The image was not uploaded",
+        title: tr("The image was not uploaded"),
         message: trainingError(e),
       });
     } finally {
@@ -140,7 +141,7 @@ export function TrainingSpecimenView() {
       locked: true,
       cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1,
     },
-    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "employeeCode", header: tr("Employee ID"), sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
     { id: "name", header: "Full Name", sort: sorted("employee"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} /> },
     {
       id: "department",
@@ -157,16 +158,16 @@ export function TrainingSpecimenView() {
     },
     {
       id: "uploaded",
-      header: "Uploaded By", sort: sorted("uploadedBy"),
+      header: tr("Uploaded By"), sort: sorted("uploadedBy"),
       cell: (r) => r.uploadedByName,
     },
-    { id: "uploadedOn", header: "Uploaded On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
+    { id: "uploadedOn", header: tr("Uploaded On"), sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
     {
       id: "confirmed",
-      header: "Confirmed By (earlier workflow)", sort: sorted("confirmedBy"),
+      header: tr("Confirmed By (earlier workflow)"), sort: sorted("confirmedBy"),
       cell: (r) => r.confirmedByName ?? "—",
     },
-    { id: "effective", header: "Effective Date", sort: sorted("effective"), cell: (r) => day(r.effectiveDate) },
+    { id: "effective", header: tr("Effective Date"), sort: sorted("effective"), cell: (r) => day(r.effectiveDate) },
     {
       id: "reason",
       header: "Reason", sort: sorted("reason"),
@@ -182,7 +183,7 @@ export function TrainingSpecimenView() {
       <button
         type="button"
         ref={menu.getRef(r.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(e) => menu.toggle(r.id, e)}
       >
@@ -224,7 +225,7 @@ export function TrainingSpecimenView() {
         actions={
           <Button size="sm" onClick={() => setUploading(true)}>
             <IconPlus className="mr-2 h-4 w-4" />
-            Upload Specimen Signature
+            {tr("Upload Specimen Signature")}
           </Button>
         }
       />
@@ -234,7 +235,7 @@ export function TrainingSpecimenView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search employee…"
+        searchPlaceholder={tr("Search employee…")}
         search={table.searchQuery}
         onSearch={(v) => {
           table.setSearchQuery(v);
@@ -262,8 +263,8 @@ export function TrainingSpecimenView() {
           action={action}
           emptyState={
             <TableEmptyState
-              title="No Specimen Signatures"
-              description="Upload the scan of the paper that the employee signed by hand (FRM.0007) to keep it as a record."
+              title={tr("No Specimen Signatures")}
+              description={tr("Upload the scan of the paper that the employee signed by hand (FRM.0007) to keep it as a record.")}
             />
           }
           pagination={
@@ -289,7 +290,7 @@ export function TrainingSpecimenView() {
         {row && (
           <div className="whitespace-nowrap py-1">
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { navigate(`/training-management/specimen-signatures/${row.id}`); menu.close(); }}>
-              View Details
+              {tr("View Details")}
             </DropdownMenuItem>
             {row.capabilities.viewImage && (
               <DropdownMenuItem
@@ -299,7 +300,7 @@ export function TrainingSpecimenView() {
                   menu.close();
                 }}
               >
-                View Image
+                {tr("View Image")}
               </DropdownMenuItem>
             )}
           </div>
@@ -314,8 +315,8 @@ export function TrainingSpecimenView() {
           setFile2(null);
         }}
         onConfirm={() => void upload()}
-        title="Upload a Specimen Signature"
-        description="The scan of the paper that the employee signed by hand (FRM.0007): a PNG or JPEG picture of up to 5 MB. The watermark set in Configuration is stamped on it, and the picture as it was uploaded is kept. It becomes the current record of the employee at once; nobody confirms it."
+        title={tr("Upload a Specimen Signature")}
+        description={tr("The scan of the paper that the employee signed by hand (FRM.0007): a PNG or JPEG picture of up to 5 MB. The watermark set in Configuration is stamped on it, and the picture as it was uploaded is kept. It becomes the current record of the employee at once; nobody confirms it.")}
         confirmText="Upload"
         isLoading={busy}
         confirmDisabled={!file || !file2}
@@ -323,23 +324,23 @@ export function TrainingSpecimenView() {
       >
         <div className="grid gap-4">
           {canManage && (
-            <FormField label="For another employee (leave empty for yourself)">
+            <FormField label={tr("For another employee (leave empty for yourself)")}>
               <Select
                 value={forPerson}
                 onChange={setForPerson}
-                options={[{ label: "Myself", value: "" }, ...people, ...(forPerson && !people.some((x) => x.value === forPerson) ? [{ label: "Selected employee", value: forPerson }] : [])]}
+                options={[{ label: "Myself", value: "" }, ...people, ...(forPerson && !people.some((x) => x.value === forPerson) ? [{ label: tr("Selected employee"), value: forPerson }] : [])]}
                 onSearch={searchPeople}
-                placeholder="Search by name"
+                placeholder={tr("Search by name")}
               />
             </FormField>
           )}
-          <FormField label="1st specimen signature" required>
+          <FormField label={tr("1st specimen signature")} required>
             <SpecimenImagePicker file={file} onChange={setFile} />
           </FormField>
-          <FormField label="2nd specimen signature" required>
+          <FormField label={tr("2nd specimen signature")} required>
             <SpecimenImagePicker file={file2} onChange={setFile2} />
           </FormField>
-          <FormField label="Reason (needed when it replaces the current record)">
+          <FormField label={tr("Reason (needed when it replaces the current record)")}>
             <Textarea
               rows={2}
               value={reason}

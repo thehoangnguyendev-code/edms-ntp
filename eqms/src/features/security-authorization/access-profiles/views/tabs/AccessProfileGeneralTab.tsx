@@ -7,6 +7,7 @@ import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { AccessProfileDetailResponse } from "@/services/api/settings";
 import { formatDateTime } from "@/utils/format";
 import { inputCls, textareaCls } from "./accessProfileDetailShared";
+import { tr } from "@/i18n";
 
 const labelCls = "text-xs sm:text-sm font-medium text-slate-700";
 const readCls = "flex h-9 w-full items-center rounded-lg border border-slate-200 bg-slate-50/70 px-3";
@@ -29,18 +30,18 @@ export const GeneralTab: React.FC<{
   const active = isEditing ? draft.active : profile.active;
   return (
     <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
-      <Field label="Created By">
+      <Field label={tr("Created By")}>
         <div className={cn(readCls, CONTROL_STATE_CLASSES.readonly)}>
           <p className="truncate text-sm text-slate-600">{profile.createdBy || "—"}</p>
         </div>
       </Field>
-      <Field label="Created Time">
+      <Field label={tr("Created Time")}>
         <div className={cn(readCls, CONTROL_STATE_CLASSES.readonly)}>
           <p className="truncate text-sm text-slate-600">{profile.createdAt ? formatDateTime(profile.createdAt) : "—"}</p>
         </div>
       </Field>
 
-      <Field label={<>Profile Name <span className="text-red-500">*</span></>}>
+      <Field label={<>{tr("Profile Name")} <span className="text-red-500">*</span></>}>
         {isEditing ? (
           <>
             <input
@@ -48,7 +49,7 @@ export const GeneralTab: React.FC<{
               className={cn(inputCls, nameError && "border-red-500 focus:border-red-500 focus:ring-red-500")}
               value={draft.name}
               onChange={e => onChange("name", e.target.value)}
-              placeholder="e.g. Quality Assurance Manager"
+              placeholder={tr("e.g. Quality Assurance Manager")}
               aria-invalid={Boolean(nameError)}
             />
             {nameError && <p role="alert" className="mt-1.5 text-xs text-red-600">{nameError}</p>}
@@ -59,20 +60,20 @@ export const GeneralTab: React.FC<{
           </div>
         )}
       </Field>
-      <Field label="Code (Immutable)">
+      <Field label={tr("Code (Immutable)")}>
         <div className={cn(readCls, CONTROL_STATE_CLASSES.readonly)}>
           <p className="truncate text-sm text-slate-500">{profile.code || "—"}</p>
         </div>
       </Field>
 
-      <Field label="Type">
+      <Field label={tr("Type")}>
         <div className="flex h-9 items-center">
           <Badge color={profile.type === "SYSTEM" ? "blue" : "teal"} size="sm">
             {profile.type === "SYSTEM" ? "System" : "Custom"}
           </Badge>
         </div>
       </Field>
-      <Field label="Status">
+      <Field label={tr("Status")}>
         <div className="flex h-9 items-center gap-2.5">
           <Switch
             checked={active}
@@ -84,14 +85,14 @@ export const GeneralTab: React.FC<{
         </div>
       </Field>
 
-      <Field label="Description" className="md:col-span-2">
+      <Field label={tr("Description")} className="md:col-span-2">
         {isEditing ? (
           <textarea
             className={textareaCls}
             rows={3}
             value={draft.description}
             onChange={e => onChange("description", e.target.value)}
-            placeholder="Brief description of this profile's purpose"
+            placeholder={tr("Brief description of this profile's purpose")}
           />
         ) : (
           <div className="min-h-[76px] w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">

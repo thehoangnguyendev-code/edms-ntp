@@ -10,6 +10,7 @@ import { ReportListToolbar, pickerDateToIso } from "@/features/report/shared/Rep
 import { myTrainingApi } from "@/services/api/myTraining";
 import type { TrainingMyApproval } from "@/services/api/trainingActivities";
 import { STATUS_LABEL, STEP_LABEL, day } from "../../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 const OBJECT_LABEL: Record<string, string> = {
   TRAINING_ACTIVITY: "Training activity", TRAINING_MATRIX_VERSION: "Training matrix", TRAINING_JOB_ASSIGNMENT: "Job assignment",
@@ -32,21 +33,21 @@ export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) 
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
   const columns: DataTableColumn<TrainingMyApproval>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (a) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(a)}>{a.trainingNumber}</button> },
+    { id: "number", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (a) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(a)}>{a.trainingNumber}</button> },
     { id: "title", header: "Subject", sort: sorted("subject"), cell: (a) => <div className="max-w-80 whitespace-normal">{a.subject}</div> },
     { id: "step", header: "Step", sort: sorted("stepCode"), cell: (a) => SIGNATURE_STEPS[a.stepCode] ?? a.stepCode },
     { id: "status", header: "Status", sort: sorted("status"), cell: (a) => STATUS_LABEL[a.status] ?? a.status.replace(/_/g, " ").toLowerCase() },
-    { id: "since", header: "Waiting since", sort: sorted("assignedAt"), cell: (a) => day(a.assignedAt) },
+    { id: "since", header: tr("Waiting since"), sort: sorted("assignedAt"), cell: (a) => day(a.assignedAt) },
   ];
   const { layout, control } = useCustomColumnLayout("training.mine.signatures", columns);
   return <ReportListToolbar
-    searchPlaceholder="Search reference number or subject…" search={table.searchQuery}
+    searchPlaceholder={tr("Search reference number or subject…")} search={table.searchQuery}
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
       { id: "objectType", label: "Type", value: objectType, options: [{ label: "All", value: "" }, ...Object.entries(OBJECT_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setObjectType(v); table.setCurrentPage(1); } },
       { id: "stepCode", label: "Step", value: stepCode, options: [{ label: "All", value: "" }, ...Object.entries(SIGNATURE_STEPS).map(([value, label]) => ({ value, label }))], onChange: (v) => { setStepCode(v); table.setCurrentPage(1); } },
     ]}
-    dates={[{ id: "assigned", label: "Waiting since", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
+    dates={[{ id: "assigned", label: tr("Waiting since"), from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
     hasActiveFilters={Boolean(objectType || stepCode || from || to || table.searchQuery)}
     onClear={() => { setObjectType(""); setStepCode(""); setFrom(""); setTo(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
     customControl={control} framed={false} flush
@@ -54,7 +55,7 @@ export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) 
     <DataTable rows={table.items} getRowKey={(a) => a.id} columns={columns} columnLayout={layout}
       scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
       isLoading={table.isLoading}
-      emptyState={<TableEmptyState title="Nothing waiting" description="No signature requests match the current filters." />}
+      emptyState={<TableEmptyState title={tr("Nothing waiting")} description={tr("No signature requests match the current filters.")} />}
       pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} />
   </ReportListToolbar>;
 }

@@ -12,6 +12,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { MENU_MODULE_ORDER, moduleDisplayName, moduleOrderFromMenu, sortModulesLikeMenu } from "@/utils/moduleDisplay";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr } from "@/i18n";
 
 // Includes the action -- two entries can share the same object type + status (e.g. distributing a
 // single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
@@ -105,13 +106,13 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
       cellClassName: "sticky left-0 z-10 w-10 min-w-0 bg-white px-2 text-center align-top text-slate-500 md:w-16 md:px-4",
       cell: (_row, index) => first + index + 1,
     },
-    { id: "name", header: "Permission", label: "Permission", cellClassName: `${wrap} min-w-[200px] font-medium text-slate-900`, cell: (row) => row.name },
+    { id: "name", header: tr("Permission"), label: tr("Permission"), cellClassName: `${wrap} min-w-[200px] font-medium text-slate-900`, cell: (row) => row.name },
     { id: "module", header: "Module", label: "Module", cellClassName: `${wrap} min-w-[140px]`, cell: (row) => moduleDisplayName(row.module) },
     { id: "code", header: "Code", label: "Code", cellClassName: "align-top font-mono text-xs text-slate-600", cell: (row) => row.code },
-    { id: "audit", header: "Audit", label: "Audit", cellClassName: "align-top", cell: (row) => (row.requiresAudit ? <Badge size="xs" color="indigo">Audit</Badge> : none) },
+    { id: "audit", header: "Audit", label: "Audit", cellClassName: "align-top", cell: (row) => (row.requiresAudit ? <Badge size="xs" color="indigo">{tr("Audit")}</Badge> : none) },
     { id: "description", header: "Description", label: "Description", cellClassName: `${wrap} min-w-[280px] text-slate-600`, cell: (row) => row.description || none },
     {
-      id: "lifecycle", header: "Used in workflow", label: "Used in workflow", cellClassName: `${wrap} min-w-[240px]`,
+      id: "lifecycle", header: tr("Used in workflow"), label: tr("Used in workflow"), cellClassName: `${wrap} min-w-[240px]`,
       cell: (row) => (row.lifecycleUsages.length > 0
         ? <div className="flex flex-col items-start gap-1">{row.lifecycleUsages.map((u, i) => <Badge key={i} size="xs" color="purple">{formatLifecycleUsage(u)}</Badge>)}</div>
         : none),
@@ -135,19 +136,19 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
-            <label htmlFor="permission-set-search" className={LABEL_CLASS}>Search</label>
+            <label htmlFor="permission-set-search" className={LABEL_CLASS}>{tr("Search")}</label>
             <SearchInput
               value={search}
               onChange={(value) => { setSearch(value); setPage(1); }}
               ariaLabel="Search permissions"
-              placeholder="Search by name, code or description…"
+              placeholder={tr("Search by name, code or description…")}
               inputProps={{ id: "permission-set-search" }}
             />
           </div>
           <div className="sm:w-64">
             <Select
-              label={<span className={LABEL_CLASS}>Module</span>}
-              aria-label="Filter by module"
+              label={<span className={LABEL_CLASS}>{tr("Module")}</span>}
+              aria-label={tr("Filter by module")}
               value={moduleFilter}
               onChange={(value) => { setModuleFilter(value); setPage(1); }}
               options={moduleOptions}
@@ -162,8 +163,8 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
             getRowKey={(row) => row.code}
             isLoading={loading && !result}
             emptyState={failed
-              ? <TableEmptyState title="Could not load the permissions" description="Close this window and open it again." />
-              : <TableEmptyState title={searching ? "No results" : "No permissions assigned"} description={searching ? "No permission matches the search or the module." : "This Permission Set grants nothing yet."} />}
+              ? <TableEmptyState title={tr("Could not load the permissions")} description={tr("Close this window and open it again.")} />
+              : <TableEmptyState title={searching ? tr("No results") : "No permissions assigned"} description={searching ? "No permission matches the search or the module." : "This Permission Set grants nothing yet."} />}
             pagination={total > 0 ? (
               <div className="border-t border-slate-200">
                 <TablePagination

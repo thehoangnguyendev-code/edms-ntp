@@ -10,6 +10,7 @@ import type { DocumentRelationBase } from "@/features/documents/shared/documentR
 import { SortableTh, nextSort, type SortDirection } from "./SortableTh";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface RelationDocumentsTableProps {
     /** The documents currently selected (possibly unsaved); the server resolves, filters, sorts and pages them. */
@@ -69,7 +70,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by document number, name, opened by, department, or author..."
+                        placeholder={tr("Search by document number, name, opened by, department, or author...")}
                         value={searchQuery}
                         onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -86,7 +87,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                         <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                             <TableMarkup.Row>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                    No.
+                                    {tr("No.")}
                                 </TableMarkup.HeaderCell>
                                 {th("Document Number", "documentNumber")}
                                 {th("Created", "created", "hidden md:table-cell")}
@@ -103,7 +104,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                         <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                             {loading && !hasLoadedOnce && documents.length > 0 ? (
                                 <TableMarkup.Row>
-                                    <TableMarkup.Cell colSpan={11} className="py-12 text-center text-sm text-slate-500">Loading...</TableMarkup.Cell>
+                                    <TableMarkup.Cell colSpan={11} className="py-12 text-center text-sm text-slate-500">{tr("Loading...")}</TableMarkup.Cell>
                                 </TableMarkup.Row>
                             ) : error ? (
                                 <TableMarkup.Row>
@@ -112,7 +113,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                             ) : showEmpty ? (
                                 <TableMarkup.Row>
                                     <TableMarkup.Cell colSpan={11} className="py-12 text-center">
-                                        <TableEmptyState title={debouncedSearch ? "No records matching your search" : "No records to display"} />
+                                        <TableEmptyState title={debouncedSearch ? "No records matching your search" : tr("No records to display")} />
                                     </TableMarkup.Cell>
                                 </TableMarkup.Row>
                             ) : (

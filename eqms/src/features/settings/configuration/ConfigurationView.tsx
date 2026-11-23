@@ -22,6 +22,7 @@ import { DEFAULT_CONFIGURATION_PAGE, configurationPageForPath, type Configuratio
 import { generalTabFromParam } from './tabs/generalTabs';
 import { securityTabFromParam } from './tabs/securityTabs';
 import { INTEGRATION_TAB_IDS, NOTIFICATION_TAB_IDS, PREVIEW_TAB_IDS, WATERMARK_TAB_IDS, pageTabFromParam } from './tabs/pageTabs';
+import { tr, trFormat } from "@/i18n";
 
 const IntegrationsTabs = lazy(() => import('./tabs/IntegrationsTabs').then(m => ({ default: m.IntegrationsTabs })));
 const GeneralTab = lazy(() => import('./tabs/GeneralTab').then(m => ({ default: m.GeneralTab })));
@@ -196,14 +197,14 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
       setShowSaveModal(false);
       showToast({
         type: "success",
-        title: "Changes saved",
+        title: tr("Changes saved"),
         message: "System configuration has been updated successfully.",
       });
     } catch (error) {
       setShowSaveModal(false);
       showToast({
         type: "error",
-        title: "Save failed",
+        title: tr("Save failed"),
         message: `${systemSaved && step === 'network' ? 'System configuration was saved, but the network policy was not saved. Your network changes are kept. ' : ''}${systemSaved && step === 'storage' ? 'System configuration was saved, but the storage policy was not saved. Your storage changes are kept. ' : ''}${extractServerErrorMessage(error)}`,
       });
     } finally {
@@ -233,7 +234,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
       setShowResetModal(false);
       showToast({
         type: "info",
-        title: "Changes discarded",
+        title: tr("Changes discarded"),
         message: "Configuration reset to last saved state.",
       });
     }
@@ -352,10 +353,10 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
           canManageConfiguration ? (
             <>
               <Button variant="outline-emerald" onClick={handleResetClick} disabled={!hasUnsavedChanges || isSaving} size="sm" className="gap-2">
-                Reset
+                {tr("Reset")}
               </Button>
               <Button variant="outline-emerald" onClick={handleSaveClick} disabled={!hasUnsavedChanges || !isGeneralValid || !isOnlyOfficeValid || !storagePolicy.isValid || isSaving} size="sm" className="gap-2" loading={isSaving}>
-                Save
+                {tr("Save")}
               </Button>
             </>
           ) : undefined
@@ -369,31 +370,30 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
         isLoading={isSaving}
         confirmDisabled={Boolean(pendingRetentionChange) && !retentionAcknowledged}
         type="confirm"
-        title="Save System Configuration?"
+        title={tr("Save System Configuration?")}
         description={
           <div className="space-y-2">
             <p className="text-sm text-slate-600">
-              You are about to save changes to System Configuration. This action will be recorded in the Audit Trail.
+              {tr("You are about to save changes to System Configuration. This action will be recorded in the Audit Trail.")}
             </p>
             {pendingRetentionChange && (
               <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left">
                 <p className="text-sm font-medium text-amber-900">
-                  Retention of stored records: {retentionLabel(pendingRetentionChange.from)} → {retentionLabel(pendingRetentionChange.to)}
+                  {trFormat("Retention of stored records: {from} → {to}", { from: retentionLabel(pendingRetentionChange.from), to: retentionLabel(pendingRetentionChange.to) })}
                 </p>
                 <p className="text-xs text-amber-900">
-                  Records stored from now on are locked until {formatDate(retentionLockedUntil(pendingRetentionChange.to))}. Nobody, administrators included, can shorten or delete
-                  them before then. Objects already stored keep the period they were written with. This cannot be undone.
+                  {trFormat("Records stored from now on are locked until {date}. Nobody, administrators included, can shorten or delete them before then. Objects already stored keep the period they were written with. This cannot be undone.", { date: formatDate(retentionLockedUntil(pendingRetentionChange.to)) })}
                 </p>
                 <Checkbox
                   id="confirm-retention-change"
-                  label="I understand this cannot be undone."
+                  label={tr("I understand this cannot be undone.")}
                   checked={retentionAcknowledged}
                   onChange={setRetentionAcknowledged}
                 />
               </div>
             )}
             <p className="text-sm font-medium text-emerald-700">
-              Please confirm to proceed.
+              {tr("Please confirm to proceed.")}
             </p>
         </div>
         }
@@ -408,18 +408,18 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
         onConfirm={handleResetConfirm}
         mode="discard"
         currentPageTitle="System Configuration"
-        title="Discard Unsaved Changes?"
+        title={tr("Discard Unsaved Changes?")}
         description={
           <div className="space-y-2">
             <p className="text-sm text-slate-600">
-              All unsaved changes will be lost and the configuration will be reset to the last saved state.
+              {tr("All unsaved changes will be lost and the configuration will be reset to the last saved state.")}
             </p>
             <p className="text-sm font-medium text-amber-700">
-              This action cannot be undone.
+              {tr("This action cannot be undone.")}
             </p>
           </div>
         }
-        primaryActionLabel="Discard Changes"
+        primaryActionLabel={tr("Discard Changes")}
         secondaryActionLabel="Keep Editing"
       />
 

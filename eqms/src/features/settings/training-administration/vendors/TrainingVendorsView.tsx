@@ -21,10 +21,11 @@ import { TrainingDateField } from "@/features/training-activities/shared/Trainin
 import { useTrainingRowMenu } from "@/features/training-activities/shared/useTrainingRowMenu";
 import { resettingDates, useDateRange } from "@/features/training-activities/shared/useListFilters";
 import { day, statusChange } from "@/features/training-activities/shared/trainingLabels";
+import { tr } from "@/i18n";
 
 const STATUS_COLOR: Record<string, "emerald" | "amber" | "slate" | "blue"> = { DRAFT: "blue", ACTIVE: "emerald", EXPIRED: "amber", INACTIVE: "slate" };
-const STATUS_OPTIONS = [{ label: "All", value: "" }, { label: "Draft", value: "DRAFT" }, { label: "Active", value: "ACTIVE" }, { label: "Approval ended", value: "EXPIRED" }, { label: "Inactive", value: "INACTIVE" }];
-const END_OPTIONS = [{ label: "All", value: "" }, { label: "No end date", value: "true" }];
+const STATUS_OPTIONS = [{ label: "All", value: "" }, { label: "Draft", value: "DRAFT" }, { label: "Active", value: "ACTIVE" }, { label: tr("Approval ended"), value: "EXPIRED" }, { label: "Inactive", value: "INACTIVE" }];
+const END_OPTIONS = [{ label: "All", value: "" }, { label: tr("No end date"), value: "true" }];
 
 /**
  * The register of approved training vendors (SOP.0025): the units that train from outside the company. A vendor is written as a Draft, approved with an electronic signature of another person,
@@ -67,27 +68,27 @@ export function TrainingVendorsView() {
 
   // The menu of the last column: the places a row leads to. Which of them a person has is the answer of the server (`actions`).
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
-    ...(r.actions.view ? [{ label: "View Details", icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => setDetails(r) }] : []),
-    ...(r.actions.edit ? [{ label: "Edit Vendor", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => setEditing({ id: r.id, name: r.name, reference: r.reference ?? "", validUntil: r.validUntil ?? "" }) }] : []),
-    ...(r.actions.approve ? [{ label: "Complete Approval", icon: <IconChecks className="h-4 w-4" />, onClick: () => { setApproving(r); setSigning("approve"); } }] : []),
-    ...(r.actions.deactivate ? [{ label: "Deactivate Vendor", icon: <IconToggleLeft className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "deactivate", reason: "", validUntil: "" }) }] : []),
-    ...(r.actions.activate ? [{ label: "Activate Vendor", icon: <IconToggleRight className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "activate", reason: "", validUntil: r.validUntil ?? "" }) }] : []),
+    ...(r.actions.view ? [{ label: tr("View Details"), icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => setDetails(r) }] : []),
+    ...(r.actions.edit ? [{ label: tr("Edit Vendor"), icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => setEditing({ id: r.id, name: r.name, reference: r.reference ?? "", validUntil: r.validUntil ?? "" }) }] : []),
+    ...(r.actions.approve ? [{ label: tr("Complete Approval"), icon: <IconChecks className="h-4 w-4" />, onClick: () => { setApproving(r); setSigning("approve"); } }] : []),
+    ...(r.actions.deactivate ? [{ label: tr("Deactivate Vendor"), icon: <IconToggleLeft className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "deactivate", reason: "", validUntil: "" }) }] : []),
+    ...(r.actions.activate ? [{ label: tr("Activate Vendor"), icon: <IconToggleRight className="h-4 w-4" />, onClick: () => setChanging({ vendor: r, kind: "activate", reason: "", validUntil: r.validUntil ?? "" }) }] : []),
   ]);
 
   const columns: DataTableColumn<TrainingVendor>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "name", header: "Training Vendor", sort: sorted("name"), cell: (r) => <div className="max-w-80 whitespace-normal font-medium text-slate-900">{r.name}</div> },
-    { id: "reference", header: "Approval Reference", sort: sorted("reference"), cell: (r) => r.reference ?? "—" },
-    { id: "validUntil", header: "Valid Until", sort: sorted("validUntil"), cell: (r) => (r.validUntil ? day(r.validUntil) : "No end date") },
+    { id: "name", header: tr("Training Vendor"), sort: sorted("name"), cell: (r) => <div className="max-w-80 whitespace-normal font-medium text-slate-900">{r.name}</div> },
+    { id: "reference", header: tr("Approval Reference"), sort: sorted("reference"), cell: (r) => r.reference ?? "—" },
+    { id: "validUntil", header: tr("Valid Until"), sort: sorted("validUntil"), cell: (r) => (r.validUntil ? day(r.validUntil) : "No end date") },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status]}>{r.statusLabel}</Badge> },
-    { id: "approvedBy", header: "Approved By", sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
-    { id: "approvedAt", header: "Approved Date", sort: sorted("approvedAt"), cell: (r) => (r.approvedAt ? day(r.approvedAt) : "—") },
+    { id: "approvedBy", header: tr("Approved By"), sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
+    { id: "approvedAt", header: tr("Approved Date"), sort: sorted("approvedAt"), cell: (r) => (r.approvedAt ? day(r.approvedAt) : "—") },
   ];
   const { layout, control } = useCustomColumnLayout("training.vendors", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
     { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, onChange: (v) => { setStatus(v); reset(); } },
-    { id: "approvedBy", label: "Approved By", value: approvedBy, options: [{ label: "All", value: "" }, ...approvers], onChange: (v) => { setApprovedBy(v); reset(); } },
-    { id: "withoutEnd", label: "Valid Until", value: withoutEnd, options: END_OPTIONS, onChange: (v) => { setWithoutEnd(v); reset(); } },
+    { id: "approvedBy", label: tr("Approved By"), value: approvedBy, options: [{ label: "All", value: "" }, ...approvers], onChange: (v) => { setApprovedBy(v); reset(); } },
+    { id: "withoutEnd", label: tr("Valid Until"), value: withoutEnd, options: END_OPTIONS, onChange: (v) => { setWithoutEnd(v); reset(); } },
   ];
 
   const save = async () => {
@@ -100,7 +101,7 @@ export function TrainingVendorsView() {
       setEditing(undefined);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     } finally {
       setSaving(false);
     }
@@ -118,27 +119,27 @@ export function TrainingVendorsView() {
       table.reload();
     } catch (e) {
       setSigning(undefined);
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     }
   };
   const target = approving ?? changing?.vendor;
   const signingCopy = {
-    approve: { title: "Approve the Training Vendor", code: "TRAINING_PROVIDER_APPROVED", name: "Training Vendor Approved", change: statusChange("Draft", "Active") },
-    deactivate: { title: "Deactivate the Training Vendor", code: "TRAINING_PROVIDER_DEACTIVATED", name: "Training Vendor Deactivated", change: statusChange("Active", "Inactive") },
-    activate: { title: "Activate the Training Vendor", code: "TRAINING_VENDOR_ACTIVATED", name: "Training Vendor Activated", change: statusChange("Inactive", "Active") },
+    approve: { title: tr("Approve the Training Vendor"), code: "TRAINING_PROVIDER_APPROVED", name: "Training Vendor Approved", change: statusChange("Draft", "Active") },
+    deactivate: { title: tr("Deactivate the Training Vendor"), code: "TRAINING_PROVIDER_DEACTIVATED", name: "Training Vendor Deactivated", change: statusChange("Active", "Inactive") },
+    activate: { title: tr("Activate the Training Vendor"), code: "TRAINING_VENDOR_ACTIVATED", name: "Training Vendor Activated", change: statusChange("Inactive", "Active") },
   };
   const copy = signing ? signingCopy[signing] : undefined;
 
   return (
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Training Vendors"
-        breadcrumbItems={[...trainingAdministrationBase(navigate), { label: "Training Vendors", isActive: true }]}
-        actions={canManage ? <Button size="sm" onClick={() => setEditing({ name: "", reference: "", validUntil: "" })} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"><IconPlus className="h-4 w-4" />Add Vendor</Button> : undefined}
+        title={tr("Training Vendors")}
+        breadcrumbItems={[...trainingAdministrationBase(navigate), { label: tr("Training Vendors"), isActive: true }]}
+        actions={canManage ? <Button size="sm" onClick={() => setEditing({ name: "", reference: "", validUntil: "" })} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"><IconPlus className="h-4 w-4" />{tr("Add Vendor")}</Button> : undefined}
       />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search vendor or approval reference…"
+        searchPlaceholder={tr("Search vendor or approval reference…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); reset(); }}
         filters={filters}
@@ -150,51 +151,51 @@ export function TrainingVendorsView() {
         <DataTable
           rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout} action={rowMenu.action}
-          emptyState={<TableEmptyState title="No training vendor" description="Approve the units that train from outside the company." />}
+          emptyState={<TableEmptyState title={tr("No training vendor")} description={tr("Approve the units that train from outside the company.")} />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
         />
       </ReportListToolbar>
       {rowMenu.node}
 
       <FormModal
-        isOpen={!!editing} onClose={() => setEditing(undefined)} title={editing?.id ? "Edit the Training Vendor" : "Add a Training Vendor"} confirmText="Save" size="md" confirmDisabled={!editing?.name.trim()} isLoading={saving}
-        description="A vendor is written as a draft. Another person approves it with an electronic signature; after that the name and the reference do not change."
+        isOpen={!!editing} onClose={() => setEditing(undefined)} title={editing?.id ? tr("Edit the Training Vendor") : tr("Add a Training Vendor")} confirmText="Save" size="md" confirmDisabled={!editing?.name.trim()} isLoading={saving}
+        description={tr("A vendor is written as a draft. Another person approves it with an electronic signature; after that the name and the reference do not change.")}
         onConfirm={() => void save()}
       >
         {editing && (
           <div className="grid gap-4">
-            <FormField label="Training vendor (unit or person)" required><Input value={editing.name} maxLength={255} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></FormField>
-            <FormField label="Approval reference"><Input value={editing.reference} maxLength={120} placeholder="For example the number of the supplier approval" onChange={(e) => setEditing({ ...editing, reference: e.target.value })} /></FormField>
-            <FormField label="Approval valid until"><TrainingDateField value={editing.validUntil} onChange={(v) => setEditing({ ...editing, validUntil: v })} /></FormField>
+            <FormField label={tr("Training vendor (unit or person)")} required><Input value={editing.name} maxLength={255} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></FormField>
+            <FormField label={tr("Approval reference")}><Input value={editing.reference} maxLength={120} placeholder={tr("For example the number of the supplier approval")} onChange={(e) => setEditing({ ...editing, reference: e.target.value })} /></FormField>
+            <FormField label={tr("Approval valid until")}><TrainingDateField value={editing.validUntil} onChange={(v) => setEditing({ ...editing, validUntil: v })} /></FormField>
           </div>
         )}
       </FormModal>
       <FormModal
-        isOpen={!!changing && !signing} onClose={() => setChanging(undefined)} title={`${changing?.kind === "activate" ? "Activate" : "Deactivate"} ${changing?.vendor.name ?? "the vendor"}`} confirmText="Continue" size="md" confirmDisabled={!changing?.reason.trim()}
-        description={changing?.kind === "activate" ? "The vendor is Active again with the electronic signature of the person who activates it. The reason stays in the Audit Trail." : "An external training with this unit gets a warning from now on. The reason stays in the Audit Trail."}
+        isOpen={!!changing && !signing} onClose={() => setChanging(undefined)} title={`${changing?.kind === "activate" ? "Activate" : tr("Deactivate")} ${changing?.vendor.name ?? "the vendor"}`} confirmText="Continue" size="md" confirmDisabled={!changing?.reason.trim()}
+        description={changing?.kind === "activate" ? tr("The vendor is Active again with the electronic signature of the person who activates it. The reason stays in the Audit Trail.") : tr("An external training with this unit gets a warning from now on. The reason stays in the Audit Trail.")}
         onConfirm={() => setSigning(changing?.kind)}
       >
         {changing && (
           <div className="grid gap-4">
-            <FormField label="Reason" required><Textarea rows={3} value={changing.reason} onChange={(e) => setChanging({ ...changing, reason: e.target.value })} /></FormField>
-            {changing.kind === "activate" && <FormField label="Approval valid until"><TrainingDateField value={changing.validUntil} onChange={(v) => setChanging({ ...changing, validUntil: v })} /></FormField>}
+            <FormField label={tr("Reason")} required><Textarea rows={3} value={changing.reason} onChange={(e) => setChanging({ ...changing, reason: e.target.value })} /></FormField>
+            {changing.kind === "activate" && <FormField label={tr("Approval valid until")}><TrainingDateField value={changing.validUntil} onChange={(v) => setChanging({ ...changing, validUntil: v })} /></FormField>}
           </div>
         )}
       </FormModal>
       <FormModal isOpen={!!details} onClose={() => setDetails(undefined)} onConfirm={() => setDetails(undefined)} title={details?.name ?? "Training Vendor"} confirmText="Close" showCancel={false} size="md">
         {details && (
           <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-slate-500">Status</dt><dd><Badge color={STATUS_COLOR[details.status]}>{details.statusLabel}</Badge></dd>
-            <dt className="text-slate-500">Approval reference</dt><dd>{details.reference ?? "—"}</dd>
-            <dt className="text-slate-500">Valid until</dt><dd>{details.validUntil ? day(details.validUntil) : "No end date"}</dd>
-            <dt className="text-slate-500">Written by</dt><dd>{details.createdByName} · {day(details.createdAt)}</dd>
-            <dt className="text-slate-500">Approved by</dt><dd>{details.approvedByName ?? "—"}</dd>
-            <dt className="text-slate-500">Approved date</dt><dd>{details.approvedAt ? day(details.approvedAt) : "—"}</dd>
+            <dt className="text-slate-500">{tr("Status")}</dt><dd><Badge color={STATUS_COLOR[details.status]}>{details.statusLabel}</Badge></dd>
+            <dt className="text-slate-500">{tr("Approval reference")}</dt><dd>{details.reference ?? "—"}</dd>
+            <dt className="text-slate-500">{tr("Valid until")}</dt><dd>{details.validUntil ? day(details.validUntil) : tr("No end date")}</dd>
+            <dt className="text-slate-500">{tr("Written by")}</dt><dd>{details.createdByName} · {day(details.createdAt)}</dd>
+            <dt className="text-slate-500">{tr("Approved by")}</dt><dd>{details.approvedByName ?? "—"}</dd>
+            <dt className="text-slate-500">{tr("Approved date")}</dt><dd>{details.approvedAt ? day(details.approvedAt) : "—"}</dd>
             {details.status === "INACTIVE" && (
               <>
-                <dt className="text-slate-500">Made inactive by</dt><dd>{details.deactivatedByName}</dd>
-                <dt className="text-slate-500">Made inactive on</dt><dd>{details.deactivatedAt ? day(details.deactivatedAt) : "—"}</dd>
-                <dt className="text-slate-500">Reason</dt><dd className="whitespace-normal">{details.deactivateReason}</dd>
+                <dt className="text-slate-500">{tr("Made inactive by")}</dt><dd>{details.deactivatedByName}</dd>
+                <dt className="text-slate-500">{tr("Made inactive on")}</dt><dd>{details.deactivatedAt ? day(details.deactivatedAt) : "—"}</dd>
+                <dt className="text-slate-500">{tr("Reason")}</dt><dd className="whitespace-normal">{details.deactivateReason}</dd>
               </>
             )}
           </dl>

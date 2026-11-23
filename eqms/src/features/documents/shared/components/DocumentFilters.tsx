@@ -12,7 +12,7 @@ import { DesktopFilterPanel, type DesktopFilterField } from '@/components/ui/fil
 import { FilterOptionList } from '@/components/ui/filter/FilterOptionList';
 import { FilterSearchInput } from '@/components/ui/filter/FilterSearchInput';
 import { useBranding } from '@/components/branding/BrandLogo';
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface DocumentFiltersProps {
   searchQuery: string;
@@ -255,7 +255,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
               </div>
               <input
                 type="text"
-                placeholder="Search documents..."
+                placeholder={tr("Search documents...")}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -275,14 +275,14 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
               className="whitespace-nowrap gap-2"
             >
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
       )}
 
       {compactDesktopFilters && <DesktopFilterPanel values={committed} defaults={defaults} fields={fields} onApply={applyCompactFilters} trailing={filterTrailing}
-        search={!hideSearch && <FilterSearchInput aria-label="Search documents" placeholder="Search documents..." value={searchQuery}
+        search={!hideSearch && <FilterSearchInput aria-label={tr("Search documents")} placeholder={tr("Search documents...")} value={searchQuery}
           onChange={onSearchChange} />} />}
       <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
         {!hideSearch && (
@@ -307,12 +307,12 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         <div className="w-full">
           <Select
-            label="Status"
+            label={tr("Status")}
             value={statusFilter}
             onChange={(value) => !disableStatusFilter && onStatusChange(value as DocumentStatus | "All")}
             options={resolvedStatusOptions}
-            placeholder="Select status"
-            searchPlaceholder="Search status..."
+            placeholder={tr("Select status")}
+            searchPlaceholder={tr("Search status...")}
             disabled={disableStatusFilter}
           />
         </div>
@@ -320,12 +320,12 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showTypeFilter && (
           <div className="w-full">
             <Select
-              label="Document Type"
+              label={tr("Document Type")}
               value={typeFilter}
               onChange={(value) => onTypeChange(value as string)}
               options={resolvedTypeOptions}
-              placeholder="Select type"
-              searchPlaceholder="Search type..."
+              placeholder={tr("Select type")}
+              searchPlaceholder={tr("Search type...")}
             />
           </div>
         )}
@@ -333,12 +333,12 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showBusinessUnitFilter && (
           <div className="w-full">
             <Select
-              label="Business Unit"
+              label={tr("Business Unit")}
               value={businessUnitFilter}
               onChange={(value) => onBusinessUnitChange(value as string)}
               options={resolvedBusinessUnitOptions}
-              placeholder="Select business unit"
-              searchPlaceholder="Search business unit..."
+              placeholder={tr("Select business unit")}
+              searchPlaceholder={tr("Search business unit...")}
             />
           </div>
         )}
@@ -346,25 +346,25 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showDepartmentFilter && (
           <div className="w-full">
             <Select
-              label="Department"
+              label={tr("Department")}
               value={departmentFilter}
               onChange={(value) => onDepartmentChange(value as string)}
               options={resolvedDepartmentOptions}
-              placeholder="Select department"
-              searchPlaceholder="Search department..."
+              placeholder={tr("Select department")}
+              searchPlaceholder={tr("Search department...")}
             />
           </div>
         )}
 
         <div className="w-full">
           <Select
-            label="Author"
+            label={tr("Author")}
             value={authorFilter}
             onChange={(value) => !authorFilterDisabled && onAuthorChange(value as string)}
             options={resolvedAuthorOptions}
             onSearch={onAuthorSearch}
-            placeholder="Select author"
-            searchPlaceholder="Search author..."
+            placeholder={tr("Select author")}
+            searchPlaceholder={tr("Search author...")}
             disabled={authorFilterDisabled}
           />
         </div>
@@ -372,13 +372,13 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showReviewerFilter && (
           <div className="w-full">
             <Select
-              label="Reviewers"
+              label={tr("Reviewers")}
               value={reviewerFilter}
               onChange={(value) => onReviewerChange(value as string)}
               options={resolvedParticipantOptions}
               onSearch={onAuthorSearch}
-              placeholder="Select reviewer"
-              searchPlaceholder="Search reviewer..."
+              placeholder={tr("Select reviewer")}
+              searchPlaceholder={tr("Search reviewer...")}
             />
           </div>
         )}
@@ -386,13 +386,13 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showApproverFilter && (
           <div className="w-full">
             <Select
-              label="Approvers"
+              label={tr("Approvers")}
               value={approverFilter}
               onChange={(value) => onApproverChange(value as string)}
               options={resolvedParticipantOptions}
               onSearch={onAuthorSearch}
-              placeholder="Select approver"
-              searchPlaceholder="Search approver..."
+              placeholder={tr("Select approver")}
+              searchPlaceholder={tr("Search approver...")}
             />
           </div>
         )}
@@ -400,7 +400,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showRequiresTrainingFilter && (
           <div className="w-full">
             <Select
-              label="Required Training?"
+              label={tr("Required Training?")}
               value={requiresTrainingFilter}
               onChange={(value) => onRequiresTrainingChange(value as string)}
               options={binaryOptions}
@@ -412,11 +412,11 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showRelatedDocumentFilter && (
           <div className="w-full">
             <Select
-              label="Related Document"
+              label={tr("Related Document")}
               value={relatedDocumentFilter}
               onChange={(value) => onRelatedDocumentFilterChange(value as string)}
               options={binaryOptions}
-              placeholder="Select option"
+              placeholder={tr("Select option")}
             />
           </div>
         )}
@@ -424,11 +424,11 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showCorrelatedDocumentFilter && (
           <div className="w-full">
             <Select
-              label="Correlated Document"
+              label={tr("Correlated Document")}
               value={correlatedDocumentFilter}
               onChange={(value) => onCorrelatedDocumentFilterChange(value as string)}
               options={binaryOptions}
-              placeholder="Select option"
+              placeholder={tr("Select option")}
             />
           </div>
         )}
@@ -436,45 +436,45 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         {showTemplateFilter && (
           <div className="w-full">
             <Select
-              label="Is Template"
+              label={tr("Is Template")}
               value={templateFilter}
               onChange={(value) => onTemplateFilterChange(value as string)}
               options={binaryOptions}
-              placeholder="Select option"
+              placeholder={tr("Select option")}
             />
           </div>
         )}
 
         <div className="w-full">
           <DateRangePicker
-            label="Created Date Range"
+            label={tr("Created Date Range")}
             startDate={createdFromDate}
             endDate={createdToDate}
             onStartDateChange={onCreatedFromDateChange}
             onEndDateChange={onCreatedToDateChange}
-            placeholder="Select date range"
+            placeholder={tr("Select date range")}
           />
         </div>
 
         <div className="w-full">
           <DateRangePicker
-            label="Effective Date Range"
+            label={tr("Effective Date Range")}
             startDate={effectiveFromDate}
             endDate={effectiveToDate}
             onStartDateChange={onEffectiveFromDateChange}
             onEndDateChange={onEffectiveToDateChange}
-            placeholder="Select date range"
+            placeholder={tr("Select date range")}
           />
         </div>
 
         <div className="w-full">
           <DateRangePicker
-            label="Valid Date Range"
+            label={tr("Valid Date Range")}
             startDate={validFromDate}
             endDate={validToDate}
             onStartDateChange={onValidFromDateChange}
             onEndDateChange={onValidToDateChange}
-            placeholder="Select date range"
+            placeholder={tr("Select date range")}
           />
         </div>
 
@@ -503,7 +503,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
           disabled={disableStatusFilter}
@@ -524,7 +524,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showTypeFilter && (
           <FilterAccordionItem
-            label="Document Type"
+            label={tr("Document Type")}
             isExpanded={expandedSections.has("type")}
             onToggle={() => toggleSection("type")}
           >
@@ -545,7 +545,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showBusinessUnitFilter && (
           <FilterAccordionItem
-            label="Business Unit"
+            label={tr("Business Unit")}
             isExpanded={expandedSections.has("bu")}
             onToggle={() => toggleSection("bu")}
           >
@@ -566,7 +566,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showDepartmentFilter && (
           <FilterAccordionItem
-            label="Department"
+            label={tr("Department")}
             isExpanded={expandedSections.has("dept")}
             onToggle={() => toggleSection("dept")}
           >
@@ -586,7 +586,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         )}
 
         <FilterAccordionItem
-          label="Author"
+          label={tr("Author")}
           isExpanded={expandedSections.has("author")}
           onToggle={() => toggleSection("author")}
           disabled={authorFilterDisabled}
@@ -607,7 +607,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showReviewerFilter && (
           <FilterAccordionItem
-            label="Reviewers"
+            label={tr("Reviewers")}
             isExpanded={expandedSections.has("reviewer")}
             onToggle={() => toggleSection("reviewer")}
           >
@@ -628,7 +628,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showApproverFilter && (
           <FilterAccordionItem
-            label="Approvers"
+            label={tr("Approvers")}
             isExpanded={expandedSections.has("approver")}
             onToggle={() => toggleSection("approver")}
           >
@@ -649,7 +649,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showRequiresTrainingFilter && (
           <FilterAccordionItem
-            label="Required Training?"
+            label={tr("Required Training?")}
             isExpanded={expandedSections.has("requiresTraining")}
             onToggle={() => toggleSection("requiresTraining")}
           >
@@ -670,7 +670,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showRelatedDocumentFilter && (
           <FilterAccordionItem
-            label="Related Document"
+            label={tr("Related Document")}
             isExpanded={expandedSections.has("related")}
             onToggle={() => toggleSection("related")}
           >
@@ -691,7 +691,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showCorrelatedDocumentFilter && (
           <FilterAccordionItem
-            label="Correlated Document"
+            label={tr("Correlated Document")}
             isExpanded={expandedSections.has("correlated")}
             onToggle={() => toggleSection("correlated")}
           >
@@ -712,7 +712,7 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
 
         {showTemplateFilter && (
           <FilterAccordionItem
-            label="Is Template"
+            label={tr("Is Template")}
             isExpanded={expandedSections.has("template")}
             onToggle={() => toggleSection("template")}
           >
@@ -732,52 +732,52 @@ export const DocumentFilters: React.FC<DocumentFiltersProps> = ({
         )}
 
         <FilterAccordionItem
-          label="Created Date Range"
+          label={tr("Created Date Range")}
           isExpanded={expandedSections.has("createdDate")}
           onToggle={() => toggleSection("createdDate")}
         >
           <div className="pt-2 pb-4">
             <DateRangePicker
-              label="Created Date Range"
+              label={tr("Created Date Range")}
               startDate={createdFromDate}
               endDate={createdToDate}
               onStartDateChange={onCreatedFromDateChange}
               onEndDateChange={onCreatedToDateChange}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Effective Date Range"
+          label={tr("Effective Date Range")}
           isExpanded={expandedSections.has("effectiveDate")}
           onToggle={() => toggleSection("effectiveDate")}
         >
           <div className="pt-2 pb-4">
             <DateRangePicker
-              label="Effective Date Range"
+              label={tr("Effective Date Range")}
               startDate={effectiveFromDate}
               endDate={effectiveToDate}
               onStartDateChange={onEffectiveFromDateChange}
               onEndDateChange={onEffectiveToDateChange}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Valid Date Range"
+          label={tr("Valid Date Range")}
           isExpanded={expandedSections.has("validDate")}
           onToggle={() => toggleSection("validDate")}
         >
           <div className="pt-2 pb-4">
             <DateRangePicker
-              label="Valid Date Range"
+              label={tr("Valid Date Range")}
               startDate={validFromDate}
               endDate={validToDate}
               onStartDateChange={onValidFromDateChange}
               onEndDateChange={onValidToDateChange}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>

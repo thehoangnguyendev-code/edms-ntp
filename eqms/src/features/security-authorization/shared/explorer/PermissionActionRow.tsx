@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import type { Permission, PermissionRiskLevel } from "../../access-profiles/types";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr } from "@/i18n";
 
 interface PermissionActionRowProps {
   permission: Permission;
@@ -109,13 +110,13 @@ export const PermissionActionRow: React.FC<PermissionActionRowProps> = ({
       {(permission.requiresAudit || permission.requiresESign || (permission.lifecycleUsages?.length ?? 0) > 0) && (
         <div className="ml-auto flex shrink-0 items-center gap-1 text-slate-300 group-hover:text-slate-400">
           {(permission.lifecycleUsages?.length ?? 0) > 0 && (
-            <span title="Applies only at specific lifecycle states" className="leading-none"><GitBranch className="h-3.5 w-3.5 text-slate-400" /></span>
+            <span title={tr("Applies only at specific lifecycle states")} className="leading-none"><GitBranch className="h-3.5 w-3.5 text-slate-400" /></span>
           )}
           {permission.requiresAudit && (
-            <span title="GMP Audit required" className="leading-none"><IconFilter2Search className="h-3.5 w-3.5 text-slate-400" /></span>
+            <span title={tr("GMP Audit required")} className="leading-none"><IconFilter2Search className="h-3.5 w-3.5 text-slate-400" /></span>
           )}
           {permission.requiresESign && (
-            <span title="E-Signature required" className="leading-none"><PenTool className="h-3.5 w-3.5 text-slate-400 -rotate-[90deg]" /></span>
+            <span title={tr("E-Signature required")} className="leading-none"><PenTool className="h-3.5 w-3.5 text-slate-400 -rotate-[90deg]" /></span>
           )}
         </div>
       )}

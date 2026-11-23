@@ -12,7 +12,7 @@ import {
   writeSystemLocalizationSettings,
   type SystemLocalizationSettings,
 } from '@/config/localization';
-import { LANGUAGE_OPTIONS, useLanguage } from '@/i18n';
+import { LANGUAGE_OPTIONS, useLanguage, tr } from "@/i18n";
 
 interface LocalizationTabProps {
   onRegisterSaveHandler?: ((handler: (() => Promise<void>) | null) => void);
@@ -95,8 +95,8 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
           <Switch checked={preferences.useSystemDefaults} onChange={(checked) => setPreferences(checked ? { useSystemDefaults: true } : { ...effective, useSystemDefaults: false })} disabled={loading} />
         </div>
         {!preferences.useSystemDefaults && <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{t('preferences.dateTime', 'Date & Time Format')}</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p><p className="mt-1 text-xs text-slate-500">{t('preferences.fixedHint', 'The same for everybody; it is not a preference.')}</p></div>
-          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{t('preferences.timeZone', 'Time Zone')}</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p><p className="mt-1 text-xs text-slate-500">{t('preferences.fixedHint', 'The zone of the site; it is not a preference.')}</p></div>
+          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{t('preferences.dateTime', 'Date & Time Format')}</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">{tr("DD/MM/YYYY HH:mm:ss")}</p><p className="mt-1 text-xs text-slate-500">{t('preferences.fixedHint', 'The same for everybody; it is not a preference.')}</p></div>
+          <div><p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{t('preferences.timeZone', 'Time Zone')}</p><p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">{tr("Asia/Ho_Chi_Minh (UTC+7)")}</p><p className="mt-1 text-xs text-slate-500">{t('preferences.fixedHint', 'The zone of the site; it is not a preference.')}</p></div>
           <Select label={t('preferences.numberFormat', 'Number Format')} value={effective.numberFormat} options={NUMBER_FORMATS} onChange={value => setValue('numberFormat', value)} />
           <Select label={t('preferences.font', 'Application Font')} value={effective.fontFamily} options={[...APPLICATION_FONT_OPTIONS]} onChange={value => setValue('fontFamily', String(value) as SystemLocalizationSettings['fontFamily'])} />
         </div>}

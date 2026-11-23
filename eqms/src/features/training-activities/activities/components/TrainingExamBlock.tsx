@@ -19,6 +19,7 @@ import {
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
+import { tr, trFormat } from "@/i18n";
 
 const KIND_LABEL = {
   SINGLE: "One right answer",
@@ -85,7 +86,7 @@ export function TrainingExamBlock({
     return (
       <div className="space-y-2">
         <LedgerNote>
-          Trainees answer in the system and it is graded automatically.{!exam.canEdit ? " Approved: it cannot be changed." : ""}
+          {tr("Trainees answer in the system and it is graded automatically.")}{!exam.canEdit ? " Approved: it cannot be changed." : ""}
           <span className="block">{`${exam.questions.length} question${exam.questions.length === 1 ? "" : "s"} · ${total} point${total === 1 ? "" : "s"}${exam.minutes ? ` · ${exam.minutes} minutes` : " · no time limit"}`}</span>
         </LedgerNote>
         <LedgerList>
@@ -93,7 +94,7 @@ export function TrainingExamBlock({
             <LedgerRow
               key={q.id}
               title={<>{q.qNo}. {q.prompt}{q.image && <img src={q.image} alt={`Picture of question ${q.qNo}`} className="mt-2 max-h-48 max-w-full rounded border border-slate-200 bg-white object-contain" />}</>}
-              state={`${KIND_LABEL[q.kind]} · ${q.points} pt`}
+              state={`${KIND_LABEL[q.kind]} · ${trFormat("{points} pt", { points: q.points })}`}
             />
           ))}
         </LedgerList>
@@ -103,7 +104,7 @@ export function TrainingExamBlock({
   return (
     <>
       <TabBlock
-        title="Test in the system"
+        title={tr("Test in the system")}
         count={exam.questions.length}
         hint={`Trainees answer in the system and it is graded automatically.${!exam.canEdit && exam.questions.length > 0 ? " Approved: it cannot be changed." : ""}`}
         action={
@@ -128,7 +129,7 @@ export function TrainingExamBlock({
             {exam.questions.map((q) => (
               <li key={q.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
                 <span className="min-w-0 flex-1 basis-56 break-words text-sm font-medium text-slate-900">{q.qNo}. {q.prompt}</span>
-                <Badge color="slate">{KIND_LABEL[q.kind]} · {q.points} pt</Badge>
+                <Badge color="slate">{KIND_LABEL[q.kind]} · {trFormat("{points} pt", { points: q.points })}</Badge>
               </li>
             ))}
           </ol>
@@ -145,7 +146,7 @@ export function TrainingExamBlock({
                     {q.qNo}. {q.prompt}
                   </span>
                   <Badge color="slate">
-                    {KIND_LABEL[q.kind]} · {q.points} pt
+                    {KIND_LABEL[q.kind]} · {trFormat("{points} pt", { points: q.points })}
                   </Badge>
                 </div>
                 {q.image && <img src={q.image} alt={`Picture of question ${q.qNo}`} className="mt-2 max-h-48 max-w-full rounded border border-slate-200 bg-white object-contain" />}
@@ -158,7 +159,7 @@ export function TrainingExamBlock({
                       <span className="w-5 shrink-0">{o.id}.</span>
                       <span className="min-w-0 break-words">{o.text}</span>
                       {showKey && q.correct?.includes(o.id) && (
-                        <Badge color="emerald">Right</Badge>
+                        <Badge color="emerald">{tr("Right")}</Badge>
                       )}
                     </li>
                   ))}
@@ -176,7 +177,7 @@ export function TrainingExamBlock({
           onSaved={(next) => {
             setExam(next);
             setEditing(false);
-            showToast({ type: "success", title: "Test saved", message: "" });
+            showToast({ type: "success", title: tr("Test saved"), message: "" });
           }}
         />
       )}
@@ -253,7 +254,7 @@ function ExamEditor({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The test was not saved",
+        title: tr("The test was not saved"),
         message: trainingError(e),
       });
     } finally {
@@ -265,15 +266,15 @@ function ExamEditor({
       isOpen
       onClose={onClose}
       onConfirm={() => void save()}
-      title="Write the Test"
-      description="Mark the right answers. After the content is reviewed and approved the questions cannot be changed."
+      title={tr("Write the Test")}
+      description={tr("Mark the right answers. After the content is reviewed and approved the questions cannot be changed.")}
       confirmText="Save the test"
       isLoading={busy}
       confirmDisabled={!ok}
       size="xl"
     >
       <div className="space-y-4">
-        <FormField label="Time limit in minutes (leave empty for none)">
+        <FormField label={tr("Time limit in minutes (leave empty for none)")}>
           <Input
             type="number"
             min={1}
@@ -290,7 +291,7 @@ function ExamEditor({
           >
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-slate-900">
-                Question {i + 1}
+                {tr("Question")} {i + 1}
               </h4>
               {items.length > 1 && (
                 <Button
@@ -299,14 +300,14 @@ function ExamEditor({
                   onClick={() => setItems(items.filter((_x, k) => k !== i))}
                 >
                   <IconTrash className="mr-1 h-4 w-4" />
-                  Remove
+                  {tr("Remove")}
                 </Button>
               )}
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="md:col-span-2">
                 <Select
-                  label="Kind"
+                  label={tr("Kind")}
                   value={d.kind}
                   enableSearch={false}
                   onChange={(v) =>
@@ -327,7 +328,7 @@ function ExamEditor({
                   }))}
                 />
               </div>
-              <FormField label="Points">
+              <FormField label={tr("Points")}>
                 <Input
                   type="number"
                   min={0.5}
@@ -338,7 +339,7 @@ function ExamEditor({
                 />
               </FormField>
             </div>
-            <FormField label="Question" required>
+            <FormField label={tr("Question")} required>
               <Textarea
                 rows={2}
                 maxLength={2000}
@@ -346,12 +347,12 @@ function ExamEditor({
                 onChange={(e) => set(i, { prompt: e.target.value })}
               />
             </FormField>
-            <FormField label="Picture">
+            <FormField label={tr("Picture")}>
               <QuestionImageField value={d.image} onChange={(image) => set(i, { image })} />
             </FormField>
             {d.kind === "TRUE_FALSE" ? (
               <RadioGroup
-                label="The right answer"
+                label={tr("The right answer")}
                 name={`tf-${i}`}
                 layout="horizontal"
                 value={d.correct[0] ?? ""}
@@ -364,7 +365,7 @@ function ExamEditor({
             ) : (
               <div className="space-y-2">
                 <div className="text-xs font-medium text-slate-700">
-                  Answers (tick the right {d.kind === "SINGLE" ? "one" : "ones"}
+                  {tr("Answers (tick the right")} {d.kind === "SINGLE" ? tr("one") : tr("ones")}
                   )
                 </div>
                 {d.options.map((text, k) => (
@@ -430,7 +431,7 @@ function ExamEditor({
                     onClick={() => set(i, { options: [...d.options, ""] })}
                   >
                     <IconPlus className="mr-1 h-4 w-4" />
-                  Add an Answer
+                  {tr("Add an Answer")}
                   </Button>
                 )}
               </div>
@@ -443,7 +444,7 @@ function ExamEditor({
             onClick={() => setItems([...items, blank()])}
           >
             <IconPlus className="mr-1 h-4 w-4" />
-            Add a Question
+            {tr("Add a Question")}
           </Button>
         )}
       </div>

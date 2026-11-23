@@ -52,6 +52,7 @@ import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/br
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const DECISION_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -142,15 +143,15 @@ const DecisionModal: React.FC<{
         <div className="space-y-3">
           <p>
             {decision === "CONFIRMED"
-              ? "Confirm that this audit trail entry has been reviewed and is appropriate."
-              : "Flag this audit trail entry for further investigation."}
+              ? tr("Confirm that this audit trail entry has been reviewed and is appropriate.")
+              : tr("Flag this audit trail entry for further investigation.")}
           </p>
           <div>
             <label className={labelClass}>
-              Note{" "}
+              {tr("Note")}{" "}
               {decision === "CONFIRMED" && (
                 <span className="text-xs font-normal text-slate-400">
-                  (optional)
+                  {tr("(optional)")}
                 </span>
               )}
             </label>
@@ -159,7 +160,7 @@ const DecisionModal: React.FC<{
               rows={2}
               value={note}
               onChange={(event) => onNoteChange(event.target.value)}
-              placeholder="Reviewer note..."
+              placeholder={tr("Reviewer note...")}
             />
           </div>
         </div>
@@ -284,7 +285,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       try {
         await loadCampaign();
       } catch {
-        showToast({ type: "error", message: "Failed to load campaign" });
+        showToast({ type: "error", message: tr("Failed to load campaign") });
       } finally {
         setInitialLoading(false);
       }
@@ -367,7 +368,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
       });
       showToast({
         type: "success",
-        message: "Audit trail review completed and signed",
+        message: tr("Audit trail review completed and signed"),
       });
       await loadCampaign();
     } catch (error: any) {
@@ -400,7 +401,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Periodic Review Details"
+          title={tr("Periodic Review Details")}
           breadcrumbItems={breadcrumb(navigate)}
           actions={
             <Button
@@ -410,16 +411,16 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <section className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-700">
-            Campaign not found
+            {tr("Campaign not found")}
           </p>
           <Button variant="outline" size="sm" onClick={handleBack}>
-            Back to Periodic Review
+            {tr("Back to Periodic Review")}
           </Button>
         </section>
       </div>
@@ -429,7 +430,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-6">
       <PageHeader
-        title="Periodic Review Details"
+        title={tr("Periodic Review Details")}
         breadcrumbItems={breadcrumb(navigate)}
         actions={
           <>
@@ -439,7 +440,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
               onClick={handleBack}
               className="gap-2"
             >
-              Back
+              {tr("Back")}
             </Button>
             {canManage && inProgress && (
               <>
@@ -448,7 +449,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   size="sm"
                   onClick={() => setCancelConfirmOpen(true)}
                 >
-                  Cancel Campaign
+                  {tr("Cancel Campaign")}
                 </Button>
                 <Button
                   size="sm"
@@ -472,7 +473,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               {campaign.campaignNumber && (
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Audit Trail Campaign Number">
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title={tr("Audit Trail Campaign Number")}>
                   {campaign.campaignNumber}
                 </span>
               )}
@@ -492,7 +493,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
               <UserCheck className="h-5 w-5" />
             </span>
             <div className="text-sm">
-              <p className="text-xs text-slate-500">Reviewer</p>
+              <p className="text-xs text-slate-500">{tr("Reviewer")}</p>
               <p className="font-medium text-slate-700">{campaign.reviewerName || "—"}</p>
             </div>
           </div>
@@ -501,7 +502,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
           {[
             {
               icon: <CalendarRange className="h-5 w-5" />,
-              label: "Review period",
+              label: tr("Review period"),
               value: `${campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—"} – ${campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—"}`,
               tone: "text-slate-800",
             },
@@ -541,9 +542,9 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         {campaign.totalItems > 0 && (
           <div className="border-t border-slate-200 px-4 py-3 md:px-5">
             <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
-              <span>Review progress</span>
+              <span>{tr("Review progress")}</span>
               <span>
-                {campaign.totalItems - campaign.pendingItems} of {campaign.totalItems} entries decided
+                    {trFormat("{decided} of {total} entries decided", { decided: campaign.totalItems - campaign.pendingItems, total: campaign.totalItems })}
               </span>
             </div>
             <div
@@ -552,7 +553,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
               aria-valuemin={0}
               aria-valuemax={campaign.totalItems}
               aria-valuenow={campaign.totalItems - campaign.pendingItems}
-              aria-label="Entries decided"
+              aria-label={tr("Entries decided")}
             >
               <div
                 className="h-full rounded-full bg-emerald-500 transition-all duration-500"
@@ -566,7 +567,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         <div className="flex flex-col px-4 pt-4 md:p-5">
           <div className="-mx-1.5 mb-[-0.375rem] px-1.5 pb-1.5">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-              <label className={labelClass}>Search</label>
+              <label className={labelClass}>{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3.5 h-4 w-4 text-slate-400" />
@@ -576,7 +577,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                       setSearch(event.target.value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Search user, employee ID, module, action, entity..."
+                    placeholder={tr("Search user, employee ID, module, action, entity...")}
                     className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   {search && (
@@ -587,7 +588,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                         setCurrentPage(1);
                       }}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
-                      aria-label="Clear search"
+                      aria-label={tr("Clear search")}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -599,20 +600,20 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   className="h-10 whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
             <ConfiguredDesktopFilters
               search={
                 <input
-                  aria-label="Search"
+                  aria-label={tr("Search")}
                   value={search}
                   onChange={(event) => {
                     setSearch(event.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search user, employee ID, module, action, entity..."
+                  placeholder={tr("Search user, employee ID, module, action, entity...")}
                   className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
                 />
               }
@@ -620,7 +621,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                 { id: "decision", label: "Decision", value: decision, options: DECISION_OPTIONS, onChange: (value) => { setDecision(value); setCurrentPage(1); } },
                 { id: "module", label: "Module", value: moduleFilter, options: moduleOptions, onChange: (value) => { setModuleFilter(value); setCurrentPage(1); } },
                 { id: "action", label: "Action", value: actionFilter, options: actionOptions, onChange: (value) => { setActionFilter(value); setCurrentPage(1); } },
-                { id: "signed", label: "E-Signature", value: signedFilter, options: SIGNED_OPTIONS, onChange: (value) => { setSignedFilter(value as "ALL" | "YES" | "NO"); setCurrentPage(1); } },
+                { id: "signed", label: tr("E-Signature"), value: signedFilter, options: SIGNED_OPTIONS, onChange: (value) => { setSignedFilter(value as "ALL" | "YES" | "NO"); setCurrentPage(1); } },
               ]}
               dates={[
                 {
@@ -635,7 +636,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
             >
               <div className="hidden grid-cols-1 items-end gap-4 md:grid md:grid-cols-3">
                 <div className="w-full">
-                  <label className={labelClass}>Search</label>
+                  <label className={labelClass}>{tr("Search")}</label>
                   <div className="relative">
                     <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-3 h-4 w-4 text-slate-400" />
                     <input
@@ -644,7 +645,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                         setSearch(event.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search user, employee ID, module, action, entity..."
+                      placeholder={tr("Search user, employee ID, module, action, entity...")}
                       className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     {search && (
@@ -655,7 +656,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                           setCurrentPage(1);
                         }}
                         className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
-                        aria-label="Clear search"
+                        aria-label={tr("Clear search")}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -663,7 +664,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   </div>
                 </div>
                 <Select
-                  label="Decision"
+                  label={tr("Decision")}
                   value={decision}
                   onChange={(value) => {
                     setDecision(String(value));
@@ -672,7 +673,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   options={DECISION_OPTIONS}
                 />
                 <Select
-                  label="Module"
+                  label={tr("Module")}
                   value={moduleFilter}
                   onChange={(value) => {
                     setModuleFilter(String(value));
@@ -681,7 +682,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   options={moduleOptions}
                 />
                 <Select
-                  label="Action"
+                  label={tr("Action")}
                   value={actionFilter}
                   onChange={(value) => {
                     setActionFilter(String(value));
@@ -690,7 +691,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   options={actionOptions}
                 />
                 <Select
-                  label="E-Signature"
+                  label={tr("E-Signature")}
                   value={signedFilter}
                   onChange={(value) => {
                     setSignedFilter(String(value) as "ALL" | "YES" | "NO");
@@ -699,7 +700,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                   options={SIGNED_OPTIONS}
                 />
                 <DateRangePicker
-                  label="Timestamp"
+                  label={tr("Timestamp")}
                   startDate={dateFrom}
                   endDate={dateTo}
                   onStartDateChange={(value) => {
@@ -710,7 +711,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                     setDateTo(value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
                 <div className="flex items-end">
                   <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} />
@@ -741,41 +742,41 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                 <TableMarkup.Head className="sticky top-0 z-30">
                   <TableMarkup.Row>
                     <SortHeader
-                      label="Timestamp"
+                      label={tr("Timestamp")}
                       column="timestamp"
                       current={sortBy}
                       direction={sortDirection}
                       onSort={changeSort}
                     />
                     <SortHeader
-                      label="User"
+                      label={tr("User")}
                       column="userFullName"
                       current={sortBy}
                       direction={sortDirection}
                       onSort={changeSort}
                     />
                     <SortHeader
-                      label="Module"
+                      label={tr("Module")}
                       column="module"
                       current={sortBy}
                       direction={sortDirection}
                       onSort={changeSort}
                     />
                     <SortHeader
-                      label="Action"
+                      label={tr("Action")}
                       column="action"
                       current={sortBy}
                       direction={sortDirection}
                       onSort={changeSort}
                     />
                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
-                      Entity
+                      {tr("Entity")}
                     </TableMarkup.HeaderCell>
                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell42}>
-                      E-Sig
+                      {tr("E-Sig")}
                     </TableMarkup.HeaderCell>
                     <SortHeader
-                      label="Decision"
+                      label={tr("Decision")}
                       column="decision"
                       current={sortBy}
                       direction={sortDirection}
@@ -783,7 +784,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                     />
                     {canManage && inProgress && (
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell21}>
-                        Action
+                        {tr("Action")}
                       </TableMarkup.HeaderCell>
                     )}
                   </TableMarkup.Row>
@@ -796,8 +797,8 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                         className="py-12"
                       >
                         <TableEmptyState
-                          title="No audit log entries found"
-                          description="Try changing the search or the filters."
+                          title={tr("No audit log entries found")}
+                          description={tr("Try changing the search or the filters.")}
                         />
                       </TableMarkup.Cell>
                     </TableMarkup.Row>
@@ -876,7 +877,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                                     openDecision(item, "CONFIRMED");
                                   }}
                                 >
-                                  Confirm
+                                  {tr("Confirm")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   icon={<Flag className="h-4 w-4" />}
@@ -885,7 +886,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                                     openDecision(item, "FLAGGED");
                                   }}
                                 >
-                                  Flag for investigation
+                                  {tr("Flag for investigation")}
                                 </DropdownMenuItem>
                               </div>
                             </PortalDropdownMenu>
@@ -923,7 +924,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
           { label: "Decision", options: DECISION_OPTIONS, current: decision, set: setDecision },
           { label: "Module", options: moduleOptions, current: moduleFilter, set: setModuleFilter },
           { label: "Action", options: actionOptions, current: actionFilter, set: setActionFilter },
-          { label: "E-Signature", options: SIGNED_OPTIONS, current: signedFilter, set: (value: string) => setSignedFilter(value as "ALL" | "YES" | "NO") },
+          { label: tr("E-Signature"), options: SIGNED_OPTIONS, current: signedFilter, set: (value: string) => setSignedFilter(value as "ALL" | "YES" | "NO") },
         ].map((group) => (
           <FilterAccordionItem
             key={group.label}
@@ -946,7 +947,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
             </div>
           </FilterAccordionItem>
         ))}
-        <FilterAccordionItem label="Timestamp" isExpanded={expandedFilters.has("Timestamp")} onToggle={() => toggleFilterSection("Timestamp")}>
+        <FilterAccordionItem label={tr("Timestamp")} isExpanded={expandedFilters.has("Timestamp")} onToggle={() => toggleFilterSection("Timestamp")}>
           <div className="pb-4 pt-2">
             <DateRangePicker
               label=""
@@ -960,7 +961,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                 setDateTo(value);
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
@@ -979,9 +980,9 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
         onClose={() => setCancelConfirmOpen(false)}
         onConfirm={() => void handleCancel()}
         type="warning"
-        title="Cancel Audit Trail Review Campaign"
+        title={tr("Cancel Audit Trail Review Campaign")}
         description={`Are you sure you want to cancel "${campaign.name}"? This action cannot be undone.`}
-        confirmText="Cancel Campaign"
+        confirmText={tr("Cancel Campaign")}
         cancelText="Back"
         showCancel
       />

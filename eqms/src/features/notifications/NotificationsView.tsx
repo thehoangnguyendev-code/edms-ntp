@@ -35,6 +35,7 @@ import type { Notification, NotificationPriority, NotificationFilterTab, Notific
 import { createEmptyNotificationSummaryCounts } from "./types";
 import { formatNotificationDateTime, notificationDayGroup, notificationDayKey, type NotificationDayGroup } from "./date";
 import { getNotificationTypeIcon, getNotificationIconStyles } from "./notificationMeta";
+import { tr } from "@/i18n";
 
 /** The modules that send notifications, for the filter of the inbox (the names of the menu; the server finds every spelling of a module in the table). */
 const INBOX_MODULES = ["documents", "controlled-copies", "training", "reports", "access-review", "security", "backup", "audit-trail"];
@@ -43,12 +44,12 @@ const URGENT = "critical,high";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "all" },
-  { label: "Unread Only", value: "unread" },
+  { label: tr("Unread Only"), value: "unread" },
   { label: "Read Only", value: "read" },
 ];
 const PRIORITY_OPTIONS = [
   { label: "All", value: "all" },
-  { label: "Critical / High", value: URGENT },
+  { label: tr("Critical / High"), value: URGENT },
   { label: "Critical", value: "critical" },
   { label: "High", value: "high" },
   { label: "Medium", value: "medium" },
@@ -119,18 +120,18 @@ const NotificationActionsDropdown: React.FC<{
         {notification.actionUrl && (
           <button onClick={(e) => { e.stopPropagation(); onView(); onClose(); }} className={item}>
             <Eye className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Open</span>
+            <span className="font-medium">{tr("Open")}</span>
           </button>
         )}
         {notification.status === "unread" && (
           <button onClick={(e) => { e.stopPropagation(); onMarkAsRead(); onClose(); }} className={item}>
             <Check className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Mark as Read</span>
+            <span className="font-medium">{tr("Mark as Read")}</span>
           </button>
         )}
         <button onClick={(e) => { e.stopPropagation(); onDelete(); onClose(); }} className={item}>
           <Trash2 className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium">Delete</span>
+          <span className="font-medium">{tr("Delete")}</span>
         </button>
       </div>
     </PortalDropdownMenu>
@@ -162,7 +163,7 @@ const IconTile: React.FC<{ notification: Notification; className?: string }> = (
         <Icon className={cn("h-4 w-4 md:h-5 md:w-5", colors.text)} />
       </div>
       {unread && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 md:h-3 md:w-3" />}
-      <span className="sr-only">Priority: {notification.priority}</span>
+                  <span className="sr-only">{tr("Priority:")} {notification.priority}</span>
     </div>
   );
 };
@@ -188,7 +189,7 @@ const InboxRow: React.FC<ItemProps> = ({ notification, isSelected, showCheckbox,
       />
       {showCheckbox && (
         <span className="mt-2.5">
-          <Checkbox checked={isSelected} onChange={() => onToggleSelect(notification.id)} aria-label="Select notification" className="min-h-0" />
+          <Checkbox checked={isSelected} onChange={() => onToggleSelect(notification.id)} aria-label={tr("Select notification")} className="min-h-0" />
         </span>
       )}
       <IconTile notification={notification} />
@@ -201,11 +202,11 @@ const InboxRow: React.FC<ItemProps> = ({ notification, isSelected, showCheckbox,
         <span className="text-xs tabular-nums text-slate-500 transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">{formatNotificationDateTime(notification.createdAt)}</span>
         <span className="absolute inset-0 flex items-center justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           {unread && (
-            <button type="button" aria-label="Mark as read" title="Mark as read" onClick={() => onMarkAsRead(notification.id)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-slate-200">
+            <button type="button" aria-label={tr("Mark as read")} title={tr("Mark as read")} onClick={() => onMarkAsRead(notification.id)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-slate-200">
               <Eye className="h-4 w-4" />
             </button>
           )}
-          <button type="button" aria-label="Delete" title="Delete" onClick={() => onDelete(notification.id)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600">
+          <button type="button" aria-label={tr("Delete")} title={tr("Delete")} onClick={() => onDelete(notification.id)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600">
             <Trash2 className="h-4 w-4" />
           </button>
         </span>
@@ -213,7 +214,7 @@ const InboxRow: React.FC<ItemProps> = ({ notification, isSelected, showCheckbox,
       <button
         ref={getRef(notification.id)}
         type="button"
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         onClick={(e) => onToggleMenu(notification.id, e)}
         className="absolute right-1 top-1.5 grid h-10 w-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-200 md:hidden"
       >
@@ -240,7 +241,7 @@ const TimelineCard: React.FC<ItemProps> = ({ notification, isSelected, showCheck
       >
         {showCheckbox && (
           <span className="mt-0.5">
-            <Checkbox checked={isSelected} onChange={() => onToggleSelect(notification.id)} aria-label="Select notification" className="min-h-0" />
+            <Checkbox checked={isSelected} onChange={() => onToggleSelect(notification.id)} aria-label={tr("Select notification")} className="min-h-0" />
           </span>
         )}
         <button type="button" onClick={() => onOpen(notification)} className={cn("min-w-0 flex-1", FOCUS_RING)}>
@@ -261,7 +262,7 @@ const TimelineCard: React.FC<ItemProps> = ({ notification, isSelected, showCheck
         <button
           ref={getRef(notification.id)}
           type="button"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
           onClick={(e) => onToggleMenu(notification.id, e)}
           className="-mr-1.5 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-slate-200"
         >
@@ -300,15 +301,15 @@ const SkeletonRows: React.FC = () => (
 const EmptyState: React.FC<{ type: NotificationFilterTab; hasActiveFilters?: boolean }> = ({ type, hasActiveFilters }) => {
   const messages = {
     all: {
-      title: "No notifications",
+      title: tr("No notifications"),
       description: hasActiveFilters ? "We couldn't find any notifications matching your filters. Try adjusting your search criteria or clear filters." : "You're all caught up!",
     },
     "for-me": {
-      title: "No personal notifications",
+      title: tr("No personal notifications"),
       description: hasActiveFilters ? "We couldn't find any personal notifications matching your filters." : "You don't have any personal notifications yet.",
     },
     system: {
-      title: "No system notifications",
+      title: tr("No system notifications"),
       description: hasActiveFilters ? "We couldn't find any system notifications matching your filters." : "There are no system notifications at this time.",
     },
   };
@@ -398,7 +399,7 @@ export const NotificationsView: React.FC = () => {
   }), [notificationSummary]);
 
   const SCOPE_TABS: TabItem[] = [
-    { id: "all", label: "All Notifications", count: counts.all },
+    { id: "all", label: tr("All Notifications"), count: counts.all },
     { id: "for-me", label: "For Me", count: counts.forMe },
     { id: "system", label: "Systems", count: counts.system },
   ];
@@ -443,7 +444,7 @@ export const NotificationsView: React.FC = () => {
       // an empty list would read as "all caught up": the person is told that the list could not be read, and can try again
       setLoadFailed(true);
       setNotifications([]);
-      showToast({ type: "error", title: "Failed to load notifications", message: "Please try again." });
+      showToast({ type: "error", title: tr("Failed to load notifications"), message: "Please try again." });
     } finally {
       if (requestId === requestSeqRef.current) {
         if (!silentRefresh) {
@@ -626,11 +627,11 @@ export const NotificationsView: React.FC = () => {
     <div role="alert" className="flex flex-col items-start justify-between gap-3 px-4 py-4 sm:flex-row sm:items-center md:px-5">
       <div className="flex items-center gap-2.5 text-sm text-red-700">
         <TriangleAlert className="h-4 w-4 shrink-0" />
-        Unable to load notifications. Please try again.
+        {tr("Unable to load notifications. Please try again.")}
       </div>
       <Button variant="outline" size="sm" onClick={() => void reload()} className="gap-2">
         <RefreshCw className="h-4 w-4" />
-        Try again
+        {tr("Try again")}
       </Button>
     </div>
   ) : notifications.length === 0 ? (
@@ -680,7 +681,7 @@ export const NotificationsView: React.FC = () => {
     />
   ) : (
     <div className="border-b border-slate-200">
-      <div className="relative flex overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-32px),transparent)]" role="tablist" aria-label="Notifications by priority">
+      <div className="relative flex overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-32px),transparent)]" role="tablist" aria-label={tr("Notifications by priority")}>
         {PRIORITY_TABS.map((tab) => {
           const active = activePriorityTab === tab.id;
           return (
@@ -711,7 +712,7 @@ export const NotificationsView: React.FC = () => {
     <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
       <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
         <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -719,20 +720,20 @@ export const NotificationsView: React.FC = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search notifications"
+                placeholder={tr("Search notifications")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                 className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
               />
               {search && (
-                <button type="button" aria-label="Clear search" onClick={() => { setSearch(""); setCurrentPage(1); }} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
+                <button type="button" aria-label={tr("Clear search")} onClick={() => { setSearch(""); setCurrentPage(1); }} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -740,10 +741,10 @@ export const NotificationsView: React.FC = () => {
         <ConfiguredDesktopFilters
           search={
             <FilterSearchInput
-              aria-label="Search"
+              aria-label={tr("Search")}
               value={search}
               onChange={(value) => { setSearch(value); setCurrentPage(1); }}
-              placeholder="Search notifications"
+              placeholder={tr("Search notifications")}
             />
           }
           filters={[
@@ -751,39 +752,39 @@ export const NotificationsView: React.FC = () => {
             { id: "module", label: "Module", value: module, options: allModuleOptions, defaultValue: "all", onChange: (value) => { setModule(value); setCurrentPage(1); } },
             { id: "priority", label: "Priority", value: priority, options: PRIORITY_OPTIONS, defaultValue: "all", onChange: (value) => { setPriority(value); setCurrentPage(1); } },
           ]}
-          dates={[{ id: "time", label: "Time Range", from: dateFrom, to: dateTo, onFromChange: setDateFrom, onToChange: setDateTo }]}
+          dates={[{ id: "time", label: tr("Time Range"), from: dateFrom, to: dateTo, onFromChange: setDateFrom, onToChange: setDateTo }]}
         >
           <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
                   <Search className="h-4 w-4 text-slate-400 transition-colors" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search notifications"
+                  placeholder={tr("Search notifications")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
                 />
                 {search && (
-                  <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
+                  <button type="button" aria-label={tr("Clear search")} onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
             </div>
-            <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as string); setCurrentPage(1); }} options={STATUS_OPTIONS} />
-            <Select label="Module" value={module} onChange={(value) => { setModule(value as string); setCurrentPage(1); }} options={allModuleOptions} />
-            <Select label="Priority" value={priority} onChange={(value) => { setPriority(value as string); setCurrentPage(1); }} options={PRIORITY_OPTIONS} />
+            <Select label={tr("Status")} value={statusFilter} onChange={(value) => { setStatusFilter(value as string); setCurrentPage(1); }} options={STATUS_OPTIONS} />
+            <Select label={tr("Module")} value={module} onChange={(value) => { setModule(value as string); setCurrentPage(1); }} options={allModuleOptions} />
+            <Select label={tr("Priority")} value={priority} onChange={(value) => { setPriority(value as string); setCurrentPage(1); }} options={PRIORITY_OPTIONS} />
             <DateRangePicker
-              label="Time Range"
+              label={tr("Time Range")}
               startDate={dateFrom}
               endDate={dateTo}
               onStartDateChange={(value) => { setDateFrom(value); setCurrentPage(1); }}
               onEndDateChange={(value) => { setDateTo(value); setCurrentPage(1); }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
             <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={handleClearFilters} />
@@ -812,7 +813,7 @@ export const NotificationsView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
-        title="Notifications"
+        title={tr("Notifications")}
         breadcrumbItems={notificationsBreadcrumb(navigate)}
         actions={
           <>
@@ -824,13 +825,13 @@ export const NotificationsView: React.FC = () => {
               className="flex-1 sm:flex-none whitespace-nowrap gap-2 text-emerald-700 hover:text-emerald-700 hover:bg-emerald-50"
             >
               <CheckCheck className="h-4 w-4" />
-              Mark all as read
+              {tr("Mark all as read")}
             </Button>
             <Button
               ref={headerMenu.getRef("more")}
               variant="outline"
               size="icon-sm"
-              aria-label="More actions"
+              aria-label={tr("More actions")}
               onClick={(e) => headerMenu.toggle("more", e)}
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -841,18 +842,18 @@ export const NotificationsView: React.FC = () => {
 
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
-          <span className="text-xs md:text-sm font-medium text-emerald-800">{selectedIds.size} selected</span>
+          <span className="text-xs md:text-sm font-medium text-emerald-800">{selectedIds.size} {tr("selected")}</span>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleBulkMarkAsRead} disabled={isBulkActionLoading} className="whitespace-nowrap gap-2">
               <CheckCheck className="h-4 w-4" />
-              Mark as read
+              {tr("Mark as read")}
             </Button>
             <Button variant="outline" size="sm" onClick={handleBulkDelete} disabled={isBulkActionLoading} className="whitespace-nowrap gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
               <Trash2 className="h-4 w-4" />
-              Delete
+              {tr("Delete")}
             </Button>
             <Button variant="ghost" size="sm" onClick={clearSelection} disabled={isBulkActionLoading}>
-              Clear selection
+              {tr("Clear selection")}
             </Button>
           </div>
         </div>
@@ -877,7 +878,7 @@ export const NotificationsView: React.FC = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="notifications"
-        title="Notifications"
+        title={tr("Notifications")}
         totalRecords={pagination.total}
         onExport={handleExport}
       />
@@ -887,9 +888,9 @@ export const NotificationsView: React.FC = () => {
         <PortalDropdownMenu isOpen={true} onClose={headerMenu.close} position={headerMenu.position} minWidth={192}>
           <div className="py-1">
             {[
-              { icon: Download, label: isExporting ? "Exporting..." : "Export", disabled: isExporting, run: () => setIsExportOpen(true) },
-              { icon: Trash2, label: "Clear read", disabled: isBulkActionLoading, run: handleClearAllRead },
-              { icon: ListChecks, label: "Select notifications", disabled: false, run: () => setSelectMode(true) },
+              { icon: Download, label: isExporting ? tr("Exporting...") : "Export", disabled: isExporting, run: () => setIsExportOpen(true) },
+              { icon: Trash2, label: tr("Clear read"), disabled: isBulkActionLoading, run: handleClearAllRead },
+              { icon: ListChecks, label: tr("Select notifications"), disabled: false, run: () => setSelectMode(true) },
             ].map(({ icon: Icon, label, disabled, run }) => (
               <button
                 key={label}
@@ -910,8 +911,8 @@ export const NotificationsView: React.FC = () => {
         isOpen={isMarkAllModalOpen}
         onClose={() => setIsMarkAllModalOpen(false)}
         onConfirm={handleMarkAllAsRead}
-        title="Mark All as Read"
-        description="Are you sure you want to mark all unread notifications as read? This action cannot be undone."
+        title={tr("Mark All as Read")}
+        description={tr("Are you sure you want to mark all unread notifications as read? This action cannot be undone.")}
         type="confirm"
         confirmText="Confirm"
         showCancel
@@ -925,7 +926,7 @@ export const NotificationsView: React.FC = () => {
       >
         {/* the priority tabs layout has no scope tabs: the scope is chosen here */}
         {!timeline && (
-          <FilterAccordionItem label="Scope" isExpanded={expandedSections.has("scope")} onToggle={() => toggleSection("scope")}>
+          <FilterAccordionItem label={tr("Scope")} isExpanded={expandedSections.has("scope")} onToggle={() => toggleSection("scope")}>
             <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
               {SCOPE_OPTIONS.map((opt) => (
                 <FilterOptionButton key={opt.value} label={opt.label} isSelected={activeTab === opt.value} onClick={() => { setActiveTab(opt.value); setCurrentPage(1); }} />
@@ -934,7 +935,7 @@ export const NotificationsView: React.FC = () => {
           </FilterAccordionItem>
         )}
 
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <FilterOptionButton key={opt.value} label={opt.label} isSelected={statusFilter === opt.value} onClick={() => { setStatusFilter(opt.value); setCurrentPage(1); }} />
@@ -942,7 +943,7 @@ export const NotificationsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Module" isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
+        <FilterAccordionItem label={tr("Module")} isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {allModuleOptions.map((opt) => (
               <FilterOptionButton key={opt.value} label={opt.label} isSelected={module === opt.value} onClick={() => { setModule(opt.value); setCurrentPage(1); }} />
@@ -950,7 +951,7 @@ export const NotificationsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Priority" isExpanded={expandedSections.has("priority")} onToggle={() => toggleSection("priority")}>
+        <FilterAccordionItem label={tr("Priority")} isExpanded={expandedSections.has("priority")} onToggle={() => toggleSection("priority")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {PRIORITY_OPTIONS.map((opt) => (
               <FilterOptionButton key={opt.value} label={opt.label} isSelected={priority === opt.value} onClick={() => { setPriority(opt.value); setCurrentPage(1); }} />
@@ -958,7 +959,7 @@ export const NotificationsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Time Range" isExpanded={expandedSections.has("time")} onToggle={() => toggleSection("time")}>
+        <FilterAccordionItem label={tr("Time Range")} isExpanded={expandedSections.has("time")} onToggle={() => toggleSection("time")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
               label=""
@@ -966,7 +967,7 @@ export const NotificationsView: React.FC = () => {
               endDate={dateTo}
               onStartDateChange={(val) => { setDateFrom(val); setCurrentPage(1); }}
               onEndDateChange={(val) => { setDateTo(val); setCurrentPage(1); }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>

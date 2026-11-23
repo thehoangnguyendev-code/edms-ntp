@@ -8,6 +8,7 @@ import { formatDateTime } from "@/utils/format";
 import { executedRecordApi, type ExecutedRecord } from "@/services/api/executedRecords";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { RecordScanPreview } from "@/features/documents/executed-records/RecordScanPreview";
+import { tr } from "@/i18n";
 
 type SortKey = "created" | "number" | "copy" | "recipient" | "filled" | "scan";
 
@@ -65,15 +66,15 @@ export const ExecutedRecordsTab: React.FC<{ formDocumentId?: string; controlledC
     },
     {
       id: "number",
-      header: "Record Number",
+      header: tr("Record Number"),
       sort: sort("number"),
       cell: (r) => <span className="font-semibold text-slate-900">{r.recordNumber}</span>,
     },
-    { id: "copy", header: "Controlled Copy Number", sort: sort("copy"), cell: (r) => r.sourceControlledCopyNumber ?? "—" },
+    { id: "copy", header: tr("Controlled Copy Number"), sort: sort("copy"), cell: (r) => r.sourceControlledCopyNumber ?? "—" },
     { id: "recipient", header: "Recipient", sort: sort("recipient"), cell: (r) => r.filledByName ?? "—" },
     {
       id: "received",
-      header: "Received Date",
+      header: tr("Received Date"),
       sort: sort("filled"),
       cell: (r) => formatDateTime(r.filledAt ?? ""),
     },
@@ -112,7 +113,7 @@ export const ExecutedRecordsTab: React.FC<{ formDocumentId?: string; controlledC
           getRowKey={(r) => r.id}
           isLoading={loading}
           onRowClick={(r) => r.fileAvailable && setPreviewRecord(r)}
-          emptyState={<TableEmptyState title="No Records yet" description="No paper copy of this document has been returned and scanned yet." />}
+          emptyState={<TableEmptyState title={tr("No Records yet")} description={tr("No paper copy of this document has been returned and scanned yet.")} />}
           pagination={
             <TablePagination
               currentPage={currentPage}

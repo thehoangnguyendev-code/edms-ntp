@@ -8,7 +8,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { FilterAccordionItem, FilterDrawer } from "@/components/ui/filter/FilterDrawer";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 export interface ReportSelectFilter {
   id: string;
@@ -123,7 +123,7 @@ export function ReportListToolbar({
         </div>
         <ConfiguredDesktopFilters
           trailing={<div className="hidden md:block">{customControl}</div>}
-          search={<FilterSearchInput aria-label="Search" value={search} onChange={onSearch} placeholder={searchPlaceholder} />}
+          search={<FilterSearchInput aria-label={tr("Search")} value={search} onChange={onSearch} placeholder={searchPlaceholder} />}
           filters={filters.map((filter) => ({
             id: filter.id,
             label: filter.label,
@@ -159,7 +159,7 @@ export function ReportListToolbar({
                 endDate={date.to}
                 onStartDateChange={(value) => date.onChange(value, date.to)}
                 onEndDateChange={(value) => date.onChange(date.from, value)}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
             ))}
             <div className="filter-actions flex items-end gap-2">
@@ -201,7 +201,7 @@ export function ReportListToolbar({
               endDate={date.to}
               onStartDateChange={(value) => date.onChange(value, date.to)}
               onEndDateChange={(value) => date.onChange(date.from, value)}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>

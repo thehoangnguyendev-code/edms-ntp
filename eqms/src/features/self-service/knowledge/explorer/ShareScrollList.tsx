@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { cn } from "@/components/ui/utils";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 export interface ScrollListPage<T> {
   items: T[];
@@ -137,8 +138,8 @@ export function ShareScrollList<T>({
 
       {failed ? (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-xs text-red-700">
-          <span>Could not load the list.</span>
-          <Button size="sm" variant="outline" onClick={() => settle(generation.current, query, total)}>Try again</Button>
+          <span>{tr("Could not load the list.")}</span>
+          <Button size="sm" variant="outline" onClick={() => settle(generation.current, query, total)}>{tr("Try again")}</Button>
         </div>
       ) : total === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500">
@@ -164,7 +165,7 @@ export function ShareScrollList<T>({
                 </div>
               ))}
               {(total === null || missing || rows.length === 0) && (
-                <p className="absolute inset-x-0 px-3 py-4 text-xs text-slate-500" style={{ top: viewportFirst * rowHeight }}>Loading...</p>
+                <p className="absolute inset-x-0 px-3 py-4 text-xs text-slate-500" style={{ top: viewportFirst * rowHeight }}>{tr("Loading...")}</p>
               )}
             </div>
           </div>

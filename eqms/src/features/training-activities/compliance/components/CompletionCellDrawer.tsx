@@ -6,6 +6,7 @@ import { Drawer } from "@/components/ui/drawer/Drawer";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { trainingComplianceApi, trainingError, type CompletionCellDetail, type CompletionState } from "@/services/api/trainingActivities";
 import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trainingLabels";
+import { tr, trFormat } from "@/i18n";
 
 const STATE_LABEL: Record<CompletionState, string> = { NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In Progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due" };
 const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = { NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange" };
@@ -52,33 +53,33 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
           </section>
 
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-slate-900">Employee</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-900">{tr("Employee")}</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Fact label="Name">{detail.person.fullName}{detail.person.employeeCode ? ` (${detail.person.employeeCode})` : ""}</Fact>
-              <Fact label="Department">{detail.person.department ?? "—"}</Fact>
-              <Fact label="Work Positions">{detail.person.positions ?? "—"}</Fact>
+              <Fact label={tr("Name")}>{detail.person.fullName}{detail.person.employeeCode ? ` (${detail.person.employeeCode})` : ""}</Fact>
+              <Fact label={tr("Department")}>{detail.person.department ?? "—"}</Fact>
+              <Fact label={tr("Work Positions")}>{detail.person.positions ?? "—"}</Fact>
             </dl>
           </section>
 
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-slate-900">Requirement</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-900">{tr("Requirement")}</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Fact label="Kind">{GROUP_LABEL[detail.requirement.group]}</Fact>
+              <Fact label={tr("Kind")}>{GROUP_LABEL[detail.requirement.group]}</Fact>
               <Fact label={detail.requirement.sop ? "SOP" : "Training Topic code"}>{detail.requirement.code ?? "—"}</Fact>
-              <Fact label="Annual training">{detail.requirement.annual ? "Required every year" : "Not required"}</Fact>
-              {detail.requirement.sop && <Fact label="Revision in force">{detail.requirement.currentRevision ?? "—"}</Fact>}
-              <Fact label="Last trained">{day(detail.lastDoneOn) || "—"}</Fact>
-              <Fact label="Revision trained">{detail.lastRevision ?? "—"}</Fact>
-              <Fact label="Training Number of the last training">
+              <Fact label={tr("Annual training")}>{detail.requirement.annual ? "Required every year" : tr("Not required")}</Fact>
+              {detail.requirement.sop && <Fact label={tr("Revision in force")}>{detail.requirement.currentRevision ?? "—"}</Fact>}
+              <Fact label={tr("Last trained")}>{day(detail.lastDoneOn) || "—"}</Fact>
+              <Fact label={tr("Revision trained")}>{detail.lastRevision ?? "—"}</Fact>
+              <Fact label={tr("Training Number of the last training")}>
                 {detail.lastTrainingNumber ? (detail.lastActivityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(detail.lastActivityId)}>{detail.lastTrainingNumber}</button> : detail.lastTrainingNumber) : "—"}
               </Fact>
-              {detail.requirement.annual && <Fact label="Next annual training due">{day(detail.nextDueOn) || "—"}</Fact>}
+              {detail.requirement.annual && <Fact label={tr("Next annual training due")}>{day(detail.nextDueOn) || "—"}</Fact>}
             </dl>
           </section>
 
           {detail.openTrainings.length > 0 && (
             <section>
-              <h3 className="mb-2 text-sm font-semibold text-slate-900">Open trainings the employee is on</h3>
+              <h3 className="mb-2 text-sm font-semibold text-slate-900">{tr("Open trainings the employee is on")}</h3>
               <ul className="space-y-2">
                 {detail.openTrainings.map((a) => (
                   <li key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
@@ -95,19 +96,19 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
           )}
 
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-slate-900">Training records for this requirement ({detail.records.length})</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-900">{trFormat("Training records for this requirement ({count})", { count: detail.records.length })}</h3>
             {detail.records.length === 0 ? (
-              <p className="text-sm text-slate-500">No record yet.</p>
+              <p className="text-sm text-slate-500">{tr("No record yet.")}</p>
             ) : (
               <ul className="space-y-2">
                 {detail.records.map((r) => (
                   <li key={r.id} className={`rounded-lg border p-3 text-sm ${r.voided ? "border-slate-200 bg-slate-50 text-slate-500" : "border-slate-200 bg-white"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       {r.activityId ? <button type="button" className={`font-medium hover:underline ${r.voided ? "text-slate-500 line-through" : "text-emerald-600"}`} onClick={() => open(r.activityId)}>{r.trainingNumber}</button> : <span className="font-medium">{r.trainingNumber}</span>}
-                      <span className="text-xs">{r.voided ? <Badge color="red">Voided</Badge> : <Badge color="emerald">{RESULT_LABEL[r.result] ?? r.result}</Badge>}</span>
+                      <span className="text-xs">{r.voided ? <Badge color="red">{tr("Voided")}</Badge> : <Badge color="emerald">{RESULT_LABEL[r.result] ?? r.result}</Badge>}</span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">{day(r.completedOn)} · {METHOD_LABEL[r.method] ?? r.method}{r.documentRevision ? ` · revision ${r.documentRevision}` : ""} · record {r.recordNo}</div>
-                    {r.voided && r.voidReason && <div className="mt-1 text-xs">Voided: {r.voidReason}</div>}
+                    <div className="mt-1 text-xs text-slate-500">{day(r.completedOn)} · {METHOD_LABEL[r.method] ?? r.method}{r.documentRevision ? ` · ${tr("revision")} ${r.documentRevision}` : ""} · {tr("record")} {r.recordNo}</div>
+                    {r.voided && r.voidReason && <div className="mt-1 text-xs">{tr("Voided:")} {r.voidReason}</div>}
                   </li>
                 ))}
               </ul>

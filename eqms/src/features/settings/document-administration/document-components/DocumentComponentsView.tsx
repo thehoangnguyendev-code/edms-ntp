@@ -7,6 +7,7 @@ import { documentComponentsAdmin } from "@/components/ui/breadcrumb/breadcrumbs.
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { DocumentComponentsTab } from "./DocumentComponentsTab";
+import { tr } from "@/i18n";
 
 /**
  * Document Components administration — the reusable token catalog a Document Name Format
@@ -23,7 +24,7 @@ export const DocumentComponentsView: React.FC = () => {
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title="Document Components"
+        title={tr("Document Components")}
         breadcrumbItems={documentComponentsAdmin(navigate)}
         actions={
           canManage ? (
@@ -33,7 +34,7 @@ export const DocumentComponentsView: React.FC = () => {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              New Document Component
+              {tr("New Document Component")}
             </Button>
           ) : undefined
         }

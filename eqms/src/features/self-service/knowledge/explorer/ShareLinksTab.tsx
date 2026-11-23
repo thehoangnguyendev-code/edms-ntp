@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { knowledgeApi, type SharingLink, type SharingLinkCreated, type SharingNode } from "@/services/api/knowledge";
 import { errorMessage, refOf, useShareAction, type FooterAction } from "./shareUi";
 import { ShareScrollList } from "./ShareScrollList";
+import { tr, trFormat } from "@/i18n";
 
 interface ShareLinksTabProps {
   node: SharingNode;
@@ -42,7 +43,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
     { value: "7", label: "7 days" },
     { value: "30", label: "30 days" },
     { value: "90", label: "90 days" },
-    ...(node.canExclude ? [{ value: "never", label: "Never expires" }] : []),
+    ...(node.canExclude ? [{ value: "never", label: tr("Never expires") }] : []),
   ];
 
   const fetchLinks = useCallback(
@@ -58,7 +59,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
       setCopied(false);
       setReloadKey((k) => k + 1);
     } catch (error) {
-      showToast({ type: "error", title: "Could not make the link", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not make the link"), message: errorMessage(error, "Please try again.") });
     } finally {
       setCreating(false);
     }
@@ -72,7 +73,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
       await navigator.clipboard.writeText(linkAddress(created.token));
       setCopied(true);
     } catch {
-      showToast({ type: "error", title: "Could not copy", message: "Your browser did not allow access to the clipboard. Select the link and copy it." });
+      showToast({ type: "error", title: tr("Could not copy"), message: "Your browser did not allow access to the clipboard. Select the link and copy it." });
     }
   };
 
@@ -80,10 +81,10 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
     if (!revokeTarget) return;
     try {
       await knowledgeApi.sharingRevokeLink(revokeTarget.id);
-      showToast({ type: "success", title: "Link revoked", message: "It no longer opens anything. The change was recorded in the Audit Trail." });
+      showToast({ type: "success", title: tr("Link revoked"), message: "It no longer opens anything. The change was recorded in the Audit Trail." });
       setReloadKey((k) => k + 1);
     } catch (error) {
-      showToast({ type: "error", title: "Could not revoke", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not revoke"), message: errorMessage(error, "Please try again.") });
     } finally {
       setRevokeTarget(null);
     }
@@ -91,18 +92,18 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-      <section className="space-y-3 order-1" aria-label="Make a link">
-        <h3 className="text-sm font-semibold text-slate-900">Make a link</h3>
-        <Select label="Expires after" value={days} onChange={(v) => setDays(String(v))} options={expiryOptions} enableSearch={false} />
+      <section className="space-y-3 order-1" aria-label={tr("Make a link")}>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Make a link")}</h3>
+        <Select label={tr("Expires after")} value={days} onChange={(v) => setDays(String(v))} options={expiryOptions} enableSearch={false} />
 
         {created && (
           <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3" role="status">
-            <p className="text-xs font-medium text-emerald-800">Link made. Copy it now: it is shown only once.</p>
+            <p className="text-xs font-medium text-emerald-800">{tr("Link made. Copy it now: it is shown only once.")}</p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 readOnly
                 value={linkAddress(created.token)}
-                aria-label="The link"
+                aria-label={tr("The link")}
                 onFocus={(e) => e.currentTarget.select()}
                 className="h-9 min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
@@ -115,13 +116,13 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
         )}
       </section>
 
-      <section className="order-2 min-w-0 space-y-2.5" aria-label="Links">
-        <h3 className="text-sm font-semibold text-slate-900">Links that reach this item</h3>
+      <section className="order-2 min-w-0 space-y-2.5" aria-label={tr("Links")}>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Links that reach this item")}</h3>
         <ShareScrollList<SharingLink>
           ariaLabel="Links that reach this item"
           fetchPage={fetchLinks}
           getKey={(link) => link.id}
-          searchPlaceholder="Search the links"
+          searchPlaceholder={tr("Search the links")}
           emptyText="No link has been made for this item."
           reloadKey={reloadKey}
           renderRow={(link) => (
@@ -141,7 +142,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
                 </p>
               </div>
               {link.revocable && (
-                <Button size="sm" variant="outline" onClick={() => setRevokeTarget(link)} className="shrink-0">Revoke</Button>
+                <Button size="sm" variant="outline" onClick={() => setRevokeTarget(link)} className="shrink-0">{tr("Revoke")}</Button>
               )}
             </div>
           )}
@@ -153,11 +154,10 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
         onClose={() => setRevokeTarget(null)}
         onConfirm={revoke}
         type="confirm"
-        title="Revoke this link?"
+        title={tr("Revoke this link?")}
         description={
           <p className="text-sm text-slate-600">
-            The link to <strong>{revokeTarget?.label}</strong> stops opening anything at once, even for people who saved it. People who already
-            have access through a share keep it. This is recorded in the Audit Trail.
+            {trFormat("The link to {label} stops opening anything at once, even for people who saved it. People who already have access through a share keep it. This is recorded in the Audit Trail.", { label: revokeTarget?.label })}
           </p>
         }
         confirmText="Revoke"

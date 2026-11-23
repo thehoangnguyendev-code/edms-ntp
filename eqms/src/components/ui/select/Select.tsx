@@ -9,8 +9,7 @@ import { InlineLoading } from '../loading/Loading';
 import { CONTROL_STATE_CLASSES } from '../controlState';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { useLanguage } from "@/i18n";
-import { tr } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 export interface SelectOption {
   label: string;

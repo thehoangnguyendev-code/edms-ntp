@@ -13,7 +13,7 @@ import {
   type DashboardWidgetSetting,
 } from "./dashboardLayout";
 import styles from "./DashboardWidgets.module.css";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 import { expandDashboardWidgets } from "./dashboardWidgetCatalog";
 import { useToast } from "@/components/ui/toast/Toast";
 import { api } from "@/services/api/client";
@@ -81,7 +81,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
         if (active)
           showToast({
             type: "error",
-            title: "Dashboard settings unavailable",
+            title: tr("Dashboard settings unavailable"),
             message: "The default layout is shown.",
           });
       })
@@ -145,7 +145,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
     } catch {
       showToast({
         type: "error",
-        title: "Unable to save dashboard",
+        title: tr("Unable to save dashboard"),
         message: "Please try again.",
       });
     } finally {

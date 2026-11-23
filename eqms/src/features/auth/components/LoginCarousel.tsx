@@ -2,6 +2,7 @@ import React from "react";
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "framer-motion";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { LOGIN_CAROUSEL_LIMITS, type LoginCarouselConfig } from "@/services/api/branding";
+import { tr } from "@/i18n";
 
 const FADE_SECONDS = 1.1;
 const SWIPE_DISTANCE = 60;
@@ -71,7 +72,7 @@ export const LoginCarousel: React.FC<{ carousel: LoginCarouselConfig }> = ({ car
       className="absolute inset-0 overflow-hidden bg-slate-900"
       role="region"
       aria-roledescription="carousel"
-      aria-label="Product highlights"
+      aria-label={tr("Product highlights")}
       tabIndex={0}
       data-login-carousel
       onMouseEnter={() => setHovered(true)}
@@ -134,7 +135,7 @@ export const LoginCarousel: React.FC<{ carousel: LoginCarouselConfig }> = ({ car
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EASE, delay: 0.3 }}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-2" role="group" aria-label="Choose a slide">
+            <div className="flex min-w-0 flex-1 items-center gap-2" role="group" aria-label={tr("Choose a slide")}>
               {slides.map((_, i) => (
                 <button
                   key={i}
@@ -163,8 +164,8 @@ export const LoginCarousel: React.FC<{ carousel: LoginCarouselConfig }> = ({ car
             <button type="button" className={glassButton} onClick={() => setUserPaused((v) => !v)} aria-label={userPaused ? "Play slideshow" : "Pause slideshow"}>
               {userPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
             </button>
-            <button type="button" className={glassButton} onClick={previous} aria-label="Previous slide"><ChevronLeft className="size-5" aria-hidden="true" /></button>
-            <button type="button" className={glassButton} onClick={next} aria-label="Next slide"><ChevronRight className="size-5" aria-hidden="true" /></button>
+            <button type="button" className={glassButton} onClick={previous} aria-label={tr("Previous slide")}><ChevronLeft className="size-5" aria-hidden="true" /></button>
+            <button type="button" className={glassButton} onClick={next} aria-label={tr("Next slide")}><ChevronRight className="size-5" aria-hidden="true" /></button>
           </motion.div>
         ) : null}
       </div>

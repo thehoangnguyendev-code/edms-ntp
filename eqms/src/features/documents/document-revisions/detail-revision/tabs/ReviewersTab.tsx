@@ -1,5 +1,6 @@
 import React from "react";
 import { SignedParticipantTab, type SignedParticipantItem } from "@/features/documents/document-revisions/shared/components/SignedParticipantTab";
+import { tr } from "@/i18n";
 
 interface Reviewer {
   id: string;
@@ -23,7 +24,7 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
   legacyHistoricalReviewDate,
 }) => {
   if (reviewRequirement === "NONE" && !legacyHistoricalReviewers) {
-    return <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">Review is not required for this Document Type and Sub-Type.</div>;
+    return <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">{tr("Review is not required for this Document Type and Sub-Type.")}</div>;
   }
   const items: SignedParticipantItem[] = reviewers.map((reviewer) => ({
     id: reviewer.id,

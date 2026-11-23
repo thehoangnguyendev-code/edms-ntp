@@ -3,6 +3,7 @@ import { CalendarClock } from "lucide-react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { formatDateTime } from "@/utils/format";
 import type { UncontrolledCopy } from "@/services/api/uncontrolledCopy";
+import { tr } from "@/i18n";
 
 const ReadOnlyField: React.FC<{
   label: string;
@@ -33,7 +34,7 @@ export const UncontrolledCopyRecipientTab: React.FC<{
   <div className="space-y-4 md:space-y-5">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
       <ReadOnlyField
-        label="Recipient Type"
+        label={tr("Recipient Type")}
         value={
           copy.recipientType
             ? (RECIPIENT_TYPE_LABELS[copy.recipientType] ?? copy.recipientType)
@@ -41,7 +42,7 @@ export const UncontrolledCopyRecipientTab: React.FC<{
         }
       />
       <ReadOnlyField
-        label={copy.externalRecipient ? "Held by (hands over)" : "Recipient"}
+        label={copy.externalRecipient ? tr("Held by (hands over)") : "Recipient"}
         value={copy.recipientName}
       />
       <ReadOnlyField
@@ -50,21 +51,21 @@ export const UncontrolledCopyRecipientTab: React.FC<{
       />
       {copy.externalRecipient && (
         <ReadOnlyField
-          label="External recipient (no system access)"
+          label={tr("External recipient (no system access)")}
           value={copy.externalRecipient}
         />
       )}
       <ReadOnlyField
-        label="Valid until"
+        label={tr("Valid until")}
         value={
           copy.validUntil
             ? formatDateTime(copy.validUntil)
             : "Set when distributed"
         }
       />
-      <ReadOnlyField label="Downloads" value={copy.downloadCount ?? 0} />
+      <ReadOnlyField label={tr("Downloads")} value={copy.downloadCount ?? 0} />
       <ReadOnlyField
-        label="Last downloaded"
+        label={tr("Last downloaded")}
         value={
           copy.lastDownloadedAt ? formatDateTime(copy.lastDownloadedAt) : "-"
         }
@@ -72,8 +73,7 @@ export const UncontrolledCopyRecipientTab: React.FC<{
     </div>
     {copy.expired && (
       <p className="mt-4 flex items-center gap-1.5 text-xs text-rose-700">
-        <CalendarClock className="h-4 w-4" /> The validity window has ended; the
-        file can no longer be viewed or downloaded.
+        <CalendarClock className="h-4 w-4" /> {tr("The validity window has ended; the file can no longer be viewed or downloaded.")}
       </p>
     )}
   </div>

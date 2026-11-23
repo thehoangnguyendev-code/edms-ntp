@@ -22,6 +22,7 @@ import {
   type ReportScheduleDetail,
 } from "@/services/api/reports";
 import { reportError, type ReportTemplate } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 const blank = (): ReportScheduleDetail => ({
   id: "",
@@ -91,7 +92,7 @@ export function ScheduleEditorPage() {
     try {
       if (draft.id) await reportsApi.updateSchedule(draft.id, draft.version, draft, reason);
       else await reportsApi.createSchedule(draft);
-      showToast({ type: "success", title: "Scheduled report saved", message: "Changes apply to future occurrences." });
+      showToast({ type: "success", title: tr("Scheduled report saved"), message: "Changes apply to future occurrences." });
       navigate("/report/scheduled");
     } catch (e) {
       setError(reportError(e));
@@ -104,20 +105,20 @@ export function ScheduleEditorPage() {
   // The same tab layout as the Report Template Details and the Document details.
   const tabs = useMemo<TabItem[]>(
     () => [
-      { id: "general", label: "General Information" },
-      { id: "criteria", label: "Criteria & Columns", count: template ? (draft.fields?.length ?? 0) : undefined },
-      { id: "recipients", label: "Recipients", count: draft.recipientUserIds?.length ?? 0 },
+      { id: "general", label: tr("General Information") },
+      { id: "criteria", label: tr("Criteria & Columns"), count: template ? (draft.fields?.length ?? 0) : undefined },
+      { id: "recipients", label: tr("Recipients"), count: draft.recipientUserIds?.length ?? 0 },
     ],
     [template, draft.fields, draft.recipientUserIds],
   );
   const actions = (
     <>
       <Button size="sm" variant="outline-emerald" disabled={saving} onClick={back} className="whitespace-nowrap touch-manipulation">
-        Back
+        {tr("Back")}
       </Button>
       {canManage && (
         <Button size="sm" variant="outline-emerald" loading={saving} disabled={!canSave} onClick={() => void save()} className="whitespace-nowrap touch-manipulation">
-          Save
+          {tr("Save")}
         </Button>
       )}
     </>
@@ -127,7 +128,7 @@ export function ScheduleEditorPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(go, title, false, { label: "Scheduled Reports", onClick: back })}
+        breadcrumbItems={reportBreadcrumbs(go, title, false, { label: tr("Scheduled Reports"), onClick: back })}
         actions={actions}
       />
       {error && (
@@ -145,15 +146,15 @@ export function ScheduleEditorPage() {
               {activeTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   {draft.id && (
-                    <FormField label="Scheduled Report Number">
+                    <FormField label={tr("Scheduled Report Number")}>
                       <Input readOnly value={draft.scheduleNumber ?? "—"} className="font-mono" />
                     </FormField>
                   )}
-                  <FormField label="Schedule Name" required>
+                  <FormField label={tr("Schedule Name")} required>
                     <Input maxLength={255} value={draft.name} onChange={(e) => patch({ name: e.target.value })} />
                   </FormField>
                   <Select
-                    label="Report Template"
+                    label={tr("Report Template")}
                     value={draft.definitionCode}
                     disabled={!!draft.id}
                     options={[
@@ -173,7 +174,7 @@ export function ScheduleEditorPage() {
                       });
                     }}
                   />
-                  <FormField label="Generated Report Name" hint="Optional. The name written on the report; the template name is used when empty.">
+                  <FormField label={tr("Generated Report Name")} hint={tr("Optional. The name written on the report; the template name is used when empty.")}>
                     <Input
                       maxLength={255}
                       value={String(draft.parameters?.reportTitle ?? "")}
@@ -187,7 +188,7 @@ export function ScheduleEditorPage() {
                     />
                   </FormField>
                   <Select
-                    label="Output Format"
+                    label={tr("Output Format")}
                     value={draft.format}
                     options={(template?.allowedFormats ?? draft.allowedFormats ?? [draft.format]).map((v) => ({ value: v, label: v }))}
                     enableSearch={false}
@@ -196,7 +197,7 @@ export function ScheduleEditorPage() {
                   <ScheduleFrequencyField cron={draft.cronExpression} onChange={(cron) => patch({ cronExpression: cron })} />
                   {!create && (
                     <div className="md:col-span-2">
-                      <FormField label="Reason For The Change" required>
+                      <FormField label={tr("Reason For The Change")} required>
                         <Textarea rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
                       </FormField>
                     </div>
@@ -212,7 +213,7 @@ export function ScheduleEditorPage() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-xs text-slate-500">A scheduled report runs without anyone watching, so it needs at least one filter. It cannot be run with Full.</p>
+                    <p className="text-xs text-slate-500">{tr("A scheduled report runs without anyone watching, so it needs at least one filter. It cannot be run with Full.")}</p>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                       {template.filterFields?.map((f) =>
                         f.type === "LOOKUP" ? (
@@ -247,7 +248,7 @@ export function ScheduleEditorPage() {
                       )}
                     </div>
                     <div>
-                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Included Columns</p>
+                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Included Columns")}</p>
                       <div className="grid grid-cols-1 gap-x-4 gap-y-3 rounded-lg border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-3">
                         {template.fields
                           .filter((f) => f.allowed)
@@ -265,7 +266,7 @@ export function ScheduleEditorPage() {
                             />
                           ))}
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">Required columns and chart fields stay included.</p>
+                      <p className="mt-1 text-xs text-slate-500">{tr("Required columns and chart fields stay included.")}</p>
                     </div>
                   </div>
                 ))}

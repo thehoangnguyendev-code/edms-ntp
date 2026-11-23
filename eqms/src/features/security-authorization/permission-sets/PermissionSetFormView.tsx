@@ -20,6 +20,7 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { permissionSets as permissionSetsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { settingsApi } from "@/services/api";
 import type { PermissionSetResponse } from "@/services/api/settings";
+import { tr } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -125,7 +126,7 @@ export const PermissionSetFormView: React.FC = () => {
     const base = permissionSetsBreadcrumb(go).slice(0, -1);
     return [
       ...base,
-      { label: "Shared Permission Sets", onClick: () => go(ROUTES.SECURITY.PERMISSION_SETS) },
+      { label: tr("Shared Permission Sets"), onClick: () => go(ROUTES.SECURITY.PERMISSION_SETS) },
       { label: isEdit ? "Edit Shared Permission Set" : "New Shared Permission Set", isActive: true },
     ];
   }, [go, isEdit, source]);
@@ -140,12 +141,12 @@ export const PermissionSetFormView: React.FC = () => {
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
       <PageHeader
-        title={isEdit ? `Edit Shared Permission Set` : "New Shared Permission Set"}
+        title={isEdit ? tr(`Edit Shared Permission Set`) : tr("New Shared Permission Set")}
         breadcrumbItems={breadcrumbItems}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button size="sm" variant="outline-emerald" onClick={() => void handleSave()} disabled={saving || isSystemLocked} className="whitespace-nowrap">
               {saving ? "Saving…" : "Save"}
@@ -155,35 +156,35 @@ export const PermissionSetFormView: React.FC = () => {
       />
 
       {isSystemLocked && (
-        <WarningBanner variant="warning">This is a system permission set. Its definition is protected and cannot be modified.</WarningBanner>
+        <WarningBanner variant="warning">{tr("This is a system permission set. Its definition is protected and cannot be modified.")}</WarningBanner>
       )}
 
-      <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+      <FormSection title={tr("Basic Information")} icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div id="ps-field-name">
               <label className={labelClass}>
-                Name <span className="text-red-500">*</span>
+                {tr("Name")} <span className="text-red-500">*</span>
               </label>
               <input
                 className={`${inputClass}${shown.name ? " border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Document Author"
+                placeholder={tr("e.g. Document Author")}
                 disabled={isSystemLocked}
                 aria-invalid={Boolean(shown.name)}
               />
               {shown.name && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.name}</p>}
             </div>
             <div>
-              <label className={labelClass}>Code</label>
+              <label className={labelClass}>{tr("Code")}</label>
               <input
                 className={
                   isEdit ? CONTROL_STATE_CLASSES.readonlyField : inputClass
                 }
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder={isEdit ? "Read-only for existing records" : "AUTO_GENERATED"}
+                placeholder={isEdit ? tr("Read-only for existing records") : "AUTO_GENERATED"}
                 disabled={isEdit}
                 readOnly={isEdit}
               />
@@ -191,33 +192,33 @@ export const PermissionSetFormView: React.FC = () => {
           </div>
 
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea
               className={textareaClass}
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the responsibility scope of this permission set"
+              placeholder={tr("Describe the responsibility scope of this permission set")}
               disabled={isSystemLocked}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Status</label>
-            <Checkbox checked={active} onChange={setActive} label="Active" disabled={isSystemLocked} />
+            <label className={labelClass}>{tr("Status")}</label>
+            <Checkbox checked={active} onChange={setActive} label={tr("Active")} disabled={isSystemLocked} />
           </div>
         </div>
       </FormSection>
 
       <FormSection
-        title="Permissions"
+        title={tr("Permissions")}
         icon={<ListChecks className="h-4 w-4" />}
-        description="Tick the permissions to include in this set. Grouped by module — search or filter to narrow down."
+        description={tr("Tick the permissions to include in this set. Grouped by module — search or filter to narrow down.")}
         contentClassName="p-4 md:p-5"
       >
         <div id="ps-field-permissions" className="mb-3 flex items-center gap-2">
           <Badge color="emerald" size="sm">
-            {selectedCodes.size} selected
+            {selectedCodes.size} {tr("selected")}
           </Badge>
           {shown.permissions && <span role="alert" className="text-xs text-red-600">{shown.permissions}</span>}
         </div>

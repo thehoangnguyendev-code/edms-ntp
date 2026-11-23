@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, type TrainingFormFormat } from "@/services/api/trainingActivities";
 import { Textarea } from "./TrainingFields";
 import { saveBlob } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 /** One numbered paper print: what is asked from the server and the name of the file that is saved. */
 export type PaperPrintItem = { key: string; load: (format: TrainingFormFormat, reason?: string) => Promise<Blob>; fileName: (format: TrainingFormFormat) => string };
@@ -40,7 +41,7 @@ export function PaperPrintButton({ items, label = "Print for Signing" }: { items
     }
     setWaiting(needReason);
     if (needReason.length === 0) setReason("");
-    if (failed.length > 0) showToast({ type: "error", title: "The paper print was not made", message: failed[0] });
+    if (failed.length > 0) showToast({ type: "error", title: tr("The paper print was not made"), message: failed[0] });
     setBusy(false);
   };
 
@@ -52,14 +53,14 @@ export function PaperPrintButton({ items, label = "Print for Signing" }: { items
           isOpen
           onClose={() => { setWaiting([]); setReason(""); }}
           onConfirm={() => void print(waiting, reason.trim())}
-          title="Print another copy"
+          title={tr("Print another copy")}
           description={waiting.length > 1 ? `Another numbered copy is recorded for each of the ${waiting.length} lists. Say why it is needed.` : "Another numbered copy is recorded. Say why it is needed."}
           confirmText="Print"
           isLoading={busy}
           confirmDisabled={!reason.trim()}
           size="md"
         >
-          <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+          <FormField label={tr("Reason")} required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
         </FormModal>
       )}
     </>

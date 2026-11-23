@@ -30,6 +30,7 @@ import type { AuditTrailRecord } from "../../types";
 import { groupByDay, type AuditTimelineItem, type AuditTimelineStyle } from "./auditTimelineModel";
 import { formatAuditModuleLabel } from "../../utils/actionBadge";
 import "./auditTimeline.css";
+import { tr, trFormat } from "@/i18n";
 
 /** The room the page keeps under the panel (its footer and the footer of the panel), and the least and the most the panel is high, in pixels. */
 const FOOTER_ROOM = 96;
@@ -90,10 +91,10 @@ const Avatar: React.FC<{ item: AuditTimelineItem; size: number }> = ({ item, siz
 /** The two things a person can do with a record from the timeline, as in the menu of the table row. */
 const Actions: React.FC<Pick<MarkProps, "item" | "onOpenDetails" | "onExport">> = ({ item, onOpenDetails, onExport }) => (
   <span className="aud-act">
-    <button type="button" aria-label={`View details of ${item.verb} by ${item.who}`} title="View Details" onClick={() => onOpenDetails(item.record)}>
+    <button type="button" aria-label={`View details of ${item.verb} by ${item.who}`} title={tr("View Details")} onClick={() => onOpenDetails(item.record)}>
       <IconInfoCircle size={16} />
     </button>
-    <button type="button" aria-label={`Export ${item.verb} by ${item.who}`} title="Export" onClick={() => onExport(item.record)}>
+    <button type="button" aria-label={`Export ${item.verb} by ${item.who}`} title={tr("Export")} onClick={() => onExport(item.record)}>
       <IconDownload size={16} />
     </button>
   </span>
@@ -101,9 +102,9 @@ const Actions: React.FC<Pick<MarkProps, "item" | "onOpenDetails" | "onExport">> 
 
 const Signed: React.FC<{ item: AuditTimelineItem }> = ({ item }) =>
   item.signed ? (
-    <span className="aud-sig" title="Electronically signed">
+    <span className="aud-sig" title={tr("Electronically signed")}>
       <IconSignature size={12} />
-      Signed
+      {tr("Signed")}
     </span>
   ) : null;
 
@@ -184,16 +185,16 @@ const CompactMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => 
       <div>
         <p>
           <span>
-            <b>Exact time</b> {item.fullTime}
+            <b>{tr("Exact time")}</b> {item.fullTime}
           </span>
           {item.record.module && (
             <span>
-              <b>Module</b> {formatAuditModuleLabel(item.record.module)}
+              <b>{tr("Module")}</b> {formatAuditModuleLabel(item.record.module)}
             </span>
           )}
           {item.detail && (
             <span>
-              <b>Details</b> {item.detail}
+              <b>{tr("Details")}</b> {item.detail}
             </span>
           )}
         </p>
@@ -311,7 +312,7 @@ export const AuditTimeline: React.FC<AuditTimelineProps> = ({ records, style, to
   let counter = 0;
   return (
     <div className="aud-tl" data-style={style}>
-      <div ref={scrollerRef} className="aud-tl__scroller" style={panelHeight ? { maxHeight: panelHeight, height: panelHeight } : undefined} tabIndex={0} aria-label="Audit trail timeline">
+      <div ref={scrollerRef} className="aud-tl__scroller" style={panelHeight ? { maxHeight: panelHeight, height: panelHeight } : undefined} tabIndex={0} aria-label={tr("Audit trail timeline")}>
         {style === "RAIL" && (
           <div className="aud-rail" role="list">
             {days.map((day) => (
@@ -384,14 +385,14 @@ export const AuditTimeline: React.FC<AuditTimelineProps> = ({ records, style, to
       </div>
       <div className="aud-tl__foot">
         <span>
-          Showing {records.length.toLocaleString()} of {total.toLocaleString()} records
+              {trFormat("Showing {shown} of {total} records", { shown: records.length.toLocaleString(), total: total.toLocaleString() })}
         </span>
         {hasMore ? (
           <button type="button" className="font-medium text-emerald-700 hover:underline disabled:opacity-60" disabled={isLoading} onClick={onLoadMore}>
             {isLoading ? "Loading…" : "Load older records"}
           </button>
         ) : (
-          <span>That is every record.</span>
+          <span>{tr("That is every record.")}</span>
         )}
       </div>
     </div>

@@ -16,6 +16,7 @@ import {
 import { JOB_STATUS_COLOR, JOB_STATUS_LABEL } from "../jobs/TrainingJobListView";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_COLOR, REVIEW_STATUS_LABEL } from "../personnel-reviews/personnelReviewLabels";
 import { METHOD_LABEL, day, when } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 type Kind = string;
 /** A tab of the screen itself (the copies sent to departments of a job assignment) that sits first in the same card. */
@@ -40,7 +41,7 @@ function RelatedTable<T extends { id: string }>({ persistKey, personId, fetcher,
   const sorted: Sorted = (key) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
   return (
     <div className="space-y-3 pb-4">
-      <FilterSearchInput aria-label="Search" value={table.searchQuery} onChange={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }} placeholder={searchPlaceholder} />
+      <FilterSearchInput aria-label={tr("Search")} value={table.searchQuery} onChange={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }} placeholder={searchPlaceholder} />
       <DataTable
         rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
         columns={columns((table.currentPage - 1) * table.itemsPerPage, sorted)}
@@ -62,9 +63,9 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
   const { hasPermission } = usePermissions();
   const tabs: (TabItem & { id: Kind })[] = [
     ...extraTabs.map((t) => ({ id: t.id, label: t.label })),
-    ...(hasPermission("training.record.view") ? [{ id: "records" as const, label: "Training Records" }] : []),
-    ...(hasPermission("training.job_assignment.view") ? [{ id: "jobs" as const, label: "Job Assignments" }, { id: "reviews" as const, label: "Training Reviews" }] : []),
-    ...(hasPermission("training.signature.view") || hasPermission("training.signature.manage") ? [{ id: "specimens" as const, label: "Specimen Signatures" }] : []),
+    ...(hasPermission("training.record.view") ? [{ id: "records" as const, label: tr("Training Records") }] : []),
+    ...(hasPermission("training.job_assignment.view") ? [{ id: "jobs" as const, label: tr("Job Assignments") }, { id: "reviews" as const, label: tr("Training Reviews") }] : []),
+    ...(hasPermission("training.signature.view") || hasPermission("training.signature.manage") ? [{ id: "specimens" as const, label: tr("Specimen Signatures") }] : []),
   ];
   const [chosen, setChosen] = useState<Kind>();
   if (tabs.length === 0) return null;
@@ -79,24 +80,24 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
       <div className="p-4 md:p-5">
         {extra?.node}
         {active === "records" && (
-          <RelatedTable<TrainingRecord> persistKey="training.related.records" personId={personId} fetcher={trainingRecordsApi.list} defaultSortBy="completedOn" empty="No training record" searchPlaceholder="Search training, training number or SOP…"
+          <RelatedTable<TrainingRecord> persistKey="training.related.records" personId={personId} fetcher={trainingRecordsApi.list} defaultSortBy="completedOn" empty="No training record" searchPlaceholder={tr("Search training, training number or SOP…")}
             columns={(offset, sorted) => [
               no(offset),
-              { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => link(r.trainingNumber, `/training-management/activities/${r.activityId}`) },
+              { id: "number", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (r) => link(r.trainingNumber, `/training-management/activities/${r.activityId}`) },
               { id: "topic", header: "Training", sort: sorted("topicText"), cell: (r) => <div className="min-w-64 whitespace-normal">{r.topicText}</div> },
               { id: "method", header: "Mode", sort: sorted("method"), cell: (r) => METHOD_LABEL[r.method] ?? r.method },
-              { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.voidedAt ? <Badge color="red">Voided</Badge> : (RESULT_LABEL[r.result] ?? r.result)) },
-              { id: "on", header: "Completed On", sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
+              { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.voidedAt ? <Badge color="red">{tr("Voided")}</Badge> : (RESULT_LABEL[r.result] ?? r.result)) },
+              { id: "on", header: tr("Completed On"), sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
             ]} />
         )}
         {active === "jobs" && (
-          <RelatedTable<TrainingJobSummary> persistKey="training.related.jobs" personId={personId} fetcher={trainingJobsApi.list} defaultSortBy="createdAt" empty="No job assignment" searchPlaceholder="Search work position or department…"
+          <RelatedTable<TrainingJobSummary> persistKey="training.related.jobs" personId={personId} fetcher={trainingJobsApi.list} defaultSortBy="createdAt" empty="No job assignment" searchPlaceholder={tr("Search work position or department…")}
             columns={(offset, sorted) => [
               no(offset),
               { id: "issue", header: "Issue", sort: sorted("issue"), cell: (j) => link(`Issue ${j.issueNo}`, `/training-management/job-assignments/${j.id}`) },
               {
                 id: "position",
-                header: "Work Positions",
+                header: tr("Work Positions"),
                 sort: sorted("position"),
                 // an issuance lists the whole set of roles: the first ones are written, the rest are a number, and the full list is the tooltip
                 cell: (j) => {
@@ -111,25 +112,25 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
             ]} />
         )}
         {active === "reviews" && (
-          <RelatedTable<TrainingPersonnelReviewSummary> persistKey="training.related.reviews" personId={personId} fetcher={trainingReviewsApi.list} defaultSortBy="createdAt" empty="No training review" searchPlaceholder="Search note or opened by…"
+          <RelatedTable<TrainingPersonnelReviewSummary> persistKey="training.related.reviews" personId={personId} fetcher={trainingReviewsApi.list} defaultSortBy="createdAt" empty="No training review" searchPlaceholder={tr("Search note or opened by…")}
             columns={(offset, sorted) => [
               no(offset),
               { id: "no", header: "Review", cell: (r) => link(`Review ${r.reviewNo}`, `/training-management/personnel-reviews/${r.id}`) },
               { id: "kind", header: "Event", sort: sorted("kind"), cell: (r) => REVIEW_KIND_LABEL[r.kind] ?? r.kind },
               { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={REVIEW_STATUS_COLOR[r.status]}>{REVIEW_STATUS_LABEL[r.status]}</Badge> },
-              { id: "open", header: "Open Items", sort: sorted("openItems"), cell: (r) => r.openItems },
-              { id: "created", header: "Created Time", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
+              { id: "open", header: tr("Open Items"), sort: sorted("openItems"), cell: (r) => r.openItems },
+              { id: "created", header: tr("Created Time"), sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
             ]} />
         )}
         {active === "specimens" && (
-          <RelatedTable<TrainingSpecimen> persistKey="training.related.specimens" personId={personId} fetcher={trainingSpecimenApi.list} defaultSortBy="createdAt" empty="No specimen signature" searchPlaceholder="Search reason or uploaded by…"
+          <RelatedTable<TrainingSpecimen> persistKey="training.related.specimens" personId={personId} fetcher={trainingSpecimenApi.list} defaultSortBy="createdAt" empty="No specimen signature" searchPlaceholder={tr("Search reason or uploaded by…")}
             columns={(offset, sorted) => [
               no(offset),
               { id: "version", header: "Version", sort: sorted("version"), cell: (s) => link(`Version ${s.versionNo}`, `/training-management/specimen-signatures?search=${encodeURIComponent(s.employeeCode ?? s.fullName)}`) },
               { id: "status", header: "Status", sort: sorted("status"), cell: (s) => SPECIMEN_LABEL[s.status] ?? s.status },
               { id: "effective", header: "Effective", sort: sorted("effective"), cell: (s) => day(s.effectiveDate) },
-              { id: "uploaded", header: "Uploaded By", sort: sorted("uploadedBy"), cell: (s) => s.uploadedByName },
-              { id: "confirmed", header: "Confirmed By", sort: sorted("confirmedBy"), cell: (s) => s.confirmedByName ?? "—" },
+              { id: "uploaded", header: tr("Uploaded By"), sort: sorted("uploadedBy"), cell: (s) => s.uploadedByName },
+              { id: "confirmed", header: tr("Confirmed By"), sort: sorted("confirmedBy"), cell: (s) => s.confirmedByName ?? "—" },
             ]} />
         )}
       </div>

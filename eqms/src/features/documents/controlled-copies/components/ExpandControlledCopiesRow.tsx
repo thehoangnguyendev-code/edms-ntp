@@ -24,6 +24,7 @@ import {
   getControlledCopyActionDecision,
 } from "../controlledCopyCapabilities";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 const CONTROLLED_COPY_CHILDREN_CACHE = new Map<string, { copies: ControlledCopy[]; expiresAt: number }>();
 const CHILDREN_CACHE_TTL_MS = 5_000;
@@ -206,7 +207,7 @@ const ExpandedControlledCopyRow: React.FC<{
             toggle(copy.id, e);
           }}
           className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
         </button>
@@ -303,7 +304,7 @@ const ChildDropdownMenu: React.FC<{
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
             <IconInfoCircle className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">View Details</span>
+            <span className="font-medium">{tr("View Details")}</span>
           </button>
         )}
         {onDistribute && !isCapabilityLoading && distributeDecision?.allowed && (
@@ -316,7 +317,7 @@ const ChildDropdownMenu: React.FC<{
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
             <IconShape3 className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Distribute</span>
+            <span className="font-medium">{tr("Distribute")}</span>
           </button>
         )}
         {onRecall && !isCapabilityLoading && recallDecision?.allowed && (
@@ -328,11 +329,11 @@ const ChildDropdownMenu: React.FC<{
               onClose();
             }}
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconArrowBackUp className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Recall</span>
+            <span className="font-medium">{tr("Recall")}</span>
           </button>
         )}
         {onCancel && !isCapabilityLoading && cancelDecision?.allowed && (
@@ -344,11 +345,11 @@ const ChildDropdownMenu: React.FC<{
               onClose();
             }}
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconX className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Cancel Request</span>
+            <span className="font-medium">{tr("Cancel Request")}</span>
           </button>
         )}
         {onReportLostDamaged && !isCapabilityLoading && reportLostDamagedDecision?.allowed && (
@@ -360,11 +361,11 @@ const ChildDropdownMenu: React.FC<{
               onClose();
             }}
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Shredder className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Report Lost/Damaged</span>
+            <span className="font-medium">{tr("Report Lost/Damaged")}</span>
           </button>
         )}
         {onReissue && !isCapabilityLoading && reissueDecision?.allowed && (
@@ -376,11 +377,11 @@ const ChildDropdownMenu: React.FC<{
               onClose();
             }}
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium">Reissue Copy</span>
+            <span className="font-medium">{tr("Reissue Copy")}</span>
           </button>
         )}
       </div>
@@ -542,29 +543,29 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                   {(isLoading || !copies) && totalChildren > 0 && (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Controlled Copies ({totalChildren})
+                        {trFormat("Controlled Copies ({count})", { count: totalChildren })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened By</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Valid Until</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Expiry Date</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Distribution List</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Recall Date</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Reason for Recall</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Revision</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Last Updated</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>{tr("No.")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document Number")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Created")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Opened By")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Controlled Copy Name")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Quantity")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Status")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Valid Until")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Expiry Date")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Distribution List")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Recall Date")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Reason for Recall")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document Revision")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Last Updated")}</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table8}>
-                                Action
+                                {tr("Action")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -581,29 +582,29 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                   {!isLoading && copies && copies.length > 0 && (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Controlled Copies ({totalChildren || copies.length})
+                        {trFormat("Controlled Copies ({count})", { count: totalChildren || copies.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>No.</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Number</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Created</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Opened By</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Controlled Copy Name</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Quantity</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Status</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Valid Until</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Expiry Date</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Distribution List</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Recall Date</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Reason for Recall</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Document Revision</TableMarkup.HeaderCell>
-                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>Last Updated</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>{tr("No.")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document Number")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Created")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Opened By")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Controlled Copy Name")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Quantity")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Status")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Valid Until")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Expiry Date")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Distribution List")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Recall Date")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Reason for Recall")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Document Revision")}</TableMarkup.HeaderCell>
+                              <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>{tr("Last Updated")}</TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table8}>
-                                Action
+                                {tr("Action")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -627,7 +628,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                       {totalChildPages > 1 && (
                         <div className="mt-3 flex items-center justify-end gap-3 text-2xs text-slate-600">
                           <span>
-                            {((childPage - 1) * CHILD_PAGE_SIZE) + 1}-{Math.min(childPage * CHILD_PAGE_SIZE, totalChildren)} of {totalChildren}
+                            {trFormat("{from}-{to} of {total}", { from: ((childPage - 1) * CHILD_PAGE_SIZE) + 1, to: Math.min(childPage * CHILD_PAGE_SIZE, totalChildren), total: totalChildren })}
                           </span>
                           <button
                             type="button"
@@ -635,7 +636,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                             disabled={childPage <= 1 || isLoading}
                             className="rounded border border-slate-200 px-2 py-1 font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Previous
+                            {tr("Previous")}
                           </button>
                           <button
                             type="button"
@@ -643,7 +644,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                             disabled={childPage >= totalChildPages || isLoading}
                             className="rounded border border-slate-200 px-2 py-1 font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Next
+                            {tr("Next")}
                           </button>
                         </div>
                       )}
@@ -651,7 +652,7 @@ export const ExpandControlledCopiesRow: React.FC<ExpandControlledCopiesRowProps>
                   )}
 
                   {!isLoading && copies && copies.length === 0 && (
-                    <TableEmptyState title="No controlled copies found" description="No controlled copies found in this batch." />
+                    <TableEmptyState title={tr("No controlled copies found")} description={tr("No controlled copies found in this batch.")} />
                   )}
                 </div>
               </div>

@@ -40,6 +40,7 @@ import { useTrainingBack } from "../shared/useTrainingBack";
 import { TrainingMaterialsBoard, type MaterialItem } from "./components/TrainingMaterialsBoard";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { useAuth } from "@/contexts/AuthContext";
+import { tr } from "@/i18n";
 
 const CREATE_KINDS: TrainingKind[] = [
   "INITIAL",
@@ -87,11 +88,11 @@ export function TrainingActivityCreatePage() {
   const { user } = useAuth();
 
   const tabs: TabItem[] = [
-    { id: "basic", label: "General Information" },
-    { id: "participants", label: "Participants" },
-    { id: "materials", label: "Training Materials" },
+    { id: "basic", label: tr("General Information") },
+    { id: "participants", label: tr("Participants") },
+    { id: "materials", label: tr("Training Materials") },
     { id: "assessment", label: "Assessment" },
-    { id: "signatures", label: "Signatures" },
+    { id: "signatures", label: tr("Signatures") },
   ];
 
   const save = async () => {
@@ -114,7 +115,7 @@ export function TrainingActivityCreatePage() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The training activity was not created",
+        title: tr("The training activity was not created"),
         message: trainingError(e),
       });
       setBusy(false);
@@ -133,7 +134,7 @@ export function TrainingActivityCreatePage() {
         failed += 1;
         showToast({
           type: "error",
-          title: "A session was not added",
+          title: tr("A session was not added"),
           message: trainingError(e),
         });
       }
@@ -151,7 +152,7 @@ export function TrainingActivityCreatePage() {
       } catch (e) {
         showToast({
           type: "error",
-          title: "The participants were not added",
+          title: tr("The participants were not added"),
           message: trainingError(e),
         });
       }
@@ -172,7 +173,7 @@ export function TrainingActivityCreatePage() {
     }
     showToast({
       type: "success",
-      title: "Training activity created",
+      title: tr("Training activity created"),
       message: `${created.trainingNumber}${failed ? ` (${failed} session not added: add it on the next screen)` : ""}${materialsFailed ? ` (${materialsFailed} material not added: add it on the next screen)` : ""}`,
     });
     setBusy(false);
@@ -193,14 +194,14 @@ export function TrainingActivityCreatePage() {
       }
       onClick={() => void save()}
     >
-      Save and Continue
+      {tr("Save and Continue")}
     </Button>
     
   );
 
   return (
     <TrainingDetailLayout
-      title="New Training Activity"
+      title={tr("New Training Activity")}
       breadcrumbItems={trainingBreadcrumbs(
         go,
         "activities",
@@ -216,11 +217,11 @@ export function TrainingActivityCreatePage() {
     >
       {tab === "basic" && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-          <ReadonlyField label="Training Number" value="" placeholder="Auto-generated after Save" />
-          <ReadonlyField label="Department" value={user?.department ?? ""} />
-          <ReadonlyField label="Opened By" value={user?.fullName ?? ""} />
-          <ReadonlyField label="Created Time" value="" placeholder="Auto-generated after Save" />
-          <FormField label="Type" required>
+          <ReadonlyField label={tr("Training Number")} value="" placeholder={tr("Auto-generated after Save")} />
+          <ReadonlyField label={tr("Department")} value={user?.department ?? ""} />
+          <ReadonlyField label={tr("Opened By")} value={user?.fullName ?? ""} />
+          <ReadonlyField label={tr("Created Time")} value="" placeholder={tr("Auto-generated after Save")} />
+          <FormField label={tr("Type")} required>
             <Select
               value={form.kind}
               onChange={(v) => setForm({ ...form, kind: v })}
@@ -231,7 +232,7 @@ export function TrainingActivityCreatePage() {
               enableSearch={false}
             />
           </FormField>
-          <FormField label="Reason">
+          <FormField label={tr("Reason")}>
             <Select
               value={form.kindReason}
               onChange={(v) => setForm({ ...form, kindReason: v })}
@@ -242,7 +243,7 @@ export function TrainingActivityCreatePage() {
             />
           </FormField>
           {form.kind === "EXTERNAL" && (
-            <FormField label="External training" required>
+            <FormField label={tr("External training")} required>
               <Select
                 value={form.externalType}
                 onChange={(v) => setForm({ ...form, externalType: v })}
@@ -259,24 +260,24 @@ export function TrainingActivityCreatePage() {
                 {EXTERNAL_TYPE_HINT[form.externalType]}
               </p>
               <FormField
-                label="Training unit / individual"
+                label={tr("Training unit / individual")}
                 required
-                hint="Written on the training record (APD.0117)."
+                hint={tr("Written on the training record (APD.0117).")}
               >
                 <Input
                   value={form.trainingUnitName}
                   maxLength={255}
-                  placeholder="Name of the unit or the person who trains"
+                  placeholder={tr("Name of the unit or the person who trains")}
                   onChange={(e) =>
                     setForm({ ...form, trainingUnitName: e.target.value })
                   }
                 />
               </FormField>
-              <FormField label="Vendor reference (SOP.0025)">
+              <FormField label={tr("Vendor reference (SOP.0025)")}>
                 <Input
                   value={form.vendorRef}
                   maxLength={120}
-                  placeholder="Code or name in the vendor list"
+                  placeholder={tr("Code or name in the vendor list")}
                   onChange={(e) =>
                     setForm({ ...form, vendorRef: e.target.value })
                   }
@@ -290,13 +291,13 @@ export function TrainingActivityCreatePage() {
       <div className={tab === "basic" ? "mt-3 space-y-3 md:mt-4 md:space-y-4" : "hidden"}>
         <SessionPanel
           onDraft={setSession}
-          dueDate={<TrainingDateField label="Due Date" hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />}
+          dueDate={<TrainingDateField label={tr("Due Date")} hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />}
           external={form.kind === "EXTERNAL"}
           initialTopic={prefill.get("topic") ?? undefined}
         />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
           <div className="md:col-span-2">
-            <FormField label="Description" required>
+            <FormField label={tr("Description")} required>
               <Textarea
                 rows={3}
                 value={form.remarks}
@@ -305,18 +306,14 @@ export function TrainingActivityCreatePage() {
             </FormField>
           </div>
           <p className="text-xs text-slate-500 md:col-span-2">
-            A training on a document is opened by the system when the revision
-            is approved. Use this screen for periodic, unplanned and outside
-            training.
+            {tr("A training on a document is opened by the system when the revision is approved. Use this screen for periodic, unplanned and outside training.")}
           </p>
         </div>
       </div>
       <div className={tab === "participants" ? undefined : "hidden"}>
         {!session && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-            The people are added to the session. Complete the session first (General
-            Information): the Topic, the Instructor and the Physical Location, or
-            the Platform and the Meeting Link.
+            {tr("The people are added to the session. Complete the session first (General Information): the Topic, the Instructor and the Physical Location, or the Platform and the Meeting Link.")}
           </div>
         )}
         <div className={session ? undefined : "hidden"}>
@@ -337,10 +334,8 @@ export function TrainingActivityCreatePage() {
       )}
       {LATER.includes(tab) && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-          This tab opens after you save the activity. Press{" "}
-          <span className="font-medium">Save and Continue</span>: the Training
-          Number is issued and you continue on the next screen, where you add
-          the exam and the people who review and approve.
+          {tr("This tab opens after you save the activity. Press")}{" "}
+          <span className="font-medium">{tr("Save and Continue")}</span>{tr(": the Training Number is issued and you continue on the next screen, where you add the exam and the people who review and approve.")}
         </div>
       )}
       {leaveModal}

@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 export type BannerVariant = "warning" | "error" | "info" | "success";
 
@@ -51,7 +52,7 @@ export const WarningBanner: React.FC<WarningBannerProps> = ({
         className
       )}
     >
-      {title && <span className="font-semibold">{title}</span>}
+        {title && <span className="font-semibold">{tr(title)}</span>}
       {title && description && " "}
       {description}
       {children && <div className={cn(description ? "mt-2" : title ? "mt-1" : undefined)}>{children}</div>}

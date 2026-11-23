@@ -41,12 +41,13 @@ import { UncontrolledCopyMarkingPreview } from "@/features/documents/uncontrolle
 import { formatDateTime } from "@/utils/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type PolicyTabKey = "policy" | "markings";
 
 const POLICY_TABS: TabItem[] = [
-  { id: "policy", label: "Eligibility & Validity" },
-  { id: "markings", label: "PDF Markings" },
+  { id: "policy", label: tr("Eligibility & Validity") },
+  { id: "markings", label: tr("PDF Markings") },
 ];
 
 const ANY_VALUE = "ANY";
@@ -362,7 +363,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
       setStoredRules(draftRules.filter((rule) => !rule.id.startsWith("draft-")));
       setRulesLoaded(false);
       await loadRules();
-      showToast({ type: "success", title: "Saved", message: "Uncontrolled Copies Policy updated." });
+      showToast({ type: "success", title: "Saved", message: tr("Uncontrolled Copies Policy updated.") });
     } catch (error) {
       showToast({ type: "error", title: "Error", message: extractApiMessage(error, "Unable to save the Uncontrolled Copies Policy.") });
     } finally {
@@ -373,7 +374,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
   const ruleColumns: DataTableColumn<UncontrolledCopyEligibilityRule>[] = [
     { id: "no", header: "No.", cell: (_rule, index) => (visibleRulesPage - 1) * rulesLimit + index + 1 },
     ...([
-      { id: "documentTypeName", header: "Document Type", cell: (rule: UncontrolledCopyEligibilityRule) => <>{rule.documentTypeName ?? "Any"}{rule.system && <Badge color="blue" size="xs" className="ml-2 align-middle">System Default</Badge>}</> },
+      { id: "documentTypeName", header: tr("Document Type"), cell: (rule: UncontrolledCopyEligibilityRule) => <>{rule.documentTypeName ?? "Any"}{rule.system && <Badge color="blue" size="xs" className="ml-2 align-middle">{tr("System Default")}</Badge>}</> },
       { id: "allowed", header: "Allowed", cell: (rule: UncontrolledCopyEligibilityRule) => <Badge color={rule.allowed ? "emerald" : "red"} size="sm">{rule.allowed ? "Allowed" : "Blocked"}</Badge> },
       { id: "active", header: "Status", cell: (rule: UncontrolledCopyEligibilityRule) => <Badge color={flagColor(rule.active)} size="sm">{rule.active ? "Active" : "Inactive"}</Badge> },
       { id: "updatedAt", header: "Updated", cell: (rule: UncontrolledCopyEligibilityRule) => formatDateTime(rule.updatedAt) },
@@ -404,7 +405,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title="Uncontrolled Copies Policy"
+        title={tr("Uncontrolled Copies Policy")}
         breadcrumbItems={breadcrumbItems}
         actions={
           canManagePolicy ? (
@@ -426,17 +427,17 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         <fieldset disabled={saving} className="min-w-0 p-4 md:p-5">
           {activeTab === "policy" && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-              <FormSection title="Eligibility" icon={<ShieldCheck className="h-4 w-4" />}>
+              <FormSection title={tr("Eligibility")} icon={<ShieldCheck className="h-4 w-4" />}>
                 <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-2xs sm:text-xs text-slate-500">
-                  Configure allowed Document Types in Eligibility Rules below. Only the current Effective revision can ever be requested.
+                  {tr("Configure allowed Document Types in Eligibility Rules below. Only the current Effective revision can ever be requested.")}
                 </p>
               </FormSection>
 
-              <FormSection title="Validity" icon={<TimerReset className="h-4 w-4" />}>
+              <FormSection title={tr("Validity")} icon={<TimerReset className="h-4 w-4" />}>
                 <div className="space-y-4">
                   <div className="min-w-0">
                     <Select
-                      label="Validity counted from"
+                      label={tr("Validity counted from")}
                       value={policy.validityBasis}
                       onChange={(value) => {
                         const basis = value as UncontrolledCopyValidityBasis;
@@ -444,8 +445,8 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                         setValidityText(String(defaultValidityHours(basis)));
                       }}
                       options={[
-                        { label: "Distribution (hours after it is distributed)", value: "DISTRIBUTION" },
-                        { label: "Document's Valid Until date (plus hours)", value: "DOCUMENT_VALID_UNTIL" },
+                        { label: tr("Distribution (hours after it is distributed)"), value: "DISTRIBUTION" },
+                        { label: tr("Document's Valid Until date (plus hours)"), value: "DOCUMENT_VALID_UNTIL" },
                       ]}
                       enableSearch={false}
                       disabled={!canManagePolicy}
@@ -453,7 +454,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                      {policy.validityBasis === "DOCUMENT_VALID_UNTIL" ? "Extra hours after the document's Valid Until (hours)" : "Validity after distribution (hours)"}
+                      {policy.validityBasis === "DOCUMENT_VALID_UNTIL" ? tr("Extra hours after the document's Valid Until (hours)") : tr("Validity after distribution (hours)")}
                     </label>
                     <input
                       type="number"
@@ -467,17 +468,17 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                     />
                     <p className="mt-1 text-2xs text-slate-400">
                       {policy.validityBasis === "DOCUMENT_VALID_UNTIL"
-                        ? "0 to 8760. A copy stays valid through the whole of its document's Valid Until date, plus these hours (0 = that day only). The exact date and time are worked out when the copy is requested, for example 27/10/2027 + 72 hours. A document without a Valid Until date cannot be issued as an uncontrolled copy. After that the file can no longer be viewed or downloaded."
-                        : "1 to 8760. After this window the file can no longer be viewed or downloaded."}
+                        ? tr("0 to 8760. A copy stays valid through the whole of its document's Valid Until date, plus these hours (0 = that day only). The exact date and time are worked out when the copy is requested, for example 27/10/2027 + 72 hours. A document without a Valid Until date cannot be issued as an uncontrolled copy. After that the file can no longer be viewed or downloaded.")
+                        : tr("1 to 8760. After this window the file can no longer be viewed or downloaded.")}
                     </p>
                   </div>
                   <div className="divide-y divide-slate-100 -my-2">
                     <SwitchRow
-                      label="Allow re-download"
+                      label={tr("Allow re-download")}
                       checked={policy.allowRedownload}
                       onChange={(v) => setPolicy((prev) => ({ ...prev, allowRedownload: v }))}
                       disabled={!canManagePolicy}
-                      note="When off, the recipient can download the copy only once within the validity window."
+                      note={tr("When off, the recipient can download the copy only once within the validity window.")}
                     />
                   </div>
                 </div>
@@ -488,28 +489,28 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
           {activeTab === "markings" && (
             <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
               <div className="min-w-0 space-y-4">
-                <MarkCard title="Watermark (mandatory)" enabled onToggle={() => undefined} disabled>
+                <MarkCard title={tr("Watermark (mandatory)")} enabled onToggle={() => undefined} disabled>
                   <WatermarkFields
                     value={policy.marking}
                     onChange={(k, v) => setMarking(k as keyof UncontrolledCopyPolicyMarking, v as never)}
                     disabled={!canManagePolicy}
-                    textHint='The watermark title line. Leave as the default, or replace it entirely -- the watermark itself always prints, only its wording is editable.'
+                    textHint={tr('The watermark title line. Leave as the default, or replace it entirely -- the watermark itself always prints, only its wording is editable.')}
                     opacityRange={[5, 60]}
                     layerOptions={[
-                      { label: "Above the content (always visible)", value: "ABOVE" },
-                      { label: "Behind the content", value: "BEHIND" },
+                      { label: tr("Above the content (always visible)"), value: "ABOVE" },
+                      { label: tr("Behind the content"), value: "BEHIND" },
                     ]}
                   />
                   <ShowToggles
                     disabled={!canManagePolicy}
                     items={[
                       {
-                        label: "Recipient",
+                        label: tr("Recipient"),
                         checked: policy.marking.watermarkShowRecipient ?? true,
                         onChange: (v) => setMarking("watermarkShowRecipient", v),
                       },
                       {
-                        label: "Issued date",
+                        label: tr("Issued date"),
                         checked: policy.marking.watermarkShowIssuedDate ?? true,
                         onChange: (v) => setMarking("watermarkShowIssuedDate", v),
                       },
@@ -517,14 +518,14 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                   />
                   {canManagePolicy && hasCustomPosition("watermark") && (
                     <div className="mt-4 flex justify-end border-t border-slate-200 pt-3">
-                      <Button size="sm" variant="outline-emerald" aria-label="Reset Watermark Position" onClick={() => resetPosition("watermark")} disabled={saving}>
-                        Reset Position
+                      <Button size="sm" variant="outline-emerald" aria-label={tr("Reset Watermark Position")} onClick={() => resetPosition("watermark")} disabled={saving}>
+                        {tr("Reset Position")}
                       </Button>
                     </div>
                   )}
                 </MarkCard>
                 <MarkCard
-                  title="Stamp"
+                  title={tr("Stamp")}
                   enabled={policy.marking.stampEnabled}
                   onToggle={(v) => setMarking("stampEnabled", v)}
                   disabled={!canManagePolicy}
@@ -538,12 +539,12 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                     disabled={!canManagePolicy}
                     items={[
                       {
-                        label: "Copy number",
+                        label: tr("Copy number"),
                         checked: policy.marking.stampShowCopyNumber ?? true,
                         onChange: (v) => setMarking("stampShowCopyNumber", v),
                       },
                       {
-                        label: "Issue date",
+                        label: tr("Issue date"),
                         checked: policy.marking.stampShowDate,
                         onChange: (v) => setMarking("stampShowDate", v),
                       },
@@ -551,8 +552,8 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                   />
                   {canManagePolicy && hasCustomPosition("stamp") && (
                     <div className="mt-4 flex justify-end border-t border-slate-200 pt-3">
-                      <Button size="sm" variant="outline-emerald" aria-label="Reset Stamp Position" onClick={() => resetPosition("stamp")} disabled={saving}>
-                        Reset Position
+                      <Button size="sm" variant="outline-emerald" aria-label={tr("Reset Stamp Position")} onClick={() => resetPosition("stamp")} disabled={saving}>
+                        {tr("Reset Position")}
                       </Button>
                     </div>
                   )}
@@ -560,7 +561,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
               </div>
               <div className="order-first min-w-0 space-y-2 xl:order-last xl:sticky xl:top-4 xl:self-start">
                 {canManagePolicy ? (
-                  <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
+                  <FormSection title={tr("PDF Preview")} icon={<IconFileTypePdf className="h-4 w-4" />}>
                     <MarkingPreviewPane
                       copyType="UNCONTROLLED"
                       marking={{ ...policy.marking, watermarkEnabled: true }}
@@ -576,16 +577,15 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
 
           {activeTab === "policy" && (
             <div className="mt-5 flex flex-col gap-4 border-t border-slate-200 pt-5">
-              <h2 className="text-sm font-semibold text-slate-900">Eligibility Rules</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{tr("Eligibility Rules")}</h2>
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Changes are drafts until you click Save. {ruleChanges.length > 0 && `${ruleChanges.length} rule change(s) pending.`}
+                {tr("Changes are drafts until you click Save.")} {ruleChanges.length > 0 && `${ruleChanges.length} rule change(s) pending.`}
               </p>
               {!rulesLoaded && !rulesLoading && (
-                <Button variant="outline" size="sm" onClick={() => void loadRules()}>Reload saved rules</Button>
+                <Button variant="outline" size="sm" onClick={() => void loadRules()}>{tr("Reload saved rules")}</Button>
               )}
               <p className="text-2xs sm:text-xs text-slate-500 flex items-start gap-2">
-                Rules are evaluated by Document Type. "Any" matches every document type.
-                An active "Any" rule applies whenever no more specific active rule matches. If no active rule matches, issuance is blocked.
+                {tr("Rules are evaluated by Document Type. \"Any\" matches every document type. An active \"Any\" rule applies whenever no more specific active rule matches. If no active rule matches, issuance is blocked.")}
               </p>
 
               <div className="flex items-center justify-between gap-2">
@@ -593,14 +593,14 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                 {canManagePolicy && (
                   <Button size="sm" variant="default" disabled={saving || !rulesLoaded} className="whitespace-nowrap gap-1.5" onClick={openAddRuleModal}>
                     <Plus className="h-4 w-4" />
-                    Add Rule
+                    {tr("Add Rule")}
                   </Button>
                 )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
@@ -610,7 +610,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                         setRulesSearch(e.target.value);
                         setRulesPage(1);
                       }}
-                      placeholder="Document type..."
+                      placeholder={tr("Document type...")}
                       className="w-full h-9 pl-10 pr-9 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 bg-white"
                     />
                     {rulesSearch && (
@@ -618,7 +618,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                         type="button"
                         onClick={() => setRulesSearch("")}
                         className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400"
-                        aria-label="Clear search"
+                        aria-label={tr("Clear search")}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -626,7 +626,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Status</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Status")}</label>
                   <Select
                     value={rulesStatus}
                     onChange={(v) => {
@@ -652,7 +652,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                 isLoading={rulesLoading}
 
                 rowClassName={(rule) => cn(!rule.active && "opacity-60")}
-                emptyState={<TableEmptyState title="No eligibility rules" description="Add a rule to configure which Document Types may be issued as an Uncontrolled Copy." />}
+                emptyState={<TableEmptyState title={tr("No eligibility rules")} description={tr("Add a rule to configure which Document Types may be issued as an Uncontrolled Copy.")} />}
                 action={{
                   cell: (rule) => canManagePolicy ? (
                     <button
@@ -693,7 +693,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                           closeRuleMenu();
                         }}
                       >
-                        Edit Eligibility Rules
+                        {tr("Edit Eligibility Rules")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         icon={<IconTrash className="h-4 w-4" />}
@@ -702,7 +702,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                           closeRuleMenu();
                         }}
                       >
-                        Delete
+                        {tr("Delete")}
                       </DropdownMenuItem>
                     </div>
                   </PortalDropdownMenu>
@@ -717,25 +717,25 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         isOpen={showRuleModal}
         onClose={closeRuleModal}
         onConfirm={handleSaveRule}
-        title={editingRule ? "Edit Eligibility Rule" : "Add Eligibility Rule"}
-        confirmText="Apply to draft"
-        description="Changes take effect only after Save on the policy page."
+        title={editingRule ? tr("Edit Eligibility Rule") : tr("Add Eligibility Rule")}
+        confirmText={tr("Apply to draft")}
+        description={tr("Changes take effect only after Save on the policy page.")}
         size="lg"
       >
         <div className="space-y-4">
           <Select
-            label="Document Type"
+            label={tr("Document Type")}
             value={ruleForm.documentTypeId}
             onChange={(v) => setRuleForm((prev) => ({ ...prev, documentTypeId: String(v) }))}
-            options={[{ label: "Any", value: ANY_VALUE }, ...documentTypeOptions]}
+            options={[{ label: tr("Any"), value: ANY_VALUE }, ...documentTypeOptions]}
             disabled={saving}
           />
           <div className="flex items-center justify-between py-1">
-            <span className="text-xs sm:text-sm font-medium text-slate-900">Allowed</span>
+            <span className="text-xs sm:text-sm font-medium text-slate-900">{tr("Allowed")}</span>
             <Switch checked={ruleForm.allowed} onChange={(v) => setRuleForm((prev) => ({ ...prev, allowed: v }))} size="sm" disabled={saving} />
           </div>
           <div className="flex items-center justify-between py-1">
-            <span className="text-xs sm:text-sm font-medium text-slate-900">Active</span>
+            <span className="text-xs sm:text-sm font-medium text-slate-900">{tr("Active")}</span>
             <Switch checked={ruleForm.active} onChange={(v) => setRuleForm((prev) => ({ ...prev, active: v }))} size="sm" disabled={saving} />
           </div>
         </div>
@@ -746,7 +746,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
         onClose={() => setDeleteRuleTarget(null)}
         onConfirm={handleDeleteRule}
         type="warning"
-        title="Delete Eligibility Rule"
+        title={tr("Delete Eligibility Rule")}
         description={
           deleteRuleTarget
             ? `Remove the rule for "${deleteRuleTarget.documentTypeName ?? "Any"}" from the draft? Deletion takes effect only after Save.`

@@ -8,6 +8,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { cn } from "@/components/ui/utils";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { tr } from "@/i18n";
 
 interface SuspendModalProps {
   isOpen: boolean;
@@ -58,15 +59,15 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
         isOpen={isOpen}
         onClose={handleClose}
         onConfirm={handleConfirm}
-        title="Suspend User"
-        description={<>Suspending <span className="font-semibold text-slate-700">{userName}</span></>}
-        confirmText="Suspend User"
+        title={tr("Suspend User")}
+        description={<>{tr("Suspending")} <span className="font-semibold text-slate-700">{userName}</span></>}
+        confirmText={tr("Suspend User")}
         size="md"
       >
         <div className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Reason <span className="text-red-500">*</span>
+              {tr("Reason")} <span className="text-red-500">*</span>
             </label>
             <textarea
               value={reason}
@@ -74,7 +75,7 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
                 setReason(e.target.value);
                 setError("");
               }}
-              placeholder="Enter reason for suspension..."
+              placeholder={tr("Enter reason for suspension...")}
               rows={3}
               className={cn(
                 "w-full px-3 py-2.5 text-sm border rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400",
@@ -86,17 +87,17 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
 
           <div>
             <DateTimePicker
-              label="Suspended Until (optional)"
+              label={tr("Suspended Until (optional)")}
               value={suspendedUntil}
               onChange={setSuspendedUntil}
-              placeholder="Leave empty for indefinite"
+              placeholder={tr("Leave empty for indefinite")}
             />
-            <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">Leave empty to suspend indefinitely</p>
+            <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">{tr("Leave empty to suspend indefinitely")}</p>
           </div>
 
           <WarningBanner
             variant="warning"
-            description="The user will be unable to log in while suspended. All data and records will be preserved."
+            description={tr("The user will be unable to log in while suspended. All data and records will be preserved.")}
           />
         </div>
       </FormModal>

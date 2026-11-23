@@ -13,6 +13,7 @@ import { day, trainingBreadcrumbs, when } from "../shared/trainingLabels";
 import { SpecimenRevisionsCard } from "./SpecimenRevisionsCard";
 import { SPECIMEN_STATUS_LABEL } from "./specimenLabels";
 import { useSpecimenActions } from "./useSpecimenActions";
+import { tr } from "@/i18n";
 
 /** One specimen signature (FRM.0007): the facts, what can be done with it, and every version of the specimen signature of the person under the footer buttons. */
 export function TrainingSpecimenDetailPage() {
@@ -39,10 +40,10 @@ export function TrainingSpecimenDetailPage() {
   }
 
   const caps = specimen.capabilities;
-  const tabs: TabItem[] = [{ id: "overview", label: "General Information" }, { id: "audit", label: "Audit Trail" }];
+  const tabs: TabItem[] = [{ id: "overview", label: tr("General Information") }, { id: "audit", label: tr("Audit Trail") }];
   const footer = (
     <>
-      {caps.viewImage && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void actions.view(specimen)}>View Image</Button>}
+      {caps.viewImage && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => void actions.view(specimen)}>{tr("View Image")}</Button>}
     </>
   );
 
@@ -62,17 +63,17 @@ export function TrainingSpecimenDetailPage() {
       >
         {tab === "overview" && (
           <ReadonlyGrid>
-            <ReadonlyField label="Employee ID" value={specimen.employeeCode ?? "—"} />
-            <ReadonlyField label="Full Name" value={specimen.fullName} />
-            <ReadonlyField label="Department" value={specimen.department ?? "—"} />
-            <ReadonlyField label="Version" value={String(specimen.versionNo)} />
-            <ReadonlyField label="Status" value={SPECIMEN_STATUS_LABEL[specimen.status] ?? specimen.status} />
-            <ReadonlyField label="Effective Date" value={day(specimen.effectiveDate)} />
-            <ReadonlyField label="Uploaded By" value={specimen.uploadedByName} />
-            <ReadonlyField label="Uploaded On" value={when(specimen.createdAt)} />
-            <ReadonlyField label="Confirmed By (earlier workflow)" value={specimen.confirmedByName ?? "—"} />
-            <ReadonlyField label="Signatures" value={specimen.hasSecond ? "1st and 2nd signature" : "1st signature only"} />
-            {specimen.changeReason && <ReadonlyField label="Reason for the Change" value={specimen.changeReason} wide />}
+            <ReadonlyField label={tr("Employee ID")} value={specimen.employeeCode ?? "—"} />
+            <ReadonlyField label={tr("Full Name")} value={specimen.fullName} />
+            <ReadonlyField label={tr("Department")} value={specimen.department ?? "—"} />
+            <ReadonlyField label={tr("Version")} value={String(specimen.versionNo)} />
+            <ReadonlyField label={tr("Status")} value={SPECIMEN_STATUS_LABEL[specimen.status] ?? specimen.status} />
+            <ReadonlyField label={tr("Effective Date")} value={day(specimen.effectiveDate)} />
+            <ReadonlyField label={tr("Uploaded By")} value={specimen.uploadedByName} />
+            <ReadonlyField label={tr("Uploaded On")} value={when(specimen.createdAt)} />
+            <ReadonlyField label={tr("Confirmed By (earlier workflow)")} value={specimen.confirmedByName ?? "—"} />
+            <ReadonlyField label={tr("Signatures")} value={specimen.hasSecond ? "1st and 2nd signature" : "1st signature only"} />
+            {specimen.changeReason && <ReadonlyField label={tr("Reason for the Change")} value={specimen.changeReason} wide />}
           </ReadonlyGrid>
         )}
         {tab === "audit" && <AuditTrailTab entityId={specimen.id} entityType="TRAINING_SPECIMEN_SIGNATURE" />}

@@ -88,6 +88,7 @@ import type {
   WorkspaceNavigationMode,
 } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType = "general" | "training" | "document" | "signatures" | "records" | "audit";
@@ -817,9 +818,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     if (!canRequestControlledCopy) {
       showToast({
         type: "error",
-        title: "Controlled copy request unavailable",
+        title: tr("Controlled copy request unavailable"),
         message:
-          "Request Controlled Copy is available only when the document is Active and the latest revision is Effective.",
+          tr("Request Controlled Copy is available only when the document is Active and the latest revision is Effective."),
         duration: 3000,
       });
       return;
@@ -1130,9 +1131,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       // shown on both fields.
       showToast({
         type: "error",
-        title: "Missing required field",
+        title: tr("Missing required field"),
         message:
-          "Periodic Review Cycle (Months) and Periodic Review Notification (Days) cannot be empty.",
+          tr("Periodic Review Cycle (Months) and Periodic Review Notification (Days) cannot be empty."),
         duration: 3500,
       });
       return;
@@ -1141,8 +1142,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       // Review Date is required while preparing an upgrade (marked with * in the General tab).
       showToast({
         type: "error",
-        title: "Missing required field",
-        message: "Review Date is required.",
+        title: tr("Missing required field"),
+        message: tr("Review Date is required."),
         duration: 3500,
       });
       return;
@@ -1193,14 +1194,14 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setIsEditModeActive(false);
       showToast({
         type: "success",
-        title: "Next revision configuration saved",
-        message: "Your changes have been saved.",
+        title: tr("Next revision configuration saved"),
+        message: tr("Your changes have been saved."),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to save configuration",
+        title: tr("Unable to save configuration"),
         message: (error as any)?.response?.data?.message || "Please try again.",
         duration: 4000,
       });
@@ -1242,7 +1243,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to upload revision",
+        title: tr("Unable to upload revision"),
         message:
           (error as any)?.response?.data?.message ||
           "Failed to create the Draft revision from the selected file.",
@@ -1257,9 +1258,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     if (!canObsoleteCurrentDocument) {
       showToast({
         type: "error",
-        title: "Obsolete unavailable",
+        title: tr("Obsolete unavailable"),
         message:
-          "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.",
+          tr("Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress."),
         duration: 3000,
       });
       return;
@@ -1298,8 +1299,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setShowObsoleteModal(false);
       showToast({
         type: "success",
-        title: "Document obsoleted",
-        message: "The document has been marked as obsoleted.",
+        title: tr("Document obsoleted"),
+        message: tr("The document has been marked as obsoleted."),
         duration: 3000,
       });
     } catch (error) {
@@ -1308,7 +1309,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       }
       showToast({
         type: "error",
-        title: "Unable to obsolete document",
+        title: tr("Unable to obsolete document"),
         message:
           (error as any)?.response?.data?.error?.message ||
           "The document could not be marked as obsoleted.",
@@ -1347,9 +1348,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       setShowReopenModal(false);
       showToast({
         type: "success",
-        title: "Document reopened",
+        title: tr("Document reopened"),
         message:
-          "The document is back to the state it had before it was closed. Its revisions and controlled copies stay closed.",
+          tr("The document is back to the state it had before it was closed. Its revisions and controlled copies stay closed."),
         duration: 4000,
       });
     } catch (error) {
@@ -1358,7 +1359,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       }
       showToast({
         type: "error",
-        title: "Unable to reopen document",
+        title: tr("Unable to reopen document"),
         message:
           (error as any)?.response?.data?.error?.message ||
           "The document could not be reopened.",
@@ -1402,7 +1403,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       console.error("Failed to publish revision", error);
       showToast({
         type: "error",
-        title: "Publish failed",
+        title: tr("Publish failed"),
         message:
           (error as any)?.response?.data?.message ||
           "Failed to publish revision.",
@@ -1463,7 +1464,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
       showToast({
         type: "success",
-        title: "Document Published",
+        title: tr("Document Published"),
         message: `Revision ${detail.documentNumber} ${detail.revisionNumber} has been published and is now Effective.`,
         duration: 3000,
       });
@@ -1481,7 +1482,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         console.error("Failed to publish document revision", error);
         showToast({
           type: "error",
-          title: "Publish failed",
+          title: tr("Publish failed"),
           message:
             responseData?.error?.message ||
             responseData?.message ||
@@ -1504,16 +1505,16 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       .then(() => {
         showToast({
           type: "success",
-          title: "Link copied",
-          message: "Document detail link has been copied to the clipboard.",
+          title: tr("Link copied"),
+          message: tr("Document detail link has been copied to the clipboard."),
           duration: 2500,
         });
       })
       .catch(() => {
         showToast({
           type: "error",
-          title: "Copy failed",
-          message: "Unable to copy the document link.",
+          title: tr("Copy failed"),
+          message: tr("Unable to copy the document link."),
           duration: 2500,
         });
       });
@@ -1524,12 +1525,12 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   };
 
   const tabs = [
-    { id: "general" as TabType, label: "General Information" },
-    { id: "training" as TabType, label: "Training Information" },
+    { id: "general" as TabType, label: tr("General Information") },
+    { id: "training" as TabType, label: tr("Training Information") },
     { id: "document" as TabType, label: "Document" },
-    { id: "signatures" as TabType, label: "Signatures" },
+    { id: "signatures" as TabType, label: tr("Signatures") },
     ...(document.isTemplate ? [] : [{ id: "records" as TabType, label: "Records" }]),
-    { id: "audit" as TabType, label: "Audit Trail" },
+    { id: "audit" as TabType, label: tr("Audit Trail") },
   ];
 
   const detailFormData = {
@@ -1732,7 +1733,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   }, [auditTrail, approvers, document.signatures, reviewers]);
 
   const subTabs = [
-    { id: "revisions" as SubTabType, label: "Document Revisions" },
+    { id: "revisions" as SubTabType, label: tr("Document Revisions") },
     {
       id: "reviewers" as SubTabType,
       label: "Reviewers",
@@ -1745,17 +1746,17 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     },
     {
       id: "controlledCopies" as SubTabType,
-      label: "Controlled Copies",
+      label: tr("Controlled Copies"),
       count: controlledCopiesPagination.total,
     },
     {
       id: "relatedDocuments" as SubTabType,
-      label: "Related Documents",
+      label: tr("Related Documents"),
       count: relatedDocuments.length,
     },
     {
       id: "correlatedDocuments" as SubTabType,
-      label: "Correlated Documents",
+      label: tr("Correlated Documents"),
       count: correlatedDocuments.length,
     },
   ];
@@ -1777,7 +1778,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       {/* Header: Title + Breadcrumb + Actions */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Document Details"
+          title={tr("Document Details")}
           breadcrumbItems={documentDetail(navigateTo, {
             fromOwned: state?.fromOwned ?? fromOwned,
           })}
@@ -1789,7 +1790,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                 variant="outline-emerald"
                 className="whitespace-nowrap"
               >
-                Back
+                {tr("Back")}
               </Button>
             </div>
           }
@@ -1871,7 +1872,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               <OnlyOfficeDocumentViewer revisionId={String(latestEffectiveRevision?.id || revisions[0]?.id)} />
             ) : (
               <div className="w-full border rounded-xl flex items-center justify-center bg-slate-50 text-sm text-slate-500" style={{ minHeight: "320px" }}>
-                This template has no revision file yet.
+                {tr("This template has no revision file yet.")}
               </div>
             )
           )}
@@ -1883,7 +1884,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               >
                 <div className="text-slate-500 flex flex-col items-center gap-2">
                   <div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span>Loading preview...</span>
+                  <span>{tr("Loading preview...")}</span>
                 </div>
               </div>
             ) : documentFile ? (
@@ -1900,8 +1901,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   </span>
                   <span className="text-xs text-slate-400">
                     {documentPreviewError
-                      ? "Refresh the page after access is granted, or contact Document Control if the issue persists."
-                      : "The official published PDF will appear here once the document has been published."}
+                      ? tr("Refresh the page after access is granted, or contact Document Control if the issue persists.")
+                      : tr("The official published PDF will appear here once the document has been published.")}
                   </span>
                 </div>
               </div>
@@ -1930,7 +1931,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           variant="outline-emerald"
           className="whitespace-nowrap"
         >
-          Back
+          {tr("Back")}
         </Button>
         {canConfigureNextRevision && !isEditModeActive && (
           <Button
@@ -1955,7 +1956,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               disabled={isSavingWorkflowConfiguration}
               onClick={handleSaveWorkflowConfiguration}
             >
-              Save
+              {tr("Save")}
             </Button>
           )}
         {canReopenCurrentDocument && (
@@ -1965,7 +1966,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={() => setShowReopenModal(true)}
           >
-            Reopen
+            {tr("Reopen")}
           </Button>
         )}
         {canObsoleteCurrentDocument && (
@@ -1975,7 +1976,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handleObsoleteDocument}
           >
-            Obsolete
+            {tr("Obsolete")}
           </Button>
         )}
         {(canRequestControlledCopy || controlledCopyExpired) && (
@@ -1985,7 +1986,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handleRequestControlledCopy}
           >
-            Request Controlled Copy
+            {tr("Request Controlled Copy")}
           </Button>
         )}
         {(canRequestUncontrolledCopy || uncontrolledCopyExpired) && (
@@ -2002,7 +2003,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             }}
             title={uncontrolledCopyContextMessage || undefined}
           >
-            Request Uncontrolled Copy
+            {tr("Request Uncontrolled Copy")}
           </Button>
         )}
         {canUploadRevision && (
@@ -2013,7 +2014,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
             onClick={handleUploadRevision}
             disabled={isRevisionUploadLoading}
           >
-            Upload Revision
+            {tr("Upload Revision")}
           </Button>
         )}
         {canConfigureNextRevisionNow && (
@@ -2028,7 +2029,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   setIsRelatedDocumentsModalOpen(true);
                 }}
               >
-                Select Related Documents
+                {tr("Select Related Documents")}
               </Button>
             )}
             {canConfigureNextRevisionCorrelatedDocumentsNow && (
@@ -2041,7 +2042,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   setIsCorrelatedDocumentsModalOpen(true);
                 }}
               >
-                Select Correlated Documents
+                {tr("Select Correlated Documents")}
               </Button>
             )}
             {canConfigureNextRevisionReviewersNow && (
@@ -2054,7 +2055,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   setIsReviewerModalOpen(true);
                 }}
               >
-                Reviewers
+                {tr("Reviewers")}
               </Button>
             )}
             {canConfigureNextRevisionApproversNow && (
@@ -2067,7 +2068,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   setIsApproverModalOpen(true);
                 }}
               >
-                Approvers
+                {tr("Approvers")}
               </Button>
             )}
           </>
@@ -2170,8 +2171,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         isOpen={showSaveConfirmModal}
         onClose={() => setShowSaveConfirmModal(false)}
         onConfirm={() => void handleConfirmSaveWorkflowConfiguration()}
-        title="Save Next-Revision Configuration?"
-        description="Review the changes below before saving. This only affects the next Draft revision — the current Effective revision is not changed."
+        title={tr("Save Next-Revision Configuration?")}
+        description={tr("Review the changes below before saving. This only affects the next Draft revision — the current Effective revision is not changed.")}
         confirmText="Save"
         cancelText="Cancel"
         showCancel
@@ -2188,15 +2189,15 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                   <TableMarkup.Head className="sticky top-0 border-b border-slate-200 bg-slate-50">
                     <TableMarkup.Row>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell45}>
-                        Field
+                        {tr("Field")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell44}>
-                        Before
+                        {tr("Before")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell7}>
                         <span className="flex items-center gap-1.5">
                           <ArrowRight className="h-3 w-3 text-emerald-500" />
-                          After
+                          {tr("After")}
                         </span>
                       </TableMarkup.HeaderCell>
                     </TableMarkup.Row>
@@ -2230,14 +2231,14 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onConfirm={() => setShowWarningModal(false)}
-        title="Cannot Publish Yet"
+        title={tr("Cannot Publish Yet")}
         type="warning"
         confirmText="OK"
         showCancel={false}
         description={
           <div className="space-y-3">
             <p className="font-semibold text-slate-900">
-              One or more Related Documents are not yet Ready for Publishing:
+              {tr("One or more Related Documents are not yet Ready for Publishing:")}
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {nonEffectiveDocs.map((doc, idx) => (
@@ -2248,7 +2249,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Bring the listed document(s) to Ready for Publishing first, then publish again.
+              {tr("Bring the listed document(s) to Ready for Publishing first, then publish again.")}
             </p>
           </div>
         }
@@ -2259,8 +2260,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         onClose={() => setShowAuthorHandoffWarning(false)}
         onConfirm={() => void persistWorkflowConfiguration()}
         type="warning"
-        title="Reassign Author?"
-        description="You are currently the Author of this document. After saving, only the newly assigned Author will be able to Upload Revision — you will lose that ability on this document. Continue?"
+        title={tr("Reassign Author?")}
+        description={tr("You are currently the Author of this document. After saving, only the newly assigned Author will be able to Upload Revision — you will lose that ability on this document. Continue?")}
       />
 
       <AlertModal
@@ -2271,9 +2272,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           setIsUploadRevisionModalOpen(true);
         }}
         type="warning"
-        title="Unsaved Changes Will Be Discarded"
-        description="You have unsaved changes to Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification or Training. Upload Revision uses the last-saved configuration, not these unsaved edits — continuing will discard them. Click Cancel and Save first if you want them applied to the new revision."
-        confirmText="Upload Anyway (Discard Unsaved Changes)"
+        title={tr("Unsaved Changes Will Be Discarded")}
+        description={tr("You have unsaved changes to Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification or Training. Upload Revision uses the last-saved configuration, not these unsaved edits — continuing will discard them. Click Cancel and Save first if you want them applied to the new revision.")}
+        confirmText={tr("Upload Anyway (Discard Unsaved Changes)")}
       />
 
       <AlertModal
@@ -2284,11 +2285,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           setShowEditModeConfirmModal(false);
         }}
         type="warning"
-        title={hasInProgressUpgradeDraft ? "Adjust Upgrade Configuration?" : "Edit Revision for Upgrade?"}
+        title={hasInProgressUpgradeDraft ? "Adjust Upgrade Configuration?" : tr("Edit Revision for Upgrade?")}
         description={
           hasInProgressUpgradeDraft
-            ? "A Draft upgrade revision is already in progress. These changes (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training) will be applied to that in-progress Draft. Nothing is saved until you explicitly click Save. Continue?"
-            : "You are about to configure the next revision (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training). Nothing is saved until you explicitly click Save. Continue?"
+            ? tr("A Draft upgrade revision is already in progress. These changes (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training) will be applied to that in-progress Draft. Nothing is saved until you explicitly click Save. Continue?")
+            : tr("You are about to configure the next revision (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training). Nothing is saved until you explicitly click Save. Continue?")
         }
       />
 
@@ -2311,8 +2312,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         type="warning"
         showCancel={false}
         confirmText="OK"
-        title="Document Expired"
-        description="This document has passed its Valid Until date, so no copy can be requested. Electronic copies are voided automatically when a document expires. Do not use this document."
+        title={tr("Document Expired")}
+        description={tr("This document has passed its Valid Until date, so no copy can be requested. Electronic copies are voided automatically when a document expires. Do not use this document.")}
       />
 
       {canRequestUncontrolledCopy && (

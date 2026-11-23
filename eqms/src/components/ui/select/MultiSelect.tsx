@@ -562,7 +562,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                   disabled={filteredOptions.length === 0}
                   className="h-8 px-3"
                 >
-                  {isAllSelected ? "Deselect all" : "Select all"}
+                  {isAllSelected ? "Deselect all" : tr("Select all")}
                 </Button>
               </div>
             </motion.div>

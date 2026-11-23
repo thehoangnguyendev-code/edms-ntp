@@ -14,6 +14,7 @@ import { RetentionControl } from './RetentionControl';
 import { StorageLayoutTable } from './StorageLayoutTable';
 import { StorageProviderCards } from './StorageProviderCards';
 import { buildNasUncPath, buildStorageTestPayload, canTestStorage, retentionYearsOf, storageSubject } from './storageIntegration';
+import { tr } from "@/i18n";
 
 type StoragePathPreview = Awaited<ReturnType<typeof settingsApi.getStoragePathPreview>>;
 type Storage = IntegrationConfig['storage'];
@@ -73,12 +74,12 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
     try {
       const response = await settingsApi.testStorageConnection(buildStorageTestPayload(storage));
       if (response.success) {
-        showToast({ type: 'success', title: 'Success', message: response.message || 'Storage connection test successful.' });
+        showToast({ type: 'success', title: tr('Success'), message: tr(response.message || 'Storage connection test successful.') });
       } else {
-        showToast({ type: 'error', title: 'Error', message: response.message || 'Storage connection test failed.' });
+        showToast({ type: 'error', title: tr('Error'), message: tr(response.message || 'Storage connection test failed.') });
       }
     } catch (error) {
-      showToast({ type: 'error', title: 'Connection Failed', message: getErrorMessage(error) });
+      showToast({ type: 'error', title: tr('Connection Failed'), message: getErrorMessage(error) });
     } finally {
       setTestingStorage(false);
       // the server keeps what this test found (success or failure), so the card shows it after the toast is gone
@@ -106,15 +107,15 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
   const header = provider === 'minio'
     ? { icon: <IconDatabase className="h-5 w-5" />, title: `MinIO · ${storage.minioBucket?.trim() || 'no bucket yet'}`, subtitle: storage.minioEndpoint?.trim() || 'No endpoint yet' }
     : provider === 'nas'
-      ? { icon: <IconNetwork className="h-5 w-5" />, title: 'Network Attached Storage', subtitle: (storage.nasPath || buildNasUncPath(storage.nasHost, storage.nasShareName)) || 'No shared folder yet' }
-      : { icon: <IconServer className="h-5 w-5" />, title: 'Local Server', subtitle: 'A folder on the application server' };
+      ? { icon: <IconNetwork className="h-5 w-5" />, title: tr('Network Attached Storage'), subtitle: (storage.nasPath || buildNasUncPath(storage.nasHost, storage.nasShareName)) || 'No shared folder yet' }
+      : { icon: <IconServer className="h-5 w-5" />, title: tr('Local Server'), subtitle: tr('A folder on the application server') };
 
   const endpointHelp = (
     <div className="mt-2 space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-      <p>This is the MinIO S3 API endpoint that the backend will use when testing and saving the configuration.</p>
-      <p>Use <span className="font-medium text-slate-700">http://localhost:9000</span> when the backend runs locally on your machine.</p>
-      <p>Use <span className="font-medium text-slate-700">http://minio:9000</span> when the backend runs inside Docker Compose and connects to the MinIO container over the internal Docker network.</p>
-      <p>Do not use port <span className="font-medium text-slate-700">9001</span>; that is the MinIO Console, not the S3 API.</p>
+      <p>{tr("This is the MinIO S3 API endpoint that the backend will use when testing and saving the configuration.")}</p>
+      <p>{tr("Use")} <span className="font-medium text-slate-700">{tr("http://localhost:9000")}</span> {tr("when the backend runs locally on your machine.")}</p>
+      <p>{tr("Use")} <span className="font-medium text-slate-700">{tr("http://minio:9000")}</span> {tr("when the backend runs inside Docker Compose and connects to the MinIO container over the internal Docker network.")}</p>
+      <p>{tr("Do not use port")} <span className="font-medium text-slate-700">9001</span>{tr("; that is the MinIO Console, not the S3 API.")}</p>
     </div>
   );
 
@@ -122,41 +123,41 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className={LABEL_CLASS} htmlFor="storage-minio-endpoint">MinIO Endpoint</label>
+          <label className={LABEL_CLASS} htmlFor="storage-minio-endpoint">{tr("MinIO Endpoint")}</label>
           <input id="storage-minio-endpoint" type="text" value={storage.minioEndpoint || ''} onChange={(e) => handleStorageChange('minioEndpoint', e.target.value)} className={INPUT_CLASS} placeholder="http://localhost:9000" />
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-500">Quick fill</span>
-            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://localhost:9000')}>localhost:9000</Button>
-            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://minio:9000')}>minio:9000</Button>
+            <span className="text-xs text-slate-500">{tr("Quick fill")}</span>
+            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://localhost:9000')}>{tr("localhost:9000")}</Button>
+            <Button type="button" variant="outline-emerald" size="xs" className="whitespace-nowrap" onClick={() => handleStorageChange('minioEndpoint', 'http://minio:9000')}>{tr("minio:9000")}</Button>
             <button
               type="button"
               onClick={() => setEndpointHelpOpen(!endpointHelpOpen)}
               aria-expanded={endpointHelpOpen}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800"
             >
-              Which endpoint?
+              {tr("Which endpoint?")}
               <IconChevronDown className={`h-3.5 w-3.5 transition-transform ${endpointHelpOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
           <Collapsible open={endpointHelpOpen}>{endpointHelp}</Collapsible>
         </div>
         <div>
-          <label className={LABEL_CLASS} htmlFor="storage-minio-bucket">Bucket Name</label>
-          <input id="storage-minio-bucket" type="text" value={storage.minioBucket || ''} onChange={(e) => handleStorageChange('minioBucket', e.target.value)} className={INPUT_CLASS} placeholder="eqms-gmp-revisions" />
-          <p className="mt-1 text-xs text-slate-500">A dedicated bucket. The system enables Versioning and Object Lock Compliance.</p>
+          <label className={LABEL_CLASS} htmlFor="storage-minio-bucket">{tr("Bucket Name")}</label>
+          <input id="storage-minio-bucket" type="text" value={storage.minioBucket || ''} onChange={(e) => handleStorageChange('minioBucket', e.target.value)} className={INPUT_CLASS} placeholder={tr("eqms-gmp-revisions")} />
+          <p className="mt-1 text-xs text-slate-500">{tr("A dedicated bucket. The system enables Versioning and Object Lock Compliance.")}</p>
         </div>
       </div>
       <div className="border-t border-slate-100 pt-4">
-        <p className="mb-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">Credentials</p>
+        <p className="mb-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">{tr("Credentials")}</p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={LABEL_CLASS} htmlFor="storage-minio-access-key">Access Key ID</label>
-            <input id="storage-minio-access-key" type="text" value={storage.minioAccessKeyId || ''} onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)} className={INPUT_CLASS} placeholder="eqms-minio" />
-            <p className="mt-1 text-xs text-slate-500">MinIO service-account access key with bucket configuration and object read/write permissions.</p>
+            <label className={LABEL_CLASS} htmlFor="storage-minio-access-key">{tr("Access Key ID")}</label>
+            <input id="storage-minio-access-key" type="text" value={storage.minioAccessKeyId || ''} onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)} className={INPUT_CLASS} placeholder={tr("eqms-minio")} />
+            <p className="mt-1 text-xs text-slate-500">{tr("MinIO service-account access key with bucket configuration and object read/write permissions.")}</p>
           </div>
           <div>
-            <label className={LABEL_CLASS} htmlFor="storage-minio-secret">Secret Access Key</label>
-            <SecretInput id="storage-minio-secret" value={storage.minioSecretAccessKey || ''} placeholder="eqms-minio-secret" label="secret access key" onChange={(value) => handleStorageChange('minioSecretAccessKey', value)} />
+            <label className={LABEL_CLASS} htmlFor="storage-minio-secret">{tr("Secret Access Key")}</label>
+            <SecretInput id="storage-minio-secret" value={storage.minioSecretAccessKey || ''} placeholder={tr("eqms-minio-secret")} label={tr("secret access key")} onChange={(value) => handleStorageChange('minioSecretAccessKey', value)} />
           </div>
         </div>
       </div>
@@ -166,36 +167,36 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
   const nasFields = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div className="md:col-span-2">
-        <label className={LABEL_CLASS} htmlFor="storage-nas-host">NAS Host / IP</label>
-        <input id="storage-nas-host" type="text" value={storage.nasHost || ''} onChange={(e) => handleStorageChange('nasHost', e.target.value)} className={INPUT_CLASS} placeholder="ProjectT7 or 10.0.80.254" />
+        <label className={LABEL_CLASS} htmlFor="storage-nas-host">{tr("NAS Host / IP")}</label>
+        <input id="storage-nas-host" type="text" value={storage.nasHost || ''} onChange={(e) => handleStorageChange('nasHost', e.target.value)} className={INPUT_CLASS} placeholder={tr("ProjectT7 or 10.0.80.254")} />
       </div>
       <div className="md:col-span-2">
-        <label className={LABEL_CLASS} htmlFor="storage-nas-share">Shared Folder Name</label>
-        <input id="storage-nas-share" type="text" value={storage.nasShareName || ''} onChange={(e) => handleStorageChange('nasShareName', e.target.value)} className={INPUT_CLASS} placeholder="ShareT7 or Documents" />
+        <label className={LABEL_CLASS} htmlFor="storage-nas-share">{tr("Shared Folder Name")}</label>
+        <input id="storage-nas-share" type="text" value={storage.nasShareName || ''} onChange={(e) => handleStorageChange('nasShareName', e.target.value)} className={INPUT_CLASS} placeholder={tr("ShareT7 or Documents")} />
       </div>
       <div>
-        <label className={LABEL_CLASS} htmlFor="storage-nas-domain">Domain / Workgroup (optional)</label>
-        <input id="storage-nas-domain" type="text" value={storage.nasDomain || ''} onChange={(e) => handleStorageChange('nasDomain', e.target.value)} className={INPUT_CLASS} placeholder="WORKGROUP or DOMAIN" />
+        <label className={LABEL_CLASS} htmlFor="storage-nas-domain">{tr("Domain / Workgroup (optional)")}</label>
+        <input id="storage-nas-domain" type="text" value={storage.nasDomain || ''} onChange={(e) => handleStorageChange('nasDomain', e.target.value)} className={INPUT_CLASS} placeholder={tr("WORKGROUP or DOMAIN")} />
       </div>
       <div>
-        <label className={LABEL_CLASS} htmlFor="storage-nas-user">Username</label>
-        <input id="storage-nas-user" type="text" value={storage.nasUsername || ''} onChange={(e) => handleStorageChange('nasUsername', e.target.value)} className={INPUT_CLASS} placeholder="nas_user" />
+        <label className={LABEL_CLASS} htmlFor="storage-nas-user">{tr("Username")}</label>
+        <input id="storage-nas-user" type="text" value={storage.nasUsername || ''} onChange={(e) => handleStorageChange('nasUsername', e.target.value)} className={INPUT_CLASS} placeholder={tr("nas_user")} />
       </div>
       <div>
-        <label className={LABEL_CLASS} htmlFor="storage-nas-password">Password</label>
-        <SecretInput id="storage-nas-password" value={storage.nasPassword || ''} placeholder="••••••••" label="password" onChange={(value) => handleStorageChange('nasPassword', value)} />
+        <label className={LABEL_CLASS} htmlFor="storage-nas-password">{tr("Password")}</label>
+        <SecretInput id="storage-nas-password" value={storage.nasPassword || ''} placeholder="••••••••" label={tr("password")} onChange={(value) => handleStorageChange('nasPassword', value)} />
       </div>
       <div className="md:col-span-2">
-        <label className={LABEL_CLASS} htmlFor="storage-nas-path">Resolved SMB Path</label>
+        <label className={LABEL_CLASS} htmlFor="storage-nas-path">{tr("Resolved SMB Path")}</label>
         <input
           id="storage-nas-path"
           type="text"
           value={storage.nasPath || buildNasUncPath(storage.nasHost, storage.nasShareName)}
           readOnly
           className={CONTROL_STATE_CLASSES.readonlyField}
-          placeholder="\\\\ProjectT7\\ShareT7"
+          placeholder={tr("\\\\\\\\ProjectT7\\\\ShareT7")}
         />
-        <p className="mt-1 text-xs text-slate-500">Use the exact Synology shared folder name. The backend connects to this SMB path directly.</p>
+        <p className="mt-1 text-xs text-slate-500">{tr("Use the exact Synology shared folder name. The backend connects to this SMB path directly.")}</p>
       </div>
     </div>
   );
@@ -203,7 +204,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
   const localNote = (
     <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
       <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-      <p>Files are written to a folder on the application server. That folder is not part of the backup, so a lost disk loses them. Use MinIO or a NAS for real records.</p>
+      <p>{tr("Files are written to a folder on the application server. That folder is not part of the backup, so a lost disk loses them. Use MinIO or a NAS for real records.")}</p>
     </div>
   );
 
@@ -213,7 +214,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
         icon={header.icon}
         title={header.title}
         subtitle={header.subtitle}
-        badge={provider === 'local' ? <Badge semantic="warning">Not backed up</Badge> : undefined}
+        badge={provider === 'local' ? <Badge semantic="warning">{tr("Not backed up")}</Badge> : undefined}
         action={
           <Button
             variant="outline-emerald"
@@ -226,7 +227,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
             title={canTestStorage(storage) ? undefined : 'Fill in the connection fields first'}
           >
             <IconPlugConnected className="h-4 w-4" />
-            Test connection
+            {tr("Test connection")}
           </Button>
         }
         check={checks.checks.STORAGE}
@@ -234,7 +235,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
         emptyText="No connection test has been run yet."
       />
 
-      <IntegrationSectionCard title="Connection" description="Where the files are stored and how the system signs in.">
+      <IntegrationSectionCard title={tr("Connection")} description={tr("Where the files are stored and how the system signs in.")}>
         <StorageProviderCards value={provider} onChange={(value) => handleStorageChange('provider', value)} />
         {provider === 'minio' && minioFields}
         {provider === 'nas' && nasFields}
@@ -242,7 +243,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
       </IntegrationSectionCard>
 
       {provider === 'minio' && (
-        <IntegrationSectionCard title="Retention" description="How long stored records are locked.">
+        <IntegrationSectionCard title={tr("Retention")} description={tr("How long stored records are locked.")}>
           <RetentionControl
             years={retentionYearsOf(storage)}
             savedYears={retentionYearsOf(savedStorage ?? storage)}
@@ -252,10 +253,9 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
       )}
 
       {provider === 'minio' && (
-        <IntegrationSectionCard title="Layout" description="How files are arranged in the buckets.">
+        <IntegrationSectionCard title={tr("Layout")} description={tr("How files are arranged in the buckets.")}>
           <p className="text-xs text-slate-500">
-            The folder structure is fixed by the system and cannot be changed here. Every file is stored under one of the registered data domains below, which keeps backup,
-            restore and reconciliation reliable. A folder appears when the first file is stored in it. The keys are generated by the server with the production path builder.
+            {tr("The folder structure is fixed by the system and cannot be changed here. Every file is stored under one of the registered data domains below, which keeps backup, restore and reconciliation reliable. A folder appears when the first file is stored in it. The keys are generated by the server with the production path builder.")}
           </p>
           <StorageLayoutTable preview={storagePathPreview} />
         </IntegrationSectionCard>

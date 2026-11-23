@@ -59,6 +59,7 @@ import type {
 } from "../types";
 import { IconHierarchy, IconSection } from "@tabler/icons-react";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr, trFormat } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -94,7 +95,7 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
   <>
     <div>
       <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-        Priority
+        {tr("Priority")}
       </label>
       <input
         type="number"
@@ -107,19 +108,19 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
     </div>
 
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium text-slate-700">Active</span>
+      <span className="text-sm font-medium text-slate-700">{tr("Active")}</span>
       <Switch checked={active} onChange={onActiveChange} />
     </div>
 
     <div>
       <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-        Description
+        {tr("Description")}
       </label>
       <textarea
         value={description}
         onChange={(e) => onDescriptionChange(e.target.value)}
         rows={2}
-        placeholder="Optional description..."
+        placeholder={tr("Optional description...")}
         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
       />
     </div>
@@ -127,13 +128,13 @@ const LifecyclePolicyCommonFields: React.FC<CommonFieldsProps> = ({
     {showChangeReason && (
       <div>
         <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-          Change Reason
+          {tr("Change Reason")}
         </label>
         <input
           type="text"
           value={changeReason}
           onChange={(e) => onChangeReasonChange(e.target.value)}
-          placeholder="Optional reason for this change..."
+          placeholder={tr("Optional reason for this change...")}
           className="h-9 w-full border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
@@ -278,7 +279,7 @@ const TransitionPolicyForm: React.FC = () => {
         if (!cancelled)
           showToast({
             type: "error",
-            message: "Failed to load workflow policy data",
+            message: tr("Failed to load workflow policy data"),
           });
       })
       .finally(() => {
@@ -341,11 +342,11 @@ const TransitionPolicyForm: React.FC = () => {
   };
 
   const moduleOptions: SelectOption[] = [
-    { label: "Select module", value: "" },
+    { label: tr("Select module"), value: "" },
     ...(options?.modules ?? []).map((m) => ({ label: moduleDisplayName(m), value: m })),
   ];
   const workflowOptions: SelectOption[] = [
-    { label: "Select workflow", value: "" },
+    { label: tr("Select workflow"), value: "" },
     ...(options?.workflowOptions?.length
       ? options.workflowOptions
       : (options?.workflows ?? []).map((value) => ({
@@ -356,7 +357,7 @@ const TransitionPolicyForm: React.FC = () => {
     ).map((workflow) => ({ label: workflow.label, value: workflow.value })),
   ];
   const objectTypeOptions: SelectOption[] = useMemo(() => {
-    const base = [{ label: "Select object type", value: "" }];
+    const base = [{ label: tr("Select object type"), value: "" }];
     if (!form.workflowKey || !options?.actions?.length) {
       return [
         ...base,
@@ -375,7 +376,7 @@ const TransitionPolicyForm: React.FC = () => {
     return [...base, ...typesForWorkflow.map((o) => ({ label: o, value: o }))];
   }, [form.workflowKey, options]);
   const actionOptions: SelectOption[] = useMemo(() => {
-    const base = [{ label: "Select action", value: "" }];
+    const base = [{ label: tr("Select action"), value: "" }];
     const allActions = options?.actions ?? [];
     const relevant = form.workflowKey
       ? allActions.filter(
@@ -398,7 +399,7 @@ const TransitionPolicyForm: React.FC = () => {
     ];
   }, [form.workflowKey, form.objectType, options]);
   const docTypeOptions: SelectOption[] = [
-    { label: "None (global)", value: "" },
+    { label: tr("None (global)"), value: "" },
     ...(options?.documentTypes ?? []).map((d) => ({
       label: d.name,
       value: d.id,
@@ -488,16 +489,16 @@ const TransitionPolicyForm: React.FC = () => {
     if (mode === "create" && !form.fromStatus) {
       showToast({
         type: "warning",
-        title: "Validation",
-        message: "From Status is required for the selected action.",
+        title: tr("Validation"),
+        message: tr("From Status is required for the selected action."),
       });
       return false;
     }
     if (!form.requiredPermissionCode) {
       showToast({
         type: "warning",
-        title: "Validation",
-        message: "Required permission is mandatory.",
+        title: tr("Validation"),
+        message: tr("Required permission is mandatory."),
       });
       return false;
     }
@@ -528,7 +529,7 @@ const TransitionPolicyForm: React.FC = () => {
       setShowDiff(true);
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Preview Failed", message });
+      showToast({ type: "error", title: tr("Preview Failed"), message });
     } finally {
       setSaving(false);
     }
@@ -550,14 +551,14 @@ const TransitionPolicyForm: React.FC = () => {
       });
       showToast({
         type: "success",
-        title: "Policy Updated",
+        title: tr("Policy Updated"),
         message: "Policy saved successfully.",
       });
       setShowDiff(false);
       leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Save Failed", message });
+      showToast({ type: "error", title: tr("Save Failed"), message });
     } finally {
       setConfirmingSave(false);
     }
@@ -583,8 +584,8 @@ const TransitionPolicyForm: React.FC = () => {
         ) {
           showToast({
             type: "warning",
-            title: "Validation",
-            message: "All key fields are required.",
+            title: tr("Validation"),
+            message: tr("All key fields are required."),
           });
           setSaving(false);
           return;
@@ -600,7 +601,7 @@ const TransitionPolicyForm: React.FC = () => {
         });
         showToast({
           type: "success",
-          title: "Policy Created",
+          title: tr("Policy Created"),
           message: "Policy created successfully.",
         });
       } else if (mode === "override") {
@@ -611,8 +612,8 @@ const TransitionPolicyForm: React.FC = () => {
         if (!form.documentTypeId) {
           showToast({
             type: "warning",
-            title: "Validation",
-            message: "Document type is required for an override.",
+            title: tr("Validation"),
+            message: tr("Document type is required for an override."),
           });
           setSaving(false);
           return;
@@ -623,14 +624,14 @@ const TransitionPolicyForm: React.FC = () => {
         );
         showToast({
           type: "success",
-          title: "Override Created",
+          title: tr("Override Created"),
           message: "Document-type override created.",
         });
       }
       leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Save Failed", message });
+      showToast({ type: "error", title: tr("Save Failed"), message });
     } finally {
       setSaving(false);
     }
@@ -654,7 +655,7 @@ const TransitionPolicyForm: React.FC = () => {
 
   const permissionField = (
     <RequiredPermissionPicker
-      label="Required Permission"
+      label={tr("Required Permission")}
       required
       value={form.requiredPermissionCode}
       onChange={(v) => setField("requiredPermissionCode", v)}
@@ -669,7 +670,7 @@ const TransitionPolicyForm: React.FC = () => {
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
         <label className="text-xs font-medium text-slate-700 sm:text-sm">
-          Actors<span className="ml-0.5 font-semibold text-red-500" aria-hidden="true">*</span>
+          {tr("Actors")}<span className="ml-0.5 font-semibold text-red-500" aria-hidden="true">*</span>
         </label>
         <Button
           type="button"
@@ -685,7 +686,7 @@ const TransitionPolicyForm: React.FC = () => {
           className="gap-1.5"
         >
           <Plus className="h-4 w-4" />
-          Add Actor
+          {tr("Add Actor")}
         </Button>
       </div>
       {invalidActorIndices.length > 0 && (
@@ -695,16 +696,16 @@ const TransitionPolicyForm: React.FC = () => {
         >
           <span>
             <span className="font-semibold">
-              {invalidActorIndices.length} actor{invalidActorIndices.length > 1 ? "s" : ""} not allowed for the selected action.
+              {trFormat("{count} actors not allowed for the selected action.", { count: invalidActorIndices.length })}
             </span>{" "}
-            Remove them before saving.
+            {tr("Remove them before saving.")}
           </span>
           <button
             type="button"
             onClick={removeInvalidActors}
             className="whitespace-nowrap text-xs font-medium underline hover:text-red-900"
           >
-            Remove invalid actors
+            {tr("Remove invalid actors")}
           </button>
         </WarningBanner>
       )}
@@ -723,18 +724,18 @@ const TransitionPolicyForm: React.FC = () => {
   );
 
   const optionsSection = (
-    <FormSection title="Options" icon={<Layers3 className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+    <FormSection title={tr("Options")} icon={<Layers3 className="h-4 w-4" />} contentClassName="p-4 md:p-5">
       <div className="flex flex-col gap-4">
         {mode === "override" ? (
           <Select
-            label="Document Type *"
+            label={tr("Document Type *")}
             value={form.documentTypeId}
             onChange={(v) => setField("documentTypeId", v)}
             options={docTypeOptions.filter((o) => o.value !== "")}
           />
         ) : (
           <Select
-            label="Document Type"
+            label={tr("Document Type")}
             value={form.documentTypeId}
             onChange={(v) => setField("documentTypeId", v)}
             options={docTypeOptions}
@@ -759,9 +760,9 @@ const TransitionPolicyForm: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
         <p className="text-sm">
-          You do not have permission to manage Workflow Authorization policies.
+          {tr("You do not have permission to manage Workflow Authorization policies.")}
         </p>
       </div>
     );
@@ -782,7 +783,7 @@ const TransitionPolicyForm: React.FC = () => {
               onClick={handleBack}
               className="whitespace-nowrap"
             >
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button
               size="sm"
@@ -796,7 +797,7 @@ const TransitionPolicyForm: React.FC = () => {
               {saving
                 ? "Saving…"
                 : mode === "edit"
-                  ? "Preview Changes"
+                  ? tr("Preview Changes")
                   : "Save"}
             </Button>
           </>
@@ -804,18 +805,16 @@ const TransitionPolicyForm: React.FC = () => {
       />
 
       {mode === "override" && (
-        <WarningBanner variant="info">This override applies only to the selected document type. If no
-          override matches, runtime uses the global policy.</WarningBanner>
+        <WarningBanner variant="info">{tr("This override applies only to the selected document type. If no override matches, runtime uses the global policy.")}</WarningBanner>
       )}
       {sourcePolicy?.system && mode === "edit" && (
         <WarningBanner variant="warning">
-          This is a system policy. Key identity fields cannot be changed.
-          The permission and the options can be reconfigured.
+          {tr("This is a system policy. Key identity fields cannot be changed. The permission and the options can be reconfigured.")}
         </WarningBanner>
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-xs font-medium text-slate-500">Fill it in as</span>
+        <span className="text-xs font-medium text-slate-500">{tr("Fill it in as")}</span>
         <TabNav
           tabs={POLICY_LAYOUT_TABS}
           activeTab={layout}
@@ -928,7 +927,7 @@ const PolicyRelationsSection: React.FC<{
       showToast({ type: "success", message: "Policy relations updated." });
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Save Failed", message });
+      showToast({ type: "error", title: tr("Save Failed"), message });
     } finally {
       setSaving(false);
     }
@@ -947,7 +946,7 @@ const PolicyRelationsSection: React.FC<{
       showToast({ type: "success", message: "Forbidden relations updated." });
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Save Failed", message });
+      showToast({ type: "error", title: tr("Save Failed"), message });
     } finally {
       setSavingForbidden(false);
     }
@@ -955,7 +954,7 @@ const PolicyRelationsSection: React.FC<{
 
   return (
     <FormSection
-      title="Relations (New Engine)"
+      title={tr("Relations (New Engine)")}
       icon={<IconHierarchy className="h-4 w-4" />}
       contentClassName="p-4 md:p-5"
     >
@@ -968,12 +967,12 @@ const PolicyRelationsSection: React.FC<{
           enableSearch
         />
         <Select
-          label="Match Rule"
+          label={tr("Match Rule")}
           value={matchRule}
           onChange={(v) => setMatchRule(v as "ANY" | "ALL")}
           options={[
-            { label: "ANY — actor needs at least one relation", value: "ANY" },
-            { label: "ALL — actor needs every relation", value: "ALL" },
+            { label: tr("ANY — actor needs at least one relation"), value: "ANY" },
+            { label: tr("ALL — actor needs every relation"), value: "ALL" },
           ]}
         />
         <div>
@@ -988,13 +987,13 @@ const PolicyRelationsSection: React.FC<{
           </Button>
         </div>
         <MultiSelect
-          label="Forbidden relations (a different person)"
+          label={tr("Forbidden relations (a different person)")}
           value={forbiddenRelationIds}
           onChange={(values) => setForbiddenRelationIds(values.map(String))}
           options={relationOptions}
           enableSearch
         />
-        <p className="text-xs text-slate-500">An actor who holds any of these relations on the record is refused, even with the permission (for example the author of a version cannot approve it).</p>
+        <p className="text-xs text-slate-500">{tr("An actor who holds any of these relations on the record is refused, even with the permission (for example the author of a version cannot approve it).")}</p>
         <div>
           <Button
             size="sm"
@@ -1132,7 +1131,7 @@ const CapabilityPolicyForm: React.FC = () => {
       })
       .catch(() => {
         if (!cancelled)
-          showToast({ type: "error", message: "Failed to load state policy" });
+          showToast({ type: "error", message: tr("Failed to load state policy") });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1220,9 +1219,9 @@ const CapabilityPolicyForm: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
         <p className="text-sm">
-          You do not have permission to manage Workflow Authorization policies.
+          {tr("You do not have permission to manage Workflow Authorization policies.")}
         </p>
       </div>
     );
@@ -1249,7 +1248,7 @@ const CapabilityPolicyForm: React.FC = () => {
               onClick={handleBack}
               className="whitespace-nowrap"
             >
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button
               size="sm"
@@ -1265,21 +1264,19 @@ const CapabilityPolicyForm: React.FC = () => {
       />
 
       {initial?.system && (
-        <WarningBanner variant="info">This is a system policy seeded for strict participant visibility. You
-          can adjust or deactivate it, but it cannot be deleted. Changes take
-          effect immediately for all users.</WarningBanner>
+        <WarningBanner variant="info">{tr("This is a system policy seeded for strict participant visibility. You can adjust or deactivate it, but it cannot be deleted. Changes take effect immediately for all users.")}</WarningBanner>
       )}
 
       <FormSection
-        title="Policy Definition"
+        title={tr("Policy Definition")}
         icon={<ShieldCheck className="h-4 w-4" />}
-        description="Grant a capability on document revisions at a given lifecycle status. Rules are additive: access is allowed when any active policy matches."
+        description={tr("Grant a capability on document revisions at a given lifecycle status. Rules are additive: access is allowed when any active policy matches.")}
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div id="policy-field-capability" className="min-w-0">
             <Select
-              label="Capability *"
+              label={tr("Capability *")}
               value={capabilityCode}
               onChange={(v) => setCapabilityCode(String(v))}
               options={(options?.capabilities ?? []).map((c) => ({
@@ -1290,11 +1287,11 @@ const CapabilityPolicyForm: React.FC = () => {
             {shown.capability && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown.capability}</p>}
           </div>
           <Select
-            label="Revision Status"
+            label={tr("Revision Status")}
             value={statusCode}
             onChange={(v) => setStatusCode(String(v))}
             options={[
-              { label: "Any status", value: "" },
+              { label: tr("Any status"), value: "" },
               ...(options?.statuses ?? []).map((s) => ({
                 label: s.label,
                 value: s.value,
@@ -1302,11 +1299,11 @@ const CapabilityPolicyForm: React.FC = () => {
             ]}
           />
           <Select
-            label="Document Type"
+            label={tr("Document Type")}
             value={documentTypeId}
             onChange={(v) => setDocumentTypeId(String(v))}
             options={[
-              { label: "All types (global)", value: "" },
+              { label: tr("All types (global)"), value: "" },
               ...(options?.documentTypes ?? []).map((t) => ({
                 label: t.label,
                 value: t.value,
@@ -1315,13 +1312,13 @@ const CapabilityPolicyForm: React.FC = () => {
           />
           <div id="policy-field-actorScope" className="min-w-0">
             <Select
-              label="Actor Scope *"
+              label={tr("Actor Scope *")}
               value={actorScope}
               onChange={(v) => setActorScope(String(v))}
               options={(options?.actorScopes ?? []).map((s) => ({
                 label:
                   s === "ANY"
-                    ? "Any user (with required permission)"
+                    ? tr("Any user (with required permission)")
                     : s === "AUTHOR"
                       ? "Revision author"
                       : s === "PARTICIPANT"
@@ -1336,7 +1333,7 @@ const CapabilityPolicyForm: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title="Configuration"
+        title={tr("Configuration")}
         icon={<Layers3 className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >

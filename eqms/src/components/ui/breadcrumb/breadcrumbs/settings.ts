@@ -1,6 +1,7 @@
 import type { BreadcrumbItem } from "../Breadcrumb";
 import { dashboard } from "./shared";
 import { ROUTES } from "@/app/routes.constants";
+import { tr } from "@/i18n";
 
 type NavigateFn = (path: string) => void;
 
@@ -266,7 +267,7 @@ export const notificationEvent = (navigate?: NavigateFn, readOnly = false, chann
   ...systemAdminBase(navigate),
   { label: "Notifications Administration", onClick: () => navigate?.(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=${channel === "EMAIL" ? "email" : "in-app"}`) },
   {
-    label: channel === "EMAIL" ? (readOnly ? "Email Notification Details" : "Edit Email Notification") : (readOnly ? "In-App Notification Details" : "Edit In-App Notification"),
+    label: channel === "EMAIL" ? (readOnly ? tr("Email Notification Details") : tr("Edit Email Notification")) : (readOnly ? tr("In-App Notification Details") : tr("Edit In-App Notification")),
     isActive: true,
   },
 ];
@@ -395,7 +396,7 @@ export const knowledgeComponentCreate = (navigate?: NavigateFn): BreadcrumbItem[
 export const knowledgeComponentEdit = (navigate?: NavigateFn, componentName?: string): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
   { label: "Knowledge Category Components", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS) },
-  { label: componentName || "Edit Knowledge Category Component", isActive: true },
+  { label: componentName || tr("Edit Knowledge Category Component"), isActive: true },
 ];
 
 export const knowledgeCategoryCreate = (navigate?: NavigateFn): BreadcrumbItem[] => [
@@ -407,7 +408,7 @@ export const knowledgeCategoryCreate = (navigate?: NavigateFn): BreadcrumbItem[]
 export const knowledgeCategoryEdit = (navigate?: NavigateFn, hierarchyName?: string): BreadcrumbItem[] => [
   ...documentControlBase(navigate),
   { label: "Knowledge Categories Hierarchies", onClick: () => navigate?.(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES) },
-  { label: hierarchyName || "Edit Knowledge Categories Hierarchy", isActive: true },
+  { label: hierarchyName || tr("Edit Knowledge Categories Hierarchy"), isActive: true },
 ];
 
 export const documentComponentsAdmin = (navigate?: NavigateFn): BreadcrumbItem[] => [

@@ -15,6 +15,7 @@ import {
   type SubTypeOption,
   type UserOption,
 } from "./legacyImportModel";
+import { tr, trFormat } from "@/i18n";
 
 export interface DocumentInformationTabProps {
   form: DocumentFormState;
@@ -74,7 +75,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
 }) => (
   <div className="space-y-4 md:space-y-5">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-      <Field label="Document Type" required>
+      <Field label={tr("Document Type")} required>
         <Select
           value={form.documentType}
           onChange={(v) => {
@@ -84,16 +85,16 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           options={documentTypeOptions}
           onSearch={searchDocumentTypeOptions}
           isLoading={loadingLookups}
-          placeholder="Select document type..."
+          placeholder={tr("Select document type...")}
         />
         {showValidation && !form.documentType && (
           <p className="text-xs text-red-600 mt-1">
-            Document Type is required.
+            {tr("Document Type is required.")}
           </p>
         )}
       </Field>
       <Field
-        label="Sub-Type"
+        label={tr("Sub-Type")}
       >
         <Select
           value={form.documentSubType}
@@ -102,13 +103,13 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           placeholder={
             form.documentType
               ? "Select sub-type (optional)..."
-              : "Select Document Type first"
+              : tr("Select Document Type first")
           }
           disabled={!form.documentType}
         />
       </Field>
       <Field
-        label="Document Number"
+        label={tr("Document Number")}
         hint={
           documentNumberPrefix
             ? `Digits of the Serial Number is set to ${serialNumberDigits} (Settings > Document Properties).`
@@ -144,7 +145,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
                     placeholder={
                       documentNumberPrefix
                         ? documentNumberSuffixExample
-                        : "Select a Document Type first"
+                        : tr("Select a Document Type first")
                     }
                     disabled={!form.documentType}
                     aria-invalid={isDuplicateNumber || isFormatInvalid}
@@ -156,17 +157,17 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
                         {numberStatus.checking ? (
                           <Loader2
                             className="h-4 w-4 animate-spin text-slate-400"
-                            aria-label="Checking availability"
+                            aria-label={tr("Checking availability")}
                           />
                         ) : numberStatus.available === true ? (
                           <Check
                             className="h-4 w-4 text-emerald-600"
-                            aria-label="Available"
+                            aria-label={tr("Available")}
                           />
                         ) : numberStatus.available === false ? (
                           <XIcon
                             className="h-4 w-4 text-red-500"
-                            aria-label="Already in use"
+                            aria-label={tr("Already in use")}
                           />
                         ) : null}
                       </span>
@@ -175,14 +176,12 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
               </div>
               {showValidation && !suffixHasValue && (
                 <p className="text-xs text-red-600 mt-1">
-                  Document Number is required.
+                  {tr("Document Number is required.")}
                 </p>
               )}
               {isFormatInvalid && (
                 <p className="text-xs text-red-600 mt-1">
-                  Must be exactly {serialNumberDigits} digit(s), e.g. "
-                  {documentNumberPrefix}
-                  {documentNumberSuffixExample}".
+                  {trFormat("Must be exactly {digits} digits, e.g. \"{prefix}{suffix}\".", { digits: serialNumberDigits, prefix: documentNumberPrefix, suffix: documentNumberSuffixExample })}
                 </p>
               )}
               {!isFormatInvalid &&
@@ -190,8 +189,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
                 !numberStatus.checking &&
                 numberStatus.available === false && (
                   <p className="text-xs text-red-600 mt-1">
-                    "{documentNumber}" is already in use by another
-                    document.
+                    {trFormat("\"{number}\" is already in use by another document.", { number: documentNumber })}
                   </p>
                 )}
               {!isFormatInvalid &&
@@ -199,23 +197,23 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
                 !numberStatus.checking &&
                 numberStatus.available === true && (
                   <p className="text-xs text-emerald-600 mt-1">
-                    "{documentNumber}" is available.
+                    {trFormat("\"{number}\" is available.", { number: documentNumber })}
                   </p>
                 )}
             </>
           );
         })()}
       </Field>
-      <Field label="Document Name" required>
+      <Field label={tr("Document Name")} required>
         <input
           className={FIELD_INPUT}
           value={form.documentName}
           onChange={(e) => setField("documentName", e.target.value)}
-          placeholder="Document name as on the existing document"
+          placeholder={tr("Document name as on the existing document")}
         />
         {showValidation && !form.documentName.trim() && (
           <p className="text-xs text-red-600 mt-1">
-            Document Name is required.
+            {tr("Document Name is required.")}
           </p>
         )}
       </Field>
@@ -224,7 +222,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           htmlFor="legacyIsTemplate"
           className="text-xs sm:text-sm font-medium text-slate-700"
         >
-          Is Template?
+          {tr("Is Template?")}
         </label>
         <Checkbox
           id="legacyIsTemplate"
@@ -232,15 +230,15 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           onChange={(checked) => setField("isTemplate", checked)}
         />
       </div>
-      <Field label="Title in Local Language">
+      <Field label={tr("Title in Local Language")}>
         <input
           className={FIELD_INPUT}
           value={form.titleLocalLanguage}
           onChange={(e) => setField("titleLocalLanguage", e.target.value)}
-          placeholder="Optional"
+          placeholder={tr("Optional")}
         />
       </Field>
-      <Field label="Business Unit" required>
+      <Field label={tr("Business Unit")} required>
         <Select
           value={form.businessUnit}
           onChange={(v) => {
@@ -250,15 +248,15 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           options={businessUnitOptions}
           onSearch={searchBusinessUnitOptions}
           isLoading={loadingLookups}
-          placeholder="Select business unit..."
+          placeholder={tr("Select business unit...")}
         />
         {showValidation && !form.businessUnit && (
           <p className="text-xs text-red-600 mt-1">
-            Business Unit is required.
+            {tr("Business Unit is required.")}
           </p>
         )}
       </Field>
-      <Field label="Department" required>
+      <Field label={tr("Department")} required>
         <Select
           value={form.department}
           onChange={(v) => setField("department", String(v))}
@@ -266,21 +264,21 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           isLoading={loadingLookups}
           placeholder={
             form.businessUnit
-              ? "Select department..."
-              : "Select Business Unit first"
+              ? tr("Select department...")
+              : tr("Select Business Unit first")
           }
           disabled={!form.businessUnit}
         />
         {showValidation && !form.department && (
           <p className="text-xs text-red-600 mt-1">
-            Department is required.
+            {tr("Department is required.")}
           </p>
         )}
       </Field>
       <Field
-        label="Reviewer(s)"
+        label={tr("Reviewer(s)")}
         required
-        hint="Who reviews this document going forward, starting with its NEXT revision (via Upgrade Revision) -- not the historical paper reviewer recorded per revision below."
+        hint={tr("Who reviews this document going forward, starting with its NEXT revision (via Upgrade Revision) -- not the historical paper reviewer recorded per revision below.")}
       >
         <MultiSelect
           value={form.reviewerIds}
@@ -288,16 +286,16 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           options={userOptions}
           isLoading={loadingUsers}
           onSearch={searchUsers}
-          placeholder="Select reviewer(s)..."
+          placeholder={tr("Select reviewer(s)...")}
         />
         {showValidation && form.reviewerIds.length === 0 && (
-          <p className="text-xs text-red-600 mt-1">Reviewer(s) is required.</p>
+          <p className="text-xs text-red-600 mt-1">{tr("Reviewer(s) is required.")}</p>
         )}
       </Field>
       <Field
-        label="Approver"
+        label={tr("Approver")}
         required
-        hint="Who approves this document going forward, starting with its NEXT revision -- not the historical paper approver recorded per revision below."
+        hint={tr("Who approves this document going forward, starting with its NEXT revision -- not the historical paper approver recorded per revision below.")}
       >
         <Select
           value={form.approverId}
@@ -305,13 +303,13 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           options={userOptions}
           isLoading={loadingUsers}
           onSearch={searchUsers}
-          placeholder="Select approver..."
+          placeholder={tr("Select approver...")}
         />
         {showValidation && !form.approverId && (
-          <p className="text-xs text-red-600 mt-1">Approver is required.</p>
+          <p className="text-xs text-red-600 mt-1">{tr("Approver is required.")}</p>
         )}
       </Field>
-      <Field label="Periodic Review Cycle (Months)" required>
+      <Field label={tr("Periodic Review Cycle (Months)")} required>
         <input
           type="number"
           min="1"
@@ -321,13 +319,13 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
           }}
           onChange={(e) => setField("periodicReviewCycle", e.target.value)}
-          placeholder="Enter review cycle in months"
+          placeholder={tr("Enter review cycle in months")}
         />
         {showValidation && !form.periodicReviewCycle.trim() && (
-          <p className="text-xs text-red-600 mt-1">Periodic Review Cycle is required.</p>
+          <p className="text-xs text-red-600 mt-1">{tr("Periodic Review Cycle is required.")}</p>
         )}
       </Field>
-      <Field label="Periodic Review Notification (Days)" required>
+      <Field label={tr("Periodic Review Notification (Days)")} required>
         <input
           type="number"
           min="1"
@@ -337,14 +335,14 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
           }}
           onChange={(e) => setField("periodicReviewNotification", e.target.value)}
-          placeholder="Enter notification days before review"
+          placeholder={tr("Enter notification days before review")}
         />
         {showValidation && !form.periodicReviewNotification.trim() && (
-          <p className="text-xs text-red-600 mt-1">Periodic Review Notification is required.</p>
+          <p className="text-xs text-red-600 mt-1">{tr("Periodic Review Notification is required.")}</p>
         )}
       </Field>
       <div className="md:col-span-2">
-        <Field label="Language">
+        <Field label={tr("Language")}>
           <Select
             value={form.language}
             onChange={(v) => setField("language", String(v))}
@@ -355,7 +353,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
       </div>
       <div className="md:col-span-2">
         <Field
-          label="Migration Justification"
+          label={tr("Migration Justification")}
           required
         >
           <textarea
@@ -365,11 +363,11 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             onChange={(e) =>
               setField("legacyJustification", e.target.value)
             }
-            placeholder="Migrated from Document Control paper archive, box #12"
+            placeholder={tr("Migrated from Document Control paper archive, box #12")}
           />
           {showValidation && !form.legacyJustification.trim() && (
             <p className="text-xs text-red-600 mt-1">
-              Migration Justification is required.
+              {tr("Migration Justification is required.")}
             </p>
           )}
         </Field>

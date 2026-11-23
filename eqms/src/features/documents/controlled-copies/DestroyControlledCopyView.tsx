@@ -37,6 +37,7 @@ import {
 } from "./controlledCopyCapabilities";
 import { useControlledCopyActionCapabilities } from "@/hooks";
 import type { ControlledCopyRouteState } from "./controlledCopyNavigation";
+import { tr, trFormat } from "@/i18n";
 
 
 interface EvidenceFile {
@@ -177,8 +178,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         if (isControlledCopyBatchRow(mappedCopy)) {
           showToast({
             type: "error",
-            title: "Action not available",
-            message: "Report Lost/Damaged is only available for a single controlled copy record.",
+            title: tr("Action not available"),
+            message: tr("Report Lost/Damaged is only available for a single controlled copy record."),
             duration: 4000,
           });
           navigate(location.state?.from || ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL, { replace: true });
@@ -198,8 +199,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         }
         showToast({
           type: "error",
-          title: "Unable to load controlled copy",
-          message: "Controlled copy information could not be loaded from the server.",
+          title: tr("Unable to load controlled copy"),
+          message: tr("Controlled copy information could not be loaded from the server."),
           duration: 3500,
         });
       } finally {
@@ -334,7 +335,7 @@ export const DestroyControlledCopyView: React.FC = () => {
     if (!reportLostDamagedDecision?.allowed) {
       showToast({
         type: "error",
-        title: "Action not available",
+        title: tr("Action not available"),
         message: getControlledCopyActionDeniedReason(reportLostDamagedDecision),
         duration: 3500,
       });
@@ -386,7 +387,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Controlled Copy Destroyed",
+        title: tr("Controlled Copy Destroyed"),
         message: `Controlled copy ${controlledCopy.controlNumber} has been marked as destroyed.`,
         duration: 3500,
       });
@@ -402,7 +403,7 @@ export const DestroyControlledCopyView: React.FC = () => {
           setUploadProgress(0);
           showToast({
             type: "error",
-            title: "Action not available",
+            title: tr("Action not available"),
             message: getControlledCopyActionDeniedReason(reportLostDamagedDecision),
             duration: 3500,
           });
@@ -416,7 +417,7 @@ export const DestroyControlledCopyView: React.FC = () => {
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Destruction Failed",
+        title: tr("Destruction Failed"),
         message:
           backendMessage ||
           (error instanceof Error && error.message
@@ -454,7 +455,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               disabled={isLoading}
               className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
             >
-              Cancel
+              {tr("Cancel")}
             </Button>
             {!isCapabilityLoading && reportLostDamagedDecision?.allowed && (
               <Button
@@ -463,7 +464,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                 disabled={isLoading}
                 className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 flex items-center gap-1.5 md:gap-2 touch-manipulation"
               >
-                Submit
+                {tr("Submit")}
               </Button>
             )}
           </>
@@ -472,22 +473,20 @@ export const DestroyControlledCopyView: React.FC = () => {
 
       <WarningBanner
         variant="error"
-        title="Irreversible Action - Proceed with Caution"
+        title={tr("Irreversible Action - Proceed with Caution")}
         description={
           <p>
-            This action cannot be undone. Once marked as {destructionType.toLowerCase()}, this controlled copy will
-            be permanently removed from active inventory and cannot be recovered. Ensure all
-            {destructionType === "Damaged" ? " destruction" : ""} procedures are followed according to company policy.
+            {trFormat("This action cannot be undone. Once marked as {status}, this controlled copy will be permanently removed from active inventory and cannot be recovered. Ensure all{extra} procedures are followed according to company policy.", { status: destructionType.toLowerCase(), extra: destructionType === "Damaged" ? " destruction" : "" })}
           </p>
         }
       />
 
       {/* Controlled Copy Information */}
-      <FormSection title="Controlled Copy Information" icon={<Info className="h-4 w-4" />}>
+      <FormSection title={tr("Controlled Copy Information")} icon={<Info className="h-4 w-4" />}>
         <div className="space-y-3 lg:space-y-4">
           {/* Control Number */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Control Number</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Control Number")}</label>
             <p className="text-xs lg:text-sm text-slate-900 font-medium flex-1">
               {controlledCopy.controlNumber}
             </p>
@@ -495,15 +494,15 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Copy Number */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Copy Number</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Copy Number")}</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
-              {controlledCopy.copyNumber} of {controlledCopy.totalCopies}
+                      {trFormat("{current} of {total}", { current: controlledCopy.copyNumber, total: controlledCopy.totalCopies })}
             </p>
           </div>
 
           {/* Status */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Status</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Status")}</label>
             <div className="flex-1">
               <Badge color="emerald">
                 {controlledCopy.status}
@@ -513,7 +512,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Document */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Document</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Document")}</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
               {formatDocumentLabel(controlledCopy)}
             </p>
@@ -521,19 +520,19 @@ export const DestroyControlledCopyView: React.FC = () => {
 
           {/* Location */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Location</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Location")}</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">{controlledCopy.location}</p>
           </div>
 
           {/* Recipient */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2 pb-3 lg:pb-4 border-b border-slate-200">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Recipient</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Recipient")}</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">{controlledCopy.recipientName}</p>
           </div>
 
           {/* Distributed Date */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">Distributed Date</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 w-full lg:w-40 flex-shrink-0 capitalize">{tr("Distributed Date")}</label>
             <p className="text-xs lg:text-sm text-slate-900 flex-1">
               {controlledCopy.distributedDate || "—"}
             </p>
@@ -544,35 +543,35 @@ export const DestroyControlledCopyView: React.FC = () => {
       {/* Column Layout */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Destruction Information */}
-        <FormSection title="Destruction Information" icon={<IconPlaylistX className="h-4 w-4" />}>
+        <FormSection title={tr("Destruction Information")} icon={<IconPlaylistX className="h-4 w-4" />}>
           <div className="space-y-5">
             {/* Destruction Date */}
             <div>
               <DateTimePicker
-                label="Destruction Date"
+                label={tr("Destruction Date")}
                 value={formData.destructionDate}
                 onChange={(value) => handleInputChange("destructionDate", value)}
-                placeholder="Select date"
+                placeholder={tr("Select date")}
                 showTime={true}
               />
               {errors.destructionDate && (
                 <p className="text-xs text-red-600 mt-1">{errors.destructionDate}</p>
               )}
               <p className="text-xs text-slate-500 mt-1.5">
-                Auto-captured at page open time (adjustable)
+                {tr("Auto-captured at page open time (adjustable)")}
               </p>
             </div>
 
             {/* Destruction Method */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                Destruction Method <span className="text-red-600">*</span>
+                {tr("Destruction Method")} <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
                 value={formData.destructionMethod}
                 onChange={(e) => handleInputChange("destructionMethod", e.target.value)}
-                placeholder="e.g., Paper shredding, Incineration, etc."
+                placeholder={tr("e.g., Paper shredding, Incineration, etc.")}
                 className={`w-full h-9 px-3 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors ${errors.destructionMethod
                   ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                   : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"
@@ -586,13 +585,13 @@ export const DestroyControlledCopyView: React.FC = () => {
             {/* Executor */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                Executor (Person Performing) <span className="text-red-600">*</span>
+                {tr("Executor (Person Performing)")} <span className="text-red-600">*</span>
               </label>
               <Select
                 value={formData.destructedBy}
                 onChange={(value) => handleInputChange("destructedBy", value)}
                 options={userOptions}
-                placeholder="Select executor..."
+                placeholder={tr("Select executor...")}
                 triggerClassName={errors.destructedBy ? "border-red-300 focus:ring-red-500 focus:border-red-500" : ""}
               />
               {errors.destructedBy && (
@@ -603,20 +602,20 @@ export const DestroyControlledCopyView: React.FC = () => {
             {/* Supervisor */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                Supervisor (Witness) <span className="text-red-600">*</span>
+                {tr("Supervisor (Witness)")} <span className="text-red-600">*</span>
               </label>
               <Select
                 value={formData.destructionSupervisor}
                 onChange={(value) => handleInputChange("destructionSupervisor", value)}
                 options={userOptions}
-                placeholder="Select supervisor..."
+                placeholder={tr("Select supervisor...")}
                 triggerClassName={errors.destructionSupervisor ? "border-red-300 focus:ring-red-500 focus:border-red-500" : ""}
               />
               {errors.destructionSupervisor && (
                 <p className="text-xs text-red-600 mt-1">{errors.destructionSupervisor}</p>
               )}
               <p className="text-xs text-slate-500 mt-1.5">
-                Required for compliance: 2-person verification
+                {tr("Required for compliance: 2-person verification")}
               </p>
             </div>
           </div>
@@ -633,7 +632,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                 {/* File Upload */}
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                    Evidence Photos <span className="text-red-600">*</span>
+                    {tr("Evidence Photos")} <span className="text-red-600">*</span>
                   </label>
 
                   {/* Upload Area */}
@@ -660,7 +659,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                         <div className="flex flex-col items-center justify-center w-full px-6">
                           <Upload className="h-8 w-8 mb-3 text-emerald-500 animate-pulse" />
                           <p className="text-sm text-slate-600 font-medium mb-2">
-                            Uploading... {uploadProgress}%
+                            {trFormat("Uploading... {percent}%", { percent: uploadProgress })}
                           </p>
                           <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                             <div
@@ -676,9 +675,9 @@ export const DestroyControlledCopyView: React.FC = () => {
                               }`}
                           />
                           <p className="mb-1 text-sm text-slate-600 font-medium">
-                            Click to upload evidence photos
+                            {tr("Click to upload evidence photos")}
                           </p>
-                          <p className="text-xs text-slate-500">JPG, PNG (Max 10MB each, multiple files)</p>
+                          <p className="text-xs text-slate-500">{tr("JPG, PNG (Max 10MB each, multiple files)")}</p>
                         </div>
                       )}
                     </label>
@@ -727,7 +726,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                   )}
                   {formData.evidenceFiles.some((item) => item.stamped) && (
                     <p className="mt-2 text-xs text-slate-500">
-                      The photos are shown with the watermark that the system adds when you submit. The time on it is the time of submission, and the photo as you took it is kept as well.
+                      {tr("The photos are shown with the watermark that the system adds when you submit. The time on it is the time of submission, and the photo as you took it is kept as well.")}
                     </p>
                   )}
                 </div>
@@ -735,20 +734,20 @@ export const DestroyControlledCopyView: React.FC = () => {
                 {/* Evidence Requirements */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-5">
                   <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    Photo Requirements
+                    {tr("Photo Requirements")}
                   </h4>
                   <ul className="space-y-2 text-xs sm:text-sm text-blue-800 list-disc pl-5 marker:text-blue-600">
                     <li>
-                      <span>Clear photo of shredded/destroyed document pieces</span>
+                      <span>{tr("Clear photo of shredded/destroyed document pieces")}</span>
                     </li>
                     <li>
-                      <span>Or signed destruction record form with timestamp</span>
+                      <span>{tr("Or signed destruction record form with timestamp")}</span>
                     </li>
                     <li>
-                      <span>Control number must be visible if possible</span>
+                      <span>{tr("Control number must be visible if possible")}</span>
                     </li>
                     <li>
-                      <span>Photo taken immediately after destruction</span>
+                      <span>{tr("Photo taken immediately after destruction")}</span>
                     </li>
                   </ul>
                 </div>
@@ -757,23 +756,23 @@ export const DestroyControlledCopyView: React.FC = () => {
               /* Lost Case - No Evidence Required */
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 md:p-5">
                 <h4 className="text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                  Lost Controlled Copy Report
+                  {tr("Lost Controlled Copy Report")}
                 </h4>
                 <p className="text-xs sm:text-sm text-amber-800 mb-4">
-                  For lost controlled copies, evidence photos are not required. However, please ensure:
+                  {tr("For lost controlled copies, evidence photos are not required. However, please ensure:")}
                 </p>
                 <ul className="space-y-2 text-xs sm:text-sm text-amber-800 list-disc pl-5 marker:text-amber-600">
                   <li>
-                    <span>Conduct thorough search before reporting as lost</span>
+                    <span>{tr("Conduct thorough search before reporting as lost")}</span>
                   </li>
                   <li>
-                    <span>Document when and where it was last seen</span>
+                    <span>{tr("Document when and where it was last seen")}</span>
                   </li>
                   <li>
-                    <span>Notify supervisor immediately upon discovery</span>
+                    <span>{tr("Notify supervisor immediately upon discovery")}</span>
                   </li>
                   <li>
-                    <span>Investigation may be initiated per company policy</span>
+                    <span>{tr("Investigation may be initiated per company policy")}</span>
                   </li>
                 </ul>
               </div>
@@ -785,21 +784,21 @@ export const DestroyControlledCopyView: React.FC = () => {
       {/* Summary Block */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 md:p-5">
         <h3 className="text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-          Submission Summary
+          {tr("Submission Summary")}
         </h3>
         <ul className="space-y-2 text-xs sm:text-sm text-emerald-800 list-disc pl-5 marker:text-emerald-600">
           <li>
-            <span>This action will permanently mark the controlled copy as <span className="font-semibold">{destructionType.toLowerCase()}</span>.</span>
+                        <span>{tr("This action will permanently mark the controlled copy as")} <span className="font-semibold">{destructionType.toLowerCase()}</span>.</span>
           </li>
           <li>
-            <span>The controlled copy will be removed from active inventory and cannot be recovered.</span>
+            <span>{tr("The controlled copy will be removed from active inventory and cannot be recovered.")}</span>
           </li>
           <li>
-            <span>All destruction details will be recorded in the audit trail for compliance tracking.</span>
+            <span>{tr("All destruction details will be recorded in the audit trail for compliance tracking.")}</span>
           </li>
           {destructionType === "Damaged" && formData.evidenceFiles.length > 0 && (
             <li>
-              <span><span className="font-semibold">{formData.evidenceFiles.length}</span> evidence photos attached.</span>
+              <span><span className="font-semibold">{formData.evidenceFiles.length}</span> {tr("evidence photos attached.")}</span>
             </li>
           )}
         </ul>
@@ -814,7 +813,7 @@ export const DestroyControlledCopyView: React.FC = () => {
           disabled={isLoading}
           className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
         >
-          Cancel
+          {tr("Cancel")}
         </Button>
           {!isCapabilityLoading && reportLostDamagedDecision?.allowed && (
             <Button
@@ -823,7 +822,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               disabled={isLoading}
               className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 flex items-center gap-1.5 md:gap-2 touch-manipulation"
             >
-              Submit
+              {tr("Submit")}
             </Button>
           )}
       </div>
@@ -844,7 +843,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               <button
                 onClick={() => setSelectedImageIndex(null)}
                 className="absolute top-2 right-2 md:top-4 md:right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-10"
-                aria-label="Close image viewer"
+                aria-label={tr("Close image viewer")}
               >
                 <X className="h-5 w-5 md:h-6 md:w-6" />
               </button>
@@ -882,7 +881,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                         );
                       }}
                       className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
-                      aria-label="Previous image"
+                      aria-label={tr("Previous image")}
                     >
                       <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
                     </button>
@@ -894,7 +893,7 @@ export const DestroyControlledCopyView: React.FC = () => {
                         );
                       }}
                       className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
-                      aria-label="Next image"
+                      aria-label={tr("Next image")}
                     >
                       <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 rotate-180" />
                     </button>
@@ -912,8 +911,8 @@ export const DestroyControlledCopyView: React.FC = () => {
         onClose={() => setIsCancelModalOpen(false)}
         onConfirm={handleCancelConfirm}
         type="warning"
-        title="Cancel Destruction Process?"
-        description="Are you sure you want to cancel? All entered information will be lost and cannot be recovered."
+        title={tr("Cancel Destruction Process?")}
+        description={tr("Are you sure you want to cancel? All entered information will be lost and cannot be recovered.")}
       />
 
       {/* E-Signature Modal */}

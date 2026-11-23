@@ -41,6 +41,7 @@ import {
   loadPdfPreviewFile,
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType = "document" | "general" | "workingNotes" | "documentInfo" | "infoFromDocument" | "training" | "reviewers" | "approvers" | "signatures" | "audit";
@@ -279,7 +280,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             }
             await loadReviewComments();
         } catch (error) {
-            showToast({ type: "error", title: "Unable to add comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+            showToast({ type: "error", title: tr("Unable to add comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
         }
     };
 
@@ -289,7 +290,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             await documentApi.resolveRevisionReviewComment(revisionId, commentId, resolutionNote);
             await loadReviewComments();
         } catch (error) {
-            showToast({ type: "error", title: "Unable to resolve comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+            showToast({ type: "error", title: tr("Unable to resolve comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
         }
     };
 
@@ -305,7 +306,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             }
             await loadReviewComments();
         } catch (error) {
-            showToast({ type: "error", title: "Unable to send reply", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+            showToast({ type: "error", title: tr("Unable to send reply"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
         }
     };
 
@@ -315,7 +316,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
             await documentApi.deleteRevisionReviewComment(revisionId, commentId, reason);
             await loadReviewComments();
         } catch (error) {
-            showToast({ type: "error", title: "Unable to delete comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+            showToast({ type: "error", title: tr("Unable to delete comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
         }
     };
     const handleEditReviewComment = async (commentId: string, content: string) => { if (revisionId) { await documentApi.updateRevisionReviewComment(revisionId, commentId, content); await loadReviewComments(); } };
@@ -431,7 +432,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
         } catch (error) {
             showToast({
                 type: "error",
-                title: "Unable to add note",
+                title: tr("Unable to add note"),
                 message: (error as any)?.response?.data?.message || "Working note could not be saved.",
                 duration: 3000,
             });
@@ -456,7 +457,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
         } catch (error) {
             showToast({
                 type: "error",
-                title: "Unable to delete note",
+                title: tr("Unable to delete note"),
                 message: (error as any)?.response?.data?.message || "Working note could not be deleted.",
                 duration: 3000,
             });
@@ -496,7 +497,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
         <>
             {(isNavigating || isLoadingDetail) && <FullPageLoading text="Loading..." />}
             <DocumentWorkflowLayout
-                title="Approve Revision"
+                title={tr("Approve Revision")}
                 breadcrumbs={breadcrumbs}
                 onBack={handleBack}
                 workflow={revision?.workflow}
@@ -511,15 +512,15 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                                     {snapshotStatus === "GENERATING" ? "⏳ Snapshot generating…" : "⚠ Snapshot generation retrying automatically…"}
                                 </span>
                             )}
-                            {canRejectApproval && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Reject</Button>}
-                            {canApprove && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Complete Approval</Button>}
+                            {canRejectApproval && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">{tr("Reject")}</Button>}
+                            {canApprove && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">{tr("Complete Approval")}</Button>}
                         </>
                     ) : undefined
                 }
                 footerActions={
                     <>
                         <Button onClick={handleBack} variant="outline-emerald" size="sm" className="whitespace-nowrap">
-                            Back
+                            {tr("Back")}
                         </Button>
                         {isSnapshotBlocking && (
                             <span className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${snapshotStatus === "GENERATING" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
@@ -529,17 +530,17 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                         {canActOnApproval && (
                             <>
                     <Button onClick={handleOpenWordReview} variant="outline-emerald" size="sm" loading={isOpeningWordReview} loadingText="Opening Word Online…" className="whitespace-nowrap">
-                                    Open File to Comment
+                                    {tr("Open File to Comment")}
                                 </Button>
-                                {canRejectApproval && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Reject</Button>}
-                                {canApprove && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">Complete Approval</Button>}
+                                {canRejectApproval && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">{tr("Reject")}</Button>}
+                                {canApprove && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting || isSnapshotBlocking} className="whitespace-nowrap">{tr("Complete Approval")}</Button>}
                             </>
                         )}
                     </>
                 }
                 afterTabContent={
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-                        <TabNav tabs={[{ id: "originalDocument", label: "Document Master" }]} activeTab="originalDocument" onChange={() => { }} />
+                        <TabNav tabs={[{ id: "originalDocument", label: tr("Document Master") }]} activeTab="originalDocument" onChange={() => { }} />
                         <div className="p-4 md:p-5 min-h-0">
                             <OriginalDocumentTab
                                 document={revision?.originalDocument ?? null}
@@ -633,8 +634,8 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                     onClose={() => setShowRejectWarning(false)}
                     onConfirm={handleRejectWarningConfirm}
                     type="warning"
-                    title="Reject Revision"
-                    description="When rejecting this revision at Pending Approval stage, the document will return to Draft status. Are you sure you want to continue?"
+                    title={tr("Reject Revision")}
+                    description={tr("When rejecting this revision at Pending Approval stage, the document will return to Draft status. Are you sure you want to continue?")}
                 />
 
                 {/* E-Signature Modal */}
@@ -642,14 +643,14 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
                     isOpen={showesignModal}
                     onClose={() => setshowesignModal(false)}
                     onConfirm={handleESignConfirm}
-                    actionTitle={eSignAction === 'approve' ? 'Complete Approval' : 'Reject'}
+                    actionTitle={eSignAction === 'approve' ? tr('Complete Approval') : 'Reject'}
                     meaningDisplayName={eSignAction === 'approve' ? 'Approved' : 'Rejected'}
                     meaningCode={eSignAction === 'approve' ? 'APPROVED' : 'REJECTED'}
                     changes={[{
                         action: "Update Status",
                         oldValue: "Pending Approval",
                         newValue: eSignAction === 'approve'
-                            ? (revision?.requiresTraining ? "Pending Training" : "Ready for Publishing")
+                            ? (revision?.requiresTraining ? tr("Pending Training") : tr("Ready for Publishing"))
                             : "Draft",
                         category: "status",
                     }]}

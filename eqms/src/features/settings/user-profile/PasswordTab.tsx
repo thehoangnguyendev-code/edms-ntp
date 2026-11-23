@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge/Badge';
 import { authApi, type PasswordPolicy } from '@/services/api/auth';
 import { evaluatePasswordPolicy, passwordReuseNote } from '@/features/auth/passwordPolicyRules';
 import { IconCalendarEvent, IconPasswordUser, IconSparkles, IconWorldQuestion } from '@tabler/icons-react';
+import { tr, trFormat } from "@/i18n";
 
 interface PasswordTabProps {
     passwordData: {
@@ -155,8 +156,8 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                 onClose={() => setLogoutModal({ open: false, sessionId: null })}
                 onConfirm={handleConfirmLogout}
                 type="confirm"
-                title="Log Out This Session?"
-                description="Are you sure you want to log out this session? This device will be signed out immediately."
+                title={tr("Log Out This Session?")}
+                description={tr("Are you sure you want to log out this session? This device will be signed out immediately.")}
                 confirmText="Log Out"
                 cancelText="Cancel"
                 showCancel
@@ -165,10 +166,10 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
             {showExpiryWarning && (
                 <WarningBanner
                     variant="warning"
-                    title="Password Expiration Warning"
+                    title={tr("Password Expiration Warning")}
                     description={
                         <span>
-                            Your password will expire in <strong>{daysUntilExpiry} days</strong> (on {expiryDateText}). Please change your password soon to avoid account access issues.
+                            {trFormat("Your password will expire in {days} days (on {date}). Please change your password soon to avoid account access issues.", { days: daysUntilExpiry, date: expiryDateText })}
                         </span>
                     }
                 />
@@ -179,20 +180,20 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                 {/* Left Column - Password Management */}
                 <div className="space-y-6">
                     {/* Change Password Section */}
-                    <FormSection title="Change Password" icon={<IconPasswordUser className="h-4 w-4" />}>
+                    <FormSection title={tr("Change Password")} icon={<IconPasswordUser className="h-4 w-4" />}>
                         <div className="space-y-4">
                             {/* Last Password Change Info */}
                             <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
                                 <IconCalendarEvent className="h-4 w-4 text-slate-600 flex-shrink-0" />
                                 <p className="text-xs sm:text-sm text-slate-600 truncate">
-                                    Last password change: <span className="font-medium text-slate-900">{lastChangeText}</span>
+                                    {tr("Last password change:")} <span className="font-medium text-slate-900">{lastChangeText}</span>
                                 </p>
                             </div>
 
                             {/* New Password */}
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                                    New Password <span className="text-red-500">*</span>
+                                    {tr("New Password")} <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
                                     <input
@@ -205,14 +206,14 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                                 ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                                                 : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"
                                         )}
-                                        placeholder="Enter new password"
+                                        placeholder={tr("Enter new password")}
                                     />
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={generatePassword}
                                             className="text-emerald-600 hover:text-emerald-700 p-1"
-                                            title="Generate strong password"
+                                            title={tr("Generate strong password")}
                                         >
                                             <IconSparkles  className="h-5 w-5" />
                                         </button>
@@ -236,7 +237,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                             {/* Confirm New Password */}
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                                    Confirm New Password <span className="text-red-500">*</span>
+                                    {tr("Confirm New Password")} <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
                                     <input
@@ -249,7 +250,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                                 ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                                                 : "border-slate-200 focus:ring-emerald-500 focus:border-emerald-500"
                                         )}
-                                        placeholder="Confirm new password"
+                                        placeholder={tr("Confirm new password")}
                                     />
                                     <button
                                         type="button"
@@ -269,7 +270,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
 
                             {/* Password Requirements (always visible so users know the rules before typing) */}
                             <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Password Requirements</p>
+                                <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2">{tr("Password Requirements")}</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
                                     {passwordRequirements.checks.map((req) => (
                                         <div
@@ -304,10 +305,10 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                 />
                                 <div className="flex-1">
                                     <label htmlFor="logoutAllSessions" className="text-xs sm:text-sm font-medium text-slate-700 cursor-pointer block">
-                                        Log out from all sessions after password change
+                                        {tr("Log out from all sessions after password change")}
                                     </label>
                                     <p className="text-xs text-slate-600 mt-0.5">
-                                        When enabled, you will be logged out from all devices and browsers after successfully changing your password.
+                                        {tr("When enabled, you will be logged out from all devices and browsers after successfully changing your password.")}
                                     </p>
                                 </div>
                             </div>
@@ -317,7 +318,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
 
                 {/* Right Column - Active Sessions */}
                 <div>
-                    <FormSection title="Active Sessions" icon={<IconWorldQuestion className="h-4 w-4" />}>
+                    <FormSection title={tr("Active Sessions")} icon={<IconWorldQuestion className="h-4 w-4" />}>
                         <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400">
                             {sessions.map((session) => (
                                 <div key={session.sessionId} className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -326,11 +327,11 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                                                 <h4 className="text-xs sm:text-sm font-semibold text-slate-900">{session.device}</h4>
                                                 {session.current && (
-                                                    <Badge color="emerald" size="sm">Current</Badge>
+                                                    <Badge color="emerald" size="sm">{tr("Current")}</Badge>
                                                 )}
                                             </div>
                                             <p className="text-2xs sm:text-xs text-slate-600 truncate">
-                                                IP: {session.ipAddress} - Last active: {session.lastActivity}
+                                                {tr("IP:")} {session.ipAddress} - {tr("Last active:")} {session.lastActivity}
                                             </p>
                                         </div>
                                         {!session.current && (
@@ -340,7 +341,7 @@ export const PasswordTab: React.FC<PasswordTabProps> = ({
                                                 onClick={() => handleLogoutSession(session.sessionId)}
                                                 className="text-red-600 border-red-300 hover:bg-red-50 text-2xs sm:text-xs px-2 sm:px-3 whitespace-nowrap flex-shrink-0"
                                             >
-                                                Log Out
+                                                {tr("Log Out")}
                                             </Button>
                                         )}
                                     </div>

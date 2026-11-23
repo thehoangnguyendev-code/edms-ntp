@@ -13,6 +13,7 @@ import { buildControlledCopySnapshotState } from "@/features/documents/shared/de
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { usagePurposeLabel } from "@/features/documents/controlled-copies/usagePurpose";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface ControlledCopiesTabProps {
     copies?: ControlledCopy[];
@@ -119,7 +120,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
     if (isLoading && !hasLoadedOnce) {
         return (
             <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
-                <div className="p-12 text-center text-slate-500 text-sm">Loading controlled copies...</div>
+                <div className="p-12 text-center text-slate-500 text-sm">{tr("Loading controlled copies...")}</div>
             </div>
         );
     }
@@ -132,7 +133,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, copy number, opened by, or document number..."
+                        placeholder={tr("Search by name, copy number, opened by, or document number...")}
                         value={searchQuery}
                         onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -150,7 +151,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
                         <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                             <TableMarkup.Row>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                    No.
+                                    {tr("No.")}
                                 </TableMarkup.HeaderCell>
                                 {sortableTh("name", "Controlled Copy Name")}
                                 {sortableTh("controlledCopyNumber", "Copy Number", "hidden md:table-cell")}

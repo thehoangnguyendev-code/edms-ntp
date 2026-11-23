@@ -141,6 +141,7 @@ type SubTabId =
 
 import type { Reviewer, Approver } from "@/features/documents/types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 type WorkflowUserOption = {
   id: string;
@@ -1557,8 +1558,8 @@ export const NewDocumentView: React.FC = () => {
       setCancelActivitySummary("");
       showToast({
         type: "success",
-        title: "Document Cancelled",
-        message: "The document has been moved to Closed - Cancelled status.",
+        title: tr("Document Cancelled"),
+        message: tr("The document has been moved to Closed - Cancelled status."),
         duration: 3000,
       });
       navigateTo(ROUTES.DOCUMENTS.ALL);
@@ -1570,7 +1571,7 @@ export const NewDocumentView: React.FC = () => {
       const message = extractApiMessage(error, "Unable to cancel the document.");
       showToast({
         type: "error",
-        title: "Cancel failed",
+        title: tr("Cancel failed"),
         message,
         duration: 3000,
       });
@@ -1598,8 +1599,8 @@ export const NewDocumentView: React.FC = () => {
     if (documentId && !canAdministerDocumentWorkspace) {
       showToast({
         type: "warning",
-        title: "Document metadata is read-only",
-        message: "Only a user with document workspace management permission can save Document Master metadata.",
+        title: tr("Document metadata is read-only"),
+        message: tr("Only a user with document workspace management permission can save Document Master metadata."),
         duration: 3500,
       });
       return false;
@@ -1613,8 +1614,8 @@ export const NewDocumentView: React.FC = () => {
       setActiveTab("general");
       showToast({
         type: "warning",
-        title: "Document Number",
-        message: "Enter a valid Document Number that is not already used before saving.",
+        title: tr("Document Number"),
+        message: tr("Enter a valid Document Number that is not already used before saving."),
         duration: 4000,
       });
       return false;
@@ -1624,8 +1625,8 @@ export const NewDocumentView: React.FC = () => {
       setActiveTab("training");
       showToast({
         type: "warning",
-        title: "Training Number",
-        message: "Enter a valid Training Number that is not already used before saving.",
+        title: tr("Training Number"),
+        message: tr("Enter a valid Training Number that is not already used before saving."),
         duration: 4000,
       });
       return false;
@@ -1695,8 +1696,8 @@ export const NewDocumentView: React.FC = () => {
         setIsSaving(false);
         showToast({
           type: "success",
-          title: "Document Saved",
-          message: "No changes detected. Document is already up-to-date.",
+          title: tr("Document Saved"),
+          message: tr("No changes detected. Document is already up-to-date."),
           duration: 3000,
         });
         if (action === "next-step") {
@@ -1759,7 +1760,7 @@ export const NewDocumentView: React.FC = () => {
           await trainingProposalApi.replace(response.id, pendingParticipants.map((p) => p.personId));
           setPendingParticipants([]);
         } catch (proposalError) {
-          showToast({ type: "error", title: "The participants were not saved", message: `${trainingError(proposalError)} The document is saved; choose the participants again on the Training Information tab.`, duration: 6000 });
+          showToast({ type: "error", title: tr("The participants were not saved"), message: `${trainingError(proposalError)} The document is saved; choose the participants again on the Training Information tab.`, duration: 6000 });
         }
       }
       setServerReviewRequirement(response.reviewRequirement ?? (isInitialCreate ? "OPTIONAL" : serverReviewRequirement));
@@ -1811,7 +1812,7 @@ export const NewDocumentView: React.FC = () => {
       }
       showToast({
         type: "error",
-        title: "Save failed",
+        title: tr("Save failed"),
         message: extractApiMessage(error, "Unable to save the document draft."),
         duration: 3000,
       });
@@ -1836,8 +1837,8 @@ export const NewDocumentView: React.FC = () => {
     if (!canObsoleteCurrentDocument) {
       showToast({
         type: "warning",
-        title: "Obsolete unavailable",
-        message: "Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress.",
+        title: tr("Obsolete unavailable"),
+        message: tr("Obsolete is only available when the document is Active, has a current Effective Revision, and has no revision in progress."),
         duration: 3000,
       });
       return;
@@ -1846,8 +1847,8 @@ export const NewDocumentView: React.FC = () => {
     if (!documentId) {
       showToast({
         type: "warning",
-        title: "Document not saved",
-        message: "Save the document before marking it obsolete.",
+        title: tr("Document not saved"),
+        message: tr("Save the document before marking it obsolete."),
         duration: 3000,
       });
       return;
@@ -1864,8 +1865,8 @@ export const NewDocumentView: React.FC = () => {
       setIsObsoleteModalOpen(false);
       showToast({
         type: "success",
-        title: "Document obsoleted",
-        message: "The document has been marked as obsolete.",
+        title: tr("Document obsoleted"),
+        message: tr("The document has been marked as obsolete."),
         duration: 3000,
       });
     } catch (error) {
@@ -1874,7 +1875,7 @@ export const NewDocumentView: React.FC = () => {
       }
       showToast({
         type: "error",
-        title: "Unable to obsolete document",
+        title: tr("Unable to obsolete document"),
         message: extractApiMessage(error, "The document could not be marked as obsolete."),
         duration: 3000,
       });
@@ -1941,8 +1942,8 @@ export const NewDocumentView: React.FC = () => {
     if (!documentId) {
       showToast({
         type: "error",
-        title: "Upload failed",
-        message: "Please save the document draft before uploading a revision.",
+        title: tr("Upload failed"),
+        message: tr("Please save the document draft before uploading a revision."),
         duration: 3000,
       });
       return;
@@ -1951,7 +1952,7 @@ export const NewDocumentView: React.FC = () => {
     if (file && file.size > maxRevisionFileSizeMB * 1024 * 1024) {
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message: `Selected file exceeds the maximum allowed size of ${maxRevisionFileSizeMB} MB.`,
         duration: 3000,
       });
@@ -1961,8 +1962,8 @@ export const NewDocumentView: React.FC = () => {
     if (!canCurrentUserUploadRevision) {
       showToast({
         type: "error",
-        title: "Unauthorized",
-        message: "Only the assigned document author can upload the revision file.",
+        title: tr("Unauthorized"),
+        message: tr("Only the assigned document author can upload the revision file."),
         duration: 3000,
       });
       return;
@@ -2013,7 +2014,7 @@ export const NewDocumentView: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Revision created",
+        title: tr("Revision created"),
         message: "The first revision has been created for this document.",
         duration: 3000,
       });
@@ -2022,7 +2023,7 @@ export const NewDocumentView: React.FC = () => {
       const message = extractApiMessage(error, "Unable to create the revision.");
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message,
         duration: 3000,
       });
@@ -2049,22 +2050,22 @@ export const NewDocumentView: React.FC = () => {
   };
 
   const tabs = [
-    { id: "general" as TabType, label: "General Information" },
-    ...(formData.isTemplate ? [] : [{ id: "training" as TabType, label: "Training Information" }]),
+    { id: "general" as TabType, label: tr("General Information") },
+    ...(formData.isTemplate ? [] : [{ id: "training" as TabType, label: tr("Training Information") }]),
     { id: "document" as TabType, label: "Document" },
-    { id: "signatures" as TabType, label: "Signatures" },
-    { id: "audit" as TabType, label: "Audit Trail" },
+    { id: "signatures" as TabType, label: tr("Signatures") },
+    { id: "audit" as TabType, label: tr("Audit Trail") },
   ];
 
   return (
     <div className="space-y-4 md:space-y-6 w-full">
       {(isSaving || isNavigating || isSettingsLoading || isLookupLoading) && (
-        <FullPageLoading text={isSaving ? "Processing..." : "Loading..."} />
+        <FullPageLoading text={isSaving ? tr("Processing...") : tr("Loading...")} />
       )}
       {/* Header: Title + Breadcrumb + Actions */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="New Document"
+          title={tr("New Document")}
           breadcrumbItems={newDocument(navigateTo)}
           actions={
             documentStatusCode === "CLOSED_CANCELLED" ? (
@@ -2074,7 +2075,7 @@ export const NewDocumentView: React.FC = () => {
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Back to List
+                {tr("Back to List")}
               </Button>
             ) : (
               <>
@@ -2085,7 +2086,7 @@ export const NewDocumentView: React.FC = () => {
                     size="sm"
                     className="whitespace-nowrap"
                   >
-                    Back
+                    {tr("Back")}
                   </Button>
                 )}
                 {(!isSaved || canCancelDocument) && (
@@ -2106,7 +2107,7 @@ export const NewDocumentView: React.FC = () => {
                     size="sm"
                     className="whitespace-nowrap"
                   >
-                    {isSaving ? "Saving..." : "Next Step"}
+                    {isSaving ? tr("Saving...") : tr("Next Step")}
                   </Button>
                 ) : canAdministerDocumentWorkspace ? (
                   <Button
@@ -2126,7 +2127,7 @@ export const NewDocumentView: React.FC = () => {
                     size="sm"
                     className="whitespace-nowrap"
                   >
-                    Obsolete
+                    {tr("Obsolete")}
                   </Button>
                 )}
               </>
@@ -2252,7 +2253,7 @@ export const NewDocumentView: React.FC = () => {
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Back to List
+                {tr("Back to List")}
               </Button>
             )}
 
@@ -2267,7 +2268,7 @@ export const NewDocumentView: React.FC = () => {
                       size="sm"
                       className="whitespace-nowrap"
                     >
-                      Back
+                      {tr("Back")}
                     </Button>
                   )}
                   {(!isSaved ||
@@ -2292,7 +2293,7 @@ export const NewDocumentView: React.FC = () => {
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Back to List
+                {tr("Back to List")}
               </Button>
             )}
 
@@ -2304,7 +2305,7 @@ export const NewDocumentView: React.FC = () => {
                 size="sm"
                 className="whitespace-nowrap"
               >
-                {isSaving ? "Saving..." : "Next Step"}
+                {isSaving ? tr("Saving...") : tr("Next Step")}
               </Button>
             )}
 
@@ -2328,7 +2329,7 @@ export const NewDocumentView: React.FC = () => {
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Obsolete
+                {tr("Obsolete")}
               </Button>
             )}
 
@@ -2353,7 +2354,7 @@ export const NewDocumentView: React.FC = () => {
                       size="sm"
                       className="whitespace-nowrap"
                     >
-                      Upload Revision
+                      {tr("Upload Revision")}
                     </Button>
                   )}
                   {canManageDocumentSetup && (
@@ -2367,7 +2368,7 @@ export const NewDocumentView: React.FC = () => {
                         size="sm"
                         className="whitespace-nowrap"
                       >
-                        Select Related Documents
+                        {tr("Select Related Documents")}
                       </Button>
                       <Button
                         onClick={() => {
@@ -2378,7 +2379,7 @@ export const NewDocumentView: React.FC = () => {
                         size="sm"
                         className="whitespace-nowrap"
                       >
-                        Select Correlated Documents
+                        {tr("Select Correlated Documents")}
                       </Button>
                       {reviewRequirement !== "NONE" && <Button
                         onClick={() => {
@@ -2389,7 +2390,7 @@ export const NewDocumentView: React.FC = () => {
                         size="sm"
                         className="whitespace-nowrap"
                       >
-                        Reviewers
+                        {tr("Reviewers")}
                       </Button>}
                       <Button
                         onClick={() => {
@@ -2400,7 +2401,7 @@ export const NewDocumentView: React.FC = () => {
                         size="sm"
                         className="whitespace-nowrap"
                       >
-                        Approvers
+                        {tr("Approvers")}
                       </Button>
                     </>
                   )}
@@ -2415,12 +2416,12 @@ export const NewDocumentView: React.FC = () => {
           {/* Subtab Navigation */}
           <TabNav
             tabs={[
-              { id: "revisions", label: "Document Revisions" },
+              { id: "revisions", label: tr("Document Revisions") },
               { id: "reviewers", label: "Reviewers", count: reviewRequirement === "NONE" ? undefined : reviewers.length },
               { id: "approvers", label: "Approvers", count: approvers.length },
-              { id: "copies", label: "Controlled Copies", count: controlledCopiesPagination.total },
-              { id: "related", label: "Related Documents", count: relationshipDocs.length },
-              { id: "correlated", label: "Correlated Documents", count: correlatedDocuments.length },
+              { id: "copies", label: tr("Controlled Copies"), count: controlledCopiesPagination.total },
+              { id: "related", label: tr("Related Documents"), count: relationshipDocs.length },
+              { id: "correlated", label: tr("Correlated Documents"), count: correlatedDocuments.length },
             ]}
             activeTab={activeSubtab}
             onChange={(id) => setActiveSubtab(id as SubTabId)}
@@ -2448,7 +2449,7 @@ export const NewDocumentView: React.FC = () => {
             {activeSubtab === "reviewers" && (
               reviewRequirement === "NONE" ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-                  <p>Review is not required under this document's saved workflow policy.</p>
+                  <p>{tr("Review is not required under this document's saved workflow policy.")}</p>
                   {documentId && (
                     <button
                       type="button"
@@ -2459,7 +2460,7 @@ export const NewDocumentView: React.FC = () => {
                       }}
                       className="mt-3 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      Re-check requirement
+                      {tr("Re-check requirement")}
                     </button>
                   )}
                 </div>
@@ -2565,7 +2566,7 @@ export const NewDocumentView: React.FC = () => {
           setCancelActivitySummary("");
         }}
         onConfirm={handleCancelConfirm}
-        title="Cancel Document Creation"
+        title={tr("Cancel Document Creation")}
         confirmText="Yes, Cancel"
         cancelText="No, Continue"
         confirmDisabled={!cancelActivitySummary.trim()}
@@ -2575,8 +2576,7 @@ export const NewDocumentView: React.FC = () => {
         <div className="space-y-4">
           <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-amber-800">
-              <span className="font-semibold">Note:</span> The document will be
-              moved to <strong>Closed - Cancelled</strong> status.
+              <span className="font-semibold">{tr("Note:")}</span> {tr("The document will be moved to")} <strong>{tr("Closed - Cancelled")}</strong> {tr("status.")}
             </p>
           </div>
 
@@ -2585,19 +2585,19 @@ export const NewDocumentView: React.FC = () => {
               htmlFor="activity-summary"
               className="text-xs sm:text-sm font-medium text-slate-700 block capitalize"
             >
-              Activity Summary <span className="text-red-500">*</span>
+              {tr("Activity Summary")} <span className="text-red-500">*</span>
             </label>
             <textarea
               id="activity-summary"
               value={cancelActivitySummary}
               onChange={(e) => setCancelActivitySummary(e.target.value)}
-              placeholder="Please provide a reason for cancelling this document..."
+              placeholder={tr("Please provide a reason for cancelling this document...")}
               rows={4}
               className="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 text-sm resize-none"
             />
             {!cancelActivitySummary.trim() && (
               <p className="text-xs text-slate-500">
-                Activity Summary is required to cancel the document.
+                {tr("Activity Summary is required to cancel the document.")}
               </p>
             )}
           </div>
@@ -2608,13 +2608,13 @@ export const NewDocumentView: React.FC = () => {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onConfirm={handleConfirmSave}
-        title={saveAction === "next-step" ? "Save & Proceed to Next Step?" : "Save Document?"}
+        title={saveAction === "next-step" ? tr("Save & Proceed to Next Step?") : "Save Document?"}
         description={
           saveAction === "next-step"
             ? (numberModes.document === "MANUAL"
-              ? "This will create the document with the Document Number you typed. You can then add Reviewers and Approvers."
-              : "This will create the document and generate Document Number. You can then add Reviewers and Approvers.")
-            : "Are you sure you want to save this document?"
+              ? tr("This will create the document with the Document Number you typed. You can then add Reviewers and Approvers.")
+              : tr("This will create the document and generate Document Number. You can then add Reviewers and Approvers."))
+            : tr("Are you sure you want to save this document?")
         }
         confirmText={saveAction === "next-step" ? "Save & Next" : "Save"}
         cancelText="Cancel"
@@ -2632,15 +2632,15 @@ export const NewDocumentView: React.FC = () => {
                   <TableMarkup.Head className="sticky top-0 border-b border-slate-200 bg-slate-50">
                     <TableMarkup.Row>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell45}>
-                        Field
+                        {tr("Field")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell44}>
-                        Before
+                        {tr("Before")}
                       </TableMarkup.HeaderCell>
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell7}>
                         <span className="flex items-center gap-1.5">
                           <ArrowRight className="h-3 w-3 text-emerald-500" />
-                          After
+                          {tr("After")}
                         </span>
                       </TableMarkup.HeaderCell>
                     </TableMarkup.Row>
@@ -2674,14 +2674,14 @@ export const NewDocumentView: React.FC = () => {
         mode="navigate"
         currentPageTitle="New Document"
         destinationLabel="Document list"
-        title="Save Before Leaving?"
+        title={tr("Save Before Leaving?")}
         primaryActionLabel="Save & Leave"
         secondaryActionLabel="Leave without saving"
         description={
           <div className="space-y-2 text-sm leading-relaxed text-slate-700">
-            <p>Do you want to save the current draft before going back to the document list?</p>
+            <p>{tr("Do you want to save the current draft before going back to the document list?")}</p>
             <p className="text-xs text-slate-500">
-              If you continue without saving, the latest changes will be lost.
+              {tr("If you continue without saving, the latest changes will be lost.")}
             </p>
           </div>
         }

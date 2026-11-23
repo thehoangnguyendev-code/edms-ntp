@@ -27,6 +27,7 @@ import { loggedInUsers } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import type { LoggedInSession } from "../../types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 /**
  * "Logged in Users" -- mirrors User Management's search/table/pagination UI exactly. All
@@ -138,13 +139,13 @@ export const LoggedInUsersView: React.FC = () => {
       reload();
       showToast({
         type: "success",
-        title: "Force Logout",
+        title: tr("Force Logout"),
         message: `${forceLogoutModal.userName} has been logged out of every session.`,
       });
     } catch {
       showToast({
         type: "error",
-        title: "Force Logout Failed",
+        title: tr("Force Logout Failed"),
         message: "Unable to log out this user. Please try again.",
       });
     } finally {
@@ -162,11 +163,11 @@ export const LoggedInUsersView: React.FC = () => {
     { id: "username", header: "Username", label: "Username", sort: { direction: sortConfig.key === "username" ? sortConfig.direction : undefined, onSort: () => handleSort("username") }, cell: (s) => s.username },
     { id: "email", header: "Email", label: "Email", sort: { direction: sortConfig.key === "email" ? sortConfig.direction : undefined, onSort: () => handleSort("email") }, cell: (s) => s.email },
     { id: "online", header: "Online", label: "Online", cell: (s) => <Badge size="sm" color={flagColor(s.online)}>{s.online ? "Online" : "Offline"}</Badge> },
-    { id: "lastLogin", header: "Last Login", label: "Last Login", sort: { direction: sortConfig.key === "lastLogin" ? sortConfig.direction : undefined, onSort: () => handleSort("lastLogin") }, cell: (s) => (s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "-") },
+    { id: "lastLogin", header: tr("Last Login"), label: tr("Last Login"), sort: { direction: sortConfig.key === "lastLogin" ? sortConfig.direction : undefined, onSort: () => handleSort("lastLogin") }, cell: (s) => (s.lastLoginAt ? formatDateTime(s.lastLoginAt) : "-") },
     { id: "deviceName", header: "Device", label: "Device", sort: { direction: sortConfig.key === "deviceName" ? sortConfig.direction : undefined, onSort: () => handleSort("deviceName") }, cellClassName: "max-w-xs truncate", cell: (s) => <span title={s.userAgent ?? undefined}>{s.deviceName || s.userAgent || "-"}</span> },
-    { id: "ipAddress", header: "IP Address", label: "IP Address", sort: { direction: sortConfig.key === "ipAddress" ? sortConfig.direction : undefined, onSort: () => handleSort("ipAddress") }, cell: (s) => s.ipAddress || "-" },
-    { id: "createdAt", header: "Session Started", label: "Session Started", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cell: (s) => formatDateTime(s.createdAt) },
-    { id: "lastActivityAt", header: "Last Activity", label: "Last Activity", sort: { direction: sortConfig.key === "lastActivityAt" ? sortConfig.direction : undefined, onSort: () => handleSort("lastActivityAt") }, cell: (s) => formatDateTime(s.lastActivityAt) },
+    { id: "ipAddress", header: tr("IP Address"), label: tr("IP Address"), sort: { direction: sortConfig.key === "ipAddress" ? sortConfig.direction : undefined, onSort: () => handleSort("ipAddress") }, cell: (s) => s.ipAddress || "-" },
+    { id: "createdAt", header: tr("Session Started"), label: tr("Session Started"), sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cell: (s) => formatDateTime(s.createdAt) },
+    { id: "lastActivityAt", header: tr("Last Activity"), label: tr("Last Activity"), sort: { direction: sortConfig.key === "lastActivityAt" ? sortConfig.direction : undefined, onSort: () => handleSort("lastActivityAt") }, cell: (s) => formatDateTime(s.lastActivityAt) },
   ];
   const sessionAction: DataTableAction<SessionRow> = {
     header: "Action",
@@ -184,14 +185,14 @@ export const LoggedInUsersView: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
-      <PageHeader title="Logged in Users" breadcrumbItems={loggedInUsers(navigate)} />
+      <PageHeader title={tr("Logged in Users")} breadcrumbItems={loggedInUsers(navigate)} />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Filter Section */}
         <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -199,7 +200,7 @@ export const LoggedInUsersView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search name, username, email, IP..."
+                    placeholder={tr("Search name, username, email, IP...")}
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                     className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -216,7 +217,7 @@ export const LoggedInUsersView: React.FC = () => {
                   className="whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -225,13 +226,13 @@ export const LoggedInUsersView: React.FC = () => {
   trailing={<div className="hidden md:block">{sessionControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search name, username, email, IP..."}
+      placeholder={tr("Search name, username, email, IP...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -239,7 +240,7 @@ export const LoggedInUsersView: React.FC = () => {
   dates={[
     {
       id: "lastLoginFrom",
-      label: "Last Login Range",
+      label: tr("Last Login Range"),
       from: lastLoginFrom,
       to: lastLoginTo,
       onFromChange: (value) => setLastLoginFrom(toApiDate(value)),
@@ -252,7 +253,7 @@ export const LoggedInUsersView: React.FC = () => {
     },
     {
       id: "sessionStartedFrom",
-      label: "Session Started Range",
+      label: tr("Session Started Range"),
       from: sessionStartedFrom,
       to: sessionStartedTo,
       onFromChange: (value) => setSessionStartedFrom(toApiDate(value)),
@@ -265,7 +266,7 @@ export const LoggedInUsersView: React.FC = () => {
     },
     {
       id: "lastActivityFrom",
-      label: "Last Activity Range",
+      label: tr("Last Activity Range"),
       from: lastActivityFrom,
       to: lastActivityTo,
       onFromChange: (value) => setLastActivityFrom(toApiDate(value)),
@@ -280,14 +281,14 @@ export const LoggedInUsersView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full lg:col-span-1">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
                     <Search className="h-4 w-4 text-slate-400 transition-colors" />
                   </div>
                   <input
                     type="text"
-                    placeholder="Search name, username, email, IP..."
+                    placeholder={tr("Search name, username, email, IP...")}
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                     className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
@@ -304,7 +305,7 @@ export const LoggedInUsersView: React.FC = () => {
               </div>
 
               <DateRangePicker
-                label="Last Login Range"
+                label={tr("Last Login Range")}
                 startDate={lastLoginFrom}
                 endDate={lastLoginTo}
                 onStartDateChange={(value) => setLastLoginFrom(toApiDate(value))}
@@ -314,11 +315,11 @@ export const LoggedInUsersView: React.FC = () => {
                   setLastLoginTo(toApiDate(endDate));
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               <DateRangePicker
-                label="Session Started Range"
+                label={tr("Session Started Range")}
                 startDate={sessionStartedFrom}
                 endDate={sessionStartedTo}
                 onStartDateChange={(value) => setSessionStartedFrom(toApiDate(value))}
@@ -328,11 +329,11 @@ export const LoggedInUsersView: React.FC = () => {
                   setSessionStartedTo(toApiDate(endDate));
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               <DateRangePicker
-                label="Last Activity Range"
+                label={tr("Last Activity Range")}
                 startDate={lastActivityFrom}
                 endDate={lastActivityTo}
                 onStartDateChange={(value) => setLastActivityFrom(toApiDate(value))}
@@ -342,7 +343,7 @@ export const LoggedInUsersView: React.FC = () => {
                   setLastActivityTo(toApiDate(endDate));
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               <div className="filter-actions flex items-end gap-2">
@@ -371,8 +372,8 @@ export const LoggedInUsersView: React.FC = () => {
               action={sessionAction}
               emptyState={
                 <TableEmptyState
-                  title="No Logged in Users"
-                  description="We couldn't find any live sessions matching your search."
+                  title={tr("No Logged in Users")}
+                  description={tr("We couldn't find any live sessions matching your search.")}
                 />
                 }
               pagination={
@@ -399,7 +400,7 @@ export const LoggedInUsersView: React.FC = () => {
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
             >
               <IconLogout className="h-4 w-4 flex-shrink-0" />
-              <span className="font-medium text-slate-500">Logout Immediately</span>
+              <span className="font-medium text-slate-500">{tr("Logout Immediately")}</span>
             </button>
           )}
         </div>
@@ -411,7 +412,7 @@ export const LoggedInUsersView: React.FC = () => {
         onConfirm={confirmForceLogout}
         type="warning"
         title={`Log Out ${forceLogoutModal.userName} Immediately?`}
-        description="This will revoke every active session for this user. The action is recorded in the audit trail."
+        description={tr("This will revoke every active session for this user. The action is recorded in the audit trail.")}
         confirmText="Log Out Now"
         isLoading={isForceLoggingOut}
       />
@@ -423,7 +424,7 @@ export const LoggedInUsersView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Last Login Range"
+          label={tr("Last Login Range")}
           isExpanded={expandedSections.has("lastLogin")}
           onToggle={() => toggleSection("lastLogin")}
         >
@@ -439,13 +440,13 @@ export const LoggedInUsersView: React.FC = () => {
                 setLastLoginTo(toApiDate(endDate));
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Session Started Range"
+          label={tr("Session Started Range")}
           isExpanded={expandedSections.has("sessionStarted")}
           onToggle={() => toggleSection("sessionStarted")}
         >
@@ -461,13 +462,13 @@ export const LoggedInUsersView: React.FC = () => {
                 setSessionStartedTo(toApiDate(endDate));
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Last Activity Range"
+          label={tr("Last Activity Range")}
           isExpanded={expandedSections.has("lastActivity")}
           onToggle={() => toggleSection("lastActivity")}
         >
@@ -483,7 +484,7 @@ export const LoggedInUsersView: React.FC = () => {
                 setLastActivityTo(toApiDate(endDate));
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>

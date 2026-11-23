@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import type { SodCombinationProfileRef, SodProfileCombinationViolationResponse } from "@/services/api/settings";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { tr, trFormat } from "@/i18n";
 
 /** One impact-scoped remediation option for a single contributing profile -- "Mức 2/3" from the
  *  three-tier design: removing a whole profile from just this user (Mức 1) needs no server data
@@ -20,7 +21,7 @@ const RemediationOptions: React.FC<{ profile: SodCombinationProfileRef }> = ({ p
           >
             {set.permissionSetName}
           </Link>
-          {" — remove from "}
+          {tr(" — remove from ")}
           <Link
             to={`/security/access-profiles/${profile.accessProfileId}`}
             className="underline decoration-dotted underline-offset-2 hover:opacity-80"
@@ -28,11 +29,11 @@ const RemediationOptions: React.FC<{ profile: SodCombinationProfileRef }> = ({ p
             {profile.accessProfileName}
           </Link>
           {profile.usersHoldingThisProfile > 1 && (
-            <span className="opacity-80"> (affects {profile.usersHoldingThisProfile} user{profile.usersHoldingThisProfile === 1 ? "" : "s"} holding this profile)</span>
+            <span className="opacity-80"> {trFormat("(affects {count} users holding this profile)", { count: profile.usersHoldingThisProfile })}</span>
           )}
           {set.profilesUsingThisSet > 1 && (
             <span className="opacity-80">
-              {" "}— or edit the Permission Set itself, affecting {set.usersAffectedIfEditedAtSetLevel} user{set.usersAffectedIfEditedAtSetLevel === 1 ? "" : "s"} across all {set.profilesUsingThisSet} profiles that use it
+              {" "}{trFormat("— or edit the Permission Set itself, affecting {users} users across all {profiles} profiles that use it", { users: set.usersAffectedIfEditedAtSetLevel, profiles: set.profilesUsingThisSet })}
             </span>
           )}
         </li>
@@ -74,20 +75,20 @@ export const SodViolationPanel: React.FC<{ violations: SodProfileCombinationViol
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{v.constraintName}</span>
                   <Badge color={v.severity === "BLOCK" ? "red" : "amber"} size="sm" pill>
-                    {v.severity === "BLOCK" ? "Blocked" : "Warning"}
+                    {v.severity === "BLOCK" ? tr("Blocked") : tr("Warning")}
                   </Badge>
                 </div>
                 <p className="mt-1 leading-relaxed">
                   <span className="font-medium">{v.permissionNameA}</span>
-                  {" "}(via {v.contributingProfilesA.map((p) => p.accessProfileName).join(", ")})
-                  {" "}conflicts with{" "}
+                  {" "}{trFormat("(via {profiles})", { profiles: v.contributingProfilesA.map((p) => p.accessProfileName).join(", ") })}
+                  {" "}{tr("conflicts with")}{" "}
                   <span className="font-medium">{v.permissionNameB}</span>
-                  {" "}(via {v.contributingProfilesB.map((p) => p.accessProfileName).join(", ")})
+                  {" "}{trFormat("(via {profiles})", { profiles: v.contributingProfilesB.map((p) => p.accessProfileName).join(", ") })}
                 </p>
-                {v.regulationRef && <p className="mt-1 text-2xs opacity-80">Ref: {v.regulationRef}</p>}
+                {v.regulationRef && <p className="mt-1 text-2xs opacity-80">{tr("Ref:")} {v.regulationRef}</p>}
 
                 <p className="mt-1.5 text-2xs font-medium">
-                  Safest fix: remove one of the conflicting profiles from this user.
+                  {tr("Safest fix: remove one of the conflicting profiles from this user.")}
                 </p>
 
                 {hasRemediationOptions && (
@@ -118,7 +119,7 @@ export const SodViolationPanel: React.FC<{ violations: SodProfileCombinationViol
       })}
       {hasBlockingViolation && (
         <p className="text-2xs text-red-600 font-medium">
-          Resolve the blocked conflict(s) above before saving.
+          {tr("Resolve the blocked conflict(s) above before saving.")}
         </p>
       )}
     </div>

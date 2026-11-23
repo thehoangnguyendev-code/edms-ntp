@@ -14,6 +14,7 @@ import { knowledgeApi } from "@/services/api/knowledge";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/images/logo_nobg.png";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 const buildWatermarkDataUri = (lines: string[]) => {
   const escape = (value: string) =>
@@ -141,7 +142,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
           variant="ghost"
           size="icon-sm"
           onClick={closePreview}
-          aria-label="Close preview"
+          aria-label={tr("Close preview")}
           className="relative z-10 shrink-0 text-slate-500 hover:text-slate-900"
         >
           <X className="h-4 w-4" />
@@ -154,14 +155,14 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
             {errorState === "no-access" ? (
               <DocumentStateMessage
                 variant="no-access"
-                title="You can no longer open this document"
-                description="Access to it was withdrawn or it is no longer available to you. Contact Document Control if you need it."
+                title={tr("You can no longer open this document")}
+                description={tr("Access to it was withdrawn or it is no longer available to you. Contact Document Control if you need it.")}
               />
             ) : (
               <DocumentStateMessage
                 variant="no-document"
-                title="Unable to load this document's preview"
-                description="The document could not be found or opened. Please try again later."
+                title={tr("Unable to load this document's preview")}
+                description={tr("The document could not be found or opened. Please try again later.")}
               />
             )}
           </div>

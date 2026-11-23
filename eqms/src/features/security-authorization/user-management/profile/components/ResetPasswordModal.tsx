@@ -9,6 +9,7 @@ import { DEFAULT_PASSWORD_POLICY } from "@/features/auth/usePasswordPolicy";
 import { evaluatePasswordPolicy } from "@/features/auth/passwordPolicyRules";
 import { generatePolicyPassword } from "./generatePolicyPassword";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 interface ResetPasswordModalProps {
     isOpen: boolean;
@@ -99,9 +100,9 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                 textArea.remove();
                 if (!successful) throw new Error("Fallback copy failed");
             }
-            showToast({ type: "success", title: "Copied!", message: "Password copied to clipboard" });
+            showToast({ type: "success", title: "Copied!", message: tr("Password copied to clipboard") });
         } catch {
-            showToast({ type: "error", title: "Copy Failed", message: "Failed to copy password" });
+            showToast({ type: "error", title: tr("Copy Failed"), message: tr("Failed to copy password") });
         }
     };
 
@@ -116,7 +117,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
             setServerError("");
             await settingsApi.resetPassword(userId, { newPassword: password, sendEmail: true });
             onSuccess?.(password);
-            showToast({ type: "success", title: "Password reset", message: `The new password was set for ${userName} and is sent to them by e-mail. They must change it at the next sign-in.` });
+            showToast({ type: "success", title: tr("Password reset"), message: `The new password was set for ${userName} and is sent to them by e-mail. They must change it at the next sign-in.` });
             onClose();
         } catch (error) {
             // for example a password that was used before: the history is only known to the server
@@ -131,7 +132,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
             isOpen={isOpen}
             onClose={onClose}
             onConfirm={() => void handleConfirm()}
-            title="Reset Password"
+            title={tr("Reset Password")}
             description={`A suggested password for ${userName} that follows the password rules. Use it as it is or edit it. It is sent to them by e-mail when you confirm.`}
             confirmText="Confirm"
             cancelText="Close"
@@ -142,7 +143,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
             <div className="space-y-4">
                 <div>
                     <label htmlFor="reset-password-value" className="mb-1.5 block text-xs font-medium capitalize text-slate-700 sm:text-sm">
-                        New Password
+                        {tr("New Password")}
                     </label>
                     <div className="flex items-center gap-2">
                         <input
@@ -172,8 +173,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                             variant="outline"
                             size="icon-sm"
                             className="flex h-10 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:bg-slate-50"
-                            title="Suggest another password"
-                            aria-label="Suggest another password"
+                            title={tr("Suggest another password")}
+                            aria-label={tr("Suggest another password")}
                         >
                             <RefreshCw className="h-4 w-4" />
                         </Button>
@@ -184,8 +185,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                             variant="outline"
                             size="icon-sm"
                             className="flex h-10 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:bg-slate-50"
-                            title="Copy Password"
-                            aria-label="Copy Password"
+                            title={tr("Copy Password")}
+                            aria-label={tr("Copy Password")}
                         >
                             <Copy className="h-4 w-4" />
                         </Button>
@@ -200,7 +201,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                             <span className="sr-only">{check.met ? "met" : "not met"}</span>
                         </li>
                     ))}
-                    {!evaluation && <li className="text-xs text-slate-500">Reading the password rules…</li>}
+                    {!evaluation && <li className="text-xs text-slate-500">{tr("Reading the password rules…")}</li>}
                 </ul>
 
                 {policyNote && <p className="text-xs text-amber-700">{policyNote}</p>}

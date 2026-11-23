@@ -46,6 +46,7 @@ import {
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType = "document" | "general" | "workingNotes" | "documentInfo" | "infoFromDocument" | "training" | "reviewers" | "approvers" | "signatures" | "audit";
@@ -321,7 +322,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       if (trainingLink?.status !== "COMPLETED" && !trainingLink?.finishedOn) {
         showToast({
           type: "error",
-          title: "Training is not completed",
+          title: tr("Training is not completed"),
           message: "Training " + (trainingLink?.trainingNumber ?? "") + " must be finished by its trainer (Finish Training) in Training Management first.",
           duration: 3000,
         });
@@ -336,7 +337,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       setTrainingSubmitValidationToken((prev) => prev + 1);
       showToast({
         type: "error",
-        title: "Training information is incomplete",
+        title: tr("Training information is incomplete"),
         message: errs.trainingPlannedDate || "Please correct the training information before signing.",
         duration: 3000,
       });
@@ -379,7 +380,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
 
       showToast({
         type: "success",
-        title: "Training Completed",
+        title: tr("Training Completed"),
         message: `Revision ${refreshed.documentNumber} ${refreshed.revisionNumber} training has been completed successfully.`,
         duration: 3000
       });
@@ -409,7 +410,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       console.error("Failed to complete training action", error);
       showToast({
         type: "error",
-        title: "Training failed",
+        title: tr("Training failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -439,7 +440,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
+        title: tr("Unable to add note"),
         message: (error as any)?.response?.data?.message || "Working note could not be saved.",
         duration: 3000,
       });
@@ -464,7 +465,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
+        title: tr("Unable to delete note"),
         message: (error as any)?.response?.data?.message || "Working note could not be deleted.",
         duration: 3000,
       });
@@ -489,7 +490,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
     <>
       {(isNavigating || isLoadingDetail) && <FullPageLoading text="Loading..." />}
       <DocumentWorkflowLayout
-        title="Training Revision"
+        title={tr("Training Revision")}
         breadcrumbs={breadcrumbs}
         onBack={handleBack}
         workflow={document?.workflow}
@@ -506,7 +507,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
               title={completeTitle}
               className="whitespace-nowrap"
             >
-              Complete Training
+              {tr("Complete Training")}
             </Button>
           ) : undefined
         }
@@ -518,7 +519,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
               size="sm"
               className="whitespace-nowrap"
             >
-              Back
+              {tr("Back")}
             </Button>
             {canEditTrainingDates && (
               <Button
@@ -529,14 +530,14 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
                 title={completeTitle}
                 className="whitespace-nowrap"
               >
-                Complete Training
+                {tr("Complete Training")}
               </Button>
             )}
           </>
         }
         afterTabContent={
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-            <TabNav tabs={[{ id: "originalDocument", label: "Document Master" }]} activeTab="originalDocument" onChange={() => { }} />
+            <TabNav tabs={[{ id: "originalDocument", label: tr("Document Master") }]} activeTab="originalDocument" onChange={() => { }} />
             <div className="p-4 md:p-5 min-h-0">
               <OriginalDocumentTab
                 document={document?.originalDocument ?? null}

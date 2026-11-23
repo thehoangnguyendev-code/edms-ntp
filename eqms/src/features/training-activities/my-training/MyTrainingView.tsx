@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { tr } from "@/i18n";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -54,11 +55,11 @@ export function MyTrainingView({
     section === "tasks"
       ? [
           { id: "todo", label: "To Do", count: totals.todo },
-          { id: "sign", label: "Pending My Signature", count: totals.sign },
+          { id: "sign", label: tr("Pending My Signature"), count: totals.sign },
         ]
       : [
-          { id: "records", label: "My Records" },
-          { id: "copies", label: "Copies Received" },
+          { id: "records", label: tr("My Records") },
+          { id: "copies", label: tr("Copies Received") },
         ];
   const changeTab = (id: string) => {
     if (id === tab) return;
@@ -81,7 +82,7 @@ export function MyTrainingView({
               className="whitespace-nowrap gap-2"
             >
               <TabletSmartphone className="h-4 w-4" />
-              Check in
+              {tr("Check in")}
             </Button>
           ) : undefined
         }
@@ -106,7 +107,7 @@ export function MyTrainingView({
           activeTab={tab}
           onChange={changeTab}
           variant="underline"
-          ariaLabel={section === "tasks" ? "My tasks" : "My records"}
+          ariaLabel={section === "tasks" ? "My tasks" : tr("My records")}
           tabIdPrefix="my-training-tab"
           panelIdPrefix="my-training-panel"
         />

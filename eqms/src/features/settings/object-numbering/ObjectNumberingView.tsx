@@ -17,6 +17,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { reportError } from "@/services/api/reportTemplates";
 import { objectNumberingApi, type ObjectNumberFormat } from "@/services/api/objectNumbering";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -28,19 +29,19 @@ const SEPARATOR_PATTERN = /^[^\s\p{Cc}<>"'\\%]{0,3}$/u;
 /** The numbers kept by the screens of their own module; shown here so an administrator knows where each one is set. */
 const SET_ELSEWHERE: { label: string; where: string; path: string; permissions: string[] }[] = [
   {
-    label: "Document numbers",
+    label: tr("Document numbers"),
     where: "Document Administration > Document Name Formats",
     path: ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS,
     permissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
   },
   {
-    label: "Training numbers",
+    label: tr("Training numbers"),
     where: "Training Administration > Training Code Rules",
     path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CODE_RULES,
     permissions: ["training.admin.properties.view", "training.settings.view"],
   },
   {
-    label: "Report template names",
+    label: tr("Report template names"),
     where: "Report Administration > Report Name Formats",
     path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.NAME_FORMATS,
     permissions: ["reports.definition.view", "reports.name_format.manage"],
@@ -135,7 +136,7 @@ export const ObjectNumberingView: React.FC = () => {
       });
       setEditing(null);
       await load();
-      showToast({ type: "success", title: "Numbering Updated", message: `"${editing.label}" now makes numbers like ${example}.` });
+      showToast({ type: "success", title: tr("Numbering Updated"), message: `"${editing.label}" now makes numbers like ${example}.` });
     } catch (e) {
       setFormError(reportError(e));
     } finally {
@@ -154,8 +155,8 @@ export const ObjectNumberingView: React.FC = () => {
       cellClassName: "text-slate-600",
       cell: (row) => `${row.prefix} ${row.separator} ${row.includeYear ? `year ${row.separator} ` : ""}${row.digits} digits`,
     },
-    { id: "next", header: "Next Number", label: "Next Number", cellClassName: "text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap", cell: (row) => row.example },
-    { id: "last", header: "Last Given", label: "Last Given", cellClassName: "text-slate-600", cell: (row) => (row.lastValue > 0 ? row.lastValue : "-") },
+    { id: "next", header: tr("Next Number"), label: tr("Next Number"), cellClassName: "text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap", cell: (row) => row.example },
+    { id: "last", header: tr("Last Given"), label: tr("Last Given"), cellClassName: "text-slate-600", cell: (row) => (row.lastValue > 0 ? row.lastValue : "-") },
   ];
 
   const action: DataTableAction<ObjectNumberFormat> | undefined = canManage
@@ -166,7 +167,7 @@ export const ObjectNumberingView: React.FC = () => {
             ref={getButtonRef(row.kind)}
             onClick={(e) => handleDropdownToggle(row.kind, e)}
             className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="More actions"
+            aria-label={tr("More actions")}
           >
             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
           </button>
@@ -180,7 +181,7 @@ export const ObjectNumberingView: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col gap-4 md:gap-6">
-      <PageHeader title="Object Numbering" breadcrumbItems={objectNumbering(navigate)} />
+      <PageHeader title={tr("Object Numbering")} breadcrumbItems={objectNumbering(navigate)} />
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       <div className="flex-1 min-h-0 overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col">
@@ -190,13 +191,13 @@ export const ObjectNumberingView: React.FC = () => {
           isLoading={rows === null}
           columns={columns}
           action={action}
-          emptyState={<TableEmptyState title="No numbering is set up" description="The numbers of the system appear here." />}
+          emptyState={<TableEmptyState title={tr("No numbering is set up")} description={tr("The numbers of the system appear here.")} />}
         />
       </div>
 
       {links.length > 0 && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">Set on the screen of their own module</h3>
+          <h3 className="text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">{tr("Set on the screen of their own module")}</h3>
           <ul className="space-y-2 text-xs sm:text-sm text-emerald-800 list-disc pl-5 marker:text-emerald-600">
             {links.map((item) => (
               <li key={item.label}>
@@ -223,7 +224,7 @@ export const ObjectNumberingView: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Numbering Format</span>
+            <span>{tr("Edit Numbering Format")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
@@ -233,7 +234,7 @@ export const ObjectNumberingView: React.FC = () => {
         onClose={() => setEditing(null)}
         onConfirm={save}
         title={editing ? `Edit ${editing.label}` : ""}
-        description="The change applies to the numbers given after you save. Each change is recorded in the Audit Trail."
+        description={tr("The change applies to the numbers given after you save. Each change is recorded in the Audit Trail.")}
         confirmText="Save"
         isLoading={saving}
         size="lg"
@@ -244,27 +245,27 @@ export const ObjectNumberingView: React.FC = () => {
       >
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className={labelClass} htmlFor="on-prefix">Prefix</label>
+            <label className={labelClass} htmlFor="on-prefix">{tr("Prefix")}</label>
             <input id="on-prefix" className={inputClass} value={prefix} maxLength={10} onChange={(e) => { setPrefix(e.target.value.toUpperCase()); setFormError(""); }} />
           </div>
           <div>
-            <label className={labelClass} htmlFor="on-separator">Separator</label>
-            <input id="on-separator" className={inputClass} value={separator} maxLength={3} onChange={(e) => { setSeparator(e.target.value); setFormError(""); }} placeholder="e.g. -   or   /   (can be empty)" />
+            <label className={labelClass} htmlFor="on-separator">{tr("Separator")}</label>
+            <input id="on-separator" className={inputClass} value={separator} maxLength={3} onChange={(e) => { setSeparator(e.target.value); setFormError(""); }} placeholder={tr("e.g. -   or   /   (can be empty)")} />
           </div>
           <div>
-            <label className={labelClass} htmlFor="on-digits">Digits of the sequence</label>
+            <label className={labelClass} htmlFor="on-digits">{tr("Digits of the sequence")}</label>
             <input id="on-digits" type="number" min={3} max={10} className={inputClass} value={digits} onChange={(e) => { setDigits(Number(e.target.value)); setFormError(""); }} />
           </div>
           <div className="flex items-end gap-3 pb-1.5">
-            <Switch checked={includeYear} onChange={setIncludeYear} aria-label="Include the year" />
-            <span className="text-sm text-slate-700">Include the year (the sequence starts again each year)</span>
+            <Switch checked={includeYear} onChange={setIncludeYear} aria-label={tr("Include the year")} />
+            <span className="text-sm text-slate-700">{tr("Include the year (the sequence starts again each year)")}</span>
           </div>
           <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
-            Next number: <span className="font-mono font-medium text-slate-900">{validation ? "-" : example}</span>
+              {tr("Next number:")} <span className="font-mono font-medium text-slate-900">{validation ? "-" : example}</span>
           </div>
           <div>
-            <label className={labelClass} htmlFor="on-reason">Reason for the change</label>
-            <textarea id="on-reason" rows={2} maxLength={1000} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none" value={reason} onChange={(e) => { setReason(e.target.value); setFormError(""); }} placeholder="Recorded with your name and the time" />
+            <label className={labelClass} htmlFor="on-reason">{tr("Reason for the change")}</label>
+            <textarea id="on-reason" rows={2} maxLength={1000} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none" value={reason} onChange={(e) => { setReason(e.target.value); setFormError(""); }} placeholder={tr("Recorded with your name and the time")} />
           </div>
           {(formError || validation) && <p role="alert" className="text-xs text-red-600">{formError || validation}</p>}
         </div>

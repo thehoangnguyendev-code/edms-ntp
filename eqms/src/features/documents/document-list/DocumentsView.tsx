@@ -38,6 +38,7 @@ import type { SelectOption } from "@/components/ui/select/Select";
 import { mapRevisionSummaryFromApi } from "@/features/documents/shared/statusMapping";
 import { getStatusBadgeColor } from "@/utils/status";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 interface DocumentsViewProps {
   viewType: DocumentViewType;
@@ -86,16 +87,16 @@ const RowMenu: React.FC<RowMenuProps> = ({
     <PortalDropdownMenu isOpen={isOpen} onClose={onClose} position={position}>
       <div className="py-1">
         <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { onView(); onClose(); }}>
-          View Detail
+          {tr("View Detail")}
         </DropdownMenuItem>
         {canEditDocument && (
           <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { onEdit(); onClose(); }}>
-            Edit Document
+            {tr("Edit Document")}
           </DropdownMenuItem>
         )}
         {canRequestControlledCopy && (
           <DropdownMenuItem icon={<FileStack className="h-4 w-4" />} onClick={() => { onRequestControlledCopy(); onClose(); }}>
-            Request Controlled Copy
+            {tr("Request Controlled Copy")}
           </DropdownMenuItem>
         )}
       </div>
@@ -388,8 +389,8 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     if (!canRequestControlledCopyFromDocument(doc)) {
       showToast({
         type: "error",
-        title: "Request unavailable",
-        message: "Request Controlled Copy is only available when the document has an Effective revision.",
+        title: tr("Request unavailable"),
+        message: tr("Request Controlled Copy is only available when the document has an Effective revision."),
         duration: 3000,
       });
       return;
@@ -407,7 +408,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
 
   type Row = DocumentListItem;
   const renderYesNo = (value?: boolean) =>
-    value ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>;
+    value ? <span className="text-emerald-600 font-medium">{tr("Yes")}</span> : <span className="text-slate-400">{tr("No")}</span>;
   const renderNames = (names?: string[]) =>
     names && names.length > 0 ? <span title={names.join(", ")}>{names.join(", ")}</span> : "-";
   const documentColumns: DataTableColumn<Row>[] = [
@@ -437,8 +438,8 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_doc, index) => (currentPage - 1) * itemsPerPage + index + 1 },
     {
       id: "documentNumber",
-      header: "Document Number",
-      label: "Document Number",
+      header: tr("Document Number"),
+      label: tr("Document Number"),
       sort: { direction: sortConfig.key === "documentNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("documentNumber") },
       cellClassName: TABLE_STYLES.cell27,
       cell: (doc) => (
@@ -449,20 +450,20 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     },
     { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "created" ? sortConfig.direction : undefined, onSort: () => handleSort("created") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatDateTimeLong(doc.created) },
     { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.openedBy || "-" },
-    { id: "title", header: "Document Name", label: "Document Name", sort: { direction: sortConfig.key === "title" ? sortConfig.direction : undefined, onSort: () => handleSort("title") }, cellClassName: TABLE_STYLES.cell28, cell: (doc) => doc.documentName || "-" },
+    { id: "title", header: tr("Document Name"), label: tr("Document Name"), sort: { direction: sortConfig.key === "title" ? sortConfig.direction : undefined, onSort: () => handleSort("title") }, cellClassName: TABLE_STYLES.cell28, cell: (doc) => doc.documentName || "-" },
     { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (doc) => <Badge color={getBadgeColor(doc.statusCode, doc.status)} size="sm">{doc.status}</Badge> },
-    { id: "type", header: "Document Type", label: "Document Type", sort: { direction: sortConfig.key === "type" ? sortConfig.direction : undefined, onSort: () => handleSort("type") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.type || "-" },
-    { id: "relatedDocuments", header: "Related Document", label: "Related Document", cell: (doc) => renderYesNo(doc.hasRelatedDocuments) },
-    { id: "correlatedDocuments", header: "Correlated Document", label: "Correlated Document", cell: (doc) => renderYesNo(doc.hasCorrelatedDocuments) },
+    { id: "type", header: tr("Document Type"), label: tr("Document Type"), sort: { direction: sortConfig.key === "type" ? sortConfig.direction : undefined, onSort: () => handleSort("type") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.type || "-" },
+    { id: "relatedDocuments", header: tr("Related Document"), label: tr("Related Document"), cell: (doc) => renderYesNo(doc.hasRelatedDocuments) },
+    { id: "correlatedDocuments", header: tr("Correlated Document"), label: tr("Correlated Document"), cell: (doc) => renderYesNo(doc.hasCorrelatedDocuments) },
     { id: "template", header: "Template", label: "Template", cell: (doc) => renderYesNo(doc.isTemplate) },
-    { id: "businessUnit", header: "Business Unit", label: "Business Unit", sort: { direction: sortConfig.key === "businessUnit" ? sortConfig.direction : undefined, onSort: () => handleSort("businessUnit") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.businessUnit || "-" },
+    { id: "businessUnit", header: tr("Business Unit"), label: tr("Business Unit"), sort: { direction: sortConfig.key === "businessUnit" ? sortConfig.direction : undefined, onSort: () => handleSort("businessUnit") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.businessUnit || "-" },
     { id: "department", header: "Department", label: "Department", sort: { direction: sortConfig.key === "department" ? sortConfig.direction : undefined, onSort: () => handleSort("department") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.department || "-" },
     { id: "author", header: "Author", label: "Author", sort: { direction: sortConfig.key === "author" ? sortConfig.direction : undefined, onSort: () => handleSort("author") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => doc.author || "-" },
-    { id: "effectiveDate", header: "Effective Date", label: "Effective Date", sort: { direction: sortConfig.key === "effectiveDate" ? sortConfig.direction : undefined, onSort: () => handleSort("effectiveDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.effectiveDate) },
-    { id: "validUntil", header: "Valid Until", label: "Valid Until", sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.validUntil) },
+    { id: "effectiveDate", header: tr("Effective Date"), label: tr("Effective Date"), sort: { direction: sortConfig.key === "effectiveDate" ? sortConfig.direction : undefined, onSort: () => handleSort("effectiveDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.effectiveDate) },
+    { id: "validUntil", header: tr("Valid Until"), label: tr("Valid Until"), sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (doc) => formatCellDate(doc.validUntil) },
     { id: "reviewers", header: "Reviewers", label: "Reviewers", sort: { direction: sortConfig.key === "reviewers" ? sortConfig.direction : undefined, onSort: () => handleSort("reviewers") }, cellClassName: "text-slate-700", cell: (doc) => renderNames(doc.reviewerNames) },
-    { id: "requiresTraining", header: "Required Training?", label: "Required Training?", sort: { direction: sortConfig.key === "requiresTraining" ? sortConfig.direction : undefined, onSort: () => handleSort("requiresTraining") }, cell: (doc) => renderYesNo(doc.requiresTraining) },
-    { id: "trainingPeriodDays", header: "Training Period (Days)", label: "Training Period (Days)", sort: { direction: sortConfig.key === "trainingPeriodDays" ? sortConfig.direction : undefined, onSort: () => handleSort("trainingPeriodDays") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => (doc.requiresTraining && doc.trainingPeriodDays != null ? doc.trainingPeriodDays : "-") },
+    { id: "requiresTraining", header: tr("Required Training?"), label: tr("Required Training?"), sort: { direction: sortConfig.key === "requiresTraining" ? sortConfig.direction : undefined, onSort: () => handleSort("requiresTraining") }, cell: (doc) => renderYesNo(doc.requiresTraining) },
+    { id: "trainingPeriodDays", header: tr("Training Period (Days)"), label: tr("Training Period (Days)"), sort: { direction: sortConfig.key === "trainingPeriodDays" ? sortConfig.direction : undefined, onSort: () => handleSort("trainingPeriodDays") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (doc) => (doc.requiresTraining && doc.trainingPeriodDays != null ? doc.trainingPeriodDays : "-") },
     { id: "approvers", header: "Approvers", label: "Approvers", sort: { direction: sortConfig.key === "approvers" ? sortConfig.direction : undefined, onSort: () => handleSort("approvers") }, cellClassName: "text-slate-700", cell: (doc) => renderNames(doc.approverNames) },
   ];
   const documentsAction: DataTableAction<Row> = {
@@ -473,7 +474,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
           ref={getRef(doc.id)}
           onClick={(e) => toggle(doc.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -523,19 +524,19 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
               {isExporting ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
-                  Exporting...
+                  {tr("Exporting...")}
                 </>
               ) : (
                 <>
                   <Download className="h-4 w-4" />
-                  Export
+                  {tr("Export")}
                 </>
               )}
             </Button>
             {showNewDocButton && canCreateDocument && (
               <Button onClick={() => setIsNewDocChoiceOpen(true)} size="sm" className="whitespace-nowrap gap-2">
                 <IconPlus className="h-4 w-4" />
-                New Document
+                {tr("New Document")}
               </Button>
             )}
           </>
@@ -545,17 +546,17 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
       <FormModal
         isOpen={isNewDocChoiceOpen}
         onClose={() => setIsNewDocChoiceOpen(false)}
-        title="New Document"
-        description="Choose how this document should be created."
+        title={tr("New Document")}
+        description={tr("Choose how this document should be created.")}
         showFooter={false}
         size="xl"
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <NewDocumentChoiceCard
             icon={<IconFilePlus className="h-5 w-5" />}
-            title="New Document"
-            description="Create a brand-new document and take it through the normal Draft, Review, Approval and Publishing workflow."
-            cta="Start from scratch"
+            title={tr("New Document")}
+            description={tr("Create a brand-new document and take it through the normal Draft, Review, Approval and Publishing workflow.")}
+            cta={tr("Start from scratch")}
             onClick={() => {
               setIsNewDocChoiceOpen(false);
               clearNewDocumentDraftState();
@@ -565,9 +566,9 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
 
           <NewDocumentChoiceCard
             icon={<IconFileUpload className="h-5 w-5" />}
-            title="Legacy Import"
-            description="Bring in a document that already exists outside the system (e.g. a paper original) — one revision, or its entire historical revision chain — publishing it directly as Effective."
-            cta="Import existing document"
+            title={tr("Legacy Import")}
+            description={tr("Bring in a document that already exists outside the system (e.g. a paper original) — one revision, or its entire historical revision chain — publishing it directly as Effective.")}
+            cta={tr("Import existing document")}
             onClick={() => {
               setIsNewDocChoiceOpen(false);
               navigateTo(ROUTES.DOCUMENTS.LEGACY_IMPORT);
@@ -580,7 +581,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="documents"
-        title="Documents"
+        title={tr("Documents")}
         totalRecords={totalItems}
         onExport={exportDocuments}
       />
@@ -675,7 +676,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
                 }}
                 emptyState={
                   <TableEmptyState
-                    title={error ? "Unable to load documents" : "No Documents Found"}
+                    title={error ? tr("Unable to load documents") : "No Documents Found"}
                     description={error || "We couldn't find any documents matching your filters. Try adjusting your search criteria."}
                   />
                 }

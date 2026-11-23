@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/components/ui/utils";
 import type { SharingLevel, SharingNode, SharingNodeRef } from "@/services/api/knowledge";
+import { tr } from "@/i18n";
 
 export const errorMessage = (error: unknown, fallback: string) =>
   (error as { response?: { data?: { error?: { message?: string }; message?: string } } })?.response?.data?.error?.message ?? fallback;
@@ -46,8 +47,8 @@ export const useShareAction = (active: boolean, register: (action: FooterAction 
 
 /** The mark on a person a Head named to share ("delegate"): so the Head sees at a glance who may share. */
 export const CanShareBadge: React.FC<{ className?: string }> = ({ className }) => (
-  <Badge color="emerald" size="xs" className={cn("gap-1", className)} title="A person a Head named: may share like the Head, but never excludes and never removes what a Head shared">
+  <Badge color="emerald" size="xs" className={cn("gap-1", className)} title={tr("A person a Head named: may share like the Head, but never excludes and never removes what a Head shared")}>
     <ShieldCheck className="h-3 w-3" />
-    Can share
+    {tr("Can share")}
   </Badge>
 );

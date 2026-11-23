@@ -6,13 +6,14 @@ import { authorizationDiagnostics as authorizationDiagnosticsBreadcrumb } from "
 import { RelationDefinitionsTab } from "./RelationDefinitionsTab";
 import { SimulatorTab } from "./SimulatorTab";
 import { PolicyResolverTab } from "./PolicyResolverTab";
+import { tr } from "@/i18n";
 
 type TabId = "resolver" | "simulator" | "relations";
 
 const TAB_LABELS: Record<TabId, string> = {
-  resolver: "Policy Resolver",
-  simulator: "Simulator",
-  relations: "Relation Definitions",
+  resolver: tr("Policy Resolver"),
+  simulator: tr("Simulator"),
+  relations: tr("Relation Definitions"),
 };
 
 const TABS: TabItem[] = [
@@ -49,7 +50,7 @@ export const AuthorizationDiagnosticsView: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
-      <PageHeader title="Engine Diagnostics" breadcrumbItems={breadcrumbItems} />
+      <PageHeader title={tr("Engine Diagnostics")} breadcrumbItems={breadcrumbItems} />
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <TabNav tabs={TABS} activeTab={activeTab} onChange={handleTabChange} variant="underline" />
         <div className="p-4 md:p-5 flex-1 flex flex-col">

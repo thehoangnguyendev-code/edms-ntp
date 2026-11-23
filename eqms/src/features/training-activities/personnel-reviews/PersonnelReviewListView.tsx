@@ -25,6 +25,7 @@ import { resettingDates } from "../shared/useListFilters";
 import { NewPersonnelReviewModal, emptyReviewForm, type NewReviewForm } from "./NewPersonnelReviewModal";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_COLOR, REVIEW_STATUS_FILTER_LABEL, REVIEW_STATUS_LABEL } from "./personnelReviewLabels";
 import { usePersonnelReviewServerTable } from "./usePersonnelReviewServerTable";
+import { tr, trFormat } from "@/i18n";
 
 interface RowMenuProps {
   onView: () => void;
@@ -40,11 +41,11 @@ const RowMenu: React.FC<RowMenuProps> = ({ onView, onCancel, canCancel, isOpen, 
     <PortalDropdownMenu isOpen={isOpen} onClose={onClose} position={position}>
       <div className="py-1">
         <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { onView(); onClose(); }}>
-          View Details
+          {tr("View Details")}
         </DropdownMenuItem>
         {canCancel && (
           <DropdownMenuItem icon={<IconX className="h-4 w-4" />} onClick={() => { onCancel(); onClose(); }}>
-            Cancel Review
+            {tr("Cancel Review")}
           </DropdownMenuItem>
         )}
       </div>
@@ -125,10 +126,10 @@ export const PersonnelReviewListView: React.FC = () => {
     setIsCancelSaving(true);
     try {
       await trainingReviewsApi.cancel(cancelling.id, cancelReason.trim());
-      showToast({ type: "success", title: "Review cancelled", message: cancelling.fullName });
+      showToast({ type: "success", title: tr("Review cancelled"), message: cancelling.fullName });
       setCancelling(undefined);
     } catch (error) {
-      showToast({ type: "error", title: "The review was not cancelled", message: trainingError(error) });
+      showToast({ type: "error", title: tr("The review was not cancelled"), message: trainingError(error) });
     } finally {
       setIsCancelSaving(false);
     }
@@ -137,7 +138,7 @@ export const PersonnelReviewListView: React.FC = () => {
   type Row = TrainingPersonnelReviewSummary;
   const reviewColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, cell: (_review, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "employeeCode", header: "Employee ID", label: "Employee ID", sort: { direction: sortConfig.key === "employeeCode" ? sortConfig.direction : undefined, onSort: () => handleSort("employeeCode") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.employeeCode || "-" },
+    { id: "employeeCode", header: tr("Employee ID"), label: tr("Employee ID"), sort: { direction: sortConfig.key === "employeeCode" ? sortConfig.direction : undefined, onSort: () => handleSort("employeeCode") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.employeeCode || "-" },
     {
       id: "employee",
       header: "Full Name",
@@ -146,11 +147,11 @@ export const PersonnelReviewListView: React.FC = () => {
       cell: (review) => <TrainingPersonName fullName={review.fullName} avatar={review.avatar} onClick={() => navigateToReview(review.id)} />,
     },
     { id: "kind", header: "Event", label: "Event", sort: { direction: sortConfig.key === "kind" ? sortConfig.direction : undefined, onSort: () => handleSort("kind") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => REVIEW_KIND_LABEL[review.kind] ?? review.kind },
-    { id: "eventDate", header: "Event Date", label: "Event Date", sort: { direction: sortConfig.key === "eventDate" ? sortConfig.direction : undefined, onSort: () => handleSort("eventDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (review) => day(review.eventDate) },
+    { id: "eventDate", header: tr("Event Date"), label: tr("Event Date"), sort: { direction: sortConfig.key === "eventDate" ? sortConfig.direction : undefined, onSort: () => handleSort("eventDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (review) => day(review.eventDate) },
     { id: "department", header: "Department", label: "Department", sort: { direction: sortConfig.key === "department" ? sortConfig.direction : undefined, onSort: () => handleSort("department") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.department || "-" },
-    { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (review) => (review.status === "OPEN" && review.openItems === 0 ? <Badge color="blue" size="sm">Ready to close</Badge> : <Badge color={REVIEW_STATUS_COLOR[review.status]} size="sm">{REVIEW_STATUS_LABEL[review.status]}</Badge>) },
+    { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (review) => (review.status === "OPEN" && review.openItems === 0 ? <Badge color="blue" size="sm">{tr("Ready to close")}</Badge> : <Badge color={REVIEW_STATUS_COLOR[review.status]} size="sm">{REVIEW_STATUS_LABEL[review.status]}</Badge>) },
     { id: "closer", header: "Closer", label: "Closer", cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => (review.status === "OPEN" ? review.closerName || "-" : "-") },
-    { id: "openItems", header: "Items to do", label: "Items to do", sort: { direction: sortConfig.key === "openItems" ? sortConfig.direction : undefined, onSort: () => handleSort("openItems") }, cell: (review) => (review.status === "OPEN" ? review.openItems : "-") },
+    { id: "openItems", header: tr("Items to do"), label: tr("Items to do"), sort: { direction: sortConfig.key === "openItems" ? sortConfig.direction : undefined, onSort: () => handleSort("openItems") }, cell: (review) => (review.status === "OPEN" ? review.openItems : "-") },
     { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.createdByName || "-" },
     { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (review) => when(review.createdAt) },
   ];
@@ -162,7 +163,7 @@ export const PersonnelReviewListView: React.FC = () => {
           ref={getRef(review.id)}
           onClick={(e) => toggle(review.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -196,23 +197,23 @@ export const PersonnelReviewListView: React.FC = () => {
           canManage ? (
             <Button onClick={() => openNewReview(emptyReviewForm)} size="sm" className="whitespace-nowrap gap-2">
               <IconPlus className="h-4 w-4" />
-              New Review
+              {tr("New Review")}
             </Button>
           ) : undefined
         }
       />
 
       {suggestions.length > 0 && (
-        <section aria-label="New employees without a review" className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <section aria-label={tr("New employees without a review")} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-900">
-            {suggestions.length} new employee{suggestions.length === 1 ? "" : "s"} started in the last 60 days and {suggestions.length === 1 ? "has" : "have"} no initial training review.
+            {trFormat("{count} new employees started in the last 60 days and have no initial training review.", { count: suggestions.length })}
           </p>
-          <p className="mt-1 text-xs text-amber-800">The start date comes from the user profile. This is a reminder, not a rule: open the review when it applies.</p>
+          <p className="mt-1 text-xs text-amber-800">{tr("The start date comes from the user profile. This is a reminder, not a rule: open the review when it applies.")}</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {suggestions.map((suggestion) => (
               <li key={suggestion.id}>
                 <Button size="sm" variant="outline" onClick={() => startReviewFor(suggestion)}>
-                  {suggestion.fullName} · started {day(suggestion.startDate)} · Open review
+                        {suggestion.fullName} · {tr("started")} {day(suggestion.startDate)} · {tr("Open review")}
                 </Button>
               </li>
             ))}
@@ -224,15 +225,15 @@ export const PersonnelReviewListView: React.FC = () => {
         isOpen={!!cancelling}
         onClose={() => setCancelling(undefined)}
         onConfirm={() => void handleCancelReview()}
-        title="Cancel the Review"
-        description="The review stays on record with your reason."
+        title={tr("Cancel the Review")}
+        description={tr("The review stays on record with your reason.")}
         confirmText="Cancel review"
         confirmVariant="destructive"
         isLoading={isCancelSaving}
         confirmDisabled={!cancelReason.trim()}
         size="md"
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea rows={3} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
         </FormField>
       </FormModal>
@@ -240,7 +241,7 @@ export const PersonnelReviewListView: React.FC = () => {
       <NewPersonnelReviewModal key={newReviewKey} isOpen={isNewReviewOpen} onClose={() => setIsNewReviewOpen(false)} initialForm={newReviewForm} initialPeople={newReviewPeople} />
 
       <ReportListToolbar
-        searchPlaceholder="Search employee…"
+        searchPlaceholder={tr("Search employee…")}
         search={searchQuery}
         onSearch={setSearchQuery}
         filters={filters}
@@ -265,8 +266,8 @@ export const PersonnelReviewListView: React.FC = () => {
             isLoading={isLoading}
             emptyState={
               <TableEmptyState
-                title={error ? "Unable to load reviews" : "No Reviews Found"}
-                description={error || "Open a review when a new employee joins, a person returns after a long absence, or a person transfers."}
+                title={error ? tr("Unable to load reviews") : tr("No Reviews Found")}
+                description={error || tr("Open a review when a new employee joins, a person returns after a long absence, or a person transfers.")}
               />
             }
             pagination={

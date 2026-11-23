@@ -6,6 +6,7 @@ import { METHOD_LABEL } from "@/features/training-activities/shared/trainingLabe
 import { trainingLegacyApi, type TrainingLegacyNumberInfo } from "@/services/api/trainingActivities";
 import { ProposedParticipantsField, type ProposedPerson } from "@/features/training-activities/shared/ProposedParticipantsField";
 import { TrainingFileDropzone } from "@/features/training-activities/shared/TrainingFileDropzone";
+import { tr } from "@/i18n";
 
 /** What the person enters about the paper training of one revision (besides the Training Number and the completion date, which are fields of the section itself). */
 export interface LegacyTrainingEvidenceValue {
@@ -89,9 +90,9 @@ export function LegacyTrainingEvidence({
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4" data-testid="legacy-training-evidence">
       <div>
-        <h4 className="text-sm font-semibold text-slate-800">Paper training record of revision {revisionLabel}</h4>
+        <h4 className="text-sm font-semibold text-slate-800">{tr("Paper training record of revision")} {revisionLabel}</h4>
         <p className="text-xs text-slate-500">
-          The training was done on paper before the system. Attach the scan of the record and say who was trained. The people are taken to have been trained when you sign the import.
+          {tr("The training was done on paper before the system. Attach the scan of the record and say who was trained. The people are taken to have been trained when you sign the import.")}
         </p>
       </div>
       {problem && <WarningBanner variant="error" description={problem} />}
@@ -109,12 +110,12 @@ export function LegacyTrainingEvidence({
             id={`legacy-lost-${revisionLabel}`}
             checked={value.notEvidenced}
             onChange={(checked) => set({ notEvidenced: Boolean(checked), scan: checked ? null : value.scan, trainees: checked ? [] : value.trainees })}
-            label="The paper record is lost (declare that there is no evidence)"
+            label={tr("The paper record is lost (declare that there is no evidence)")}
           />
           {value.notEvidenced ? (
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor={`legacy-lost-reason-${revisionLabel}`}>
-                Why there is no evidence <span className="text-red-500">*</span>
+                {tr("Why there is no evidence")} <span className="text-red-500">*</span>
               </label>
               <textarea
                 id={`legacy-lost-reason-${revisionLabel}`}
@@ -123,7 +124,7 @@ export function LegacyTrainingEvidence({
                 value={value.noEvidenceReason}
                 onChange={(e) => set({ noEvidenceReason: e.target.value })}
               />
-              {showValidation && !value.noEvidenceReason.trim() && <p className="mt-1 text-xs text-red-600">Say why there is no evidence.</p>}
+              {showValidation && !value.noEvidenceReason.trim() && <p className="mt-1 text-xs text-red-600">{tr("Say why there is no evidence.")}</p>}
             </div>
           ) : (
             <>
@@ -131,7 +132,7 @@ export function LegacyTrainingEvidence({
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <div className="md:col-span-2">
                     <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor={`legacy-topic-${revisionLabel}`}>
-                      Training Topic <span className="text-red-500">*</span>
+                      {tr("Training Topic")} <span className="text-red-500">*</span>
                     </label>
                     <input
                       id={`legacy-topic-${revisionLabel}`}
@@ -139,14 +140,14 @@ export function LegacyTrainingEvidence({
                       maxLength={255}
                       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       value={value.topic}
-                      placeholder="What was taught, as written on the paper record"
+                      placeholder={tr("What was taught, as written on the paper record")}
                       onChange={(e) => set({ topic: e.target.value })}
                     />
-                    {showValidation && !value.topic.trim() && <p className="mt-1 text-xs text-red-600">Training Topic is required.</p>}
+                    {showValidation && !value.topic.trim() && <p className="mt-1 text-xs text-red-600">{tr("Training Topic is required.")}</p>}
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor={`legacy-trainer-${revisionLabel}`}>
-                      Trainer <span className="text-red-500">*</span>
+                      {tr("Trainer")} <span className="text-red-500">*</span>
                     </label>
                     <input
                       id={`legacy-trainer-${revisionLabel}`}
@@ -154,56 +155,56 @@ export function LegacyTrainingEvidence({
                       maxLength={255}
                       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       value={value.trainer}
-                      placeholder="Name of the trainer as written on the paper record"
+                      placeholder={tr("Name of the trainer as written on the paper record")}
                       onChange={(e) => set({ trainer: e.target.value })}
                     />
-                    {showValidation && !value.trainer.trim() && <p className="mt-1 text-xs text-red-600">Trainer is required.</p>}
+                    {showValidation && !value.trainer.trim() && <p className="mt-1 text-xs text-red-600">{tr("Trainer is required.")}</p>}
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Mode <span className="text-red-500">*</span>
+                      {tr("Mode")} <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={value.method}
                       onChange={(v) => set({ method: String(v) })}
                       options={Object.entries(METHOD_LABEL).map(([key, label]) => ({ label, value: key }))}
-                      placeholder="Select mode..."
+                      placeholder={tr("Select mode...")}
                       enableSearch={false}
                     />
-                    {showValidation && !value.method && <p className="mt-1 text-xs text-red-600">Mode is required.</p>}
+                    {showValidation && !value.method && <p className="mt-1 text-xs text-red-600">{tr("Mode is required.")}</p>}
                   </div>
                 </div>
               )}
               <WarningBanner
                 variant="warning"
-                description="A scan that is stored cannot be deleted or replaced (the record store is locked). Check that it is the right file before you import."
+                description={tr("A scan that is stored cannot be deleted or replaced (the record store is locked). Check that it is the right file before you import.")}
               />
               <TrainingFileDropzone
-                label="Scan of the paper training record (APD.0108 or APD.0117)"
+                label={tr("Scan of the paper training record (APD.0108 or APD.0117)")}
                 required
                 accept=".pdf"
                 maxMb={20}
-                hint="PDF only (max 20 MB)"
+                hint={tr("PDF only (max 20 MB)")}
                 file={value.scan}
                 onChange={(file) => set({ scan: file })}
               />
-              {showValidation && !value.scan && <p className="-mt-2 text-xs text-red-600">Attach the scan, or declare that the paper record is lost.</p>}
+              {showValidation && !value.scan && <p className="-mt-2 text-xs text-red-600">{tr("Attach the scan, or declare that the paper record is lost.")}</p>}
               {number ? (
                 <ProposedParticipantsField
                   pending={value.trainees}
                   onPendingChange={(people) => set({ trainees: people })}
                   labels={{
-                    title: "Persons who were trained",
-                    description: "The people who were at the paper training, chosen among the users of the system. They get their training record when you sign the import.",
+                    title: tr("Persons who were trained"),
+                    description: tr("The people who were at the paper training, chosen among the users of the system. They get their training record when you sign the import."),
                     localNotice: "The people chosen here are kept with the import. A person who is no longer in the system cannot be chosen and gets no record.",
-                    emptyTitle: "Nobody chosen",
-                    emptyDescription: "Use Add Participants to choose the people who were trained.",
+                    emptyTitle: tr("Nobody chosen"),
+                    emptyDescription: tr("Use Add Participants to choose the people who were trained."),
                     modalTitle: "Persons who were trained",
                   }}
                 />
               ) : (
                 <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                  The persons who were trained can be named only when the Training Number of the paper record is entered.
+                  {tr("The persons who were trained can be named only when the Training Number of the paper record is entered.")}
                 </p>
               )}
             </>

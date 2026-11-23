@@ -27,13 +27,14 @@ import { statusLabel } from "../types";
 import { leaveRestoreNotice } from "../restoreSessionNotice";
 import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const ALL = "ALL";
 const STATUS_OPTIONS = [
   { label: "All", value: ALL },
-  { label: "Waiting to finalize", value: "PENDING_FINALIZATION" },
+  { label: tr("Waiting to finalize"), value: "PENDING_FINALIZATION" },
   { label: "Finalized", value: "FINALIZED" },
-  { label: "Rolled back", value: "ROLLED_BACK" },
+  { label: tr("Rolled back"), value: "ROLLED_BACK" },
 ];
 const STATUS_COLOR: Record<ProductionRestoreStatus, "amber" | "emerald" | "slate"> = {
   PENDING_FINALIZATION: "amber",
@@ -161,7 +162,7 @@ export const ProductionRestoresView: React.FC = () => {
     setSigning(undefined);
     if (!action) return;
     if (!data.signatureToken) {
-      showToast({ type: "error", title: "The signature could not be confirmed", message: "Try again." });
+      showToast({ type: "error", title: tr("The signature could not be confirmed"), message: "Try again." });
       return;
     }
     try {
@@ -175,17 +176,17 @@ export const ProductionRestoresView: React.FC = () => {
       showToast({ type: "info", title: label, message: "Accepted. It is running; this can take a while." });
       void follow(jobId, label);
     } catch (e) {
-      showToast({ type: "error", title: "The request was refused", message: getApiErrorMessage(e, "Nothing was changed.") });
+      showToast({ type: "error", title: tr("The request was refused"), message: getApiErrorMessage(e, "Nothing was changed.") });
     }
   };
 
   const columns: DataTableColumn<ProductionRestoreRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
-    { id: "runCode", header: "Restore Number", label: "Restore Number", headerClassName: TABLE_STYLES.headerCell35, cell: (row) => <span className="font-medium text-slate-900">{row.run_code}</span> },
+    { id: "runCode", header: tr("Restore Number"), label: tr("Restore Number"), headerClassName: TABLE_STYLES.headerCell35, cell: (row) => <span className="font-medium text-slate-900">{row.run_code}</span> },
     {
       id: "backupNumber",
-      header: "Backup Number",
-      label: "Backup Number",
+      header: tr("Backup Number"),
+      label: tr("Backup Number"),
       sort: sortFor("backupNumber"),
       cell: (row) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => navigate(ROUTES.BACKUP_RESTORE.BACKUP_DETAIL(row.backup_number))}>
@@ -195,7 +196,7 @@ export const ProductionRestoresView: React.FC = () => {
     },
     { id: "components", header: "Restored", label: "Restored", sort: sortFor("components"), cell: (row) => (row.components ?? "DATABASE").split(",").map((c) => PART_TEXT[c] ?? c).join(", ") },
     { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (row) => <Badge color={STATUS_COLOR[row.status]}>{STATUS_TEXT[row.status]}</Badge> },
-    { id: "restoredBy", header: "Restored by", label: "Restored by", sort: sortFor("restoredBy"), cell: (row) => row.restored_by },
+    { id: "restoredBy", header: tr("Restored by"), label: tr("Restored by"), sort: sortFor("restoredBy"), cell: (row) => row.restored_by },
     { id: "restoredAt", header: "Restored", label: "Restored", sort: sortFor("restoredAt"), cell: (row) => formatDateTime(row.restored_at) },
     { id: "closedBy", header: "Closed by", label: "Closed by", sort: sortFor("closedBy"), cell: (row) => row.closed_by ?? "—" },
     { id: "closedAt", header: "Closed", label: "Closed", sort: sortFor("closedAt"), cell: (row) => (row.closed_at ? formatDateTime(row.closed_at) : "—") },
@@ -208,12 +209,12 @@ export const ProductionRestoresView: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             {capabilities?.finalize && (
               <Button variant="outline-emerald" size="sm" onClick={() => setSigning({ kind: "finalize", runCode: row.run_code })}>
-                Finalize
+                {tr("Finalize")}
               </Button>
             )}
             {capabilities?.rollback && (
               <Button variant="destructive" size="sm" onClick={() => setSigning({ kind: "rollback", runCode: row.run_code })}>
-                Roll Back
+                {tr("Roll Back")}
               </Button>
             )}
           </div>
@@ -228,7 +229,7 @@ export const ProductionRestoresView: React.FC = () => {
 
   return (
     <BackupRestorePage
-      title="Restore Backup"
+      title={tr("Restore Backup")}
       group="Restore"
       preview={false}
       actions={
@@ -250,7 +251,7 @@ export const ProductionRestoresView: React.FC = () => {
           />
           {capabilities?.restore && (
             <Button size="sm" variant="default" disabled={working > 0} onClick={() => setChoosing(true)}>
-              Restore a Backup
+              {tr("Restore a Backup")}
             </Button>
           )}
         </>
@@ -258,9 +259,9 @@ export const ProductionRestoresView: React.FC = () => {
     >
       <WarningBanner
         variant="info"
-        description="A restore replaces the live database with a backup and adds any missing files. It waits here until a person with the finalize permission closes it; until then it can be rolled back. Every action is signed."
+        description={tr("A restore replaces the live database with a backup and adds any missing files. It waits here until a person with the finalize permission closes it; until then it can be rolled back. Every action is signed.")}
       />
-      {waiting && <WarningBanner variant="warning" description="A restore is waiting to be finalized. No other restore can start until it is finalized or rolled back." />}
+      {waiting && <WarningBanner variant="warning" description={tr("A restore is waiting to be finalized. No other restore can start until it is finalized or rolled back.")} />}
       <ServerListPanel
         tableKey="backup-restore.production-restores.v1"
         columns={columns}
@@ -269,15 +270,15 @@ export const ProductionRestoresView: React.FC = () => {
         loading={loading}
         hasLoaded={hasLoaded}
         error={error}
-        emptyTitle="No Restores"
-        emptyDescription="Restores into the live system will appear here. Try changing your search or filters."
+        emptyTitle={tr("No Restores")}
+        emptyDescription={tr("Restores into the live system will appear here. Try changing your search or filters.")}
         search={search}
         onSearch={setSearch}
         searchLabel="Search restores"
-        searchPlaceholder="Restore, backup or person…"
+        searchPlaceholder={tr("Restore, backup or person…")}
         filters={[
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
-          { id: "part", label: "Restored Part", value: part, options: PART_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setPart },
+          { id: "part", label: tr("Restored Part"), value: part, options: PART_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setPart },
         ]}
         dates={[
           { id: "restored", label: "Restored", from: restoredFrom, to: restoredTo, onFromChange: setRestoredFrom, onToChange: setRestoredTo },

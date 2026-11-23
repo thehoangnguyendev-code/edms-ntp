@@ -6,6 +6,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useDebounce } from "@/hooks/useDebounce";
 import { trainingJobsApi, trainingMatrixApi } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type Position = { id: string; name: string; carried: boolean; department?: string };
 
@@ -57,18 +58,18 @@ export function WorkPositionsPreview({ assignmentId, personId, personName, posit
         {positions?.length === 0 && <span className="text-slate-400">—</span>}
         {(remaining > 0 || (!positions && Boolean(fallback))) && <button type="button" onClick={() => { setSearch(""); setPage(1); setResults([]); setHasMore(false); setOpen(true); }} className="rounded-md px-1 py-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500" aria-label={`View all work positions for ${personName}`}>{positions ? `+${remaining}` : "View positions"}</button>}
       </div>
-      <Drawer open={open} onClose={() => setOpen(false)} title="Work Positions" subtitle={positions ? `${personName} · ${count} positions` : personName} bodyClassName="flex flex-col overflow-hidden p-0 md:p-0">
+      <Drawer open={open} onClose={() => setOpen(false)} title={tr("Work Positions")} subtitle={positions ? `${personName} · ${count} positions` : personName} bodyClassName="flex flex-col overflow-hidden p-0 md:p-0">
         <div className="shrink-0 border-b border-slate-200 bg-white p-4">
-          <FilterSearchInput aria-label="Search work positions" value={search} onChange={(value) => { setSearch(value); setPage(1); setResults([]); setHasMore(false); }} placeholder="Search work positions…" />
+          <FilterSearchInput aria-label={tr("Search work positions")} value={search} onChange={(value) => { setSearch(value); setPage(1); setResults([]); setHasMore(false); }} placeholder={tr("Search work positions…")} />
         </div>
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4" aria-busy={loading}>
           {results.length > 0 && <ol className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-            {results.map((position, index) => <li key={position.id} className="flex items-start gap-3 px-3 py-3"><span className="w-7 shrink-0 text-right text-sm font-medium leading-5 tabular-nums text-slate-500">{index + 1}.</span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium leading-5 text-slate-800">{position.name}</p>{position.department && <p className="mt-1 text-xs text-slate-500">{position.department}</p>}</div>{position.carried && <Badge color="slate">Held before</Badge>}</li>)}
+            {results.map((position, index) => <li key={position.id} className="flex items-start gap-3 px-3 py-3"><span className="w-7 shrink-0 text-right text-sm font-medium leading-5 tabular-nums text-slate-500">{index + 1}.</span><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium leading-5 text-slate-800">{position.name}</p>{position.department && <p className="mt-1 text-xs text-slate-500">{position.department}</p>}</div>{position.carried && <Badge color="slate">{tr("Held before")}</Badge>}</li>)}
           </ol>}
           {loading && <SectionLoading text="Loading work positions…" />}
-          {error && <p role="alert" className="py-3 text-sm text-red-700">Unable to load work positions. <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Try again</button></p>}
-          {!loading && !error && results.length === 0 && search === debouncedSearch && <p className="text-sm text-slate-500">No work positions found.</p>}
-          {hasMore && !loading && !error && <div ref={sentinelRef} className="py-3 text-center"><button type="button" onClick={() => setPage((previous) => previous + 1)} className="text-sm font-medium text-emerald-700 underline">Load more</button></div>}
+          {error && <p role="alert" className="py-3 text-sm text-red-700">{tr("Unable to load work positions.")} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>{tr("Try again")}</button></p>}
+          {!loading && !error && results.length === 0 && search === debouncedSearch && <p className="text-sm text-slate-500">{tr("No work positions found.")}</p>}
+          {hasMore && !loading && !error && <div ref={sentinelRef} className="py-3 text-center"><button type="button" onClick={() => setPage((previous) => previous + 1)} className="text-sm font-medium text-emerald-700 underline">{tr("Load more")}</button></div>}
         </div>
       </Drawer>
     </>

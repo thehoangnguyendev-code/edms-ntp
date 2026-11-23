@@ -20,6 +20,7 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicy, WorkflowActionPolicyActor } from "../types";
 import { statusText } from "../../shared/humanizeCode";
+import { tr } from "@/i18n";
 
 const MANAGE_PERM = "security.workflow_authorization.manage";
 const LIST_ROUTE = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}?tab=transitions`;
@@ -112,8 +113,8 @@ export const TransitionPolicyDetailView: React.FC = () => {
   if (failed || !policy) {
     return (
       <div className="flex flex-col gap-4 md:gap-6">
-        <PageHeader title="Transition Policy Details" breadcrumbItems={breadcrumbItems} actions={<Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>Back</Button>} />
-        <TableEmptyState title="Policy not found" description="This policy does not exist any more, or you do not have permission to view it." />
+        <PageHeader title={tr("Transition Policy Details")} breadcrumbItems={breadcrumbItems} actions={<Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>{tr("Back")}</Button>} />
+        <TableEmptyState title={tr("Policy not found")} description={tr("This policy does not exist any more, or you do not have permission to view it.")} />
       </div>
     );
   }
@@ -125,33 +126,33 @@ export const TransitionPolicyDetailView: React.FC = () => {
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
       <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>
-        Back
+        {tr("Back")}
       </Button>
       {canManage && (
         <>
           <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(`${base}/${policy.id}/edit`, { state: { from: here } })}>
-            Edit Policy
+            {tr("Edit Policy")}
           </Button>
           <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(`${base}/${policy.id}/edit?mode=override`, { state: { from: here } })}>
-            Create Override
+            {tr("Create Override")}
           </Button>
           <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(`${base}/${policy.id}/duplicate`, { state: { from: here } })}>
-            Duplicate
+            {tr("Duplicate")}
           </Button>
           {!policy.active ? (
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setConfirm("activate")}>
-              Activate
+              {tr("Activate")}
             </Button>
           ) : (
             policy.deactivatable !== false && (
               <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setConfirm("deactivate")}>
-                Deactivate
+                {tr("Deactivate")}
               </Button>
             )
           )}
           {policy.system && policy.resettable !== false && (
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setConfirm("reset")}>
-              Reset Default
+              {tr("Reset Default")}
             </Button>
           )}
         </>
@@ -162,16 +163,16 @@ export const TransitionPolicyDetailView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
-      <PageHeader title="Transition Policy Details" breadcrumbItems={breadcrumbItems} actions={actions} />
+      <PageHeader title={tr("Transition Policy Details")} breadcrumbItems={breadcrumbItems} actions={actions} />
 
-      {!policy.active && <WarningBanner variant="warning">This policy is inactive. It is not used until it is activated.</WarningBanner>}
+      {!policy.active && <WarningBanner variant="warning">{tr("This policy is inactive. It is not used until it is activated.")}</WarningBanner>}
       {decidesAlone && (
-        <WarningBanner variant="info">This policy is the only decision about who may do this action. With it inactive, nobody can do the action from this state, whatever their permissions.</WarningBanner>
+        <WarningBanner variant="info">{tr("This policy is the only decision about who may do this action. With it inactive, nobody can do the action from this state, whatever their permissions.")}</WarningBanner>
       )}
       {otherWarnings.length > 0 && <WarningBanner variant="warning">{otherWarnings.join(", ")}</WarningBanner>}
 
       <FormSection
-        title="Policy"
+        title={tr("Policy")}
         icon={<Workflow className="h-4 w-4" />}
         headerRight={
           <>
@@ -181,31 +182,31 @@ export const TransitionPolicyDetailView: React.FC = () => {
         }
       >
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-          <Field label="Module">{policy.moduleLabel ?? policy.moduleKey}</Field>
-          <Field label="Workflow">{policy.workflowLabel ?? policy.workflowKey}</Field>
-          <Field label="Action">
+          <Field label={tr("Module")}>{policy.moduleLabel ?? policy.moduleKey}</Field>
+          <Field label={tr("Workflow")}>{policy.workflowLabel ?? policy.workflowKey}</Field>
+          <Field label={tr("Action")}>
             {actionName}
             <span className="block text-xs text-slate-500">{policy.actionCode}</span>
           </Field>
-          <Field label="From Status">
+          <Field label={tr("From Status")}>
             {statusText(policy.fromStatusLabel, policy.fromStatus)}
             <span className="block text-xs text-slate-500">{policy.fromStatus}</span>
           </Field>
-          <Field label="Document Type">{policy.documentTypeName ?? <span className="italic text-slate-500">Global (all document types)</span>}</Field>
-          <Field label="Priority">{policy.priority}</Field>
-          <Field label="Required Permission">
+          <Field label={tr("Document Type")}>{policy.documentTypeName ?? <span className="italic text-slate-500">{tr("Global (all document types)")}</span>}</Field>
+          <Field label={tr("Priority")}>{policy.priority}</Field>
+          <Field label={tr("Required Permission")}>
             {policy.requiredPermissionName ?? policy.requiredPermissionCode}
             {policy.requiredPermissionName && <span className="block text-xs text-slate-500">{policy.requiredPermissionCode}</span>}
           </Field>
-          <Field label="Last Updated">{policy.updatedAt ? formatDateTime(policy.updatedAt) : "—"}</Field>
-          <Field label="Created">{policy.createdAt ? formatDateTime(policy.createdAt) : "—"}</Field>
-          <Field label="Description" wide>{policy.description || <span className="text-slate-500">(none)</span>}</Field>
+          <Field label={tr("Last Updated")}>{policy.updatedAt ? formatDateTime(policy.updatedAt) : "—"}</Field>
+          <Field label={tr("Created")}>{policy.createdAt ? formatDateTime(policy.createdAt) : "—"}</Field>
+          <Field label={tr("Description")} wide>{policy.description || <span className="text-slate-500">{tr("(none)")}</span>}</Field>
         </dl>
       </FormSection>
 
-      <FormSection title="Actors" icon={<UserCheck className="h-4 w-4" />} description="Who may do this action, besides holding the permission">
+      <FormSection title={tr("Actors")} icon={<UserCheck className="h-4 w-4" />} description={tr("Who may do this action, besides holding the permission")}>
         {policy.actors.length === 0 ? (
-          <p className="text-sm text-slate-500">No actor is set for this policy.</p>
+          <p className="text-sm text-slate-500">{tr("No actor is set for this policy.")}</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {policy.actors.map((a, i) => (
@@ -217,11 +218,11 @@ export const TransitionPolicyDetailView: React.FC = () => {
         )}
       </FormSection>
 
-      <FormSection title="Relations" icon={<ShieldCheck className="h-4 w-4" />} description="What the person must be to the record, and who must be a different person">
+      <FormSection title={tr("Relations")} icon={<ShieldCheck className="h-4 w-4" />} description={tr("What the person must be to the record, and who must be a different person")}>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
           <Field label={`Required (${policy.relationMatchRule === "ALL" ? "all of them" : "any one of them"})`}>
             {required.length === 0 ? (
-              <span className="text-slate-500">No relation is required: the permission is enough.</span>
+              <span className="text-slate-500">{tr("No relation is required: the permission is enough.")}</span>
             ) : (
               <span className="flex flex-wrap gap-2">
                 {required.map((r) => (
@@ -230,9 +231,9 @@ export const TransitionPolicyDetailView: React.FC = () => {
               </span>
             )}
           </Field>
-          <Field label="Must be a different person from">
+          <Field label={tr("Must be a different person from")}>
             {forbidden.length === 0 ? (
-              <span className="text-slate-500">No one: the same person may do more than one job on the record.</span>
+              <span className="text-slate-500">{tr("No one: the same person may do more than one job on the record.")}</span>
             ) : (
               <span className="flex flex-wrap gap-2">
                 {forbidden.map((r) => (
@@ -249,7 +250,7 @@ export const TransitionPolicyDetailView: React.FC = () => {
         onClose={() => setConfirm(null)}
         onConfirm={() => void run("activate")}
         type="info"
-        title="Activate Policy"
+        title={tr("Activate Policy")}
         description={`Activate policy for "${actionName}"?`}
         confirmText="Activate"
         cancelText="Cancel"
@@ -261,9 +262,9 @@ export const TransitionPolicyDetailView: React.FC = () => {
         onClose={() => setConfirm(null)}
         onConfirm={() => void run("deactivate")}
         type="warning"
-        title="Deactivate Policy"
+        title={tr("Deactivate Policy")}
         description={`${decidesAlone ? "This policy is the only decision about who may do this action. With it inactive nobody can do the action from this state, whatever their permissions." : "Deactivating this policy may cause the action to be denied when no other active policy matches."}\n\nAre you sure you want to deactivate "${actionName}"?`}
-        confirmText="Deactivate"
+        confirmText={tr("Deactivate")}
         cancelText="Cancel"
         showCancel
         isLoading={busy}
@@ -273,7 +274,7 @@ export const TransitionPolicyDetailView: React.FC = () => {
         onClose={() => setConfirm(null)}
         onConfirm={() => void run("reset")}
         type="warning"
-        title="Reset to System Default"
+        title={tr("Reset to System Default")}
         description={`This will restore the system default permission, actors, priority, active flag, description, and global document type scope for "${actionName}".`}
         confirmText="Reset"
         cancelText="Cancel"

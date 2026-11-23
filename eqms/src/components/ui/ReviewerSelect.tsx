@@ -35,7 +35,7 @@ export const ReviewerSelect: React.FC<Props> = ({ load, value, onChange, disable
       label={tr("Reviewer")}
       value={value}
       onChange={(id: string) => onChange(id)}
-      options={[{ value: '', label: 'Me (the person creating the campaign)' }, ...choices.map((choice) => ({ value: choice.id, label: choice.name }))]}
+      options={[{ value: '', label: tr('Me (the person creating the campaign)') }, ...choices.map((choice) => ({ value: choice.id, label: choice.name }))]}
       enableSearch
       disabled={disabled}
       aria-label={tr("Reviewer")}

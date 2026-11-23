@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button/Button";
 import { Drawer } from "@/components/ui/drawer/Drawer";
 import { getFileIconSrc } from "@/utils/fileIcons";
 import type { MaterialItem } from "./TrainingMaterialsBoard";
+import { tr } from "@/i18n";
 
 const size = (bytes: number) => (bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 const host = (url: string) => {
@@ -64,7 +65,7 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
         )}
         {canDownload(m) && (
           <Button size="sm" variant={main ? "outline-emerald" : "default"} className={`${tall} ${main ? "" : "col-span-2 lg:col-span-1"}`} onClick={() => onDownload?.(m)}>
-            <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />Download
+            <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />{tr("Download")}
           </Button>
         )}
       </div>
@@ -81,7 +82,7 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
       </div>
       {m.addedBy ? (
         <div>
-          <dt className="text-xs text-slate-500">Added by</dt>
+          <dt className="text-xs text-slate-500">{tr("Added by")}</dt>
           <dd className="font-medium text-slate-900">{m.addedBy}</dd>
         </div>
       ) : null}
@@ -91,8 +92,8 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
           <dd className="break-all font-mono text-xs text-slate-700">{m.sha256}</dd>
         </div>
       ) : null}
-      {m.linkUrl ? <Badge color="amber" size="sm">Link, not a controlled file</Badge> : null}
-      {m.removedAt ? <p className="text-xs text-red-700">Removed {m.removedAt}: {m.removeReason}</p> : null}
+      {m.linkUrl ? <Badge color="amber" size="sm">{tr("Link, not a controlled file")}</Badge> : null}
+        {m.removedAt ? <p className="text-xs text-red-700">{tr("Removed")} {m.removedAt}: {m.removeReason}</p> : null}
     </dl>
   );
 
@@ -110,9 +111,9 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
   if (items.length === 0) return <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-500">{emptyText}</div>;
 
   return (
-    <section aria-label="Materials" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <section aria-label={tr("Materials")} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 md:px-5">
-        <h3 className="text-sm font-semibold text-slate-800">{items.length} material{items.length === 1 ? "" : "s"}</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{items.length} {tr("material")}{items.length === 1 ? "" : "s"}</h3>
       </div>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 lg:border-r lg:border-slate-200">
@@ -144,9 +145,9 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
             })}
           </ul>
         </div>
-        {chosen ? <aside aria-label="Selected material" className="hidden p-5 lg:block">{detail(chosen, "h-10")}</aside> : null}
+        {chosen ? <aside aria-label={tr("Selected material")} className="hidden p-5 lg:block">{detail(chosen, "h-10")}</aside> : null}
       </div>
-      {sheet && chosen ? <Drawer title="Material" onClose={() => setSheet(false)} onExited={() => setSheet(false)}>{detail(chosen, "h-11")}</Drawer> : null}
+      {sheet && chosen ? <Drawer title={tr("Material")} onClose={() => setSheet(false)} onExited={() => setSheet(false)}>{detail(chosen, "h-11")}</Drawer> : null}
     </section>
   );
 }

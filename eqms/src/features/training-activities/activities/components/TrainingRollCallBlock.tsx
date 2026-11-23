@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingPaperApi, type TrainingActivityDetail, type TrainingSession } from "@/services/api/trainingActivities";
 import { Input } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
+import { tr } from "@/i18n";
 
 type Mark = { state: "PRESENT" | "ABSENT"; reason: string };
 
@@ -43,19 +44,19 @@ export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
     <>
       {bare ? candidates.map((s) => (
         <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>
-          {candidates.length > 1 ? `Roll-call S${s.sessionNo} (${invited(s.id).length})` : "Quick roll-call"}
+          {candidates.length > 1 ? `Roll-call S${s.sessionNo} (${invited(s.id).length})` : tr("Quick roll-call")}
         </Button>
       )) : (
-        <TabBlock title="Quick roll-call">
-          <p className="px-4 py-3 text-xs text-slate-500">Mark everyone of a session at once and sign one time. Use it when the trainer vouches for the attendance of the room.</p>
+        <TabBlock title={tr("Quick roll-call")}>
+          <p className="px-4 py-3 text-xs text-slate-500">{tr("Mark everyone of a session at once and sign one time. Use it when the trainer vouches for the attendance of the room.")}</p>
           <div className="flex flex-wrap gap-2 p-4">
-            {candidates.map((s) => <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>Session {s.sessionNo} ({invited(s.id).length} to mark)</Button>)}
+              {candidates.map((s) => <Button key={s.id} size="sm" variant="outline-emerald" onClick={() => open(s)}>{tr("Session")} {s.sessionNo} ({invited(s.id).length} {tr("to mark")})</Button>)}
           </div>
         </TabBlock>
       )}
 
       {session && !signing && (
-        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description="Everyone starts as present. Change the ones who were absent and say why. Next you sign." confirmText="Continue to Sign" confirmDisabled={!valid} size="xl">
+        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description={tr("Everyone starts as present. Change the ones who were absent and say why. Next you sign.")} confirmText="Continue to Sign" confirmDisabled={!valid} size="xl">
           <div className="space-y-2">
             {rows.map((p, i) => {
               const m = marks[p.id];
@@ -63,7 +64,7 @@ export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
                 <div key={p.id} className="grid grid-cols-1 items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-12">
                   <div className="md:col-span-5"><span className="mr-2 text-xs text-slate-500">{i + 1}</span><span className="text-sm font-medium text-slate-900">{p.fullName}</span></div>
                   <div className="md:col-span-3"><Select value={m.state} options={[{ value: "PRESENT", label: "Present" }, { value: "ABSENT", label: "Absent" }]} aria-label={`Attendance of ${p.fullName}`} onChange={(v) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], state: v as Mark["state"] } }))} /></div>
-                  {m.state === "ABSENT" && <div className="md:col-span-4"><Input placeholder="Reason for the absence" aria-label={`Reason of ${p.fullName}`} value={m.reason} onChange={(e) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], reason: e.target.value } }))} /></div>}
+                  {m.state === "ABSENT" && <div className="md:col-span-4"><Input placeholder={tr("Reason for the absence")} aria-label={`Reason of ${p.fullName}`} value={m.reason} onChange={(e) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], reason: e.target.value } }))} /></div>}
                 </div>
               );
             })}
@@ -84,10 +85,10 @@ export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
             });
             setSigning(false);
             setSession(undefined);
-            showToast({ type: "success", title: "Roll-call recorded", message: activity.trainingNumber });
+            showToast({ type: "success", title: tr("Roll-call recorded"), message: activity.trainingNumber });
             onChanged(next);
           } catch (e) {
-            showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+            showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
           }
         }}
         actionTitle="Attest the Roll-Call of the Session"

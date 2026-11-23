@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Approver } from "../tabs/subtabs";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 export const ReadOnlyApproversTable: React.FC<{ approvers: Approver[] }> = ({
   approvers,
@@ -14,22 +15,22 @@ export const ReadOnlyApproversTable: React.FC<{ approvers: Approver[] }> = ({
           <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
             <TableMarkup.Row>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell16}>
-                No.
+                {tr("No.")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                User
+                {tr("User")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                Email
+                {tr("Email")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                Position
+                {tr("Position")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                Department
+                {tr("Department")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                Role
+                {tr("Role")}
               </TableMarkup.HeaderCell>
             </TableMarkup.Row>
           </TableMarkup.Head>
@@ -42,7 +43,7 @@ export const ReadOnlyApproversTable: React.FC<{ approvers: Approver[] }> = ({
                       <Search className="h-5 w-5 text-slate-300" />
                     </div>
                     <p className="text-sm font-medium text-slate-500">
-                      No records to display
+                      {tr("No records to display")}
                     </p>
                   </div>
                 </TableMarkup.Cell>
@@ -77,7 +78,7 @@ export const ReadOnlyApproversTable: React.FC<{ approvers: Approver[] }> = ({
                   </TableMarkup.Cell>
                   <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                     <Badge color="emerald" size="sm">
-                      Approver
+                      {tr("Approver")}
                     </Badge>
                   </TableMarkup.Cell>
                 </TableMarkup.Row>

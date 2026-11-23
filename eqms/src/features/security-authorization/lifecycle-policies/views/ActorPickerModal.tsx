@@ -11,6 +11,7 @@ import { useDebounce, useTableDragScroll } from "@/hooks";
 import { metadataApi } from "@/services/api/metadata";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 export interface SimulatorActor {
   id: string;
@@ -122,8 +123,8 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Choose Actor"
-      description="Select an active user to evaluate. This does not perform an action as that user."
+      title={tr("Choose Actor")}
+      description={tr("Select an active user to evaluate. This does not perform an action as that user.")}
       size="2xl"
       showFooter={false}
       className="max-w-4xl"
@@ -134,7 +135,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
           <input
             value={query}
             onChange={(event) => updateQuery(event.target.value)}
-            placeholder="Search name, email, employee ID, department..."
+            placeholder={tr("Search name, email, employee ID, department...")}
             className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
           />
           {query && (
@@ -153,7 +154,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
             <div className="flex min-w-0 items-center gap-2.5">
               <Avatar name={selectedActor.fullName} tone="brand" className="h-8 w-8 text-2xs" />
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-emerald-900">Selected: {selectedActor.fullName}</p>
+                <p className="truncate text-xs font-semibold text-emerald-900">{tr("Selected:")} {selectedActor.fullName}</p>
                 {selectedActor.email && <p className="truncate text-2xs text-emerald-700">{selectedActor.email}</p>}
               </div>
             </div>
@@ -177,15 +178,15 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
               <div className="py-2">
                 <TableEmptyState
                  
-                  title="Could not load users"
+                  title={tr("Could not load users")}
                   description={error}
                 />
-                <div className="flex justify-center pb-6"><Button size="sm" variant="outline" onClick={retry}>Try again</Button></div>
+                <div className="flex justify-center pb-6"><Button size="sm" variant="outline" onClick={retry}>{tr("Try again")}</Button></div>
               </div>
             ) : actors.length === 0 ? (
               <TableEmptyState
                
-                title="No users found"
+                title={tr("No users found")}
                 description={query ? "Try a different name, email, employee ID, or department." : "There are no active users available."}
               />
             ) : (
@@ -201,7 +202,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                   <TableMarkup.Root className="w-full min-w-max border-spacing-0 text-left">
                     <TableMarkup.Head className="sticky top-0 z-30">
                       <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>No.</TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell29}>{tr("No.")}</TableMarkup.HeaderCell>
                         {SORTABLE_COLUMNS.map((col) => {
                           const isSorted = sortBy === col.field;
                           return (
@@ -221,7 +222,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
                           );
                         })}
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
-                          Action
+                          {tr("Action")}
                         </TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>

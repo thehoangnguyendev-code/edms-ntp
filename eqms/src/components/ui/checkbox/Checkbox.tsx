@@ -1,5 +1,6 @@
 import React, { useId as useReactId, useEffect, useRef } from 'react';
 import { cn } from '../utils';
+import { useLanguage } from '@/i18n';
 
 /**
  * Checkbox component with custom styling
@@ -54,6 +55,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   labelClassName,
   'aria-label': ariaLabel,
 }) => {
+  const { tLabel } = useLanguage();
   const generatedId = useReactId();
   const checkboxId = id || generatedId;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +81,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           ref={inputRef}
           id={checkboxId}
           type="checkbox"
-          aria-label={ariaLabel}
+          aria-label={ariaLabel ? tLabel(ariaLabel) : undefined}
           checked={checked}
           onChange={handleChange}
           disabled={disabled}
@@ -113,7 +115,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
             disabled && 'cursor-default'
           )}
         >
-          {label}
+          {tLabel(label)}
         </label>
       )}
     </div>

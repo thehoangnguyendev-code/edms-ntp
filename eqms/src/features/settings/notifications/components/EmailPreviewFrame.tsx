@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { TabNav, type TabItem } from '@/components/ui/tabs/TabNav';
 import { cn } from '@/components/ui/utils';
+import { tr } from "@/i18n";
 
 /** The scroll bar of the tables (thin, slate), for every area that scrolls on these screens. */
 export const SCROLL = 'scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400';
@@ -39,7 +40,7 @@ export const EmailPreviewFrame: React.FC<{ html: string; mobile: boolean; height
       >
         <div className={cn('overflow-x-auto overflow-y-hidden', SCROLL)}>
           <iframe
-            title="Email preview"
+            title={tr("Email preview")}
             // the frame has no scripts; the same-origin right only lets this page read how tall the mail is, so the frame never shows a scrollbar of its own
             sandbox="allow-same-origin"
             srcDoc={html + INERT}

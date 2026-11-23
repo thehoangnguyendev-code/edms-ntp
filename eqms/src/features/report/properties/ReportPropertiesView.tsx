@@ -13,6 +13,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { reportError } from "@/services/api/reportTemplates";
 import { reportPropertiesApi, type ReportProperties } from "@/services/api/reportProperties";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { tr } from "@/i18n";
 
 /** Limits as the server applies them (ReportPropertiesService); the server checks them again. */
 const LIMITS = {
@@ -121,10 +122,10 @@ export const ReportPropertiesView: React.FC = () => {
       setProperties(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
       setShowSaveModal(false);
-      showToast({ type: "success", title: "Changes saved", message: "Report properties have been updated." });
+      showToast({ type: "success", title: tr("Changes saved"), message: "Report properties have been updated." });
     } catch (saveError) {
       setShowSaveModal(false);
-      showToast({ type: "error", title: "Save failed", message: reportError(saveError) });
+      showToast({ type: "error", title: tr("Save failed"), message: reportError(saveError) });
     } finally {
       setSaving(false);
     }
@@ -139,7 +140,7 @@ export const ReportPropertiesView: React.FC = () => {
         actions={
           canManage && properties ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || !prefixValid || saving} onClick={() => setShowSaveModal(true)}>
-              Save
+              {tr("Save")}
             </Button>
           ) : undefined
         }
@@ -155,7 +156,7 @@ export const ReportPropertiesView: React.FC = () => {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
           <p role="alert" className="text-sm font-medium text-amber-800">{error}</p>
           <Button size="sm" variant="outline" onClick={load}>
-            Retry
+            {tr("Retry")}
           </Button>
         </div>
       )}
@@ -163,12 +164,12 @@ export const ReportPropertiesView: React.FC = () => {
       {!loading && !error && properties && (
         <div className="space-y-4">
           {/* 1. How report templates are numbered and named */}
-          <FormSection title="Template Numbering & Name" icon={<FileDigit className="h-4 w-4" />}>
+          <FormSection title={tr("Template Numbering & Name")} icon={<FileDigit className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Template number">
+              <Group title={tr("Template number")}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Prefix</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Prefix")}</label>
                     <input
                       type="text"
                       maxLength={10}
@@ -177,10 +178,10 @@ export const ReportPropertiesView: React.FC = () => {
                       onChange={(e) => patch({ templateNumberPrefix: e.target.value.toUpperCase() })}
                       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
                     />
-                    <p className={`text-xs mt-1 ${prefixValid ? "text-slate-500" : "text-red-600"}`}>2 to 10 upper-case letters or digits, starting with a letter.</p>
+                    <p className={`text-xs mt-1 ${prefixValid ? "text-slate-500" : "text-red-600"}`}>{tr("2 to 10 upper-case letters or digits, starting with a letter.")}</p>
                   </div>
                   <NumberField
-                    label="Digits of the Serial Number"
+                    label={tr("Digits of the Serial Number")}
                     value={properties.templateNumberDigits}
                     min={LIMITS.digits.min}
                     max={LIMITS.digits.max}
@@ -189,27 +190,25 @@ export const ReportPropertiesView: React.FC = () => {
                     onChange={(v) => patch({ templateNumberDigits: v })}
                   />
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Next template number</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Next template number")}</label>
                     <input type="text" readOnly value={nextNumber} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                   <div className="min-w-0">
-                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Last serial issued</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Last serial issued")}</label>
                     <input type="text" readOnly value={properties.lastTemplateSerial} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  The system gives every new report template its number; nobody types it. The serial only moves forward, so a number is never issued twice. A change
-                  applies only to numbers issued after saving; templates that exist keep their number.
+                  {tr("The system gives every new report template its number; nobody types it. The serial only moves forward, so a number is never issued twice. A change applies only to numbers issued after saving; templates that exist keep their number.")}
                 </p>
               </Group>
 
-              <Group title="Template name">
-                <p className="text-sm text-slate-700">A new template is named by the active Report Name Format. Nobody chooses a rule.</p>
+              <Group title={tr("Template name")}>
+                <p className="text-sm text-slate-700">{tr("A new template is named by the active Report Name Format. Nobody chooses a rule.")}</p>
                 <p className="text-xs text-slate-500">
-                  Only one format is active at a time; enabling another disables the one that was active. A template keeps the name it has when the active format changes. Manage the
-                  formats under{" "}
+                  {tr("Only one format is active at a time; enabling another disables the one that was active. A template keeps the name it has when the active format changes. Manage the formats under")}{" "}
                   <button type="button" onClick={() => go("/settings/report-name-formats")} className="font-medium text-emerald-700 underline underline-offset-2">
-                    Report Name Formats
+                    {tr("Report Name Formats")}
                   </button>
                   .
                 </p>
@@ -218,12 +217,12 @@ export const ReportPropertiesView: React.FC = () => {
           </FormSection>
 
           {/* 3. Size of a report and how long files are kept */}
-          <FormSection title="Report Size & Retention" icon={<Archive className="h-4 w-4" />}>
+          <FormSection title={tr("Report Size & Retention")} icon={<Archive className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Report file">
+              <Group title={tr("Report file")}>
                 <NumberField
-                  label="Most rows in a report file"
-                  hint="A report that would hold more rows is refused when it is requested, so that a file stays complete and readable. Reports already made are not affected."
+                  label={tr("Most rows in a report file")}
+                  hint={tr("A report that would hold more rows is refused when it is requested, so that a file stays complete and readable. Reports already made are not affected.")}
                   value={properties.maxRows}
                   min={LIMITS.maxRows.min}
                   max={LIMITS.maxRows.max}
@@ -232,8 +231,8 @@ export const ReportPropertiesView: React.FC = () => {
                   onChange={(v) => patch({ maxRows: v })}
                 />
                 <NumberField
-                  label="Most rows in a report file run with Full"
-                  hint="A report is run with a filter. A person who chooses Full runs it without one, up to this many rows, as a CSV or XLSX file; a PDF or Word file keeps the limit above. Every Full run is written to the Audit Trail. The limit cannot be higher than the report service can hold in memory."
+                  label={tr("Most rows in a report file run with Full")}
+                  hint={tr("A report is run with a filter. A person who chooses Full runs it without one, up to this many rows, as a CSV or XLSX file; a PDF or Word file keeps the limit above. Every Full run is written to the Audit Trail. The limit cannot be higher than the report service can hold in memory.")}
                   value={properties.maxRowsFull}
                   min={Math.max(LIMITS.maxRowsFull.min, properties.maxRows)}
                   max={LIMITS.maxRowsFull.max}
@@ -242,8 +241,8 @@ export const ReportPropertiesView: React.FC = () => {
                   onChange={(v) => patch({ maxRowsFull: v })}
                 />
                 <NumberField
-                  label="Most days a report may cover"
-                  hint="For the report types that must name a period (Audit Trail, Authentication Events, Backup Activity, Electronic Signatures, Notification Delivery): a report that covers more days is refused when it is requested. A longer period also needs a higher row limit above, or the report is refused for its size."
+                  label={tr("Most days a report may cover")}
+                  hint={tr("For the report types that must name a period (Audit Trail, Authentication Events, Backup Activity, Electronic Signatures, Notification Delivery): a report that covers more days is refused when it is requested. A longer period also needs a higher row limit above, or the report is refused for its size.")}
                   value={properties.maxRangeDays}
                   min={LIMITS.rangeDays.min}
                   max={LIMITS.rangeDays.max}
@@ -253,12 +252,12 @@ export const ReportPropertiesView: React.FC = () => {
                 />
               </Group>
 
-              <Group title="Retention">
-                <p className="text-sm text-slate-700">Report files are kept permanently. No file expires by age.</p>
+              <Group title={tr("Retention")}>
+                <p className="text-sm text-slate-700">{tr("Report files are kept permanently. No file expires by age.")}</p>
                 <p className="text-xs text-slate-500">
-                  A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed under{" "}
+                  {tr("A legal hold still blocks any removal. Holds are placed and released on each run's page; the files held now are listed under")}{" "}
                   <button type="button" onClick={() => go(ROUTES.REPORT.LEGAL_HOLDS)} className="font-medium text-emerald-700 underline underline-offset-2">
-                    Legal Hold Register
+                    {tr("Legal Hold Register")}
                   </button>
                   .
                 </p>
@@ -267,12 +266,12 @@ export const ReportPropertiesView: React.FC = () => {
           </FormSection>
 
           {/* 4. Scheduled reports */}
-          <FormSection title="Scheduled Reports" icon={<CalendarClock className="h-4 w-4" />}>
+          <FormSection title={tr("Scheduled Reports")} icon={<CalendarClock className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Recipients">
+              <Group title={tr("Recipients")}>
                 <NumberField
-                  label="Most recipients of a schedule"
-                  hint="The most people a scheduled report may be sent to."
+                  label={tr("Most recipients of a schedule")}
+                  hint={tr("The most people a scheduled report may be sent to.")}
                   value={properties.maxScheduleRecipients}
                   min={LIMITS.recipients.min}
                   max={LIMITS.recipients.max}
@@ -282,10 +281,10 @@ export const ReportPropertiesView: React.FC = () => {
                 />
               </Group>
 
-              <Group title="Retry">
+              <Group title={tr("Retry")}>
                 <NumberField
-                  label="Retry after a temporary failure (minutes)"
-                  hint="When a schedule cannot run because of a temporary failure of the system, it is tried again after this time. A schedule whose template is disabled or not approved is suspended and the people responsible are told."
+                  label={tr("Retry after a temporary failure (minutes)")}
+                  hint={tr("When a schedule cannot run because of a temporary failure of the system, it is tried again after this time. A schedule whose template is disabled or not approved is suspended and the people responsible are told.")}
                   value={properties.scheduleRetryMinutes}
                   min={LIMITS.retry.min}
                   max={LIMITS.retry.max}
@@ -296,10 +295,9 @@ export const ReportPropertiesView: React.FC = () => {
               </Group>
             </div>
             <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-              Who may write, approve, upgrade or disable a report template, and who may run reports, is decided by permissions. Assign them to the Access Profiles that need
-              them at{" "}
+              {tr("Who may write, approve, upgrade or disable a report template, and who may run reports, is decided by permissions. Assign them to the Access Profiles that need them at")}{" "}
               <button type="button" onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)} className="font-medium underline underline-offset-2 hover:text-sky-900">
-                Security &amp; Authorization &gt; Access Profiles
+                {tr("Security & Authorization > Access Profiles")}
               </button>
               .
             </div>
@@ -312,8 +310,8 @@ export const ReportPropertiesView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={save}
         type="confirm"
-        title="Save Report Properties?"
-        description={<p className="text-sm text-slate-600">You are about to save changes to Report Properties. This action will be recorded in the Audit Trail.</p>}
+        title={tr("Save Report Properties?")}
+        description={<p className="text-sm text-slate-600">{tr("You are about to save changes to Report Properties. This action will be recorded in the Audit Trail.")}</p>}
         confirmText="Save"
         cancelText="Cancel"
         isLoading={saving}

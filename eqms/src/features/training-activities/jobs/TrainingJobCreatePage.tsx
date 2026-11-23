@@ -31,6 +31,7 @@ import {
 import { trainingBreadcrumbs } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const STEPS = [
   "Employee and Work Positions",
@@ -177,14 +178,14 @@ export function TrainingJobCreatePage() {
       });
       showToast({
         type: "success",
-        title: "Draft Created",
+        title: tr("Draft Created"),
         message: created.personName,
       });
       navigate(`${JOBS_ROUTE}/${created.id}`, { replace: true });
     } catch (e) {
       showToast({
         type: "error",
-        title: "The Assignment Was Not Created",
+        title: tr("The Assignment Was Not Created"),
         message: trainingError(e),
       });
     } finally {
@@ -201,15 +202,14 @@ export function TrainingJobCreatePage() {
         className={`rounded-lg border px-3 py-2 text-sm ${missing ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}
       >
         {check.matrixMissing ? (
-          "The department has no effective matrix: an exception is needed to go ahead."
+          tr("The department has no effective matrix: an exception is needed to go ahead.")
         ) : (check.missingCount ?? 0) === 0 ? (
-          `Training check: complete (${check.items.length} required).`
+          trFormat("Training check: complete ({count} required).", { count: check.items.length })
         ) : (
           <>
             <p className="font-medium">
-              Not trained yet ({check.missingCount} of {check.items.length}).
-              The assignment cannot be signed until they are done, or an
-              exception is approved:
+                {trFormat("Not trained yet ({missing} of {total}).", { missing: check.missingCount, total: check.items.length })}
+              {tr("The assignment cannot be signed until they are done, or an exception is approved:")}
             </p>
             <ul className="mt-1 list-disc pl-5">
               {check.items
@@ -238,7 +238,7 @@ export function TrainingJobCreatePage() {
   return (
     <div className="w-full space-y-4 md:space-y-6">
       <PageHeader
-        title="New Job Assignment"
+        title={tr("New Job Assignment")}
         breadcrumbItems={trainingBreadcrumbs(
           go,
           "jobs",
@@ -251,7 +251,7 @@ export function TrainingJobCreatePage() {
             variant="outline-emerald"
             className="whitespace-nowrap"
           >
-            Back
+            {tr("Back")}
           </Button>
         }
       />
@@ -266,7 +266,7 @@ export function TrainingJobCreatePage() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3 md:px-5">
           <h2 className="text-sm font-semibold text-slate-800 sm:text-base">
-            Step {step + 1} of {STEPS.length}: {STEPS[step]}
+            {trFormat("Step {current} of {total}: {name}", { current: step + 1, total: STEPS.length, name: tr(STEPS[step]) })}
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
             {step === 0 &&
@@ -281,20 +281,20 @@ export function TrainingJobCreatePage() {
           {step === 0 && (
             <div className="grid gap-4">
               <div className="max-w-3xl">
-                <FormField label="Employee" required>
+                <FormField label={tr("Employee")} required>
                   <Select
                     value={personId}
                     onChange={setPersonId}
                     options={people}
                     onSearch={searchPeople}
-                    placeholder="Search by name"
+                    placeholder={tr("Search by name")}
                   />
                 </FormField>
               </div>
               <FormField
-                label="Work Positions"
+                label={tr("Work Positions")}
                 required
-                hint="One form can give several Work Positions. Move one with a double click or by dragging it to the other list."
+                hint={tr("One form can give several Work Positions. Move one with a double click or by dragging it to the other list.")}
               >
                 <TransferPicker<TrainingPosition>
                   noun="work positions"
@@ -323,10 +323,10 @@ export function TrainingJobCreatePage() {
               {held.length > 0 && (
                 <>
                   <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    This person holds:{" "}
+                    {tr("This person holds:")}{" "}
                     {held.map((h) => h.positionName).join(", ")}.
                   </p>
-                  <FormField label="This Work Position" required>
+                  <FormField label={tr("This Work Position")} required>
                     <RadioGroup
                       name="job-mode"
                       layout="horizontal"
@@ -334,17 +334,17 @@ export function TrainingJobCreatePage() {
                       onChange={(v) => setMode(v as "CHANGE" | "ADDITIONAL")}
                       options={[
                         {
-                          label: "Is added to the ones held",
+                          label: tr("Is added to the ones held"),
                           value: "ADDITIONAL",
                         },
-                        { label: "Replaces one held", value: "CHANGE" },
+                        { label: tr("Replaces one held"), value: "CHANGE" },
                       ]}
                     />
                   </FormField>
                   {mode === "CHANGE" && (
                     <>
                       {held.length > 1 && (
-                        <FormField label="Work Position to replace" required>
+                        <FormField label={tr("Work Position to replace")} required>
                           <Select
                             value={replaces || held[0].jobRoleId}
                             onChange={setReplaces}
@@ -355,7 +355,7 @@ export function TrainingJobCreatePage() {
                           />
                         </FormField>
                       )}
-                      <FormField label="Reason for the change" required>
+                      <FormField label={tr("Reason for the change")} required>
                         <Input
                           value={changeReason}
                           maxLength={500}
@@ -376,39 +376,39 @@ export function TrainingJobCreatePage() {
           {step === 2 && (
             <div className="space-y-4">
               <ReadonlyGrid>
-                <ReadonlyField label="Employee" value={personLabel} />
+                <ReadonlyField label={tr("Employee")} value={personLabel} />
                 <ReadonlyField
-                  label="Type"
+                  label={tr("Type")}
                   value={
                     held.length === 0
                       ? "Initial"
                       : mode === "CHANGE"
-                        ? "Change: replaces a Work Position held"
-                        : "Change: added to the Work Positions held"
+                        ? tr("Change: replaces a Work Position held")
+                        : tr("Change: added to the Work Positions held")
                   }
                 />
                 <ReadonlyField
-                  label="Work Positions"
+                  label={tr("Work Positions")}
                   wide
                   value={positionIds.map(positionLabel).join(", ")}
                 />
                 {replacing && (
                   <ReadonlyField
-                    label="Reason for the change"
+                    label={tr("Reason for the change")}
                     wide
                     value={changeReason}
                   />
                 )}
                 <ReadonlyField
-                  label="Other Trainings Required"
+                  label={tr("Other Trainings Required")}
                   wide
                   value={
                     required.length === 0
-                      ? "None: only the training that the matrix requires is checked"
+                      ? tr("None: only the training that the matrix requires is checked")
                       : required
                           .map(
                             (p) =>
-                              `${p.kind === "TOPIC" ? "Training Topic" : "SOP"}: ${p.title}`,
+                              `${p.kind === "TOPIC" ? tr("Training Topic") : "SOP"}: ${p.title}`,
                           )
                           .join("; ")
                   }
@@ -427,7 +427,7 @@ export function TrainingJobCreatePage() {
           variant="outline-emerald"
           className="whitespace-nowrap"
         >
-          Cancel
+          {tr("Cancel")}
         </Button>
         {step > 0 && (
           <Button
@@ -437,7 +437,7 @@ export function TrainingJobCreatePage() {
             className="whitespace-nowrap"
           >
             <IconArrowLeft className="mr-2 h-4 w-4" />
-            Previous
+            {tr("Previous")}
           </Button>
         )}
         {step < STEPS.length - 1 && (
@@ -448,7 +448,7 @@ export function TrainingJobCreatePage() {
             disabled={step === 0 && !stepOneReady}
             className="whitespace-nowrap"
           >
-            Next
+            {tr("Next")}
           </Button>
         )}
         {step === STEPS.length - 1 && (
@@ -462,7 +462,7 @@ export function TrainingJobCreatePage() {
             className="whitespace-nowrap"
           >
             <IconCheck className="mr-2 h-4 w-4" />
-            Create Draft
+            {tr("Create Draft")}
           </Button>
         )}
       </div>

@@ -20,7 +20,7 @@ import { documentApi, navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage, LANGUAGE_OPTIONS } from "@/i18n";
+import { useLanguage, LANGUAGE_OPTIONS, tr } from "@/i18n";
 import { LANGUAGE_FLAG_ICONS } from "@/components/ui/flags/Flags";
 import type { ApplicationLanguage } from "@/i18n";
 import { localizeNavItems } from "@/i18n/navigation";
@@ -1400,7 +1400,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   "transition-colors duration-200 active:scale-95",
                   "-mr-2",
                 )}
-                aria-label="Close sidebar"
+                aria-label={tr("Close sidebar")}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -1419,8 +1419,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   "text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50",
                   "transition-colors duration-200",
                 )}
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={isCollapsed ? "Expand sidebar" : tr("Collapse sidebar")}
+                title={isCollapsed ? "Expand sidebar" : tr("Collapse sidebar")}
               >
                 <motion.div
                   className="absolute will-change-transform"
@@ -1518,7 +1518,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   ? { duration: 0 }
                   : { duration: 0.56, ease: [0.22, 1, 0.36, 1] },
               }}
-              aria-label="Sidebar navigation"
+              aria-label={tr("Sidebar navigation")}
               className={cn(
                 // Mobile: Larger spacing between items
                 "space-y-[-1px] md:space-y-0.5",

@@ -35,6 +35,7 @@ import {
   TRAINING_PAGES,
 } from "../shared/trainingLabels";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
+import { tr } from "@/i18n";
 
 const OPEN_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -42,9 +43,9 @@ const OPEN_LABEL: Record<string, string> = {
 };
 const STATE_OPTIONS = [
   { label: "All", value: "" },
-  { label: "Has an effective version", value: "EFFECTIVE" },
-  { label: "No effective version", value: "NO_EFFECTIVE" },
-  { label: "A version is being prepared", value: "IN_PREPARATION" },
+  { label: tr("Has an effective version"), value: "EFFECTIVE" },
+  { label: tr("No effective version"), value: "NO_EFFECTIVE" },
+  { label: tr("A version is being prepared"), value: "IN_PREPARATION" },
 ];
 
 /** One matrix for each department: which version is effective and whether another one is being prepared. Search, filter and paging are done by the server. */
@@ -95,14 +96,14 @@ export function TrainingMatrixListView() {
       const v = await trainingMatrixApi.create(departmentId);
       showToast({
         type: "success",
-        title: "Matrix created",
+        title: tr("Matrix created"),
         message: v.matrixCode,
       });
       navigate(`/training-management/matrix/${v.id}`);
     } catch (e) {
       showToast({
         type: "error",
-        title: "The matrix was not created",
+        title: tr("The matrix was not created"),
         message: trainingError(e),
       });
     } finally {
@@ -113,7 +114,7 @@ export function TrainingMatrixListView() {
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const versionOf = (m: TrainingMatrixSummary) => m.effectiveVersionId ?? m.openVersionId;
-  const rowMenu = useTrainingRowMenu(table.items, (m) => (versionOf(m) ? [{ label: "View Details", icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => navigate(`/training-management/matrix/${versionOf(m)}`) }] : []));
+  const rowMenu = useTrainingRowMenu(table.items, (m) => (versionOf(m) ? [{ label: tr("View Details"), icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => navigate(`/training-management/matrix/${versionOf(m)}`) }] : []));
 
   const columns: DataTableColumn<TrainingMatrixSummary>[] = [
     {
@@ -139,12 +140,12 @@ export function TrainingMatrixListView() {
     { id: "department", header: "Department", sort: sorted("department"), cell: (m) => m.departmentName },
     {
       id: "effective",
-      header: "Effective version", sort: sorted("effective"),
+      header: tr("Effective version"), sort: sorted("effective"),
       cell: (m) => (m.effectiveVersionId ? `Version ${m.effectiveVersionNo} (${day(m.effectiveAt)})` : "—"),
     },
     {
       id: "open",
-      header: "Draft in progress", sort: sorted("prepared"),
+      header: tr("Draft in progress"), sort: sorted("prepared"),
       cell: (m) => (m.openVersionId ? <Badge color="amber">Version {m.openVersionNo}: {OPEN_LABEL[m.openStatus ?? ""] ?? m.openStatus}</Badge> : "—"),
     },
   ];
@@ -175,7 +176,7 @@ export function TrainingMatrixListView() {
           canManage ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <IconPlus className="mr-2 h-4 w-4" />
-              New Matrix
+              {tr("New Matrix")}
             </Button>
           ) : undefined
         }
@@ -186,7 +187,7 @@ export function TrainingMatrixListView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search matrix or department…"
+        searchPlaceholder={tr("Search matrix or department…")}
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);
@@ -209,8 +210,8 @@ export function TrainingMatrixListView() {
 
           emptyState={
             <TableEmptyState
-              title="No Training Matrix"
-              description="Create the matrix of a department to define who must be trained on what."
+              title={tr("No Training Matrix")}
+              description={tr("Create the matrix of a department to define who must be trained on what.")}
             />
           }
           scrollerRef={drag.scrollerRef}
@@ -238,19 +239,19 @@ export function TrainingMatrixListView() {
         isOpen={creating}
         onClose={() => setCreating(false)}
         onConfirm={() => void create()}
-        title="New Training Matrix"
-        description="Each department has one matrix. The first version is a draft that is edited, then sent for approval."
+        title={tr("New Training Matrix")}
+        description={tr("Each department has one matrix. The first version is a draft that is edited, then sent for approval.")}
         confirmText="Create"
         isLoading={busy}
         confirmDisabled={!departmentId}
         size="md"
       >
-        <FormField label="Department" required>
+        <FormField label={tr("Department")} required>
           <Select
             value={departmentId}
             onChange={setDepartmentId}
             options={departments}
-            placeholder="Choose a department"
+            placeholder={tr("Choose a department")}
           />
         </FormField>
       </FormModal>

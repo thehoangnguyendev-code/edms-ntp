@@ -9,6 +9,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { authApi } from '@/services/api/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { IconCheck } from '@tabler/icons-react';
+import { tr } from "@/i18n";
 
 const OTP_LENGTH = 6;
 
@@ -262,23 +263,23 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {user?.mfaSetupRequired && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-semibold">2FA Policy: Required</p>
+          <p className="font-semibold">{tr("2FA Policy: Required")}</p>
           <p className="mt-1 text-xs text-amber-800">
-            Multi-factor authentication is mandatory for all users. You must configure and enable a verification method before proceeding.
+            {tr("Multi-factor authentication is mandatory for all users. You must configure and enable a verification method before proceeding.")}
           </p>
         </div>
       )}
 
       <FormSection
-        title="Authenticator App and Fallback"
+        title={tr("Authenticator App and Fallback")}
         icon={<ShieldCheck className="h-4 w-4" />}
       >
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-3 py-2">
             <div>
-              <p className="text-sm font-semibold text-slate-900">App MFA status</p>
+              <p className="text-sm font-semibold text-slate-900">{tr("App MFA status")}</p>
               <p className="mt-1 text-xs text-slate-500">
-                Recommended primary method for secure and reliable verification.
+                {tr("Recommended primary method for secure and reliable verification.")}
               </p>
             </div>
             <span
@@ -307,18 +308,18 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                         <QRCodeSVG value={enrollmentUri} size={96} />
                       ) : (
                         <div className="h-24 w-24 bg-slate-100 animate-pulse rounded flex items-center justify-center text-xs text-slate-400">
-                          Loading QR...
+                          {tr("Loading QR...")}
                         </div>
                       )}
                     </div>
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-slate-900">
-                          1. Scan QR with Google Authenticator, Microsoft Authenticator, or Authy.
+                          {tr("1. Scan QR with Google Authenticator, Microsoft Authenticator, or Authy.")}
                         </p>
                         {setupData?.secret && (
                           <div className="flex flex-col gap-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <p className="text-xs font-bold text-slate-700">Secret Key (Manual Entry)</p>
+                            <p className="text-xs font-bold text-slate-700">{tr("Secret Key (Manual Entry)")}</p>
                             <div className="flex items-center gap-2">
                               <code className="flex-1 bg-white px-2.5 py-1.5 rounded border border-slate-200 text-xs font-semibold text-slate-900 break-all select-all select-text">
                                 {setupData.secret}
@@ -329,17 +330,17 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                                 size="sm"
                                 onClick={handleCopySecret}
                                 className="h-8 px-2.5 flex items-center justify-center gap-1 border-slate-300 hover:border-slate-400 hover:bg-slate-100 text-slate-600 transition-colors shrink-0"
-                                title="Copy Secret Key"
+                                title={tr("Copy Secret Key")}
                               >
                                 {secretCopied ? (
                                   <>
                                     <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                    <span className="text-xs font-semibold text-emerald-700">Copied</span>
+                                    <span className="text-xs font-semibold text-emerald-700">{tr("Copied")}</span>
                                   </>
                                 ) : (
                                   <>
                                     <Copy className="h-3.5 w-3.5" />
-                                    <span className="text-xs font-semibold text-slate-600">Copy</span>
+                                    <span className="text-xs font-semibold text-slate-600">{tr("Copy")}</span>
                                   </>
                                 )}
                               </Button>
@@ -350,12 +351,12 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
 
                       <div className="space-y-3 pt-1">
                         <p className="text-sm font-semibold text-slate-900">
-                          2. Enter the 6-digit code to complete setup.
+                          {tr("2. Enter the 6-digit code to complete setup.")}
                         </p>
 
                         <div className="space-y-1.5 max-w-[240px]">
                           <label htmlFor="setup-otp" className="block text-xs font-bold text-slate-700">
-                            Verification Code
+                            {tr("Verification Code")}
                           </label>
                           <input
                             id="setup-otp"
@@ -367,14 +368,14 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                               'h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500',
                               setupError ? 'border-red-300' : 'border-slate-300'
                             )}
-                            placeholder="Enter 6-digit code"
+                            placeholder={tr("Enter 6-digit code")}
                             maxLength={6}
                           />
                           {setupError && <p className="text-xs font-medium text-red-600 mt-1">{setupError}</p>}
                         </div>
 
                         <Button type="button" size="sm" onClick={handleEnableAppMfaDraft} disabled={isSaving || setupCode.length < 6}>
-                          Confirm and Enable
+                          {tr("Confirm and Enable")}
                         </Button>
                       </div>
                     </div>
@@ -385,7 +386,7 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
           ) : (
             <div className="flex flex-wrap items-center gap-3">
               <Button type="button" size="sm" variant="outline-emerald" onClick={() => setResetConfirmOpen(true)}>
-                Disable Authenticator App
+                {tr("Disable Authenticator App")}
               </Button>
             </div>
           )}
@@ -396,8 +397,8 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                 <Mail className="h-4 w-4 text-slate-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900">Email OTP fallback</p>
-                <p className="text-xs text-slate-500">Used when authenticator app is unavailable.</p>
+                <p className="text-sm font-medium text-slate-900">{tr("Email OTP fallback")}</p>
+                <p className="text-xs text-slate-500">{tr("Used when authenticator app is unavailable.")}</p>
               </div>
             </div>
             <Switch
@@ -413,8 +414,8 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                 <Clock3 className="h-4 w-4 text-slate-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900">Remember this device</p>
-                <p className="text-xs text-slate-500">Skip MFA on trusted device for 8 hours.</p>
+                <p className="text-sm font-medium text-slate-900">{tr("Remember this device")}</p>
+                <p className="text-xs text-slate-500">{tr("Skip MFA on trusted device for 8 hours.")}</p>
               </div>
             </div>
               <Switch
@@ -436,16 +437,16 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
         }}
         onConfirm={handleDisableMfaDraft}
         type="warning"
-        title="Disable Authenticator App?"
+        title={tr("Disable Authenticator App?")}
         isLoading={isSaving}
         description={
           <div className="space-y-3 mt-2">
             <p className="text-sm text-slate-600">
-              This will remove your current authenticator app setup. You will need to re-enroll to use it for MFA. Your email OTP fallback will remain active.
+              {tr("This will remove your current authenticator app setup. You will need to re-enroll to use it for MFA. Your email OTP fallback will remain active.")}
             </p>
             <div className="space-y-1.5">
               <label htmlFor="disable-pwd" className="block text-xs font-semibold text-slate-700">
-                Confirm your password to disable
+                {tr("Confirm your password to disable")}
               </label>
               <input
                 id="disable-pwd"
@@ -459,7 +460,7 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                   "w-full h-9 px-3 text-sm border bg-white rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500",
                   disableError ? "border-red-300" : "border-slate-300"
                 )}
-                placeholder="Enter password"
+                placeholder={tr("Enter password")}
               />
               {disableError && <p className="text-xs font-medium text-red-600">{disableError}</p>}
             </div>

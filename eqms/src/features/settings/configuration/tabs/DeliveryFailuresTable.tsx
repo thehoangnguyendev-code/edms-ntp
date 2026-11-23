@@ -13,6 +13,7 @@ import { displayDateTime } from '@/utils/format';
 import { moduleDisplayName } from '@/utils/moduleDisplay';
 import { readableCode } from '@/utils/machineText';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
+import { tr, trFormat } from "@/i18n";
 
 const MAX_ATTEMPTS = 5;
 const STATUS_OPTIONS = [{ label: 'Failed', value: 'FAILED' }, { label: 'Resolved', value: 'RESOLVED' }];
@@ -50,10 +51,10 @@ export const DeliveryFailuresTable: React.FC = () => {
     setRetryingId(failure.id);
     try {
       await notificationApi.retryDeliveryFailure(failure.id);
-      showToast({ type: 'success', title: 'Delivery Retry Queued', message: `Retry requested for ${failure.recipient}.` });
+      showToast({ type: 'success', title: tr('Delivery Retry Queued'), message: `Retry requested for ${failure.recipient}.` });
       table.reload();
     } catch (error: any) {
-      showToast({ type: 'error', title: 'Delivery Retry Failed', message: error?.response?.data?.message || 'The notification could not be retried.' });
+      showToast({ type: 'error', title: tr('Delivery Retry Failed'), message: error?.response?.data?.message || 'The notification could not be retried.' });
     } finally {
       setRetryingId(null);
     }
@@ -63,32 +64,32 @@ export const DeliveryFailuresTable: React.FC = () => {
     { id: 'rowNo', header: 'No.', locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: 'recipient', header: 'Recipient', sort: sorted('recipient'), cell: (r) => <span className="block max-w-56 truncate" title={r.recipient}>{r.recipient}</span> },
     { id: 'notificationType', header: 'Type', sort: sorted('notificationType'), cell: (r) => readableCode(r.notificationType) },
-    { id: 'eventDomain', header: 'Event Domain', sort: sorted('eventDomain'), cell: (r) => (r.eventDomain ? moduleDisplayName(r.eventDomain) : '—') },
+    { id: 'eventDomain', header: tr('Event Domain'), sort: sorted('eventDomain'), cell: (r) => (r.eventDomain ? moduleDisplayName(r.eventDomain) : '—') },
     { id: 'channel', header: 'Channel', sort: sorted('channel'), cell: (r) => (r.channel === 'IN_APP' ? 'In-App' : 'Email') },
     { id: 'status', header: 'Status', sort: sorted('status'), cell: (r) => <Badge semantic={r.status === 'RESOLVED' ? 'success' : 'danger'}>{r.status === 'RESOLVED' ? 'Resolved' : 'Failed'}</Badge> },
     { id: 'attempts', header: 'Attempts', sort: sorted('attempts'), cell: (r) => `${r.attempts}/${MAX_ATTEMPTS}` },
     { id: 'errorMessage', header: 'Error', cell: (r) => <span className="block max-w-72 truncate" title={r.errorMessage ?? ''}>{r.errorMessage || '—'}</span> },
-    { id: 'createdAt', header: 'First Failed On', sort: sorted('createdAt'), cell: (r) => displayDateTime(r.createdAt) },
-    { id: 'lastAttemptAt', header: 'Last Attempt On', sort: sorted('lastAttemptAt'), cell: (r) => displayDateTime(r.lastAttemptAt) },
+    { id: 'createdAt', header: tr('First Failed On'), sort: sorted('createdAt'), cell: (r) => displayDateTime(r.createdAt) },
+    { id: 'lastAttemptAt', header: tr('Last Attempt On'), sort: sorted('lastAttemptAt'), cell: (r) => displayDateTime(r.lastAttemptAt) },
   ];
   const { layout, control } = useCustomColumnLayout('notification.failures', columns);
 
   const reset = (apply: (v: string) => void) => (v: string) => { apply(v); table.setCurrentPage(1); };
   const filters: ReportSelectFilter[] = [
-    { id: 'status', label: 'Status', value: status, options: [{ label: 'All statuses', value: '' }, ...STATUS_OPTIONS], onChange: reset(setStatus) },
-    { id: 'channel', label: 'Channel', value: channel, options: [{ label: 'All channels', value: '' }, ...CHANNEL_OPTIONS], onChange: reset(setChannel) },
-    { id: 'eventDomain', label: 'Event Domain', value: eventDomain, options: [{ label: 'All event domains', value: '' }, ...domains.map((d) => ({ label: moduleDisplayName(d), value: d }))], onChange: reset(setEventDomain) },
+    { id: 'status', label: 'Status', value: status, options: [{ label: tr('All statuses'), value: '' }, ...STATUS_OPTIONS], onChange: reset(setStatus) },
+    { id: 'channel', label: 'Channel', value: channel, options: [{ label: tr('All channels'), value: '' }, ...CHANNEL_OPTIONS], onChange: reset(setChannel) },
+    { id: 'eventDomain', label: tr('Event Domain'), value: eventDomain, options: [{ label: tr('All event domains'), value: '' }, ...domains.map((d) => ({ label: moduleDisplayName(d), value: d }))], onChange: reset(setEventDomain) },
   ];
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-600 sm:text-sm">Failed deliveries are stored by the server. Retry reuses the saved, redacted event payload and the active template; a delivery is tried at most {MAX_ATTEMPTS} times.</p>
+        <p className="text-xs text-slate-600 sm:text-sm">{trFormat("Failed deliveries are stored by the server. Retry reuses the saved, redacted event payload and the active template; a delivery is tried at most {count} times.", { count: MAX_ATTEMPTS })}</p>
       <ReportListToolbar
-        searchPlaceholder="Search by recipient, type or error…"
+        searchPlaceholder={tr("Search by recipient, type or error…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters}
-        dates={[{ id: 'lastAttempt', label: 'Last Attempt Date Range', from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
+        dates={[{ id: 'lastAttempt', label: tr('Last Attempt Date Range'), from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
         hasActiveFilters={Boolean(status || channel || eventDomain || from || to || table.searchQuery)}
         onClear={() => { setStatus(''); setChannel(''); setEventDomain(''); setFrom(''); setTo(''); table.setSearchQuery(''); table.setCurrentPage(1); }}
         customControl={control}
@@ -107,11 +108,11 @@ export const DeliveryFailuresTable: React.FC = () => {
             header: 'Action',
             cell: (r) => (
               <Button size="sm" variant="ghost" onClick={() => void retry(r)} disabled={retryingId === r.id || r.status === 'RESOLVED' || r.attempts >= MAX_ATTEMPTS} className="gap-1 text-emerald-700">
-                <RotateCcw className="h-3.5 w-3.5" />Retry
+                <RotateCcw className="h-3.5 w-3.5" />{tr("Retry")}
               </Button>
             ),
           }}
-          emptyState={<TableEmptyState title="No Delivery Failures" description="No failed notification delivery matches the search or the filters." />}
+          emptyState={<TableEmptyState title={tr("No Delivery Failures")} description={tr("No failed notification delivery matches the search or the filters.")} />}
           pagination={table.totalItems > 0 ? (
             <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />
           ) : undefined}

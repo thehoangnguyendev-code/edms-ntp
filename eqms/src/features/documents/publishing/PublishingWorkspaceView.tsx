@@ -28,6 +28,7 @@ import { cn } from "@/components/ui/utils";
 import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, TYPOGRAPHY } from "@/config/ui-standards";
 import { IconBookmark, IconFileOrientation, IconFileTypePdf } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 const extractApiMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null) {
@@ -456,7 +457,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         }
       } catch (error) {
         console.error("Failed to load publishing workspace", error);
-        showToast({ type: "error", title: "Publishing Workspace", message: extractApiMessage(error, "Couldn't load workspace.") });
+        showToast({ type: "error", title: tr("Publishing Workspace"), message: extractApiMessage(error, "Couldn't load workspace.") });
       } finally {
         if (alive) {
           setPreviewLoading(false);
@@ -563,7 +564,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       } catch (error) {
         console.error("Failed to load publishing workspace preview", error);
         if (alive) {
-          showToast({ type: "error", title: "Publishing Workspace", message: "Couldn't load preview PDF." });
+          showToast({ type: "error", title: tr("Publishing Workspace"), message: "Couldn't load preview PDF." });
         }
       }
     })();
@@ -657,7 +658,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const handleGeneratePreview = async () => {
     const rangeError = validatePageRangeDraft();
     if (rangeError) {
-      showToast({ type: "error", title: "Publishing Range", message: rangeError });
+      showToast({ type: "error", title: tr("Publishing Range"), message: rangeError });
       return;
     }
     setPreviewRefreshLoading(true);
@@ -681,7 +682,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       setPreviewUrl((current) => replaceObjectUrlPreview(current, blob));
     } catch (error) {
       console.error("Failed to generate publishing preview", error);
-      showToast({ type: "error", title: "Publishing Preview", message: extractApiMessage(error, "Couldn't generate preview.") });
+      showToast({ type: "error", title: tr("Publishing Preview"), message: extractApiMessage(error, "Couldn't generate preview.") });
     } finally {
       setSaving(false);
       setSavingAction(null);
@@ -718,7 +719,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   const handlePublishConfirm = async (signature: { reason: string; signatureToken?: string }) => {
     const rangeError = validatePageRangeDraft();
     if (rangeError) {
-      showToast({ type: "error", title: "Publishing Range", message: rangeError });
+      showToast({ type: "error", title: tr("Publishing Range"), message: rangeError });
       return;
     }
     setSaving(true);
@@ -739,11 +740,11 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         documentApi.getPublishingJobStatus(revisionId, initialWs.publishingJobId!));
       if (!result.completed) {
         setWorkspace({ ...initialWs, ...result.status });
-        showToast({ type: "info", title: "Publishing in Progress", message: "Your confirmed request is still running on the server. This page will continue checking its status." });
+        showToast({ type: "info", title: tr("Publishing in Progress"), message: "Your confirmed request is still running on the server. This page will continue checking its status." });
         return;
       }
 
-      showToast({ type: "success", title: "Revision Published", message: "Revision has been published to Effective successfully." });
+      showToast({ type: "success", title: tr("Revision Published"), message: "Revision has been published to Effective successfully." });
       const refreshed = await documentApi.getRevisionByIdSnapshot(revisionId, { force: true });
       navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(revisionId), {
         state: buildRevisionDetailNavigationState({
@@ -795,7 +796,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         setForcePublishRelated(false);
         setShowRelatedBlockersModal(true);
       } else {
-        showToast({ type: "error", title: "Publish Revision", message: extractApiMessage(error, "Couldn't publish revision.") });
+        showToast({ type: "error", title: tr("Publish Revision"), message: extractApiMessage(error, "Couldn't publish revision.") });
       }
     } finally {
       setSaving(false);
@@ -812,14 +813,14 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
     return (
       <div className="flex w-full flex-col gap-4 md:gap-6">
         <PageHeader
-          title="Publishing Workspace"
+          title={tr("Publishing Workspace")}
           breadcrumbItems={breadcrumbItems}
         />
         <div className={cn(BORDER_RADIUS.card, "border border-red-200 bg-red-50 p-4 text-sm text-red-800")}>
-          Couldn't load workspace.
+          {tr("Couldn't load workspace.")}
         </div>
         <Button onClick={onBack} size="sm" variant="outline-emerald" className="w-fit">
-          Back
+          {tr("Back")}
         </Button>
       </div>
     );
@@ -831,10 +832,10 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         <FullPageLoading
           text={
             publishingJobPolling
-              ? "Finalizing publishing job, please wait..."
+              ? tr("Finalizing publishing job, please wait...")
               : savingAction === "publish"
-                ? "Publishing the revision, please wait..."
-                : "Generating publishing preview, please wait..."
+                ? tr("Publishing the revision, please wait...")
+                : tr("Generating publishing preview, please wait...")
           }
         />
       )}
@@ -844,7 +845,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         isOpen={showRelatedBlockersModal}
         onClose={() => setShowRelatedBlockersModal(false)}
         onConfirm={handleForcePublishRelated}
-        title="Related Documents Not Ready"
+        title={tr("Related Documents Not Ready")}
         type="warning"
         confirmText="Force Publish"
         cancelText="Cancel"
@@ -852,7 +853,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         description={
           <div className="space-y-3">
             <p className="font-semibold text-slate-900">
-              These Related Documents have a revision in progress that has not reached Ready for Publishing:
+              {tr("These Related Documents have a revision in progress that has not reached Ready for Publishing:")}
             </p>
             <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
               {relatedBlockers.map((blocker) => (
@@ -862,14 +863,13 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                     {blocker.documentName ? ` - ${blocker.documentName}` : ""}
                   </span>
                   <span className="whitespace-nowrap font-semibold text-amber-600">
-                    Revision {blocker.revisionNumber || "-"} · {blocker.statusLabel || blocker.statusCode || "-"}
+                    {trFormat("Revision {revision} · {status}", { revision: blocker.revisionNumber || "-", status: blocker.statusLabel || blocker.statusCode || "-" })}
                   </span>
                 </div>
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Force Publish publishes this revision without them. They stay unchanged and keep their own revision in progress.
-              The choice and these documents are recorded in the audit trail; you will be asked for a reason and your e-signature.
+              {tr("Force Publish publishes this revision without them. They stay unchanged and keep their own revision in progress. The choice and these documents are recorded in the audit trail; you will be asked for a reason and your e-signature.")}
             </p>
           </div>
         }
@@ -882,7 +882,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
           setForcePublishRelated(false);
         }}
         onConfirm={handlePublishConfirm}
-        actionTitle={forcePublishRelated ? "Force Publish Revision to Effective" : "Publish Revision to Effective"}
+        actionTitle={forcePublishRelated ? tr("Force Publish Revision to Effective") : tr("Publish Revision to Effective")}
         meaningDisplayName="Published"
         meaningCode="PUBLISHED"
         changes={[
@@ -904,18 +904,18 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       />
 
       <PageHeader
-        title="Publishing Workspace"
+        title={tr("Publishing Workspace")}
         breadcrumbItems={breadcrumbItems}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             <Button onClick={handleOpenTemplateEditor} size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" disabled={!selectedTemplateId}>
-              Open Template Editor
+              {tr("Open Template Editor")}
             </Button>
             <Button onClick={handleGeneratePreview} size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" disabled={!canGeneratePublishingPreview}>
-              Regenerate Preview
+              {tr("Regenerate Preview")}
             </Button>
             <Button
               onClick={() => {
@@ -934,21 +934,21 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
 
       {availableLayouts.length === 0 && (
         <div className={cn(BORDER_RADIUS.card, "border border-red-200 bg-red-50 p-3 text-sm text-red-800")}>
-          No publishing layout is configured for the selected template. Upload matching layout DOCX files before preview or publish.
+          {tr("No publishing layout is configured for the selected template. Upload matching layout DOCX files before preview or publish.")}
         </div>
       )}
 
       <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
         <div className="space-y-4">
-          <FormSection title="Configuration" icon={<Layers3 className="h-4 w-4" />}>
+          <FormSection title={tr("Configuration")} icon={<Layers3 className="h-4 w-4" />}>
             <div className="space-y-4">
               <div>
-                <label className={COMPONENT_PRESETS.formLabel}>Publishing Template</label>
+                <label className={COMPONENT_PRESETS.formLabel}>{tr("Publishing Template")}</label>
                 <Select
                   value={selectedTemplateId || "__none__"}
                   onChange={(value) => setSelectedTemplateId(String(value) === "__none__" ? "" : String(value))}
                   options={[
-                    { value: "__none__", label: "No Template (body only)" },
+                    { value: "__none__", label: tr("No Template (body only)") },
                     ...templates.map((template: PublishingTemplateResponse) => ({
                       value: template.id || "",
                       label: `${template.templateName || "Untitled"}${template.documentType ? ` - ${template.documentType}` : ""}`,
@@ -961,13 +961,13 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                     onClick={handleOpenTemplateEditor}
                     className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800"
                   >
-                    Open this template in editor with live revision sample
+                    {tr("Open this template in editor with live revision sample")}
                   </button>
                 )}
               </div>
               {selectedTemplateId && availablePreviewComponents.length > 0 && (
                 <div>
-                  <label className={COMPONENT_PRESETS.formLabel}>Include in PDF</label>
+                  <label className={COMPONENT_PRESETS.formLabel}>{tr("Include in PDF")}</label>
                   <div className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
                     {availablePreviewComponents.map((component) => (
                       <Checkbox
@@ -981,7 +981,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                 </div>
               )}
               <div>
-                <label className={COMPONENT_PRESETS.formLabel}>Publishing Layout</label>
+                <label className={COMPONENT_PRESETS.formLabel}>{tr("Publishing Layout")}</label>
                 {hasMultipleLayouts ? (
                   <Select
                     value={normalizedSelectedLayout}
@@ -990,51 +990,51 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                       value: layout,
                       label: formatPublishingLayout(layout),
                     }))}
-                    placeholder="Select a layout"
+                    placeholder={tr("Select a layout")}
                     disabled={availableLayouts.length === 0}
                   />
                 ) : (
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     <span className="font-medium text-slate-900">
-                      {singleAvailableLayout ? formatPublishingLayout(singleAvailableLayout) : "No layout configured"}
+                      {singleAvailableLayout ? formatPublishingLayout(singleAvailableLayout) : tr("No layout configured")}
                     </span>
-                    {singleAvailableLayout && <span className="text-xs text-slate-500">· only layout for this template</span>}
+                    {singleAvailableLayout && <span className="text-xs text-slate-500">{tr("· only layout for this template")}</span>}
                   </div>
                 )}
               </div>
             </div>
           </FormSection>
 
-          <FormSection title="Page Range Custom" icon={<IconFileOrientation className="h-4 w-4" />}>
+          <FormSection title={tr("Page Range Custom")} icon={<IconFileOrientation className="h-4 w-4" />}>
             <div className="space-y-3">
               <p className={TYPOGRAPHY.helpText}>
                 {coverEnabled
-                  ? "Cover is page 1 of the final PDF; header and footer start from page 2. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes."
-                  : "No cover: header and footer start from page 1. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes. Enable Cover above to add one."}
+                  ? tr("Cover is page 1 of the final PDF; header and footer start from page 2. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes.")
+                  : tr("No cover: header and footer start from page 1. Leave \"To\" blank for \"to end\". Use Regenerate Preview at the top to apply changes. Enable Cover above to add one.")}
               </p>
 
               <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "overflow-hidden border border-slate-200")}>
                 <TableMarkup.Root className="w-full text-xs sm:text-sm">
                   <TableMarkup.Head>
                     <TableMarkup.Row className="border-b border-slate-200 text-left text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                      <TableMarkup.HeaderCell className="px-3 py-2">Layer</TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="px-3 py-2">From</TableMarkup.HeaderCell>
-                      <TableMarkup.HeaderCell className="px-3 py-2">To</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="px-3 py-2">{tr("Layer")}</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="px-3 py-2">{tr("From")}</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className="px-3 py-2">{tr("To")}</TableMarkup.HeaderCell>
                     </TableMarkup.Row>
                   </TableMarkup.Head>
                   <TableMarkup.Body className="divide-y divide-slate-200">
                     <TableMarkup.Row>
-                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Cover</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">{tr("Cover")}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageFrom}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.coverSourcePageTo}</TableMarkup.Cell>
                     </TableMarkup.Row>
                     <TableMarkup.Row>
-                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Body</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">{tr("Body")}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageFrom}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{pageRangeDraft.bodySourcePageTo || "end"}</TableMarkup.Cell>
                     </TableMarkup.Row>
                     <TableMarkup.Row>
-                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Header</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">{tr("Header")}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{bodyStartPage}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-1.5">
                         <Input
@@ -1042,13 +1042,13 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                           min={bodyStartPage}
                           value={pageRangeDraft.headerPageTo}
                           onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, headerPageTo: event.target.value }))}
-                          placeholder="end"
-                          aria-label="Header to page"
+                          placeholder={tr("end")}
+                          aria-label={tr("Header to page")}
                         />
                       </TableMarkup.Cell>
                     </TableMarkup.Row>
                     <TableMarkup.Row>
-                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">Footer</TableMarkup.Cell>
+                      <TableMarkup.Cell className="px-3 py-2 font-medium text-slate-700">{tr("Footer")}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-2 text-slate-600">{bodyStartPage}</TableMarkup.Cell>
                       <TableMarkup.Cell className="px-3 py-1.5">
                         <Input
@@ -1056,14 +1056,14 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                           min={bodyStartPage}
                           value={pageRangeDraft.footerPageTo}
                           onChange={(event) => setPageRangeDraft((prev) => ({ ...prev, footerPageTo: event.target.value }))}
-                          placeholder="end"
-                          aria-label="Footer to page"
+                          placeholder={tr("end")}
+                          aria-label={tr("Footer to page")}
                         />
                       </TableMarkup.Cell>
                     </TableMarkup.Row>
                   </TableMarkup.Body>
                 </TableMarkup.Root>
-                <p className="border-t border-slate-200 px-3 py-1.5 text-2xs text-slate-400">Cover, Body and the From column are locked.</p>
+                <p className="border-t border-slate-200 px-3 py-1.5 text-2xs text-slate-400">{tr("Cover, Body and the From column are locked.")}</p>
               </div>
 
             </div>
@@ -1072,7 +1072,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         </div>
 
         <div className="min-w-0 space-y-4">
-          <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
+          <FormSection title={tr("PDF Preview")} icon={<IconFileTypePdf className="h-4 w-4" />}>
             <div className="space-y-4">
               {previewUrl ? (
                 <div className={cn(COLORS.bg.primary, "overflow-hidden")}>
@@ -1086,7 +1086,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                 </div>
               ) : (
                 <div className={cn(BORDER_RADIUS.card, COLORS.bg.secondary, "flex min-h-[680px] items-center justify-center border border-dashed border-slate-300 text-sm text-slate-500")}>
-                  Preview has not been generated yet.
+                  {tr("Preview has not been generated yet.")}
                 </div>
               )}
             </div>

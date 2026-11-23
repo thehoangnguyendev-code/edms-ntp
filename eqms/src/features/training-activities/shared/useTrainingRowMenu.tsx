@@ -3,6 +3,7 @@ import { MoreVertical } from "lucide-react";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { DataTableAction } from "@/components/ui/table/DataTable";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
+import { tr } from "@/i18n";
 
 export interface TrainingRowMenuItem {
   label: string;
@@ -18,7 +19,7 @@ export function useTrainingRowMenu<T extends { id: string }>(rows: T[], build: (
   const menu = usePortalDropdown();
   const action: DataTableAction<T> = {
     cell: (row) => (build(row).length === 0 ? null : (
-      <button type="button" ref={menu.getRef(row.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(row.id, event)}>
+      <button type="button" ref={menu.getRef(row.id)} aria-label={tr("More actions")} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(row.id, event)}>
         <MoreVertical className="h-4 w-4" />
       </button>
     )),
@@ -30,7 +31,7 @@ export function useTrainingRowMenu<T extends { id: string }>(rows: T[], build: (
         <div className="py-1">
           {build(open).map((item) => (
             <DropdownMenuItem key={item.label} icon={item.icon} onClick={() => { menu.close(); item.onClick(); }}>
-              {item.label}
+              {tr(item.label)}
             </DropdownMenuItem>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { tr } from "@/i18n";
 
 interface DropdownMenuItemProps {
   icon?: React.ReactNode;
@@ -38,7 +39,7 @@ export const DropdownMenuItem: React.FC<DropdownMenuItemProps> = ({
       )}
     >
       {icon && <span className="h-4 w-4 flex-shrink-0 flex items-center">{icon}</span>}
-      <span className="font-medium">{children}</span>
+        <span className="font-medium">{typeof children === "string" ? tr(children) : children}</span>
     </button>
   );
 };

@@ -1,6 +1,7 @@
 import React from "react";
 import type { UncontrolledCopyPolicyMarking } from "@/services/api/uncontrolledCopyPolicy";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 export const MANDATORY_WATERMARK_TEXT = "UNCONTROLLED COPY — NOT VALID FOR PRODUCTION USE";
 
@@ -52,7 +53,7 @@ export const UncontrolledCopyMarkingPreview: React.FC<{
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:p-5">
-      <p className="mb-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Marking preview (illustrative)</p>
+      <p className="mb-3 text-xs font-medium text-slate-500 uppercase tracking-wider">{tr("Marking preview (illustrative)")}</p>
       <div className="relative mx-auto aspect-[1/1.414] w-full max-w-sm overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="space-y-2 p-6">
           <div className="h-3 w-2/3 rounded bg-slate-200" />
@@ -93,7 +94,7 @@ export const UncontrolledCopyMarkingPreview: React.FC<{
         )}
       </div>
       <p className="mt-3 text-2xs text-slate-400">
-        The watermark itself always prints on every page; its title line defaults to the mandatory text but can be replaced.
+        {tr("The watermark itself always prints on every page; its title line defaults to the mandatory text but can be replaced.")}
       </p>
     </div>
   );

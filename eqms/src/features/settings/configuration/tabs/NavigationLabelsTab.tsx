@@ -9,6 +9,7 @@ import { NAVIGATION_LABEL_OPTIONS } from '@/app/navigation';
 import { GeneralConfig } from '../types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface NavigationLabelsTabProps {
   config: GeneralConfig;
@@ -86,22 +87,22 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
     <div className="p-4 md:p-5">
       <div className="space-y-4">
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-xs sm:text-sm text-slate-700">
-          <p>Set the display name used by the sidebar, matching breadcrumbs and page titles across the system. Routes, permissions, icons and menu hierarchy are not changed.</p>
-          <p className="mt-1 text-slate-500">Leave a name unchanged to use the built-in default. Changes apply after Save and are loaded from the server for every user. The Dashboard breadcrumb icon is fixed and cannot be changed.</p>
+          <p>{tr("Set the display name used by the sidebar, matching breadcrumbs and page titles across the system. Routes, permissions, icons and menu hierarchy are not changed.")}</p>
+          <p className="mt-1 text-slate-500">{tr("Leave a name unchanged to use the built-in default. Changes apply after Save and are loaded from the server for every user. The Dashboard breadcrumb icon is fixed and cannot be changed.")}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-            <span className="text-xs font-medium text-slate-500">Total menus</span>
+            <span className="text-xs font-medium text-slate-500">{tr("Total menus")}</span>
             <Badge color="slate">{NAVIGATION_LABEL_OPTIONS.length}</Badge>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5">
-            <span className="text-xs font-medium text-emerald-700">Customized</span>
+            <span className="text-xs font-medium text-emerald-700">{tr("Customized")}</span>
             <Badge color="emerald">{overrideCount}</Badge>
           </div>
           <label className="ml-auto flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
             <Switch checked={showOnlyCustomized} onChange={setShowOnlyCustomized} />
-            Show customized only
+            {tr("Show customized only")}
           </label>
         </div>
 
@@ -113,7 +114,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
             id="sidebar-menu-search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by menu name or key..."
+            placeholder={tr("Search by menu name or key...")}
             className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           {search && (
@@ -140,7 +141,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <p className="truncate text-sm font-semibold text-slate-800">{groupName}</p>
-                    {customizedInGroup > 0 && <Badge color="emerald">{customizedInGroup} customized</Badge>}
+                    {customizedInGroup > 0 && <Badge color="emerald">{customizedInGroup} {tr("customized")}</Badge>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge color="slate">{items.length}</Badge>
@@ -180,7 +181,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
                                     </React.Fragment>
                                   ))}
                                 </div>
-                                <p className="mt-0.5 text-2xs text-slate-400">Menu key: {option.id}</p>
+                                <p className="mt-0.5 text-2xs text-slate-400">{tr("Menu key:")} {option.id}</p>
                               </div>
                               <input
                                 value={currentLabel}
@@ -202,7 +203,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
                                 className="gap-1.5"
                               >
                                 <RotateCcw className="h-3.5 w-3.5" />
-                                Reset
+                                {tr("Reset")}
                               </Button>
                             </div>
                           );
@@ -215,7 +216,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
             );
           })}
           {totalMatches === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">No sidebar menu matches this search.</p>
+            <p className="py-6 text-center text-sm text-slate-500">{tr("No sidebar menu matches this search.")}</p>
           )}
         </div>
       </div>

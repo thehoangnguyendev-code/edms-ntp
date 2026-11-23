@@ -1,6 +1,7 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { Badge } from "@/components/ui/badge/Badge";
+import { tr } from "@/i18n";
 
 export interface SignedParticipantItem {
   id: string;
@@ -32,7 +33,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 flex items-center gap-1.5 capitalize">
                 {labelPrefix} {index + 1}
-                {item.isLegacy && <Badge color="amber" size="xs">Legacy — Reference Only</Badge>}
+                {item.isLegacy && <Badge color="amber" size="xs">{tr("Legacy — Reference Only")}</Badge>}
               </label>
               <input
                 type="text"
@@ -45,7 +46,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {item.isLegacy ? "Historical Date (not a signature)" : "Signed On (Date - Time)"}
+                {item.isLegacy ? "Historical Date (not a signature)" : tr("Signed On (Date - Time)")}
               </label>
               <input
                 type="text"

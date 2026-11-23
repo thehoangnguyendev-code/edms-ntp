@@ -41,6 +41,7 @@ import { formatDateTime } from "@/utils/format";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { IconForms, IconTrash, IconX } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const QR_LABEL: Record<RecallQrStatus, string> = {
   DECODED: "Code read",
@@ -113,7 +114,7 @@ const ResultCell: React.FC<{ item: RecallItem; isCommitted: boolean; onOpenRecor
             }}
             className="mt-1 inline-flex items-center gap-1 text-2xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
           >
-            Open {item.executedRecordNumber}
+            {tr("Open")} {item.executedRecordNumber}
             <ArrowRight className="h-3 w-3" />
           </button>
         )}
@@ -125,13 +126,13 @@ const ResultCell: React.FC<{ item: RecallItem; isCommitted: boolean; onOpenRecor
       {item.excluded ? (
         <Badge color="slate" size="sm">{item.readAndComply ? "Removed" : "Excluded"}</Badge>
       ) : item.readAndComply ? (
-        <Badge color="blue" size="sm">Read only</Badge>
+        <Badge color="blue" size="sm">{tr("Read only")}</Badge>
       ) : item.matchStatus === "READY" ? (
-        <Badge color="emerald" size="sm">Ready</Badge>
+        <Badge color="emerald" size="sm">{tr("Ready")}</Badge>
       ) : item.matchStatus === "UNMATCHED" ? (
         <Badge color="amber" size="sm">{item.loosePage ? "Page not recognised" : "Needs a match"}</Badge>
       ) : (
-        <Badge color="red" size="sm">Blocked</Badge>
+        <Badge color="red" size="sm">{tr("Blocked")}</Badge>
       )}
       {reason && !item.excluded && item.matchMessage && (
         <p className="mt-1 text-2xs text-slate-600 whitespace-normal break-words" title={item.matchMessage}>
@@ -195,7 +196,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   const [confirmingLeave, setConfirmingLeave] = useState(false);
 
   const fail = useCallback(
-    (error: unknown, fallback: string) => showToast({ type: "error", title: "Recall by Scan", message: getApiErrorMessage(error, fallback) }),
+    (error: unknown, fallback: string) => showToast({ type: "error", title: tr("Recall by Scan"), message: getApiErrorMessage(error, fallback) }),
     [showToast],
   );
 
@@ -273,7 +274,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     if (pdfs.length < all.length) {
       showToast({
         type: "warning",
-        title: "Only PDF scans are accepted",
+        title: tr("Only PDF scans are accepted"),
         message: `${plural(all.length - pdfs.length, "file")} that ${all.length - pdfs.length === 1 ? "is" : "are"} not PDF left out.`,
       });
     }
@@ -281,7 +282,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     if (files.length < pdfs.length) {
       showToast({
         type: "warning",
-        title: "File too large",
+        title: tr("File too large"),
         message: `${plural(pdfs.length - files.length, "file")} over ${formatBytes(MAX_RECALL_FILE_BYTES)} left out. Split a large scan into smaller files.`,
       });
     }
@@ -289,7 +290,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     if (files.length > limit) {
       showToast({
         type: "warning",
-        title: "Too many files",
+        title: tr("Too many files"),
         message: `A recall batch holds at most ${MAX_RECALL_SCANS} scans; the first ${limit} were kept.`,
       });
     }
@@ -396,7 +397,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         onFileDone?.(file);
       }
       if (stopped) {
-        showToast({ type: "info", title: "Upload stopped", message: `${plural(files.length - sentFiles, "file")} not sent.` });
+        showToast({ type: "info", title: tr("Upload stopped"), message: `${plural(files.length - sentFiles, "file")} not sent.` });
         return false;
       }
       setUploadProgress({ index: files.length, count: files.length, fileName: files[files.length - 1].name, percent: 100, filePercent: 100, processing: true, step: "Done.", finished: true });
@@ -480,7 +481,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       setDiscardTarget(null);
       if (batch?.id === target.id) setBatch(null);
       setDrafts((current) => current.filter((draft) => draft.id !== target.id));
-      showToast({ type: "success", title: "Draft discarded", message: "No controlled copy was recalled." });
+      showToast({ type: "success", title: tr("Draft discarded"), message: "No controlled copy was recalled." });
     } catch (error) {
       fail(error, "The draft could not be discarded.");
     } finally {
@@ -502,7 +503,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       setAttested(false);
       showToast({
         type: "success",
-        title: "Controlled copies recalled",
+        title: tr("Controlled copies recalled"),
         message: `${committed.items.filter((item) => item.outcome === "RECALLED").length} controlled copies recalled in ${committed.batchNumber}.`,
       });
     } catch (error) {
@@ -570,7 +571,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             {/* A scan the server refused at upload (not a PDF, too many pages, a virus...) was never stored, so it has no preview: say why here, where the person looks for the eye. */}
             {!item.previewAvailable && item.matchMessage && (
               <p className="mt-0.5 whitespace-normal break-words text-2xs text-red-600" title={item.matchMessage}>
-                No preview: {item.matchMessage}
+                      {trFormat("No preview: {message}", { message: item.matchMessage })}
               </p>
             )}
             {item.sourcePages && (
@@ -599,7 +600,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         sort: sortOf("code"),
         cell: (item) =>
           item.virusStatus === "INFECTED" ? (
-            <Badge color="red" size="sm">Virus found</Badge>
+            <Badge color="red" size="sm">{tr("Virus found")}</Badge>
           ) : (
             <Badge color={item.qrStatus === "DECODED" ? "emerald" : "amber"} size="sm">{QR_LABEL[item.qrStatus] ?? item.qrStatus}</Badge>
           ),
@@ -624,14 +625,14 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       },
       {
         id: "copy",
-        header: "Controlled copy",
-        label: "Controlled copy",
+        header: tr("Controlled copy"),
+        label: tr("Controlled copy"),
         sort: sortOf("copy"),
         cell: (item) =>
           item.copy ? (
             <span className="font-medium text-slate-800">
               {item.copy.number}
-              {item.matchSource === "MANUAL" && <span className="ml-1.5 text-2xs font-normal text-amber-700">(matched by hand)</span>}
+              {item.matchSource === "MANUAL" && <span className="ml-1.5 text-2xs font-normal text-amber-700">{tr("(matched by hand)")}</span>}
             </span>
           ) : (
             "—"
@@ -678,9 +679,9 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     return (
       <>
         {!item.excluded && !item.readAndComply && item.previewAvailable && item.virusStatus !== "INFECTED" && (
-          <Button size="sm" variant="default" className="gap-1 px-2" disabled={Boolean(busy)} aria-label="Match by number" title="Match by number" onClick={() => startMatch(item)}>
+          <Button size="sm" variant="default" className="gap-1 px-2" disabled={Boolean(busy)} aria-label={tr("Match by number")} title={tr("Match by number")} onClick={() => startMatch(item)}>
             <IconForms className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Match by Number</span>
+            <span className="hidden lg:inline">{tr("Match by Number")}</span>
           </Button>
         )}
         <Button
@@ -715,9 +716,9 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   if (!canRecall) {
     return (
       <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
-        <PageHeader title="Recall by Scan" breadcrumbItems={recallScanBreadcrumbs(navigateTo)} />
+        <PageHeader title={tr("Recall by Scan")} breadcrumbItems={recallScanBreadcrumbs(navigateTo)} />
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-800">
-          You are not allowed to recall controlled copies. Ask an administrator for the "Recall Controlled Copy" permission.
+          {tr("You are not allowed to recall controlled copies. Ask an administrator for the \"Recall Controlled Copy\" permission.")}
         </div>
       </div>
     );
@@ -740,11 +741,11 @@ export const ControlledCopyRecallScanView: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Recall by Scan"
+        title={tr("Recall by Scan")}
         breadcrumbItems={recallScanBreadcrumbs(navigateTo)}
         actions={
           <Button variant="outline-emerald" size="sm" onClick={goBack}>
-            Back
+            {tr("Back")}
           </Button>
         }
       />
@@ -759,14 +760,14 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         <div className="space-y-4">
           {drafts.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Your Open Drafts</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Resume one of these before starting a new batch, so a scan is not uploaded twice.</p>
+              <h2 className="text-sm font-semibold text-slate-900">{tr("Your Open Drafts")}</h2>
+              <p className="mt-0.5 text-xs text-slate-500">{tr("Resume one of these before starting a new batch, so a scan is not uploaded twice.")}</p>
               <ul className="mt-2 divide-y divide-slate-100">
                 {drafts.map((draft, index) => (
                   <li key={draft.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <span className="min-w-0 text-slate-700">
                       <span className="mr-2 inline-block min-w-[1.5rem] text-slate-400 tabular-nums">{index + 1}.</span>
-                      <span className="font-medium">{draft.batchNumber}</span> · {plural(draft.totalItems, "scan")} · started {formatDateTime(draft.createdAt ?? "")}
+                      <span className="font-medium">{draft.batchNumber}</span> · {plural(draft.totalItems, "scan")} · {tr("started")} {formatDateTime(draft.createdAt ?? "")}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Button
@@ -777,10 +778,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                         aria-label={`Discard ${draft.batchNumber}`}
                         onClick={() => setDiscardTarget({ id: draft.id, number: draft.batchNumber })}
                       >
-                        Discard
+                        {tr("Discard")}
                       </Button>
                       <Button size="sm" variant="default" disabled={Boolean(busy)} onClick={() => resume(draft.id)}>
-                        Resume
+                        {tr("Resume")}
                       </Button>
                     </span>
                   </li>
@@ -811,14 +812,14 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             <Badge color={isCommitted ? "emerald" : "amber"} size="sm">{isCommitted ? "Committed" : "Draft"}</Badge>
             {isDraft ? (
               <>
-                <GroupBadge group="READY" active={group} color="emerald" onSelect={setGroup}>{batch.readyItems} ready</GroupBadge>
-                {attentionCount > 0 && <GroupBadge group="ATTENTION" active={group} color="red" onSelect={setGroup}>{attentionCount} need attention</GroupBadge>}
-                {readOnlyItems.length > 0 && <GroupBadge group="READ_ONLY" active={group} color="blue" onSelect={setGroup}>{readOnlyItems.length} read only</GroupBadge>}
-                {batch.excludedItems > 0 && <GroupBadge group="EXCLUDED" active={group} color="slate" onSelect={setGroup}>{batch.excludedItems} excluded</GroupBadge>}
+                <GroupBadge group="READY" active={group} color="emerald" onSelect={setGroup}>{batch.readyItems} {tr("ready")}</GroupBadge>
+                {attentionCount > 0 && <GroupBadge group="ATTENTION" active={group} color="red" onSelect={setGroup}>{attentionCount} {tr("need attention")}</GroupBadge>}
+                {readOnlyItems.length > 0 && <GroupBadge group="READ_ONLY" active={group} color="blue" onSelect={setGroup}>{readOnlyItems.length} {tr("read only")}</GroupBadge>}
+                {batch.excludedItems > 0 && <GroupBadge group="EXCLUDED" active={group} color="slate" onSelect={setGroup}>{batch.excludedItems} {tr("excluded")}</GroupBadge>}
               </>
             ) : (
               <span className="text-xs text-slate-600">
-                {recalledCount} recalled{batch.committedByName ? ` by ${batch.committedByName}` : ""}
+                {recalledCount} {tr("recalled")}{batch.committedByName ? ` by ${batch.committedByName}` : ""}
                 {batch.committedAt ? ` on ${formatDateTime(batch.committedAt)}` : ""}
               </span>
             )}
@@ -834,7 +835,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                 {readOnlyItems.length > 1 && (
                   <Button size="sm" variant="outline" className="gap-1 shrink-0" disabled={Boolean(busy)} onClick={removeAllReadOnly}>
                     <Trash2 className="h-3.5 w-3.5" />
-                    Remove all
+                    {tr("Remove all")}
                   </Button>
                 )}
               </div>
@@ -847,7 +848,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                     </span>
                     <Button size="sm" variant="outline" className="gap-1 px-2 shrink-0" disabled={Boolean(busy)} aria-label={`Remove ${item.fileName}`} onClick={() => patchItem(item, { excluded: true })}>
                       <Trash2 className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Remove</span>
+                      <span className="hidden sm:inline">{tr("Remove")}</span>
                     </Button>
                   </li>
                 ))}
@@ -858,8 +859,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           {isDraft && attentionCount > 0 && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
               <span>
-                Some scans cannot be recalled yet. Match them by copy number, or exclude them, then continue. A scan that is excluded stays
-                uploaded but nothing happens to its copy.
+                {tr("Some scans cannot be recalled yet. Match them by copy number, or exclude them, then continue. A scan that is excluded stays uploaded but nothing happens to its copy.")}
               </span>
             </div>
           )}
@@ -867,17 +867,17 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           {isCommitted && (
             <div className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-900" role="status">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>The recall is signed and final. Each scan is filed under Records, where it can be opened and previewed.</span>
+              <span>{tr("The recall is signed and final. Each scan is filed under Records, where it can be opened and previewed.")}</span>
             </div>
           )}
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-end gap-2 p-4 md:p-5">
               <div className="min-w-0 flex-1">
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search")}</label>
                 <FilterSearchInput
-                  aria-label="Search scans"
-                  placeholder="File, copy number, document or recipient..."
+                  aria-label={tr("Search scans")}
+                  placeholder={tr("File, copy number, document or recipient...")}
                   value={searchQuery}
                   onChange={setSearchQuery}
                 />
@@ -886,7 +886,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             </div>
             <div className="relative px-4 pb-4 md:px-5 md:pb-5">
               {queryLoading && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/40 backdrop-blur-[2px]" role="status" aria-label="Searching">
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/40 backdrop-blur-[2px]" role="status" aria-label={tr("Searching")}>
                   <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                 </div>
               )}
@@ -912,7 +912,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                   emptyState={
                     <TableEmptyState
                       title={isDefaultQuery ? "No scans" : "No scans found"}
-                      description={isDefaultQuery ? "This batch has no scans." : "No scan matches your search."}
+                      description={isDefaultQuery ? tr("This batch has no scans.") : tr("No scan matches your search.")}
                     />
                   }
                 />
@@ -921,7 +921,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                   {rows.length === 0 ? (
                     <TableEmptyState
                       title={isDefaultQuery ? "No scans" : "No scans found"}
-                      description={isDefaultQuery ? "This batch has no scans." : "No scan matches your search."}
+                      description={isDefaultQuery ? tr("This batch has no scans.") : tr("No scan matches your search.")}
                     />
                   ) : (
                     rows.map((item) => (
@@ -941,7 +941,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           {item.virusStatus === "INFECTED" ? (
-                            <Badge color="red" size="sm">Virus found</Badge>
+                            <Badge color="red" size="sm">{tr("Virus found")}</Badge>
                           ) : (
                             <Badge color={item.qrStatus === "DECODED" ? "emerald" : "amber"} size="sm">{QR_LABEL[item.qrStatus] ?? item.qrStatus}</Badge>
                           )}
@@ -950,7 +950,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                           <div className="mt-2 text-xs text-slate-600">
                             <p className="font-medium text-slate-800">
                               {item.copy.number}
-                              {item.matchSource === "MANUAL" && <span className="ml-1.5 text-2xs font-normal text-amber-700">(matched by hand)</span>}
+                              {item.matchSource === "MANUAL" && <span className="ml-1.5 text-2xs font-normal text-amber-700">{tr("(matched by hand)")}</span>}
                             </p>
                             <p className="truncate">
                               {[item.copy.documentNumber, item.copy.revisionNumber && `rev ${item.copy.revisionNumber}`].filter(Boolean).join(" · ")}
@@ -975,10 +975,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
               <>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline-emerald" disabled={Boolean(busy) || remainingSlots <= 0} onClick={() => setAddOpen(true)}>
-                    Add More Scans
+                    {tr("Add More Scans")}
                   </Button>
                   <Button size="sm" variant="outline" className="text-red-600" disabled={Boolean(busy)} onClick={() => setDiscardTarget({ id: batch.id, number: batch.batchNumber })}>
-                    Discard Draft
+                    {tr("Discard Draft")}
                   </Button>
                 </div>
                 <Button
@@ -997,10 +997,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
             ) : (
               <>
                 <Button size="sm" variant="outline" onClick={() => navigateTo(ROUTES.DOCUMENTS.RECORDS)}>
-                  Open Records
+                  {tr("Open Records")}
                 </Button>
                 <Button size="sm" variant="outline-emerald" onClick={startAnother}>
-                  Start Another Batch
+                  {tr("Start Another Batch")}
                 </Button>
               </>
             )}
@@ -1024,7 +1024,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       <FormModal
         isOpen={Boolean(batch) && addOpen}
         onClose={closeAdd}
-        title="Add More Scans"
+        title={tr("Add More Scans")}
         size="2xl"
         showFooter={false}
       >
@@ -1049,7 +1049,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         isOpen={Boolean(matchItem)}
         onClose={closeMatch}
         onConfirm={submitMatch}
-        title={matchItem?.loosePage ? "Place this page in a controlled copy" : "Match to a controlled copy"}
+        title={matchItem?.loosePage ? tr("Place this page in a controlled copy") : tr("Match to a controlled copy")}
         description={
           matchItem?.loosePage
             ? `Look at the page (${matchItem.sourcePages ?? matchItem.fileName}) and type the controlled copy number printed on it, and which page of that copy it is. The page is put into that copy's file at exactly that place.`
@@ -1062,15 +1062,15 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         <input
           value={matchNumber}
           onChange={(event) => setMatchNumber(event.target.value)}
-          placeholder="Controlled copy number"
-          aria-label="Controlled copy number"
+          placeholder={tr("Controlled copy number")}
+          aria-label={tr("Controlled copy number")}
           className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         {matchNumber.trim() && (
           <div className="mt-2 min-h-[3.25rem] text-xs" aria-live="polite">
             {lookupPending ? (
               <p className="flex items-center gap-1.5 text-slate-500">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Looking up the copy...
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {tr("Looking up the copy...")}
               </p>
             ) : lookupFor?.copy ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
@@ -1082,7 +1082,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                   {[lookupFor.copy.documentNumber, lookupFor.copy.revisionNumber && `rev ${lookupFor.copy.revisionNumber}`].filter(Boolean).join(" · ")}
                   {lookupFor.copy.documentTitle ? ` — ${lookupFor.copy.documentTitle}` : ""}
                 </p>
-                {lookupFor.copy.recipientName && <p className="text-slate-600">Issued to {lookupFor.copy.recipientName}</p>}
+                {lookupFor.copy.recipientName && <p className="text-slate-600">{tr("Issued to")} {lookupFor.copy.recipientName}</p>}
                 {lookupFor.problem && <p className="mt-1 text-amber-700">{lookupFor.problem}</p>}
               </div>
             ) : (
@@ -1097,8 +1097,8 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           <input
             value={matchPage}
             onChange={(event) => setMatchPage(event.target.value.replace(/\D/g, ""))}
-            placeholder="Page number within the copy"
-            aria-label="Page number"
+            placeholder={tr("Page number within the copy")}
+            aria-label={tr("Page number")}
             inputMode="numeric"
             className="mt-3 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
@@ -1111,7 +1111,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         onClose={() => setConfirming(false)}
         onConfirm={() => setSigning(true)}
         title={`Recall ${batch?.readyItems ?? 0} Controlled ${batch?.readyItems === 1 ? "Copy" : "Copies"}?`}
-        description="You will sign once for every copy in this list. Each copy becomes Obsoleted (recalled) and its scan is filed under Records. This cannot be undone."
+        description={tr("You will sign once for every copy in this list. Each copy becomes Obsoleted (recalled) and its scan is filed under Records. This cannot be undone.")}
         confirmText="Continue to Sign"
         confirmDisabled={!attested || !receivedDate || receivedDate > todayIso()}
         size="md"
@@ -1119,17 +1119,17 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         <div className="space-y-4">
           <div>
             <DateTimePicker
-              label="Date the paper was received"
+              label={tr("Date the paper was received")}
               value={isoToDisplay(receivedDate)}
               onChange={(value) => setReceivedDate(displayToIso(value))}
-              error={receivedDate > todayIso() ? "The received date cannot be in the future." : undefined}
+              error={receivedDate > todayIso() ? tr("The received date cannot be in the future.") : undefined}
             />
-            <p className="mt-1 text-2xs text-slate-500">The signing time is recorded separately and cannot be changed.</p>
+            <p className="mt-1 text-2xs text-slate-500">{tr("The signing time is recorded separately and cannot be changed.")}</p>
           </div>
           <Checkbox
             checked={attested}
             onChange={setAttested}
-            label="I have physically received these paper copies and checked that each one is the copy shown for it: the original, complete and the right one. A QR code alone does not prove that."
+            label={tr("I have physically received these paper copies and checked that each one is the copy shown for it: the original, complete and the right one. A QR code alone does not prove that.")}
           />
         </div>
       </FormModal>
@@ -1150,7 +1150,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         isOpen={Boolean(discardTarget)}
         onClose={() => setDiscardTarget(null)}
         onConfirm={discard}
-        title="Discard This Draft?"
+        title={tr("Discard This Draft?")}
         description={`${discardTarget?.number ?? "This draft"}: the uploaded scans are kept on record but no controlled copy is recalled.`}
         confirmText="Discard draft"
         confirmVariant="destructive"
@@ -1162,8 +1162,8 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         isOpen={confirmingLeave}
         onClose={() => setConfirmingLeave(false)}
         onConfirm={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL)}
-        title="Leave While Uploading?"
-        description="Files that have not been sent yet will be lost. A draft that was already started stays under Your Open Drafts."
+        title={tr("Leave While Uploading?")}
+        description={tr("Files that have not been sent yet will be lost. A draft that was already started stays under Your Open Drafts.")}
         confirmText="Leave"
         confirmVariant="destructive"
         size="md"

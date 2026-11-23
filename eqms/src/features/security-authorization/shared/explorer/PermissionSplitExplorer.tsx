@@ -11,6 +11,7 @@ import { navigationApi } from "@/services/api/navigation";
 import { TabNav, type TabItem } from "@/components/ui/tabs";
 import { PermissionTableView } from "./PermissionTableView";
 import { Reveal } from "./Reveal";
+import { tr } from "@/i18n";
 
 /** The choice between the cards and the table is a preference of the person, kept in this browser (nothing depends on it, so a refused storage is ignored). */
 const VIEW_STORAGE_KEY = "eqms.permission-explorer.view";
@@ -259,8 +260,8 @@ export const PermissionSplitExplorer: React.FC<
       )}
       {!selectedOnly && (
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4">
-          <span className="text-sm font-medium text-slate-700">{selectedPermissions.length} selected</span>
-          {!readOnly && selectedPermissions.length > 0 && <button type="button" onClick={clearEditable} className="text-xs font-medium text-rose-600 hover:text-rose-700">Clear editable</button>}
+          <span className="text-sm font-medium text-slate-700">{selectedPermissions.length} {tr("selected")}</span>
+          {!readOnly && selectedPermissions.length > 0 && <button type="button" onClick={clearEditable} className="text-xs font-medium text-rose-600 hover:text-rose-700">{tr("Clear editable")}</button>}
         </div>
       )}
     </div>
@@ -271,7 +272,7 @@ export const PermissionSplitExplorer: React.FC<
       <div className="flex items-center justify-center py-16">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
         <span className="ml-3 text-sm text-slate-400">
-          Loading permissions…
+          {tr("Loading permissions…")}
         </span>
       </div>
     );
@@ -282,14 +283,14 @@ export const PermissionSplitExplorer: React.FC<
       <div className="border-b border-slate-200 p-3 sm:p-4">
         <div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Search")}</label>
             <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[14rem] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search permissions by name, code, description…"
+              placeholder={tr("Search permissions by name, code, description…")}
               className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-8 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:h-9"
             />
             {search && (
@@ -297,7 +298,7 @@ export const PermissionSplitExplorer: React.FC<
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label="Clear search"
+                aria-label={tr("Clear search")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -312,7 +313,7 @@ export const PermissionSplitExplorer: React.FC<
       {isCatalogLoading ? (
         <div className="flex flex-1 items-center justify-center py-12 text-sm text-slate-400">
           <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          Updating permission results…
+          {tr("Updating permission results…")}
         </div>
       ) : visibleModules.length === 0 ? (
         <div className="flex-1 py-12 text-center text-slate-400">
@@ -322,7 +323,7 @@ export const PermissionSplitExplorer: React.FC<
             onClick={clearFilters}
             className="mt-2 text-xs text-emerald-600 hover:underline"
           >
-            Clear filters
+            {tr("Clear filters")}
           </button>
         </div>
       ) : (

@@ -5,6 +5,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { formatDate } from "@/utils/format";
+import { tr } from "@/i18n";
 
 export interface GeneralInformationDocumentDetail {
   documentNumber: string;
@@ -100,16 +101,16 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         <>
           <WarningBanner
             variant="warning"
-            title="Legacy Import"
-            description="This revision was brought into the system from an existing (e.g. paper-based) original -- the fields below are reference-only, recorded from the paper record, not electronic signatures. See the Reviewers/Approvers tabs for the historical names, and Signatures for the actual e-signature that authorized this import."
+            title={tr("Legacy Import")}
+            description={tr("This revision was brought into the system from an existing (e.g. paper-based) original -- the fields below are reference-only, recorded from the paper record, not electronic signatures. See the Reviewers/Approvers tabs for the historical names, and Signatures for the actual e-signature that authorized this import.")}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Historical Authored Date</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Historical Authored Date")}</label>
               <input type="text" value={legacyImportInfo.historicalAuthoredDate || "-"} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-1">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Migration Justification</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Migration Justification")}</label>
               <input type="text" value={legacyImportInfo.legacyJustification || "-"} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
           </div>
@@ -118,47 +119,47 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Revision Number
+            {tr("Revision Number")}
           </label>
           <input
             type="text"
             value={document.revisionNumber || document.documentNumber || "-"}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Auto-generated after save"
+            placeholder={tr("Auto-generated after save")}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Created Time
+            {tr("Created Time")}
           </label>
           <input
             type="text"
             value={document.created || "-"}
             readOnly
             className={CONTROL_STATE_CLASSES.readonlyField}
-            placeholder="Auto-generated after save"
+            placeholder={tr("Auto-generated after save")}
           />
         </div>
 
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-              Opened By
+              {tr("Opened By")}
             </label>
             <input
               type="text"
               value={document.openedBy || "-"}
               readOnly
               className={CONTROL_STATE_CLASSES.readonlyField}
-              placeholder="Auto-generated after save"
+              placeholder={tr("Auto-generated after save")}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-              Author<span className="text-red-500 ml-1">*</span>
+              {tr("Author")}<span className="text-red-500 ml-1">*</span>
             </label>
             <input
               type="text"
@@ -171,7 +172,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-              Co-Author(s)
+              {tr("Co-Author(s)")}
             </label>
             <div className={CONTROL_STATE_CLASSES.readonlyContainer}>
               <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
@@ -193,7 +194,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
               <div className="ml-1 flex shrink-0 items-center gap-1.5">
                 {hiddenCoAuthors.length > 0 && (
                   <Popover
-                    title="Selected"
+                    title={tr("Selected")}
                     placement="top"
                     triggerAriaLabel={`View ${hiddenCoAuthors.length} more selected items`}
                     trigger={<span className="text-2xs font-medium">+{hiddenCoAuthors.length}</span>}
@@ -218,7 +219,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Business Unit<span className="text-red-500 ml-1">*</span>
+            {tr("Business Unit")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -231,7 +232,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Department
+            {tr("Department")}
           </label>
           <input
             type="text"
@@ -244,7 +245,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
                 <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Revision Name<span className="text-red-500 ml-1">*</span>
+            {tr("Revision Name")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -261,9 +262,9 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Title in Local Language
+            {tr("Title in Local Language")}
             <span className="text-slate-400 text-xs font-normal ml-1.5">
-              (optional)
+              {tr("(optional)")}
             </span>
           </label>
           <input
@@ -283,7 +284,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         {/* The document type is fixed for the document, so it is always shown as read-only text. */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Document Type<span className="text-red-500 ml-1">*</span>
+            {tr("Document Type")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -295,7 +296,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Sub-Type
+            {tr("Sub-Type")}
           </label>
           <input
             type="text"
@@ -307,24 +308,24 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Effective Date</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Effective Date")}</label>
           <input
             type="text"
             value={formatOptionalDate(document.effectiveDate)}
             readOnly
             className={readonlyInputClassName}
-            placeholder="Set when approved"
+            placeholder={tr("Set when approved")}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Valid Until</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Valid Until")}</label>
           <input
             type="text"
             value={formatOptionalDate(document.validUntil)}
             readOnly
             className={readonlyInputClassName}
-            placeholder={document.effectiveDate ? "No review cycle" : "Set when approved"}
+            placeholder={document.effectiveDate ? tr("No review cycle") : tr("Set when approved")}
           />
         </div>
 
@@ -336,13 +337,13 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
 
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Note <span className="text-red-500">*</span>
+            {tr("Note")} <span className="text-red-500">*</span>
           </label>
           <textarea
             value={document.description}
             onChange={(e) => handleChange("description", e.target.value)}
             readOnly={isReadOnly}
-            placeholder="Enter note for this revision..."
+            placeholder={tr("Enter note for this revision...")}
             rows={4}
             className={
               isReadOnly

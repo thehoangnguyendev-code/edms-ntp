@@ -9,8 +9,7 @@ import { cn } from "@/components/ui/utils";
 import { MAX_PINNED_COLUMNS, normalizeColumnOrder, type CustomizableColumn } from "./useTableColumnPreferences";
 import { IconLock, IconPin, IconPinnedOff } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { useLanguage } from "@/i18n";
-import { tr } from "@/i18n";
+import { useLanguage, tr, trFormat } from "@/i18n";
 
 interface CustomColumnDrawerProps {
   columns: CustomizableColumn[];
@@ -69,7 +68,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
   const pinnedCount = movable.filter((column) => column.pinned && column.visible).length;
   const searching = query.trim().length > 0;
   const needle = query.trim().toLowerCase();
-  const matches = (label: string) => label.toLowerCase().includes(needle);
+  const matches = (label: string) => tr(label).toLowerCase().includes(needle);
 
   const update = (id: string, patch: Partial<CustomizableColumn>) =>
     setDraft((previous) =>
@@ -178,13 +177,13 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
             header={visibleLocked.map((column) => (
               <div key={column.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                 <IconLock aria-label={tr("Always visible")} className="h-4 w-4 shrink-0 text-slate-400" />
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{column.label}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{tr(column.label)}</span>
                 {allowPin && (column.id === "no" || column.id === "expand") && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`${column.pinned ? "Unpin" : "Pin"} ${column.label}`}
+                    aria-label={`${column.pinned ? tr("Unpin") : tr("Pin")} ${tr(column.label)}`}
                     aria-pressed={Boolean(column.pinned)}
                     onClick={() => update(column.id, { pinned: !column.pinned })}
                     className={column.pinned ? "text-emerald-600" : "text-slate-400"}
@@ -195,20 +194,20 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
               </div>
             ))}
             footer={visibleFixed.map((column) => (
-              <LockedRow key={column.id} label={column.label} />
+              <LockedRow key={column.id} label={tr(column.label)} />
             ))}
             renderRow={(column) => (
               <div className="flex items-center gap-2">
                 {allowPin && <button
                   type="button"
-                  aria-label={column.pinned ? `Unpin ${column.label}` : `Pin ${column.label}`}
+                  aria-label={column.pinned ? `${tr("Unpin")} ${tr(column.label)}` : `${tr("Pin")} ${tr(column.label)}`}
                   aria-pressed={Boolean(column.pinned)}
                   disabled={!column.pinned && (!column.visible || pinnedCount >= MAX_PINNED_COLUMNS)}
                   title={
                     !column.pinned && pinnedCount >= MAX_PINNED_COLUMNS
-                      ? `You can pin at most ${MAX_PINNED_COLUMNS} columns`
+                      ? trFormat("You can pin at most {count} columns", { count: MAX_PINNED_COLUMNS })
                       : !column.pinned && !column.visible
-                        ? "Show the column before pinning it"
+                        ? tr("Show the column before pinning it")
                         : undefined
                   }
                   onPointerDown={(event) => event.stopPropagation()}
@@ -229,7 +228,7 @@ export const CustomColumnDrawer: React.FC<CustomColumnDrawerProps> = ({
           />
 
           {nothingMatches && (
-            <p className="py-6 text-center text-sm text-slate-500">No columns match "{query.trim()}".</p>
+            <p className="py-6 text-center text-sm text-slate-500">{trFormat("No columns match \"{query}\".", { query: query.trim() })}</p>
           )}
         </Drawer>
       )}

@@ -19,7 +19,7 @@ import {
 } from "./useTableColumnPreferences";
 import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
 import { useRowEntrance } from "./useRowEntrance";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 import { closeMenuRenderGate, menuRenderGateOpen, menuTouchesRow } from "./rowRenderGate";
 
 export type DataTableSortDirection = "asc" | "desc";
@@ -192,13 +192,13 @@ export function useCustomColumnLayout<T>(
       onApply={async (next) => {
         motion.current?.capture();
         if (!(await saveColumns(next))) {
-          showToast({ type: "error", title: "Column layout not saved", message: "The server did not accept the change. Please try again." });
+          showToast({ type: "error", title: tr("Column layout not saved"), message: "The server did not accept the change. Please try again." });
         }
       }}
       onReset={async () => {
         motion.current?.capture();
         if (!(await resetColumns())) {
-          showToast({ type: "error", title: "Column layout not reset", message: "The server did not accept the change. Please try again." });
+          showToast({ type: "error", title: tr("Column layout not reset"), message: "The server did not accept the change. Please try again." });
         }
       }}
       allowPin

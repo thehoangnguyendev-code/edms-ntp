@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { Input } from "@/components/ui/form/ResponsiveForm";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select";
@@ -101,8 +102,8 @@ export function ReportChartsEditor({
               label="Metric"
               value={chart.metric}
               options={[
-                { value: "COUNT", label: "Number of records" },
-                { value: "PERCENT", label: "Share of all records (%)" },
+                { value: "COUNT", label: tr("Number of records") },
+                { value: "PERCENT", label: tr("Share of all records (%)") },
               ]}
               enableSearch={false}
               onChange={(metric) => change(index, { metric: metric as ReportChart["metric"] })}

@@ -7,6 +7,7 @@ import {
   APP_SIDEBAR_WIDTH,
   clampSidebarWidth,
 } from "./sidebarWidths";
+import { tr } from "@/i18n";
 
 interface SidebarResizeHandleProps {
   width: number;
@@ -127,7 +128,7 @@ export const SidebarResizeHandle: React.FC<SidebarResizeHandleProps> = ({
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize sidebar"
+      aria-label={tr("Resize sidebar")}
       aria-valuemin={APP_SIDEBAR_MIN_WIDTH}
       aria-valuemax={APP_SIDEBAR_MAX_WIDTH}
       aria-valuenow={width}

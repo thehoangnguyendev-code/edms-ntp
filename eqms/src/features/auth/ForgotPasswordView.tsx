@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/branding/BrandLogo";
 import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./components";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { tr } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -176,7 +177,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
     <AuthLayout
       left={
         <div className={ui.formColumn}>
-          <AuthTopBackButton onClick={handleBackToLogin} label="Back to Sign In" disabled={isLoading} />
+          <AuthTopBackButton onClick={handleBackToLogin} label={tr("Back to Sign In")} disabled={isLoading} />
           <div className={ui.brand}>
             <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
           </div>
@@ -185,7 +186,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
             <div className="space-y-6 sm:space-y-5" role="status" aria-live="polite">
               <div className={ui.headerArea}>
                 <div className={ui.headingBlock}>
-                  <h1 className={ui.pageTitle}>Request Sent</h1>
+                  <h1 className={ui.pageTitle}>{tr("Request Sent")}</h1>
                   <p className={ui.description}>{SUCCESS_MESSAGE}</p>
                 </div>
               </div>
@@ -196,19 +197,19 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                   size="default"
                   className={cn(ui.submitButton, "sm:h-12")}
                 >
-                  Back to Sign In
+                  {tr("Back to Sign In")}
                 </Button>
 
-                <p className="text-xs text-slate-500">Click "Back to Sign In" to return to the login screen.</p>
+                <p className="text-xs text-slate-500">{tr("Click \"Back to Sign In\" to return to the login screen.")}</p>
               </div>
             </div>
           ) : (
             <>
               <div className={ui.headerArea}>
                 <div className={ui.headingBlock}>
-                  <h1 className={ui.pageTitle}>Forgot Password</h1>
+                  <h1 className={ui.pageTitle}>{tr("Forgot Password")}</h1>
                   <p className={ui.description}>
-                    Enter your username or email. If the account is eligible, the system will send a password reset link to the registered email address.
+                    {tr("Enter your username or email. If the account is eligible, the system will send a password reset link to the registered email address.")}
                   </p>
                 </div>
               </div>
@@ -221,7 +222,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
 
               <form onSubmit={handleSubmit} className={ui.formStack} noValidate>
 
-              <AuthField htmlFor="identifier" label="Email or Username" required error={errors.identifier}>
+              <AuthField htmlFor="identifier" label={tr("Email or Username")} required error={errors.identifier}>
                 <input
                   id="identifier"
                   name="identifier"
@@ -234,14 +235,14 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                     ui.inputFocus,
                     errors.identifier ? ui.inputError : ui.inputDefault
                   )}
-                  placeholder="Enter your email or username"
+                  placeholder={tr("Enter your email or username")}
                   disabled={isLoading}
                   aria-invalid={!!errors.identifier}
                   aria-describedby={errors.identifier ? "identifier-error" : undefined}
                 />
               </AuthField>
 
-              <AuthField htmlFor="reason" label="Reason for Request" required error={errors.reason}>
+              <AuthField htmlFor="reason" label={tr("Reason for Request")} required error={errors.reason}>
                 <textarea
                   id="reason"
                   name="reason"
@@ -253,7 +254,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                     ui.inputFocus,
                     errors.reason ? ui.inputError : ui.inputDefault
                   )}
-                  placeholder="Provide a short reason for the reset request"
+                  placeholder={tr("Provide a short reason for the reset request")}
                   disabled={isLoading}
                   aria-invalid={!!errors.reason}
                   aria-describedby={errors.reason ? "reason-error" : undefined}
@@ -271,7 +272,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
               </Button>
 
               <div className="hidden sm:block">
-                <AuthBackLink onClick={handleBackToLogin} label="Back to Sign In" disabled={isLoading} />
+                <AuthBackLink onClick={handleBackToLogin} label={tr("Back to Sign In")} disabled={isLoading} />
               </div>
             </form>
           </>

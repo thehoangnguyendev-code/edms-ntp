@@ -10,6 +10,7 @@ import { usePermissionCatalog } from "@/features/security-authorization/shared/u
 import { DOCUMENT_CONTROL_VIEW_ALL_CODES, applyVisibilityChoice, type DocumentControlVisibilityChoice } from "../../shared/documentControlVisibility";
 import { RecordVisibilityForModule, hasRecordVisibility } from "../../shared/RecordVisibilityForModule";
 import { applyModuleVisibility, type ModuleVisibilityDef } from "../../shared/moduleVisibility";
+import { tr } from "@/i18n";
 
 /**
  * Module-accurate permission matrix for a role. Shows the UNION of everything the
@@ -161,17 +162,14 @@ export const AccessProfilePermissionsTab: React.FC<{
         variant="info"
         description={
           <>
-          Everything this Access Profile grants, grouped by module. <b>Direct permissions</b> are ticked/unticked here
-          and applied on <b>Save</b> (one electronic signature). Permissions with a lock icon come from an
-          attached <b>Shared Permission Set</b> — manage those on the Shared Sets tab. Ticking a permission also
-          auto-ticks the "view" permission its page lives behind, so it's never granted unreachable.
+          {tr("Everything this Access Profile grants, grouped by module.")} <b>{tr("Direct permissions")}</b> {tr("are ticked/unticked here and applied on")} <b>{tr("Save")}</b> {tr("(one electronic signature). Permissions with a lock icon come from an attached")} <b>{tr("Shared Permission Set")}</b> {tr("— manage those on the Shared Sets tab. Ticking a permission also auto-ticks the \"view\" permission its page lives behind, so it's never granted unreachable.")}
           </>
         }
       />}
       {!canEdit && (
         <WarningBanner
           variant="warning"
-          description={deniedReason || "You can review this Access Profile's permissions, but cannot change them."}
+          description={deniedReason || tr("You can review this Access Profile's permissions, but cannot change them.")}
         />
       )}
       {modulesMissingViewPermission.length > 0 && (
@@ -186,11 +184,8 @@ export const AccessProfilePermissionsTab: React.FC<{
                 variant="warning"
                 description={
                   <>
-                    This profile grants "{prefix}*" permissions but not <b>"{label}" ({viewCode})</b> —
-                    likely because {viewCode} was unticked separately after being auto-added (ticking a
-                    permission here always auto-adds its required view permission). Without it, the
-                    page/menu those permissions live behind is unreachable. Tick {viewCode} back on if
-                    this profile should actually be able to use them.
+                    {tr("This profile grants \"")}{prefix}{tr("*\" permissions but not")} <b>"{label}" ({viewCode})</b> —
+                      {tr("likely because")} {viewCode} {tr("was unticked separately after being auto-added (ticking a permission here always auto-adds its required view permission). Without it, the page/menu those permissions live behind is unreachable. Tick")} {viewCode} {tr("back on if this profile should actually be able to use them.")}
                   </>
                 }
               />
@@ -199,9 +194,9 @@ export const AccessProfilePermissionsTab: React.FC<{
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Badge color="emerald" size="sm">{directCodes.size} direct</Badge>
-        <Badge color="slate" size="sm">{lockedCodes.size} from shared sets</Badge>
-        <Badge color="blue" size="sm">{selectedCodes.size} total</Badge>
+        <Badge color="emerald" size="sm">{directCodes.size} {tr("direct")}</Badge>
+        <Badge color="slate" size="sm">{lockedCodes.size} {tr("from shared sets")}</Badge>
+        <Badge color="blue" size="sm">{selectedCodes.size} {tr("total")}</Badge>
       </div>
       <PermissionSplitExplorer
         groups={permissionGroups}

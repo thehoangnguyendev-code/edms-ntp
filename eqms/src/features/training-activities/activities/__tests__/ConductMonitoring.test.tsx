@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ get: vi.fn(), overview: vi.fn(), participantPage: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), overview: vi.fn(), participantPage: vi.fn(), people: vi.fn() }));
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingActivitiesApi: api }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true, hasPermissionAlias: () => true }) }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
@@ -192,5 +192,122 @@ describe("Training Activity in Planned (edit)", () => {
     expect(await screen.findByText(/Required before the content is reviewed: a file or a link/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Training Materials are not required/ })).toBeTruthy();
   });
+
+  it("does not ask for the topic twice: with a session the form of another one opens on request", async () => {
+    api.get.mockResolvedValue({ ...activity("PLANNED"), capabilities: { edit: true, planSessions: true } });
+    api.people.mockResolvedValue([]);
+    render(
+      <BreadcrumbProvider>
+        <MemoryRouter initialEntries={["/training-management/activities/a1/edit"]}>
+          <Routes>
+            <Route path="/training-management/activities/:activityId/edit" element={<TrainingActivityDetailPage mode="edit" />} />
+          </Routes>
+        </MemoryRouter>
+      </BreadcrumbProvider>,
+    );
+
+    const another = await screen.findByRole("button", { name: "Add another session" });
+    expect(screen.queryByPlaceholderText(/What will be taught/)).toBeNull();
+    fireEvent.click(another);
+    expect(await screen.findByPlaceholderText(/What will be taught/)).toBeTruthy();
+  });
 });
 
+describe("Retraining of a person who failed, from a finished activity", () => {
+  // A failed person does not stop the activity from being completed; the retraining is a new activity with the next letter, arranged from the finished one.
+  const renderDetails = (status: string, mode: "view" | "confirm", capabilities: Record<string, boolean>) => {
+    api.get.mockResolvedValue({ ...activity(status), supplementaryPending: 1, supplementaryBlocked: 0, capabilities });
+    return render(
+      <BreadcrumbProvider>
+        <MemoryRouter initialEntries={["/training-management/activities/a1"]}>
+          <Routes>
+            <Route path="/training-management/activities/:activityId" element={<TrainingActivityDetailPage mode={mode} />} />
+          </Routes>
+        </MemoryRouter>
+      </BreadcrumbProvider>,
+    );
+  };
+
+  it("offers Supplementary Training in the header beside Back and in the foot, on a Completed activity", async () => {
+    renderDetails("COMPLETED", "view", { addSupplementary: true });
+    await openTab(/^General Information/);
+
+    expect(await screen.findAllByRole("button", { name: "Supplementary Training" })).toHaveLength(2);
+    expect(screen.queryByText(/have no supplementary training yet/)).toBeNull();
+  });
+
+  it("does not offer it before the activity is Completed (the people who failed do not stop the completion)", async () => {
+    renderDetails("PENDING_QA_CONFIRMATION", "confirm", { addSupplementary: true, confirmCompletion: true });
+    await openTab(/^General Information/);
+
+    expect((await screen.findAllByRole("button", { name: "Confirm completion" })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/have no supplementary training yet/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Supplementary Training" })).toBeNull();
+  });
+
+  it("opens the dialog at once when the list menu sends the person here", async () => {
+    api.get.mockResolvedValue({ ...activity("COMPLETED"), supplementaryPending: 1, supplementaryBlocked: 0, supplementaryCandidates: [], capabilities: { addSupplementary: true } });
+    render(
+      <BreadcrumbProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/training-management/activities/a1", state: { openSupplementary: true } }]}>
+          <Routes>
+            <Route path="/training-management/activities/:activityId" element={<TrainingActivityDetailPage mode="view" />} />
+          </Routes>
+        </MemoryRouter>
+      </BreadcrumbProvider>,
+    );
+
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
+  it("shows no button to a person who may not organize", async () => {
+    renderDetails("COMPLETED", "view", { addSupplementary: false });
+    await openTab(/^General Information/);
+
+    expect((await screen.findAllByRole("button", { name: "Back" })).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Supplementary Training" })).toBeNull();
+  });
+});
+
+describe("Results in Training Activity Details", () => {
+  const renderDetails = (status: string, mode: "view" | "participate" = "view") => {
+    api.get.mockResolvedValue({
+      ...activity(status), passPercent: 70, assessment: { maxScore: 20 },
+      participants: [{ ...person(1, "s1", "ATTENDED", "FAILED"), lastScore: 10, lastMax: 20, lastPercent: 50 }, { ...person(2, "s1", "ATTENDED", "PASSED"), lastScore: 18, lastMax: 20, lastPercent: 90 }],
+      capabilities: { recordAssessment: true, recordAttendance: true },
+    });
+    return render(
+      <BreadcrumbProvider>
+        <MemoryRouter initialEntries={["/training-management/activities/a1"]}>
+          <Routes>
+            <Route path="/training-management/activities/:activityId" element={<TrainingActivityDetailPage mode={mode} />} />
+          </Routes>
+        </MemoryRouter>
+      </BreadcrumbProvider>,
+    );
+  };
+
+  it("shows the score and the result of each person, read only, once the training has started", async () => {
+    renderDetails("PENDING_QA_CONFIRMATION");
+    await openTab(/^Results/);
+
+    expect(await screen.findByText("10 / 20")).toBeTruthy();
+    expect(screen.getByText("18 / 20")).toBeTruthy();
+    expect(screen.getByText("Not passed (50%)")).toBeTruthy();
+    // nothing can be typed, saved or uploaded there: the results are written in the Session Workspace
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Save all/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Upload the scan/ })).toBeNull();
+  });
+
+  it("has no Results tab before the training starts, nor for a person who only takes part", async () => {
+    renderDetails("NOTIFIED");
+    await screen.findByRole("tab", { name: /^Participants/ });
+    expect(screen.queryByRole("tab", { name: /^Results/ })).toBeNull();
+    cleanup();
+
+    renderDetails("COMPLETED", "participate");
+    await screen.findByRole("tab", { name: /^Participants/ });
+    expect(screen.queryByRole("tab", { name: /^Results/ })).toBeNull();
+  });
+});

@@ -5,6 +5,7 @@ import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { Button } from "@/components/ui/button/Button";
 import { useToast } from "@/components/ui/toast/Toast";
 import { networkAccessPayload, type NetworkAccessDraft } from "../useNetworkAccessDraft";
+import { tr } from "@/i18n";
 
 type User = { id: string; fullName: string };
 type AddressCheck = {
@@ -63,7 +64,7 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
         .response?.data?.message;
       showToast({
         type: "error",
-        title: "Unable to check the address",
+        title: tr("Unable to check the address"),
         message: message ?? "Check the allowed networks and trusted proxies.",
       });
     } finally {
@@ -74,23 +75,23 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
     "mt-1.5 h-48 resize-none overflow-y-auto w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Administrative Network Access</h3>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Administrative Network Access")}</h3>
       {failed ? (
         <p role="alert" className="text-sm text-red-600">
-          Unable to load network policy.
+          {tr("Unable to load network policy.")}
         </p>
       ) : !value ? (
-        <p className="text-sm text-slate-500">Loading network policy…</p>
+        <p className="text-sm text-slate-500">{tr("Loading network policy…")}</p>
       ) : (
         <div className="space-y-4">
           <Checkbox
-            label="Restrict administrative access by network"
+            label={tr("Restrict administrative access by network")}
             checked={value.enabled}
             onChange={(enabled) => onChange({ ...value, enabled })}
           />
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm text-slate-700">
-              Allowed networks (CIDR, one per line)
+              {tr("Allowed networks (CIDR, one per line)")}
               <textarea
                 value={value.allowedNetworks}
                 onChange={(e) => onChange({ ...value, allowedNetworks: e.target.value })}
@@ -99,11 +100,11 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
               />
             </label>
             <label className="text-sm text-slate-700">
-              Trusted proxies (CIDR, one per line)
+              {tr("Trusted proxies (CIDR, one per line)")}
               <textarea
                 value={value.trustedProxies}
                 onChange={(e) => onChange({ ...value, trustedProxies: e.target.value })}
-                placeholder="Leave blank for direct connections"
+                placeholder={tr("Leave blank for direct connections")}
                 className={inputClass}
               />
             </label>
@@ -111,29 +112,26 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
           <div className="grid gap-4 md:grid-cols-2">
           <div>
             <Select
-              label="Emergency Account"
+              label={tr("Emergency Account")}
               value={value.emergencyUserId ?? ""}
               options={options}
               onSearch={searchUsers}
               onChange={(id) =>
                 onChange({ ...value, emergencyUserId: id || null })
               }
-              placeholder="Select an active configuration administrator"
+              placeholder={tr("Select an active configuration administrator")}
             />
             <p className="mt-1 text-xs text-slate-500">
-              The emergency account bypasses the network restriction and still
-              requires authentication and permissions. Replace it before removing
-              its access or deactivating it.
+              {tr("The emergency account bypasses the network restriction and still requires authentication and permissions. Replace it before removing its access or deactivating it.")}
             </p>
           </div>
           </div>
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-medium text-slate-800">
-              Check Before Saving
+              {tr("Check Before Saving")}
             </p>
             <p className="text-xs text-slate-600">
-              Shows the address that the server sees for this computer, and
-              whether the networks typed above let it in. Nothing is saved.
+              {tr("Shows the address that the server sees for this computer, and whether the networks typed above let it in. Nothing is saved.")}
             </p>
             <Button
               size="sm"
@@ -141,27 +139,25 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
               onClick={() => void checkAddress()}
               loading={checking}
             >
-              Check My Address
+              {tr("Check My Address")}
             </Button>
             {address && (
               <p
                 role="status"
                 className={`text-sm ${address.allowed ? "text-emerald-700" : "text-amber-800"}`}
               >
-                Your address: <strong>{address.address}</strong>.{" "}
+                {tr("Your address:")} <strong>{address.address}</strong>.{" "}
                 {address.allowed
-                  ? "It is inside the allowed networks."
-                  : "It is outside the allowed networks: you would be blocked unless you are the emergency account."}
+                  ? tr("It is inside the allowed networks.")
+                  : tr("It is outside the allowed networks: you would be blocked unless you are the emergency account.")}
                 {address.recoveryDisabled &&
-                  " The restriction is currently switched off on the server (recovery setting)."}
+                  ` ${tr("The restriction is currently switched off on the server (recovery setting).")}`}
               </p>
             )}
           </div>
           <p className="text-xs text-slate-500">
-            If everyone is locked out: set{" "}
-            <code>APP_ADMIN_NETWORK_RECOVERY_DISABLE=true</code> in the server
-            environment and restart the backend, correct the policy here, then
-            remove the setting.
+            {tr("If everyone is locked out: set")}{" "}
+            <code>APP_ADMIN_NETWORK_RECOVERY_DISABLE=true</code> {tr("in the server environment and restart the backend, correct the policy here, then remove the setting.")}
           </p>
         </div>
       )}

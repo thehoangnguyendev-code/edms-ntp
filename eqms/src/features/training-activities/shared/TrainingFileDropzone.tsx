@@ -3,6 +3,7 @@ import { Download, Eye, Trash2, Upload } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { Progress } from "@/components/ui/progress";
 import { getFileIconSrc } from "@/utils/fileIcons";
+import { tr } from "@/i18n";
 
 const formatSize = (bytes: number) => (bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
 
@@ -62,9 +63,9 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
               <p className="truncate text-sm font-medium text-slate-900">{existing.name}</p>
               <p className="mt-0.5 text-xs text-slate-500">{formatSize(existing.size)}{existing.note ? ` · ${existing.note}` : ""}</p>
             </div>
-            {existing.onPreview && <button type="button" onClick={existing.onPreview} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Preview" aria-label="Preview"><Eye className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>}
-            <button type="button" onClick={existing.onDownload} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Download" aria-label="Download"><Download className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>
-            {existing.onRemove && <button type="button" onClick={existing.onRemove} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title="Remove file" aria-label="Remove file"><Trash2 className="h-4 w-4 text-slate-500 hover:text-red-600" /></button>}
+            {existing.onPreview && <button type="button" onClick={existing.onPreview} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title={tr("Preview")} aria-label={tr("Preview")}><Eye className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>}
+            <button type="button" onClick={existing.onDownload} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title={tr("Download")} aria-label={tr("Download")}><Download className="h-4 w-4 text-slate-500 hover:text-emerald-600" /></button>
+            {existing.onRemove && <button type="button" onClick={existing.onRemove} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title={tr("Remove file")} aria-label={tr("Remove file")}><Trash2 className="h-4 w-4 text-slate-500 hover:text-red-600" /></button>}
           </div>
         </div>
       ) : readOnlyText ? (
@@ -88,7 +89,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
               )}
             </div>
             {!uploading && (
-              <button type="button" onClick={() => onChange(null)} className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-colors hover:bg-slate-200 group-hover:opacity-100 focus:opacity-100" title="Remove file" aria-label="Remove file">
+              <button type="button" onClick={() => onChange(null)} className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-colors hover:bg-slate-200 group-hover:opacity-100 focus:opacity-100" title={tr("Remove file")} aria-label={tr("Remove file")}>
                 <Trash2 className="h-4 w-4 text-slate-500 hover:text-red-600" />
               </button>
             )}
@@ -108,7 +109,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
           <div className={cn("mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-colors", dragging ? "bg-emerald-100" : "bg-slate-100")}>
             <Upload className={cn("h-6 w-6", dragging ? "text-emerald-600" : "text-slate-400")} />
           </div>
-          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? "Drop your file here" : "Click to upload or drag & drop"}</p>
+          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? "Drop your file here" : tr("Click to upload or drag & drop")}</p>
           <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">{hint}</p>
         </div>
       )}

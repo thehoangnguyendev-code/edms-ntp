@@ -16,6 +16,7 @@ import type {
   WorkflowActionPolicyEffectiveResponse,
   WorkflowActionPolicyOptions,
 } from "../types";
+import { tr } from "@/i18n";
 
 type ResolverFields = {
   moduleKey: string;
@@ -73,7 +74,7 @@ export const PolicyResolverTab: React.FC = () => {
       setOptionsError(true);
       showToast({
         type: "error",
-        title: "Unable to load resolver options",
+        title: tr("Unable to load resolver options"),
         message: extractApiError(error).message,
       });
     } finally {
@@ -87,7 +88,7 @@ export const PolicyResolverTab: React.FC = () => {
 
   const moduleOptions: SelectOption[] = useMemo(
     () => [
-      { label: "Select module", value: "" },
+      { label: tr("Select module"), value: "" },
       ...(options?.modules ?? []).map((moduleKey) => ({
         label: moduleDisplayName(moduleKey),
         value: moduleKey,
@@ -156,14 +157,14 @@ export const PolicyResolverTab: React.FC = () => {
     const statuses = selectedAction?.defaultFromStatuses ?? [];
     return statuses.length
       ? [
-          { label: "Select status", value: "" },
+          { label: tr("Select status"), value: "" },
           ...statuses.map((status) => ({ label: status, value: status })),
         ]
       : [];
   }, [selectedAction]);
   const documentTypeOptions: SelectOption[] = useMemo(
     () => [
-      { label: "Any (Global policy)", value: "" },
+      { label: tr("Any (Global policy)"), value: "" },
       ...(options?.documentTypes ?? []).map((documentType) => ({
         label: documentType.name,
         value: documentType.id,
@@ -198,8 +199,8 @@ export const PolicyResolverTab: React.FC = () => {
     ) {
       showToast({
         type: "warning",
-        title: "Incomplete context",
-        message: "Fill in all required fields before resolving a policy.",
+        title: tr("Incomplete context"),
+        message: tr("Fill in all required fields before resolving a policy."),
       });
       return;
     }
@@ -223,7 +224,7 @@ export const PolicyResolverTab: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Policy resolution failed",
+        title: tr("Policy resolution failed"),
         message: extractApiError(error).message,
       });
     } finally {
@@ -244,8 +245,7 @@ export const PolicyResolverTab: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col space-y-4 md:space-y-6">
       <p className="text-sm text-slate-500">
-        Resolve the active workflow policy. This is a read-only server lookup:
-        it does not evaluate a user, grant access, or execute a transition.
+        {tr("Resolve the active workflow policy. This is a read-only server lookup: it does not evaluate a user, grant access, or execute a transition.")}
       </p>
       {optionsLoading ? (
         <SectionLoading />
@@ -253,19 +253,19 @@ export const PolicyResolverTab: React.FC = () => {
         <div className="space-y-3">
           <WarningBanner
             variant="warning"
-            description="Resolver options could not be loaded. Retry when the service is available."
+            description={tr("Resolver options could not be loaded. Retry when the service is available.")}
           />
           <Button variant="outline" size="sm" onClick={() => void loadOptions()}>
-            Retry
+            {tr("Retry")}
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-4 md:gap-6 xl:grid-cols-2">
           <div className="space-y-4 md:space-y-6">
-            <FormSection title="Policy lookup" icon={<SearchCheck className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+            <FormSection title={tr("Policy lookup")} icon={<SearchCheck className="h-4 w-4" />} contentClassName="p-4 md:p-5">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <Select
-                  label="Module *"
+                  label={tr("Module *")}
                   value={fields.moduleKey}
                   onChange={(moduleKey) =>
                     updateFields({ moduleKey, workflowKey: "", objectType: "", actionCode: "", fromStatus: "", documentTypeId: "" })
@@ -273,21 +273,21 @@ export const PolicyResolverTab: React.FC = () => {
                   options={moduleOptions}
                 />
                 <Select
-                  label="Workflow *"
+                  label={tr("Workflow *")}
                   value={fields.workflowKey}
                   onChange={(workflowKey) => updateFields({ workflowKey, objectType: "", actionCode: "", fromStatus: "" })}
                   options={workflowOptions}
                   disabled={!fields.moduleKey}
                 />
                 <Select
-                  label="Resource type *"
+                  label={tr("Resource type *")}
                   value={fields.objectType}
                   onChange={(objectType) => updateFields({ objectType, actionCode: "", fromStatus: "" })}
                   options={objectTypeOptions}
                   disabled={!fields.workflowKey}
                 />
                 <Select
-                  label="Action *"
+                  label={tr("Action *")}
                   value={fields.actionCode}
                   onChange={handleActionChange}
                   options={actionOptions}
@@ -302,12 +302,12 @@ export const PolicyResolverTab: React.FC = () => {
                   />
                 ) : (
                   <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                    From status <span className="text-red-500">*</span>
+                    {tr("From status")} <span className="text-red-500">*</span>
                     <input
                       type="text"
                       value={fields.fromStatus}
                       onChange={(event) => updateFields({ fromStatus: event.target.value })}
-                      placeholder={fields.actionCode ? "Enter status" : "Select an action first"}
+                      placeholder={fields.actionCode ? "Enter status" : tr("Select an action first")}
                       disabled={!fields.actionCode}
                       className="mt-1.5 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
                     />
@@ -315,7 +315,7 @@ export const PolicyResolverTab: React.FC = () => {
                 )}
                 {fields.moduleKey === "DOCUMENT_CONTROL" && (
                   <Select
-                    label="Document type (optional)"
+                    label={tr("Document type (optional)")}
                     value={fields.documentTypeId}
                     onChange={(documentTypeId) => updateFields({ documentTypeId })}
                     options={documentTypeOptions}
@@ -332,14 +332,14 @@ export const PolicyResolverTab: React.FC = () => {
                   className="w-full gap-2 whitespace-nowrap sm:w-auto"
                 >
                   <SearchCheck className="h-4 w-4" />
-                  Resolve policy
+                  {tr("Resolve policy")}
                 </Button>
               </div>
             </FormSection>
-            <FormSection title="Recent lookups" icon={<History className="h-4 w-4" />} contentClassName="p-0">
+            <FormSection title={tr("Recent lookups")} icon={<History className="h-4 w-4" />} contentClassName="p-0">
               {recent.length === 0 ? (
                 <p className="p-4 text-sm text-slate-500 md:p-5">
-                  Lookups you resolve in this visit are kept here, so you can compare two transitions.
+                  {tr("Lookups you resolve in this visit are kept here, so you can compare two transitions.")}
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
@@ -386,7 +386,7 @@ const PolicyResolutionResult: React.FC<{
   sourceColor: (source: string) => "blue" | "emerald" | "slate";
 }> = ({ result, resolving, sourceColor }) => (
   <FormSection
-    title="Resolution"
+    title={tr("Resolution")}
     icon={<ScanSearch className="h-4 w-4" />}
     headerRight={
       result ? (
@@ -404,10 +404,9 @@ const PolicyResolutionResult: React.FC<{
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400">
           <ScanSearch className="h-4 w-4" />
         </span>
-        <p className="text-sm font-medium text-slate-900">Select a transition</p>
+        <p className="text-sm font-medium text-slate-900">{tr("Select a transition")}</p>
         <p className="max-w-xs text-sm text-slate-500">
-          Choose the module, workflow, action and status, then resolve the policy to view the active policy and decision
-          path.
+          {tr("Choose the module, workflow, action and status, then resolve the policy to view the active policy and decision path.")}
         </p>
       </div>
     ) : (
@@ -415,13 +414,13 @@ const PolicyResolutionResult: React.FC<{
         {result.source === "NOT_CONFIGURED" ? (
           <WarningBanner
             variant="error"
-            title="No active policy"
-            description="No matching active policy exists. The runtime denies the action until a policy is configured."
+            title={tr("No active policy")}
+            description={tr("No matching active policy exists. The runtime denies the action until a policy is configured.")}
           />
         ) : (
           <WarningBanner
             variant="success"
-            title="Policy resolved"
+            title={tr("Policy resolved")}
             description={result.decisionMessage || "An active policy applies to this transition."}
           />
         )}
@@ -430,7 +429,7 @@ const PolicyResolutionResult: React.FC<{
         )}
         {result.trace.length > 0 && (
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">How the engine decided</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("How the engine decided")}</p>
             <ol>
               {result.trace.map((step, index) => (
                 <li key={`${step.scope}-${step.reasonCode}`} className="flex gap-3">
@@ -451,13 +450,13 @@ const PolicyResolutionResult: React.FC<{
         )}
         {result.policy && (
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-slate-200 pt-4 text-sm sm:grid-cols-2">
-            <ResolutionField label="Action" value={statusText(result.policy.actionLabel, result.policy.actionCode)} />
-            <ResolutionField label="From status" value={statusText(result.policy.fromStatusLabel, result.policy.fromStatus)} />
-            <ResolutionField label="Permission" value={result.policy.requiredPermissionCode} />
-            <ResolutionField label="Priority" value={String(result.policy.priority)} />
-            <ResolutionField label="Document type" value={result.policy.documentTypeName ?? "Global"} />
+            <ResolutionField label={tr("Action")} value={statusText(result.policy.actionLabel, result.policy.actionCode)} />
+            <ResolutionField label={tr("From status")} value={statusText(result.policy.fromStatusLabel, result.policy.fromStatus)} />
+            <ResolutionField label={tr("Permission")} value={result.policy.requiredPermissionCode} />
+            <ResolutionField label={tr("Priority")} value={String(result.policy.priority)} />
+            <ResolutionField label={tr("Document type")} value={result.policy.documentTypeName ?? "Global"} />
             <ResolutionField
-              label="Actors"
+              label={tr("Actors")}
               value={
                 result.policy.actors.length
                   ? result.policy.actors

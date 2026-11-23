@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button/Button';
 import { isApplePlatform } from '@/components/ui/kbd';
 import { GlobalSearchDialog } from './GlobalSearchDialog';
+import { tr } from "@/i18n";
 
 /** The magnifier at the left of the bell. It opens the search box in the middle of the screen; Ctrl+K (Cmd+K) opens it from anywhere. */
 export const GlobalSearchButton: React.FC = () => {
@@ -33,7 +34,7 @@ export const GlobalSearchButton: React.FC = () => {
         variant="ghost"
         size="icon"
         onClick={() => setIsOpen(true)}
-        aria-label="Search"
+        aria-label={tr("Search")}
         aria-haspopup="dialog"
         title={`Search (${isApplePlatform() ? '⌘K' : 'Ctrl+K'})`}
         className="text-slate-600 transition-colors hover:bg-transparent hover:text-emerald-600"

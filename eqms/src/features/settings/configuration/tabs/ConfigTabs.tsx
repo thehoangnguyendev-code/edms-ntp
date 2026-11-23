@@ -2,6 +2,7 @@ import React from 'react';
 import { IconHistory } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { TabNav, type TabItem } from '@/components/ui/tabs';
+import { tr } from "@/i18n";
 
 /** The last tab of every page that is split into tabs: the Audit Trail of that page of Configuration. */
 export const HISTORY_TAB = { id: 'history', label: 'History', icon: IconHistory } as const;
@@ -52,9 +53,9 @@ export function ConfigTabs<T extends string>({ tabs, activeTab, onChange, change
       <div role="tabpanel" id={`${idPrefix}-panel-${activeTab}`} aria-labelledby={`${idPrefix}-tab-${activeTab}`} className="p-4 md:p-5">
         {canReset && (
           <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
-            <span>This tab has changes that are not saved yet.</span>
+            <span>{tr("This tab has changes that are not saved yet.")}</span>
             <Button type="button" size="sm" variant="ghost" onClick={() => onReset?.(activeTab)} className="text-amber-900 hover:bg-amber-100">
-              Discard changes in this tab
+              {tr("Discard changes in this tab")}
             </Button>
           </div>
         )}

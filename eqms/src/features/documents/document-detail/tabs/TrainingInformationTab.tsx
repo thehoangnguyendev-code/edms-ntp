@@ -3,6 +3,7 @@ import { TemplateNoTrainingNotice } from "@/features/documents/document-revision
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { ProposedParticipantsField } from "@/features/training-activities/shared/ProposedParticipantsField";
+import { tr } from "@/i18n";
 
 interface TrainingInformationData {
   isRequired?: boolean;
@@ -42,7 +43,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
       <div className="flex items-center justify-between font-semibold text-slate-900">
         <Checkbox
           id="requires-training-detail"
-          label="Requires Training?"
+          label={tr("Requires Training?")}
           checked={isRequired}
           disabled={isReadOnly}
           onChange={(checked) =>
@@ -60,7 +61,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                Training Period (Days)
+                {tr("Training Period (Days)")}
               </label>
               <Input
                 type="number"
@@ -83,7 +84,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
         <div className="space-y-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-              Reason for skipping training
+              {tr("Reason for skipping training")}
             </label>
             <Textarea
               value={reasonForSkippingTraining}

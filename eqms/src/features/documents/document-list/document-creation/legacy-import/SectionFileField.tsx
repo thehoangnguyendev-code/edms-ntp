@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import { Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
+import { tr } from "@/i18n";
 
 // Same "Choose File" button + hidden input + filename pattern used by UploadRevisionModal.tsx,
 // reused here instead of a raw <input type="file"> so the UI stays visually consistent.
@@ -53,7 +54,7 @@ export const SectionFileField: React.FC<{
           className="gap-2 w-full sm:w-auto flex-shrink-0 whitespace-nowrap"
         >
           <Upload className="h-4 w-4" />
-          Choose File
+          {tr("Choose File")}
         </Button>
         <span className="min-w-0 flex-1 truncate text-sm text-slate-600">
           {file ? file.name : "No file chosen"}
@@ -66,8 +67,8 @@ export const SectionFileField: React.FC<{
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
             className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-            title="Delete uploaded file"
-            aria-label="Delete uploaded file"
+            title={tr("Delete uploaded file")}
+            aria-label={tr("Delete uploaded file")}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

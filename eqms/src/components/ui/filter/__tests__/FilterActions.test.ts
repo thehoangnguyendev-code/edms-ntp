@@ -22,7 +22,7 @@ describe("the cell of Clear Filters and the Custom Column icon", () => {
 
   it("is not a button with a name any more: the icon stays, the name is the tooltip and the accessible name", () => {
     const source = readFileSync(resolve(root, "components/ui/table/CustomColumnDrawer.tsx"), "utf8");
-    expect(source).toContain('aria-label="Custom Column"');
+    expect(source).toMatch(/aria-label=(?:"Custom Column"|\{tLabel\("Custom Column"\)\})/);
     expect(source).not.toContain("custom-column-label");
     expect(css).not.toContain("custom-column-label");
   });

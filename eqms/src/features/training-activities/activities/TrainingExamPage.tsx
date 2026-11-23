@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingExamApi, type TrainingExamAttemptView, type TrainingExamMine, type TrainingExamSummary } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { tr, trFormat } from "@/i18n";
 
 const isOpen = (a: TrainingExamMine["attempt"]): a is TrainingExamAttemptView => !!a && "questions" in a;
 
@@ -47,7 +48,7 @@ export function TrainingExamPage() {
       setAnswers({});
       load();
     } catch (e) {
-      showToast({ type: "error", title: "The test did not start", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The test did not start"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -57,10 +58,10 @@ export function TrainingExamPage() {
     try {
       setMine(await trainingExamApi.submit(attempt.attemptId, { answers, signatureToken }));
       setSigning(false);
-      showToast({ type: "success", title: "Test submitted", message: "" });
+      showToast({ type: "success", title: tr("Test submitted"), message: "" });
     } catch (e) {
       setSigning(false);
-      showToast({ type: "error", title: "The test was not submitted", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The test was not submitted"), message: trainingError(e) });
       load();
     }
   };
@@ -73,22 +74,22 @@ export function TrainingExamPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={goBack}>Back</Button>} />
+      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={goBack}>{tr("Back")}</Button>} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!mine && !error && <SectionLoading text="Loading…" />}
 
       {mine && done && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Result">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label={tr("Result")}>
           <div className="flex flex-wrap items-center gap-3">
-            <Badge color={mine.result === "PASSED" ? "emerald" : mine.result === "FAILED" ? "red" : "amber"}>{mine.result === "PASSED" ? "Passed" : mine.result === "FAILED" ? "Not passed" : done.status === "EXPIRED" ? "Time ran out" : "Waiting"}</Badge>
+            <Badge color={mine.result === "PASSED" ? "emerald" : mine.result === "FAILED" ? "red" : "amber"}>{mine.result === "PASSED" ? "Passed" : mine.result === "FAILED" ? tr("Not passed") : done.status === "EXPIRED" ? "Time ran out" : "Waiting"}</Badge>
             {done.status === "SUBMITTED" && <span className="text-2xl font-semibold text-slate-900">{done.percent}%</span>}
           </div>
           {done.status === "SUBMITTED" ? (
-            <p className="mt-3 text-sm text-slate-600">You scored {done.scoreObtained} of {done.scoreMax} points, attempt {done.attemptNo}, submitted {when(done.submittedAt)}. The result is in your training record when QA confirms the training.{mine.result === "FAILED" ? " Your trainer will arrange the retraining." : ""}</p>
+            <p className="mt-3 text-sm text-slate-600">{trFormat("You scored {score} of {max} points, attempt {attempt}, submitted {submittedAt}. The result is in your training record when QA confirms the training.", { score: done.scoreObtained, max: done.scoreMax, attempt: done.attemptNo, submittedAt: when(done.submittedAt) })}{mine.result === "FAILED" ? ` ${tr("Your trainer will arrange the retraining.")}` : ""}</p>
           ) : (
-            <p className="mt-3 text-sm text-slate-600">The time for attempt {done.attemptNo} ran out. Ask your trainer to release the test again.</p>
+            <p className="mt-3 text-sm text-slate-600">{trFormat("The time for attempt {attempt} ran out. Ask your trainer to release the test again.", { attempt: done.attemptNo })}</p>
           )}
-          {mine.canStart && <div className="mt-4"><Button onClick={() => void start()} loading={busy}>Start the test again</Button></div>}
+          {mine.canStart && <div className="mt-4"><Button onClick={() => void start()} loading={busy}>{tr("Start the test again")}</Button></div>}
         </section>
       )}
 
@@ -96,11 +97,11 @@ export function TrainingExamPage() {
         <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
           {mine.canStart ? (
             <>
-              <p className="text-sm text-slate-700">You may take the test now. Answer every question, then sign. If there is a time limit the clock starts when you press Start, and the test cannot be taken again unless your trainer releases it.</p>
-              <div className="mt-4"><Button onClick={() => void start()} loading={busy}>Start the test</Button></div>
+              <p className="text-sm text-slate-700">{tr("You may take the test now. Answer every question, then sign. If there is a time limit the clock starts when you press Start, and the test cannot be taken again unless your trainer releases it.")}</p>
+              <div className="mt-4"><Button onClick={() => void start()} loading={busy}>{tr("Start the test")}</Button></div>
             </>
           ) : (
-            <p className="text-sm text-slate-600">The test is not open for you. Your trainer opens it by marking you present at the session.</p>
+            <p className="text-sm text-slate-600">{tr("The test is not open for you. Your trainer opens it by marking you present at the session.")}</p>
           )}
         </section>
       )}
@@ -108,13 +109,13 @@ export function TrainingExamPage() {
       {attempt && (
         <>
           <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <span className="text-sm text-slate-700">Attempt {attempt.attemptNo} · {answered} of {attempt.questions.length} answered</span>
+            <span className="text-sm text-slate-700">{trFormat("Attempt {attempt} · {answered} of {total} answered", { attempt: attempt.attemptNo, answered, total: attempt.questions.length })}</span>
             {left != null && <span role="timer" aria-live="off" className={`font-mono text-lg ${left <= 60 ? "text-red-700" : "text-slate-900"}`}>{clock}</span>}
           </div>
           <ol className="space-y-4">
             {attempt.questions.map((q) => (
               <li key={q.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium text-slate-900">{q.qNo}. {q.prompt}</p><Badge color="slate">{q.points} pt{q.kind === "MULTI" ? " · tick all that apply" : ""}</Badge></div>
+                <div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium text-slate-900">{q.qNo}. {q.prompt}</p><Badge color="slate">{q.points} {tr("pt")}{q.kind === "MULTI" ? " · tick all that apply" : ""}</Badge></div>
                 {q.image && <img src={q.image} alt={`Picture of question ${q.qNo}`} className="max-h-72 max-w-full rounded border border-slate-200 bg-white object-contain" />}
                 <div className="mt-3">
                   {q.kind === "MULTI" ? (
@@ -130,9 +131,9 @@ export function TrainingExamPage() {
               </li>
             ))}
           </ol>
-          <div className="flex justify-end"><Button onClick={() => setSigning(true)} disabled={busy}>Finish and sign</Button></div>
+          <div className="flex justify-end"><Button onClick={() => setSigning(true)} disabled={busy}>{tr("Finish and sign")}</Button></div>
           <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => submit(d.signatureToken)} actionTitle="Sign the Completed Test" changes={statusChange("In Progress", "Submitted", "Test attempt")}
-            meaningDisplayName="Assessment Signed" meaningCode="TRAINING_ASSESSMENT_SIGNED" targetDetails={{ code: `Attempt ${attempt.attemptNo}`, title: "Training test", revision: "" }} />
+            meaningDisplayName="Assessment Signed" meaningCode="TRAINING_ASSESSMENT_SIGNED" targetDetails={{ code: `Attempt ${attempt.attemptNo}`, title: tr("Training test"), revision: "" }} />
         </>
       )}
     </div>

@@ -18,6 +18,7 @@ import {
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { CanShareBadge, errorMessage, LEVEL_LABEL, refOf, useShareAction, type FooterAction } from "./shareUi";
 import { ShareScrollList } from "./ShareScrollList";
+import { tr, trFormat } from "@/i18n";
 
 interface SharePeopleTabProps {
   node: SharingNode;
@@ -95,7 +96,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
       showToast({ type: "success", title: effect === "DENY" ? "Excluded" : "Shared", message: `${node.label ?? "The item"} was updated.` });
       reset();
     } catch (error) {
-      showToast({ type: "error", title: "Could not save", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not save"), message: errorMessage(error, "Please try again.") });
     } finally {
       setSaving(false);
     }
@@ -116,7 +117,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
       await refresh();
       showToast({ type: "success", title: "Removed", message: `${removeTarget.label} was taken out. The change was recorded in the Audit Trail.` });
     } catch (error) {
-      showToast({ type: "error", title: "Could not remove", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not remove"), message: errorMessage(error, "Please try again.") });
     } finally {
       setRemoveTarget(null);
     }
@@ -126,10 +127,10 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
     try {
       for (const entry of removable) await knowledgeApi.sharingRevoke(entry.ruleId);
       await refresh();
-      showToast({ type: "success", title: "Removed", message: "Everything you may remove was taken away. The changes were recorded in the Audit Trail." });
+      showToast({ type: "success", title: "Removed", message: tr("Everything you may remove was taken away. The changes were recorded in the Audit Trail.") });
     } catch (error) {
       await refresh().catch(() => undefined);
-      showToast({ type: "error", title: "Could not remove", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not remove"), message: errorMessage(error, "Please try again.") });
     } finally {
       setRemoveAll(false);
     }
@@ -163,10 +164,10 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
           <Trash2 className="h-4 w-4" />
         </Button>
       ) : p.inherited ? (
-        <span className="shrink-0 text-2xs text-slate-400">Inherited</span>
+        <span className="shrink-0 text-2xs text-slate-400">{tr("Inherited")}</span>
       ) : (
         <span className="inline-flex shrink-0 items-center gap-1 text-2xs text-slate-400" title={`Made by ${LEVEL_LABEL[p.createdByLevel]}: only the same or a higher level can remove it`}>
-          <Lock className="h-3 w-3" /> Locked
+          <Lock className="h-3 w-3" /> {tr("Locked")}
         </span>
       )}
     </div>
@@ -174,15 +175,15 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-      <section className="order-2 min-w-0 space-y-2.5" aria-label="People with access">
+      <section className="order-2 min-w-0 space-y-2.5" aria-label={tr("People with access")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Who has access</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{tr("Who has access")}</h3>
           {anyMine && (
             <div className="w-64">
               <TabNav
                 variant="pill"
                 ariaLabel="Which shares to show"
-                tabs={[{ id: "all", label: "All" }, { id: "mine", label: "Shared by me" }]}
+                tabs={[{ id: "all", label: "All" }, { id: "mine", label: tr("Shared by me") }]}
                 activeTab={show}
                 onChange={(id) => setShow(id as "all" | "mine")}
               />
@@ -194,22 +195,22 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
           fetchPage={fetchPeople}
           renderRow={row}
           getKey={personKey}
-          searchPlaceholder="Search who has access"
-          emptyText={show === "mine" ? "You have not shared this item yourself." : "Nobody except the Heads can see this yet."}
+          searchPlaceholder={tr("Search who has access")}
+          emptyText={show === "mine" ? tr("You have not shared this item yourself.") : tr("Nobody except the Heads can see this yet.")}
           reloadKey={`${reloadKey}:${show}`}
           toolbar={
             removable.length > 0 ? (
               <Button variant="outline" size="sm" onClick={() => setRemoveAll(true)} className="shrink-0 gap-1.5 text-red-600 hover:text-red-700">
-                <Trash2 className="h-4 w-4" /> Remove all
+                <Trash2 className="h-4 w-4" /> {tr("Remove all")}
               </Button>
             ) : undefined
           }
         />
       </section>
 
-      <section className="order-1 space-y-4" aria-label="Add people">
+      <section className="order-1 space-y-4" aria-label={tr("Add people")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Add people</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{tr("Add people")}</h3>
           {node.canExclude && (
             <div className="w-48">
               <TabNav
@@ -226,38 +227,38 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
         <div className="space-y-4" data-testid="everyone-switches">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800">Everyone</p>
+              <p className="text-sm font-medium text-slate-800">{tr("Everyone")}</p>
             </div>
-            <Switch checked={everyone} onChange={setEveryone} aria-label="Everyone" />
+            <Switch checked={everyone} onChange={setEveryone} aria-label={tr("Everyone")} />
           </div>
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800">Everyone in {ownerName ?? `the ${ownerWord}`}</p>
+                <p className="text-sm font-medium text-slate-800">{trFormat("Everyone in {owner}", { owner: ownerName ?? trFormat("the {word}", { word: ownerWord }) })}</p>
             </div>
-            <Switch checked={wholeDepartment} onChange={setWholeDepartment} aria-label={`Everyone in the ${ownerWord}`} />
+                <Switch checked={wholeDepartment} onChange={setWholeDepartment} aria-label={trFormat("Everyone in the {word}", { word: ownerWord })} />
           </div>
         </div>
 
         <MultiSelect
-          label="Other Departments"
+          label={tr("Other Departments")}
           value={departmentIds}
           onChange={(values) => setDepartmentIds(values.map(String))}
           options={departmentOptions}
-          placeholder="Everyone of these Departments"
-          searchPlaceholder="Search a Department"
+          placeholder={tr("Everyone of these Departments")}
+          searchPlaceholder={tr("Search a Department")}
           maxVisibleTags={4}
         />
         <MultiSelect
-          label="Positions"
+          label={tr("Positions")}
           value={positionIds}
           onChange={(values) => setPositionIds(values.map(String))}
           options={(options?.positions ?? []).map((p) => ({ value: p.value, label: p.label }))}
-          placeholder="Everyone who holds one of these Positions"
-          searchPlaceholder="Search a Position"
+          placeholder={tr("Everyone who holds one of these Positions")}
+          searchPlaceholder={tr("Search a Position")}
           maxVisibleTags={4}
         />
         <MultiSelect
-          label="Specific people"
+          label={tr("Specific people")}
           value={users.map((u) => u.id)}
           onChange={(values) =>
             setUsers((current) => {
@@ -272,8 +273,8 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
             return found.map((u) => ({ value: u.id, label: userLabel(u) }));
           }}
           minSearchLength={0}
-          placeholder="Search a person by name or employee ID"
-          searchPlaceholder="Type a name or employee ID"
+          placeholder={tr("Search a person by name or employee ID")}
+          searchPlaceholder={tr("Type a name or employee ID")}
           maxVisibleTags={4}
         />
       </section>
@@ -289,7 +290,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
             {removeTarget?.effect === "DENY"
               ? `${removeTarget.label} can see this item again if another share reaches them.`
               : `${removeTarget?.label ?? "They"} stop seeing this item unless another share reaches them. The others in the same share keep their access.`}{" "}
-            This is recorded in the Audit Trail.
+            {tr("This is recorded in the Audit Trail.")}
           </p>
         }
         confirmText="Remove"
@@ -301,14 +302,13 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
         onClose={() => setRemoveAll(false)}
         onConfirm={removeEverything}
         type="confirm"
-        title="Remove all?"
+        title={tr("Remove all?")}
         description={
           <p className="text-sm text-slate-600">
-            Every share and exclusion on this item that you may remove ({removable.length}) is taken away. What a higher level shared, and what
-            the item inherits, stays. This is recorded in the Audit Trail.
+            {trFormat("Every share and exclusion on this item that you may remove ({count}) is taken away. What a higher level shared, and what the item inherits, stays. This is recorded in the Audit Trail.", { count: removable.length })}
           </p>
         }
-        confirmText="Remove all"
+        confirmText={tr("Remove all")}
         cancelText="Cancel"
       />
     </div>

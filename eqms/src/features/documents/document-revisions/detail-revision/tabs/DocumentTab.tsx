@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { Loading } from "@/components/ui/loading/Loading";
@@ -94,10 +95,10 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
         ) : (
           <p className="text-sm font-medium text-slate-600">
             {previewStatus === "error"
-              ? "The PDF preview is unavailable."
+              ? tr("The PDF preview is unavailable.")
               : documentFile
-                ? "A PDF preview has not been generated yet."
-                : "No source file is available for this revision."}
+                ? tr("A PDF preview has not been generated yet.")
+                : tr("No source file is available for this revision.")}
           </p>
         )}
         <p className="text-sm text-slate-600">{previewHint}</p>

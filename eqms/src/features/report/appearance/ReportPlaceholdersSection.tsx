@@ -7,6 +7,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { DataTable, TABLE_STYLES, type DataTableColumn } from "@/components/ui/table";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { reportTokens } from "../templates/reportTokens";
+import { tr } from "@/i18n";
 
 type Token = (typeof reportTokens)[number];
 
@@ -41,15 +42,15 @@ export function ReportPlaceholdersSection() {
   const columns: DataTableColumn<Token>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_token, index) => index + 1 },
     { id: "name", header: "Name", label: "Name", cell: (token) => <span className="font-medium text-slate-900">{token.name}</span> },
-    { id: "code", header: "Placeholder", label: "Placeholder", cell: (token) => <span translate="no" className="font-mono text-xs text-slate-700">{`{{${token.code}}}`}</span> },
-    { id: "example", header: "Filled with", label: "Filled with", cellClassName: "max-w-md whitespace-normal", cell: (token) => <span className="text-slate-600">{token.example}</span> },
+    { id: "code", header: tr("Placeholder"), label: tr("Placeholder"), cell: (token) => <span translate="no" className="font-mono text-xs text-slate-700">{`{{${token.code}}}`}</span> },
+    { id: "example", header: tr("Filled with"), label: tr("Filled with"), cellClassName: "max-w-md whitespace-normal", cell: (token) => <span className="text-slate-600">{token.example}</span> },
     { id: "copy", header: "Copy", label: "Copy", cell: (token) => copyButton(token) },
   ];
 
   return (
-    <FormSection title="Report Placeholders" icon={<IconBraces className="h-4 w-4" />}>
+    <FormSection title={tr("Report Placeholders")} icon={<IconBraces className="h-4 w-4" />}>
       <div className="space-y-3">
-        <Input aria-label="Filter placeholders" placeholder="Filter by name or code…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <Input aria-label={tr("Filter placeholders")} placeholder={tr("Filter by name or code…")} value={filter} onChange={(e) => setFilter(e.target.value)} />
         {copyError && <WarningBanner variant="error" description={copyError} />}
         {mobile ? (
           <ul className="space-y-2">
@@ -63,10 +64,10 @@ export function ReportPlaceholdersSection() {
                 <p className="text-xs text-slate-500">{token.example}</p>
               </li>
             ))}
-            {shown.length === 0 && <li className="py-3 text-xs text-slate-500">No field matches.</li>}
+            {shown.length === 0 && <li className="py-3 text-xs text-slate-500">{tr("No field matches.")}</li>}
           </ul>
         ) : (
-          <DataTable rows={shown} columns={columns} getRowKey={(token) => token.code} emptyState={<p className="py-6 text-center text-sm text-slate-500">No field matches.</p>} />
+          <DataTable rows={shown} columns={columns} getRowKey={(token) => token.code} emptyState={<p className="py-6 text-center text-sm text-slate-500">{tr("No field matches.")}</p>} />
         )}
       </div>
     </FormSection>

@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ZoomIn, ZoomOut, RotateCcw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button/Button';
+import { tr } from "@/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -373,7 +374,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                     <motion.div
                         role="dialog"
                         aria-modal="true"
-                        aria-label="Crop avatar"
+                        aria-label={tr("Crop avatar")}
                         initial={{ opacity: 0, scale: 0.95, y: 16 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -386,13 +387,13 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                         <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 bg-white shrink-0">
                             <div className="flex items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm sm:text-base font-semibold text-slate-900 leading-tight">Crop Avatar</h3>
+                                    <h3 className="text-sm sm:text-base font-semibold text-slate-900 leading-tight">{tr("Crop Avatar")}</h3>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={onClose}
                                     className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                                    aria-label="Close"
+                                    aria-label={tr("Close")}
                                 >
                                     <X className="h-4 w-4 text-slate-500" />
                                 </button>
@@ -428,7 +429,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                                     onClick={zoomOut}
                                     disabled={zoom <= minZoom}
                                     className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                    aria-label="Zoom out"
+                                    aria-label={tr("Zoom out")}
                                 >
                                     <ZoomOut className="h-4 w-4" />
                                 </button>
@@ -446,7 +447,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                                         setOffset(o => clampOffset(o.x, o.y, next));
                                     }}
                                     className="flex-1 h-1.5 rounded-full accent-emerald-600 cursor-pointer"
-                                    aria-label="Zoom level"
+                                    aria-label={tr("Zoom level")}
                                 />
 
                                 <button
@@ -454,7 +455,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                                     onClick={zoomIn}
                                     disabled={zoom >= maxZoom}
                                     className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                    aria-label="Zoom in"
+                                    aria-label={tr("Zoom in")}
                                 >
                                     <ZoomIn className="h-4 w-4" />
                                 </button>
@@ -463,8 +464,8 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                                     type="button"
                                     onClick={resetView}
                                     className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                                    aria-label="Reset view"
-                                    title="Reset view"
+                                    aria-label={tr("Reset view")}
+                                    title={tr("Reset view")}
                                 >
                                     <RotateCcw className="h-4 w-4" />
                                 </button>
@@ -474,7 +475,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                         {/* Footer — FormModal style, buttons right-aligned */}
                         <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50/50 border-t border-slate-200 flex justify-end items-center gap-2 sm:gap-3 shrink-0">
                             <Button size="sm" variant="outline" onClick={onClose}>
-                                Cancel
+                                {tr("Cancel")}
                             </Button>
                             <Button
                                 size="sm"
@@ -482,7 +483,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
                                 onClick={handleCrop}
                                 className="gap-1.5"
                             >
-                                Use this crop
+                                {tr("Use this crop")}
                             </Button>
                         </div>
                     </motion.div>

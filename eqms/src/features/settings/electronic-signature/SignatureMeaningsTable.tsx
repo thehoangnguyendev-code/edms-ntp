@@ -8,6 +8,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { displayDateTime } from "@/utils/format";
 import { electronicSignatureSettingsApi, type ElectronicSignatureMeaning, type ElectronicSignatureMeaningRow } from "@/services/api/electronicSignatureSettings";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 interface Props {
   /** The meanings as they are being edited, with what has not been saved yet. */
@@ -78,23 +79,23 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
         />
       ),
     },
-    { id: "updatedAt", header: "Last Updated On", sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? displayDateTime(r.updatedAt) : "—") },
+    { id: "updatedAt", header: tr("Last Updated On"), sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? displayDateTime(r.updatedAt) : "—") },
   ];
   const { layout, control } = useCustomColumnLayout("esign.meanings", columns);
 
   const filters: ReportSelectFilter[] = [
-    { id: "module", label: "Module", value: module, options: [{ label: "All modules", value: "" }, ...modules.map((m) => ({ label: moduleDisplayName(m), value: m }))], onChange: (v) => { setModule(v); table.setCurrentPage(1); } },
+    { id: "module", label: "Module", value: module, options: [{ label: tr("All modules"), value: "" }, ...modules.map((m) => ({ label: moduleDisplayName(m), value: m }))], onChange: (v) => { setModule(v); table.setCurrentPage(1); } },
   ];
 
   return (
     <div className="space-y-3">
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search by action, code or meaning…"
+        searchPlaceholder={tr("Search by action, code or meaning…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters}
-        dates={[{ id: "updated", label: "Last Updated Date Range", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
+        dates={[{ id: "updated", label: tr("Last Updated Date Range"), from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
         hasActiveFilters={Boolean(module || from || to || table.searchQuery)}
         onClear={() => { setModule(""); setFrom(""); setTo(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
         customControl={control}
@@ -108,7 +109,7 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
 
           columns={columns}
           columnLayout={layout}
-          emptyState={<TableEmptyState title="No Signing Actions" description="No signing action matches the search or the filters." />}
+          emptyState={<TableEmptyState title={tr("No Signing Actions")} description={tr("No signing action matches the search or the filters.")} />}
           pagination={table.totalItems > 0 ? (
             <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />
           ) : undefined}

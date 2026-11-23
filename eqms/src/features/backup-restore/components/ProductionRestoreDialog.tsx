@@ -16,14 +16,15 @@ import { PagedTable } from "./PagedTable";
 import { formatDateTime } from "../format";
 import { CONTENT_COLOR, statusLabel } from "../types";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** The backups are listed five to a page, newest first. */
 const PAGE_SIZE = 5;
 const CONTENT_SHORT: Record<string, string> = { DATABASE: "Database", OBJECT_STORE: "Files", CONFIGURATION: "Settings" };
 
 const PART_LABEL: Record<BackupPart, { label: string; hint: string }> = {
-  DATABASE: { label: "Database", hint: "Replaces the live database. It contains the settings." },
-  OBJECT_STORE: { label: "Files", hint: "Adds the files the store is missing. Nothing is overwritten." },
+  DATABASE: { label: "Database", hint: tr("Replaces the live database. It contains the settings.") },
+  OBJECT_STORE: { label: "Files", hint: tr("Adds the files the store is missing. Nothing is overwritten.") },
 };
 
 const ORDER: BackupPart[] = ["DATABASE", "OBJECT_STORE"];
@@ -120,7 +121,7 @@ export const ProductionRestoreDialog: React.FC<{
   const toggle = (part: BackupPart) => setParts((current) => (current.includes(part) ? current.filter((p) => p !== part) : [...current, part]));
   const canContinue = !!backup && understood && parts.length > 0;
   const columns: DataTableColumn<BackupRecord>[] = [
-    { id: "id", header: "Backup Number", cellClassName: "py-1.5 md:py-3", cell: (row) => <span className="font-medium text-slate-900">{row.id}</span> },
+    { id: "id", header: tr("Backup Number"), cellClassName: "py-1.5 md:py-3", cell: (row) => <span className="font-medium text-slate-900">{row.id}</span> },
     { id: "started", header: "Started", cellClassName: "py-1.5 md:py-3", cell: (row) => formatDateTime(row.startedAt) },
     { id: "type", header: "Type", cellClassName: "py-1.5 md:py-3", cell: (row) => statusLabel(row.type) },
     { id: "contents", header: "Contents", cellClassName: "py-1.5 md:py-3", cell: (row) => (row.components.length === 0 ? "—" : <span className="flex flex-wrap gap-2">{row.components.map((c) => <Badge key={c.key} color={CONTENT_COLOR[c.key] ?? "slate"}>{CONTENT_SHORT[c.key] ?? c.key}</Badge>)}</span>) },
@@ -130,8 +131,8 @@ export const ProductionRestoreDialog: React.FC<{
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Restore a Backup"
-      description="Replaces the live data with what the backup holds. Files are only added, never overwritten."
+      title={tr("Restore a Backup")}
+      description={tr("Replaces the live data with what the backup holds. Files are only added, never overwritten.")}
       confirmText="Continue to Sign"
       confirmDisabled={!canContinue}
       onConfirm={() => onContinue(backup, parts)}
@@ -140,14 +141,14 @@ export const ProductionRestoreDialog: React.FC<{
       <div className="space-y-4">
         <WarningBanner
           variant="warning"
-          description="Everything entered after this backup was taken will no longer be in the live system. The current database is kept aside, so a database restore can be rolled back until it is finalized. The system must be in restore maintenance first."
+          description={tr("Everything entered after this backup was taken will no longer be in the live system. The current database is kept aside, so a database restore can be rolled back until it is finalized. The system must be in restore maintenance first.")}
         />
         {error && <WarningBanner variant="error" description={error} />}
         {holdsOldSettingsPart && (
-          <WarningBanner variant="info" description="This backup also holds a separate settings part, made before it was removed. It is not restored on its own: the settings are inside the database." />
+          <WarningBanner variant="info" description={tr("This backup also holds a separate settings part, made before it was removed. It is not restored on its own: the settings are inside the database.")} />
         )}
-        <FormField label="Backup" required hint="Only completed backups whose integrity check passed are listed, newest first. Tick the one to restore.">
-          {!onlyBackup && <SearchInput value={search} onChange={setSearch} ariaLabel="Search backups" placeholder="Backup number…" className="mb-3" />}
+        <FormField label={tr("Backup")} required hint={tr("Only completed backups whose integrity check passed are listed, newest first. Tick the one to restore.")}>
+          {!onlyBackup && <SearchInput value={search} onChange={setSearch} ariaLabel="Search backups" placeholder={tr("Backup number…")} className="mb-3" />}
           <PagedTable
             rows={rows}
             getRowKey={(row) => row.id}
@@ -165,7 +166,7 @@ export const ProductionRestoreDialog: React.FC<{
           />
         </FormField>
         {chosen && (
-          <FormField label="What to restore" required>
+          <FormField label={tr("What to restore")} required>
             <div className="space-y-2">
               {offered.map((part) => (
                 <PartCheckbox key={part} id={`restore-part-${part}`} label={PART_LABEL[part].label} hint={PART_LABEL[part].hint} checked={parts.includes(part)} onChange={() => toggle(part)} />
@@ -176,7 +177,7 @@ export const ProductionRestoreDialog: React.FC<{
         <Checkbox
           checked={understood}
           onChange={setUnderstood}
-          label="I understand that the live data will be replaced by this backup."
+          label={tr("I understand that the live data will be replaced by this backup.")}
           labelClassName="normal-case font-normal sm:text-sm"
         />
       </div>

@@ -4,6 +4,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { trainingError, trainingSpecimenApi } from "@/services/api/trainingActivities";
 import { day } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 /**
  * The specimen signature in force of a person (FRM.0007), opened beside the scan that is being checked against the paper: the person who checks compares the signature by eye. Nothing is
@@ -39,7 +40,7 @@ export function SpecimenViewModal({ personId, personName, onClose }: { personId:
       description={state.versionNo ? `Version ${state.versionNo}, current since ${state.effectiveDate ? day(state.effectiveDate) : "—"}. Compare it by eye with the signature on the paper.` : undefined}>
       {state.loading && <SectionLoading text="Opening the specimen signature…" />}
       {state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}
-      {state.none && <p className="text-sm text-slate-600">This person has no specimen signature record.</p>}
+      {state.none && <p className="text-sm text-slate-600">{tr("This person has no specimen signature record.")}</p>}
       {state.urls.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
           {state.urls.map((url, i) => (
@@ -52,7 +53,7 @@ export function SpecimenViewModal({ personId, personName, onClose }: { personId:
       )}
       {state.watermarked && (state.urls.length > 0 || state.loading) && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-slate-500">{original ? "Showing the pictures as they were uploaded." : "Showing the pictures with the watermark."} Opening the original is recorded in the Audit Trail.</p>
+          <p className="text-xs text-slate-500">{original ? "Showing the pictures as they were uploaded." : "Showing the pictures with the watermark."} {tr("Opening the original is recorded in the Audit Trail.")}</p>
           <Button type="button" size="sm" variant="outline" disabled={state.loading} onClick={() => setOriginal((value) => !value)}>{original ? "Show With Watermark" : "Show Original"}</Button>
         </div>
       )}

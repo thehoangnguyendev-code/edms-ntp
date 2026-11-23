@@ -31,6 +31,7 @@ import { folderColor } from "@/features/self-service/knowledge/explorer/explorer
 import { FolderColorField } from "../FolderColorField";
 import { userOptionLabel } from "../userOptionLabel";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 export const BusinessUnitsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -164,7 +165,7 @@ export const BusinessUnitsTab = React.forwardRef<
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: "Business Unit Status Update Failed",
+          title: tr("Business Unit Status Update Failed"),
           message: extractApiMessage(error, "Unable to update business unit status."),
         });
       })
@@ -179,7 +180,7 @@ export const BusinessUnitsTab = React.forwardRef<
         reload();
         showToast({
           type: "success",
-          title: "Business Unit Deleted",
+          title: tr("Business Unit Deleted"),
           message: `Business Unit "${selectedItem.name}" has been deleted successfully.`,
         });
       }
@@ -189,7 +190,7 @@ export const BusinessUnitsTab = React.forwardRef<
       if (import.meta.env.DEV) console.error("Failed to delete business unit", error);
       showToast({
         type: "error",
-        title: "Business Unit Delete Failed",
+        title: tr("Business Unit Delete Failed"),
         message: extractApiMessage(error, "Unable to delete business unit."),
       });
       setShowDeleteModal(false);
@@ -229,10 +230,10 @@ export const BusinessUnitsTab = React.forwardRef<
   type UnitRow = (typeof items)[number];
   const unitColumns: DataTableColumn<UnitRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Business Unit Name", label: "Business Unit Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
+    { id: "name", header: tr("Business Unit Name"), label: tr("Business Unit Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
     { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => <Badge color="blue" size="sm">{item.abbreviation}</Badge> },
     { id: "icon", header: "Folder", label: "Folder", cell: (item) => <FolderIcon color={item.iconColor || folderColor(item.name)} className="h-6 w-7" /> },
-    { id: "headOfUnitName", header: "Head of Unit", label: "Head of Unit", cellClassName: "text-slate-700", cell: (item) => item.headOfUnitName || "-" },
+    { id: "headOfUnitName", header: tr("Head of Unit"), label: tr("Head of Unit"), cellClassName: "text-slate-700", cell: (item) => item.headOfUnitName || "-" },
     {
       id: "departments",
       header: "Departments",
@@ -240,7 +241,7 @@ export const BusinessUnitsTab = React.forwardRef<
       cell: (item) => (
         <span className="inline-flex items-center gap-1.5 text-slate-600">
           <span className="font-semibold text-slate-900">{departmentCountByUnit[item.id] ?? 0}</span>
-          {" "}department{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
+          {" "}{tr("department")}{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
         </span>
       ),
     },
@@ -250,9 +251,9 @@ export const BusinessUnitsTab = React.forwardRef<
       header: "Status",
       label: "Status",
       sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
-      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>),
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>),
     },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const unitAction: DataTableAction<UnitRow> = {
     header: "Action",
@@ -262,7 +263,7 @@ export const BusinessUnitsTab = React.forwardRef<
           ref={getButtonRef(item.id)}
           onClick={(e) => handleDropdownToggle(item.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -275,13 +276,13 @@ export const BusinessUnitsTab = React.forwardRef<
       {/* Filters */}
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search business units..."
+                placeholder={tr("Search business units...")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -307,7 +308,7 @@ export const BusinessUnitsTab = React.forwardRef<
               className="whitespace-nowrap gap-2"
             >
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -316,13 +317,13 @@ export const BusinessUnitsTab = React.forwardRef<
   trailing={<div className="hidden md:block">{unitControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search business units..."}
+      placeholder={tr("Search business units...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -345,7 +346,7 @@ export const BusinessUnitsTab = React.forwardRef<
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -362,12 +363,12 @@ export const BusinessUnitsTab = React.forwardRef<
 <div className="hidden md:flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search business units..."
+                  placeholder={tr("Search business units...")}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -380,7 +381,7 @@ export const BusinessUnitsTab = React.forwardRef<
 
             <div className="w-full">
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={(value) => {
                   setStatusFilter(value as "All" | "Active" | "Inactive");
@@ -391,13 +392,13 @@ export const BusinessUnitsTab = React.forwardRef<
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All"
+                placeholder={tr("All")}
               />
             </div>
 
             <div className="w-full">
               <DateRangePicker
-                label="Modified Date Range"
+                label={tr("Modified Date Range")}
                 startDate={modifiedFromDate}
                 endDate={modifiedToDate}
                 onStartDateChange={(v) => {
@@ -408,7 +409,7 @@ export const BusinessUnitsTab = React.forwardRef<
                   setModifiedToDate(v);
                   setCurrentPage(1);
                 }}
-                placeholder="Select range"
+                placeholder={tr("Select range")}
               />
             </div>
             <div className="filter-actions flex items-end gap-2">
@@ -456,7 +457,7 @@ export const BusinessUnitsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Business Unit</span>
+            <span>{tr("Edit Business Unit")}</span>
           </button>
           <button
             onClick={(e) => {
@@ -467,9 +468,9 @@ export const BusinessUnitsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             {items.find((i) => i.id === openDropdownId)?.isActive ? (
-              <><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>
+              <><IconToggleLeft className="h-3.5 w-3.5" /><span>{tr("Disable")}</span></>
             ) : (
-              <><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>
+              <><IconToggleRight className="h-3.5 w-3.5" /><span>{tr("Enable")}</span></>
             )}
           </button>
           <button
@@ -481,7 +482,7 @@ export const BusinessUnitsTab = React.forwardRef<
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
+            <span>{tr("Delete")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
@@ -532,18 +533,17 @@ export const BusinessUnitsTab = React.forwardRef<
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleConfirmDelete}
         type="warning"
-        title="Delete Business Unit?"
+        title={tr("Delete Business Unit?")}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to delete{" "}
+              {tr("Are you sure you want to delete")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> Departments assigned to this
-                business unit will lose their association. This action cannot be undone.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("Departments assigned to this business unit will lose their association. This action cannot be undone.")}
               </p>
             </div>
           </div>
@@ -562,22 +562,22 @@ export const BusinessUnitsTab = React.forwardRef<
         }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Business Unit?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Business Unit?")}`}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+              {tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This change will take effect immediately.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This change will take effect immediately.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel={true}
@@ -601,7 +601,7 @@ export const BusinessUnitsTab = React.forwardRef<
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
         >
@@ -627,7 +627,7 @@ export const BusinessUnitsTab = React.forwardRef<
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Modified Date Range"
+          label={tr("Modified Date Range")}
           isExpanded={expandedSections.has("date")}
           onToggle={() => toggleSection("date")}
         >
@@ -644,7 +644,7 @@ export const BusinessUnitsTab = React.forwardRef<
                 setModifiedToDate(v);
                 setCurrentPage(1);
               }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
         </FilterAccordionItem>
@@ -724,21 +724,21 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
       dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "New"} Business Unit`}
+        title={`${isEdit ? tr("Edit") : tr("New")} ${tr("Business Unit")}`}
       isLoading={isSaving}
       size="lg"
     >
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Business Unit Name<span className="text-red-500 ml-1">*</span>
+            {tr("Business Unit Name")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="e.g., Operations"
+            placeholder={tr("e.g., Operations")}
             required
             disabled={isSaving}
           />
@@ -746,7 +746,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Abbreviation<span className="text-red-500 ml-1">*</span>
+            {tr("Abbreviation")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
@@ -755,7 +755,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
               setFormData({ ...formData, abbreviation: e.target.value.toUpperCase() })
             }
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="e.g., OPU"
+            placeholder={tr("e.g., OPU")}
             required
             disabled={isSaving}
           />
@@ -763,21 +763,21 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Description
+            {tr("Description")}
           </label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter description (optional)"
+            placeholder={tr("Enter description (optional)")}
             disabled={isSaving}
           />
         </div>
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Head of Unit
+            {tr("Head of Unit")}
           </label>
           <Select
             value={formData.headOfUnitId}
@@ -785,7 +785,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
             options={formData.headOfUnitId ? [{ label: formData.headOfUnitLabel || "—", value: formData.headOfUnitId }] : []}
             onSearch={searchHeadOfUnitOptions}
             enableSearch
-            placeholder="Search and select a user..."
+            placeholder={tr("Search and select a user...")}
             disabled={isSaving}
           />
         </div>
@@ -797,7 +797,7 @@ const BusinessUnitModal: React.FC<BusinessUnitModalProps> = ({
             id="isActive-businessunit"
             checked={formData.isActive}
             onChange={(checked) => setFormData({ ...formData, isActive: checked })}
-            label="Active"
+            label={tr("Active")}
             disabled={isSaving}
           />
         </div>

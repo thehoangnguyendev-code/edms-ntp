@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -23,17 +24,17 @@ interface PairTab {
  */
 export const REPORT_TAB_PAIRS = {
   runs: {
-    title: "Report Run History",
+    title: tr("Report Run History"),
     tabs: [
-      { id: "history", label: "Run History", path: ROUTES.REPORT.HISTORY },
-      { id: "legal-holds", label: "Legal Hold Register", path: ROUTES.REPORT.LEGAL_HOLDS, needsRegisterAccess: true },
+      { id: "history", label: tr("Run History"), path: ROUTES.REPORT.HISTORY },
+      { id: "legal-holds", label: tr("Legal Hold Register"), path: ROUTES.REPORT.LEGAL_HOLDS, needsRegisterAccess: true },
     ] as PairTab[],
   },
   scheduled: {
-    title: "Scheduled Reports",
+    title: tr("Scheduled Reports"),
     tabs: [
       { id: "scheduled", label: "Schedules", path: ROUTES.REPORT.SCHEDULED },
-      { id: "delivery-log", label: "Delivery Log", path: ROUTES.REPORT.DELIVERY_LOG, needsRegisterAccess: true },
+      { id: "delivery-log", label: tr("Delivery Log"), path: ROUTES.REPORT.DELIVERY_LOG, needsRegisterAccess: true },
     ] as PairTab[],
   },
 };

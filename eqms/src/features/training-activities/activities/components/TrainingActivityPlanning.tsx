@@ -8,6 +8,7 @@ import { trainingActivitiesApi, type TrainingPerson, type TrainingSession, type 
 import { ASSESSMENT_BY_METHOD, ASSESSMENT_LABEL, METHOD_LABEL } from "../../shared/trainingLabels";
 import { TrainingDateField, DATE_HINT } from "../../shared/TrainingDateField";
 import { TrainingAssigneePicker, type AssigneeSelection, type Outsider } from "./TrainingAssigneePicker";
+import { tr, trFormat } from "@/i18n";
 
 export type SessionDraft = Parameters<typeof trainingActivitiesApi.addSession>[1];
 
@@ -22,7 +23,7 @@ export function PersonPicker({ value, onChange, label }: { value: string; onChan
     return mapped;
   }, []);
   useEffect(() => { void search(""); }, [search]);
-  return <Select label={label} value={value} onChange={onChange} options={options} onSearch={search} placeholder="Search by name" />;
+  return <Select label={label} value={value} onChange={onChange} options={options} onSearch={search} placeholder={tr("Search by name")} />;
 }
 
 const PLATFORMS = ["Zoom", "Microsoft Teams", "Google Meet", "Other"].map((p) => ({ label: p, value: p }));
@@ -56,35 +57,35 @@ export function SessionPanel({ dueDate, busy = false, onSave, onDraft, saveText 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-        <div className="md:col-span-2"><FormField label="Training Topic" required><Input value={form.topic} maxLength={500} placeholder="What will be taught, e.g., SOP.0009 Qualification of equipment and systems" onChange={(e) => setForm({ ...form, topic: e.target.value })} /></FormField></div>
-        {!external && <Select label="Mode" value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
-        {!external && <Select label="Assessment" value={form.assessmentMethod} enableSearch={false} onChange={(v) => setForm({ ...form, assessmentMethod: v })} options={Object.entries(ASSESSMENT_LABEL).map(([value, label]) => ({ label: ASSESSMENT_BY_METHOD[form.method].includes(value) ? `${label} (SOP default)` : label, value }))} />}
+        <div className="md:col-span-2"><FormField label={tr("Training Topic")} required><Input value={form.topic} maxLength={500} placeholder={tr("What will be taught, e.g., SOP.0009 Qualification of equipment and systems")} onChange={(e) => setForm({ ...form, topic: e.target.value })} /></FormField></div>
+        {!external && <Select label={tr("Mode")} value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
+        {!external && <Select label={tr("Assessment")} value={form.assessmentMethod} enableSearch={false} onChange={(v) => setForm({ ...form, assessmentMethod: v })} options={Object.entries(ASSESSMENT_LABEL).map(([value, label]) => ({ label: ASSESSMENT_BY_METHOD[form.method].includes(value) ? `${label} (SOP default)` : label, value }))} />}
         {!external && !ASSESSMENT_BY_METHOD[form.method].includes(form.assessmentMethod) && (
-          <p className="text-xs text-amber-700 md:col-span-2">SOP.0003 5.1.2 gives {ASSESSMENT_LABEL[ASSESSMENT_BY_METHOD[form.method][0]]} for {METHOD_LABEL[form.method]}. A different way of assessment is allowed; it stays in the record of the session.</p>
+          <p className="text-xs text-amber-700 md:col-span-2">{trFormat("SOP.0003 5.1.2 gives {assessment} for {method}. A different way of assessment is allowed; it stays in the record of the session.", { assessment: ASSESSMENT_LABEL[ASSESSMENT_BY_METHOD[form.method][0]], method: METHOD_LABEL[form.method] })}</p>
         )}
         {external ? (
-          <div className="md:col-span-2"><FormField label="Trainer (outside the company, optional)"><Input value={form.externalTrainerName} maxLength={255} placeholder="Name of the external trainer or consultant" onChange={(e) => setForm({ ...form, externalTrainerName: e.target.value })} /></FormField></div>
+          <div className="md:col-span-2"><FormField label={tr("Trainer (outside the company, optional)")}><Input value={form.externalTrainerName} maxLength={255} placeholder={tr("Name of the external trainer or consultant")} onChange={(e) => setForm({ ...form, externalTrainerName: e.target.value })} /></FormField></div>
         ) : (
         <div className="space-y-3 md:col-span-2">
-          <RadioGroup label="Instructor" required name="session-instructor" layout="horizontal" value={form.instructor} onChange={(v) => setForm({ ...form, instructor: String(v), trainerUserId: "", externalTrainerName: "" })}
-            options={[{ label: "Internal expert", value: "INTERNAL" }, { label: "External expert/consultant", value: "EXTERNAL" }]} />
+          <RadioGroup label={tr("Instructor")} required name="session-instructor" layout="horizontal" value={form.instructor} onChange={(v) => setForm({ ...form, instructor: String(v), trainerUserId: "", externalTrainerName: "" })}
+            options={[{ label: tr("Internal expert"), value: "INTERNAL" }, { label: tr("External expert/consultant"), value: "EXTERNAL" }]} />
           {form.instructor === "INTERNAL"
             ? <PersonPicker value={form.trainerUserId} onChange={(id) => setForm({ ...form, trainerUserId: id })} />
-            : <Input value={form.externalTrainerName} maxLength={255} placeholder="Name of the external expert or consultant" onChange={(e) => setForm({ ...form, externalTrainerName: e.target.value })} />}
+            : <Input value={form.externalTrainerName} maxLength={255} placeholder={tr("Name of the external expert or consultant")} onChange={(e) => setForm({ ...form, externalTrainerName: e.target.value })} />}
         </div>
         )}
         {dueDate ? <div>{dueDate}</div> : null}
-        <div className={dueDate ? undefined : "md:col-span-2"}><TrainingDateField label="Scheduled date" hint={DATE_HINT.scheduled} value={form.scheduledOn} onChange={(v) => setForm({ ...form, scheduledOn: v })} /></div>
+        <div className={dueDate ? undefined : "md:col-span-2"}><TrainingDateField label={tr("Scheduled date")} hint={DATE_HINT.scheduled} value={form.scheduledOn} onChange={(v) => setForm({ ...form, scheduledOn: v })} /></div>
         <div className="space-y-3 md:col-span-2">
-          <RadioGroup label="Location Type" required name="session-location" layout="horizontal" value={form.locationType} onChange={(v) => setForm({ ...form, locationType: String(v) })}
-            options={[{ label: "On-site (Physical)", value: "ONSITE" }, { label: "Online (Virtual)", value: "ONLINE" }, { label: "Hybrid (On-site and Online)", value: "HYBRID" }]} />
+          <RadioGroup label={tr("Location Type")} required name="session-location" layout="horizontal" value={form.locationType} onChange={(v) => setForm({ ...form, locationType: String(v) })}
+            options={[{ label: tr("On-site (Physical)"), value: "ONSITE" }, { label: tr("Online (Virtual)"), value: "ONLINE" }, { label: tr("Hybrid (On-site and Online)"), value: "HYBRID" }]} />
           {form.locationType !== "ONLINE" && (
-            <FormField label="Physical Location" required><Input value={form.venue} maxLength={255} placeholder="e.g., Training Room A" onChange={(e) => setForm({ ...form, venue: e.target.value })} /></FormField>
+            <FormField label={tr("Physical Location")} required><Input value={form.venue} maxLength={255} placeholder={tr("e.g., Training Room A")} onChange={(e) => setForm({ ...form, venue: e.target.value })} /></FormField>
           )}
           {form.locationType !== "ONSITE" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
-              <Select label="Platform" value={form.platform} enableSearch={false} onChange={(v) => setForm({ ...form, platform: v })} options={PLATFORMS} />
-              <FormField label="Meeting Link" required><Input value={form.meetingLink} placeholder="https://zoom.us/j/..." onChange={(e) => setForm({ ...form, meetingLink: e.target.value })} /></FormField>
+              <Select label={tr("Platform")} value={form.platform} enableSearch={false} onChange={(v) => setForm({ ...form, platform: v })} options={PLATFORMS} />
+              <FormField label={tr("Meeting Link")} required><Input value={form.meetingLink} placeholder="https://zoom.us/j/..." onChange={(e) => setForm({ ...form, meetingLink: e.target.value })} /></FormField>
             </div>
           )}
         </div>
@@ -115,13 +116,13 @@ export function ParticipantsPanel({ activityId, session, busy, onSave }: { activ
   return (
     <div className="space-y-4">
       <TrainingAssigneePicker matrix={matrix ?? []} onChange={setSelection} />
-      {manual && <FormField label="Reason for adding by hand" required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>}
+      {manual && <FormField label={tr("Reason for adding by hand")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>}
       <div className="flex items-center gap-3">
         <Button size="sm" variant="outline-emerald" loading={busy} disabled={!ready}
           onClick={() => onSave({ sessionId: session.id, personUserIds: selection.personIds.length ? selection.personIds : undefined, externals: selection.outsiders.length ? selection.outsiders : undefined, reason: manual ? reason.trim() : "Required by the training matrix" })}>
-          Add {count || ""} {count === 1 ? "person" : "people"} to session {session.sessionNo}
+              {trFormat("Add {count} people to session {session}", { count, session: session.sessionNo })}
         </Button>
-        <span className="text-xs text-slate-500">People already in the session are skipped.</span>
+        <span className="text-xs text-slate-500">{tr("People already in the session are skipped.")}</span>
       </div>
     </div>
   );
@@ -143,8 +144,8 @@ export function ParticipantsDraftPanel({ onDraft, initialPeople, initialReason }
   return (
     <div className="space-y-4">
       <TrainingAssigneePicker onChange={setSelection} initialPeople={initialPeople} />
-      <FormField label="Reason for adding by hand" required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
-      <p className="text-xs text-slate-500">{count} selected. They are added to the session when you save. The people the training matrix requires are offered on the next screen, after the activity is saved.</p>
+      <FormField label={tr("Reason for adding by hand")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+      <p className="text-xs text-slate-500">{count} {tr("selected. They are added to the session when you save. The people the training matrix requires are offered on the next screen, after the activity is saved.")}</p>
     </div>
   );
 }

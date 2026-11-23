@@ -1,6 +1,7 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
+import { tr } from "@/i18n";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm";
 const textareaClass = "w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50";
@@ -34,7 +35,7 @@ export const TimeLimitedUserGrantFields: React.FC<TimeLimitedUserGrantFieldsProp
   <div className="space-y-5">
     <div>
       <DateRangePicker
-        label={<>Active Window <span className="text-red-500">*</span></>}
+        label={<>{tr("Active Window")} <span className="text-red-500">*</span></>}
         startDate={startDisplay}
         endDate={endDisplay}
         includeTime
@@ -44,19 +45,19 @@ export const TimeLimitedUserGrantFields: React.FC<TimeLimitedUserGrantFieldsProp
           onStartDisplayChange(startDate);
           onEndDisplayChange(endDate);
         }}
-        placeholder="Select the allowed active date and time range"
+        placeholder={tr("Select the allowed active date and time range")}
         disabled={disabled}
       />
-      <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">The user can only sign in from Start through End. Outside this window their account is automatically suspended.</p>
+      <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">{tr("The user can only sign in from Start through End. Outside this window their account is automatically suspended.")}</p>
     </div>
     <Checkbox
       checked={notifyEmailOnExpiry}
       onChange={onNotifyEmailOnExpiryChange}
       disabled={disabled}
-      label="Send an e-mail notification to the user when their access expires"
+      label={tr("Send an e-mail notification to the user when their access expires")}
     />
     <div>
-      <label className={labelClass}>Reason / Comment</label>
+      <label className={labelClass}>{tr("Reason / Comment")}</label>
       <textarea
         value={reason}
         onChange={(event) => onReasonChange(event.target.value)}

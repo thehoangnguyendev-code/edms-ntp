@@ -13,6 +13,7 @@ import { OnlyOfficeStorageConfig } from '../types';
 import type { IntegrationChecksController } from '../useIntegrationChecks';
 import { IntegrationSectionCard } from './IntegrationSectionCard';
 import { IntegrationStatusCard } from './IntegrationStatusCard';
+import { tr, trFormat } from "@/i18n";
 
 interface OnlyOfficeTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
@@ -129,7 +130,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
     } catch (error) {
       showToast({
         type: 'error',
-        title: 'Connection failed',
+        title: tr('Connection failed'),
         message: error instanceof Error ? error.message : 'Unable to reach the OnlyOffice Document Server.',
       });
     } finally {
@@ -149,7 +150,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
   const statusCard = (
     <IntegrationStatusCard
       icon={<IconStack2 className="h-5 w-5" />}
-      title="OnlyOffice Document Server"
+      title={tr("OnlyOffice Document Server")}
       subtitle={savedUrl || 'No Document Server URL saved yet'}
       badge={<Badge semantic={saved.enabled ? 'success' : 'neutral'}>{saved.enabled ? 'Enabled' : 'Disabled'}</Badge>}
       action={saved.enabled ? (
@@ -163,7 +164,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
           loadingText="Testing..."
         >
           <IconPlugConnected className="h-4 w-4" />
-          {unsaved ? 'Test saved settings' : 'Test connection'}
+          {unsaved ? 'Test saved settings' : tr('Test connection')}
         </Button>
       ) : undefined}
       check={checks.checks.ONLYOFFICE}
@@ -178,7 +179,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-600"><IconKey className="h-5 w-5" /></span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">JWT secret</p>
+            <p className="text-sm font-semibold text-slate-900">{tr("JWT secret")}</p>
             <p className="text-2xs text-slate-500 md:text-xs">
               {hasStoredJwtSecret || onlyOfficeConfig.jwtSecretConfigured ? 'A secret is saved.' : 'No secret is saved.'}
               {secretChangedAt ? ` Last changed ${formatDateTime(secretChangedAt)}.` : ''}
@@ -188,11 +189,11 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <Button type="button" variant="outline-emerald" size="sm" className="col-span-2 gap-1.5 sm:col-auto" onClick={handleGenerateJwtSecret}>
             <IconRefresh className="h-4 w-4" />
-            Generate new
+            {tr("Generate new")}
           </Button>
           {isStoredJwtSecretPreview && (
             <Button type="button" variant="outline-emerald" size="sm" onClick={() => setIsReplacingJwtSecret(true)}>
-              Replace Secret
+              {tr("Replace Secret")}
             </Button>
           )}
           <Button
@@ -202,12 +203,12 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
             onClick={handleResetJwtSecret}
             disabled={!onlyOfficeConfig.jwtSecretConfigured && !onlyOfficeConfig.jwtSecret}
           >
-            Reset Secret
+            {tr("Reset Secret")}
           </Button>
         </div>
       </div>
       <div className="mt-3">
-        <label className={LABEL_CLASS} htmlFor="onlyoffice-jwt-secret">JWT Secret</label>
+        <label className={LABEL_CLASS} htmlFor="onlyoffice-jwt-secret">{tr("JWT Secret")}</label>
         <div className="flex items-center gap-1">
           <div className="relative min-w-0 flex-1">
             <input
@@ -228,7 +229,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
               {showJwtSecret ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
             </button>
           </div>
-          {generatedSecret && hasNewJwtSecret && <CopyButton value={onlyOfficeConfig.jwtSecret} label="Copy the new JWT secret" />}
+          {generatedSecret && hasNewJwtSecret && <CopyButton value={onlyOfficeConfig.jwtSecret} label={tr("Copy the new JWT secret")} />}
         </div>
         {renderFieldError('jwtSecret')}
         {hasNewJwtSecret && (
@@ -236,7 +237,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
             <IconInfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               {generatedSecret ? 'This new secret is shown here once: after Save it is hidden. ' : ''}
-              Put the same value in the Document Server's JWT_SECRET before you press Save, or the editor cannot open documents.
+              {tr("Put the same value in the Document Server's JWT_SECRET before you press Save, or the editor cannot open documents.")}
             </span>
           </p>
         )}
@@ -256,10 +257,10 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
     <div className="space-y-4 md:space-y-6">
       {statusCard}
 
-      <IntegrationSectionCard title="Connection" description="The Document Server that opens Office files in the browser.">
+      <IntegrationSectionCard title={tr("Connection")} description={tr("The Document Server that opens Office files in the browser.")}>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-3">
-            <Switch size="sm" checked={!!onlyOfficeConfig.enabled} onChange={(checked) => handleFieldChange('enabled', checked)} aria-label="Enable OnlyOffice" />
+            <Switch size="sm" checked={!!onlyOfficeConfig.enabled} onChange={(checked) => handleFieldChange('enabled', checked)} aria-label={tr("Enable OnlyOffice")} />
             <span className="text-sm font-medium text-slate-800">{onlyOfficeConfig.enabled ? 'OnlyOffice is on' : 'OnlyOffice is off'}</span>
           </div>
           <p className={`max-w-xl text-xs ${onlyOfficeConfig.enabled ? 'text-slate-500' : 'text-amber-800'}`}>
@@ -272,7 +273,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
         <Collapsible open={!!onlyOfficeConfig.enabled}>
           <div className="space-y-4">
             <div>
-              <label className={LABEL_CLASS} htmlFor="onlyoffice-server-url">Document Server URL (browser-reachable)</label>
+              <label className={LABEL_CLASS} htmlFor="onlyoffice-server-url">{tr("Document Server URL (browser-reachable)")}</label>
               <input
                 id="onlyoffice-server-url"
                 type="text"
@@ -282,13 +283,13 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                 placeholder="http://localhost:8082"
               />
               {renderFieldError('documentServerUrl')}
-              <p className="mt-1 text-xs text-slate-500">Matches the frontend's VITE_ONLYOFFICE_URL -- the address the browser loads the editor script from.</p>
+              <p className="mt-1 text-xs text-slate-500">{tr("Matches the frontend's VITE_ONLYOFFICE_URL -- the address the browser loads the editor script from.")}</p>
             </div>
             {secretCard}
             {unsaved && (
               <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                 <IconInfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>There are changes that are not saved yet. <strong>Test connection checks the saved settings</strong>; save first to test the new ones.</span>
+                <span>{tr("There are changes that are not saved yet.")} <strong>{tr("Test connection checks the saved settings")}</strong>{tr("; save first to test the new ones.")}</span>
               </p>
             )}
           </div>
@@ -296,7 +297,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
       </IntegrationSectionCard>
 
       {onlyOfficeConfig.enabled && (
-        <IntegrationSectionCard title="Settings for the Document Server" description="Both ends must agree. These are the values the other side needs.">
+        <IntegrationSectionCard title={tr("Settings for the Document Server")} description={tr("Both ends must agree. These are the values the other side needs.")}>
           <dl className="divide-y divide-slate-100">
             {settingsRow('VITE_ONLYOFFICE_URL (frontend)', (onlyOfficeConfig.documentServerUrl || '').trim(), 'Copy the Document Server URL')}
             {settingsRow('Callback base URL (the Document Server calls this application here)', (onlyOfficeConfig.callbackBaseUrl || '').trim(), 'Copy the callback base URL')}

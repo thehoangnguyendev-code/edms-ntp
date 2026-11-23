@@ -8,6 +8,7 @@ import { documentApi } from "@/services/api/documents";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
@@ -150,7 +151,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
                 e.stopPropagation();
                 void openPreview(revisionId, label);
               }}
-              title="Preview template"
+              title={tr("Preview template")}
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -192,7 +193,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
         isOpen={isOpen}
         onClose={handleClose}
         onConfirm={handleConfirm}
-        title="Upload Revision"
+        title={tr("Upload Revision")}
         confirmText="OK"
         cancelText="Cancel"
         size="lg"
@@ -202,7 +203,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
         <div className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Name
+              {tr("Name")}
             </label>
             <input
               type="text"
@@ -211,13 +212,13 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
               className={CONTROL_STATE_CLASSES.readonlyField}
             />
             <p className="text-xs text-slate-500 mt-1.5">
-              Note: The uploaded file will be renamed to the name above
+              {tr("Note: The uploaded file will be renamed to the name above")}
             </p>
           </div>
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Revision Number
+              {tr("Revision Number")}
             </label>
             <input
               type="text"
@@ -229,12 +230,12 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Note
+              {tr("Note")}
             </label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Enter notes about this revision..."
+              placeholder={tr("Enter notes about this revision...")}
               rows={4}
               className="w-full px-3 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
             />
@@ -250,25 +251,24 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
                 setSelectedFile(null);
                 setFileError("");
               }}
-              label="Select file from template"
+              label={tr("Select file from template")}
             />
 
             {useTemplate && (
               <div className="space-y-2">
                 <Select
-                  label="Document Template"
+                  label={tr("Document Template")}
                   value={selectedTemplate}
                   onChange={setSelectedTemplate}
                   options={[]}
-                  placeholder="Select a published template..."
+                  placeholder={tr("Select a published template...")}
                   enableSearch={true}
                   onSearch={templateSearch}
                   debounceMs={SEARCH_DEBOUNCE_MS}
                   minSearchLength={0}
                 />
                 <p className="text-xs text-slate-500">
-                  Files can be selected only from active published templates with
-                  an effective revision, a stored file, and the same Document Type
+                  {tr("Files can be selected only from active published templates with an effective revision, a stored file, and the same Document Type")}
                 </p>
               </div>
             )}
@@ -291,14 +291,14 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
                   className="gap-2 w-full sm:w-auto flex-shrink-0 whitespace-nowrap"
                 >
                   <Upload className="h-4 w-4" />
-                  Choose File
+                  {tr("Choose File")}
                 </Button>
                 <span className="text-sm text-slate-600 truncate block">
                   {selectedFile ? selectedFile.name : "No file chosen"}
                 </span>
               </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Maximum file size: {maxFileSizeMB} MB
+                  {trFormat("Maximum file size: {size} MB", { size: maxFileSizeMB })}
                 </p>
               {fileError && (
                 <p className="text-xs text-red-600 mt-1">{fileError}</p>

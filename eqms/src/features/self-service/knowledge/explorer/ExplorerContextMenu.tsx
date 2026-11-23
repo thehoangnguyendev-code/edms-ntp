@@ -1,5 +1,6 @@
 import React from "react";
 import { DropdownMenuItem, PortalDropdownMenu } from "@/components/ui/dropdown";
+import { tr } from "@/i18n";
 
 export interface ContextMenuAction {
   id: string;
@@ -28,7 +29,7 @@ export const ExplorerContextMenu: React.FC<ExplorerContextMenuProps> = ({ x, y, 
 
   return (
     <PortalDropdownMenu isOpen onClose={onClose} position={{ top: top + window.scrollY, left: left + window.scrollX }} minWidth={MENU_WIDTH}>
-      <div className="py-1" role="menu" aria-label="Actions">
+      <div className="py-1" role="menu" aria-label={tr("Actions")}>
         {actions.map((action) => (
           <React.Fragment key={action.id}>
             {action.separatorBefore && <div role="separator" className="my-1 border-t border-slate-100" />}

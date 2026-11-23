@@ -24,6 +24,7 @@ import { reportError } from "@/services/api/reportTemplates";
 import { displayDateTime } from "@/utils/format";
 import { REPORT_FONTS } from "./ReportTextStyleFields";
 import { ReportAppearancePreview } from "./ReportAppearancePreview";
+import { tr, trFormat } from "@/i18n";
 
 const ANY = { label: "All", value: "" };
 const ON_OFF = [ANY, { label: "On", value: "ON" }, { label: "Off", value: "OFF" }];
@@ -103,8 +104,8 @@ export function ReportAppearanceListView() {
     { id: "no", header: "No.", label: "No.", locked: true, cell: (_row, index) => (table.currentPage - 1) * table.itemsPerPage + index + 1 },
     {
       id: "name",
-      header: "Appearance Name",
-      label: "Appearance Name",
+      header: tr("Appearance Name"),
+      label: tr("Appearance Name"),
       sort: sortOf("name"),
       cell: (row) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/settings/report-appearance/${row.id}`)}>
@@ -112,21 +113,21 @@ export function ReportAppearanceListView() {
         </button>
       ),
     },
-    { id: "status", header: "Appearance Status", label: "Appearance Status", sort: sortOf("status"), cell: (row) => <Badge color={flagColor(row.status === "ACTIVE")}>{row.status === "ACTIVE" ? "Active" : "Inactive"}</Badge> },
+    { id: "status", header: tr("Appearance Status"), label: tr("Appearance Status"), sort: sortOf("status"), cell: (row) => <Badge color={flagColor(row.status === "ACTIVE")}>{row.status === "ACTIVE" ? "Active" : "Inactive"}</Badge> },
     { id: "paper", header: "Paper", label: "Paper", cell: (row) => (row.orientation === "PORTRAIT" ? "Portrait" : "Landscape") },
     { id: "font", header: "Font", label: "Font", cell: (row) => FONT_LABEL[row.fontFamily ?? "NOTO_SANS"] ?? row.fontFamily },
-    { id: "cover", header: "Cover page", label: "Cover page", cell: (row) => (row.cover ? "On" : "Off") },
+    { id: "cover", header: tr("Cover page"), label: tr("Cover page"), cell: (row) => (row.cover ? "On" : "Off") },
     { id: "logo", header: "Logo", label: "Logo", cell: (row) => (row.logo ? "On" : "Off") },
-    { id: "updated", header: "Last Updated", label: "Last Updated", sort: sortOf("updatedAt"), cell: (row) => displayDateTime(row.updatedAt) },
-    { id: "updatedBy", header: "Last Updated By", label: "Last Updated By", cell: (row) => row.updatedByName ?? "—" },
-    { id: "activated", header: "Activated At", label: "Activated At", sort: sortOf("activatedAt"), cell: (row) => (row.activatedAt ? displayDateTime(row.activatedAt) : "—") },
+    { id: "updated", header: tr("Last Updated"), label: tr("Last Updated"), sort: sortOf("updatedAt"), cell: (row) => displayDateTime(row.updatedAt) },
+    { id: "updatedBy", header: tr("Last Updated By"), label: tr("Last Updated By"), cell: (row) => row.updatedByName ?? "—" },
+    { id: "activated", header: tr("Activated At"), label: tr("Activated At"), sort: sortOf("activatedAt"), cell: (row) => (row.activatedAt ? displayDateTime(row.activatedAt) : "—") },
   ];
   const action = {
     cell: (row: ReportAppearanceRow) => (
       <button
         type="button"
         ref={menu.getRef(row.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(row.id, event)}
       >
@@ -141,15 +142,15 @@ export function ReportAppearanceListView() {
     table.setCurrentPage(1);
   };
   const filters: ReportSelectFilter[] = [
-    { id: "status", label: "Appearance Status", value: filter.status, options: [ANY, { label: "Active", value: "ACTIVE" }, { label: "Inactive", value: "INACTIVE" }], onChange: choose("status") },
+    { id: "status", label: tr("Appearance Status"), value: filter.status, options: [ANY, { label: "Active", value: "ACTIVE" }, { label: "Inactive", value: "INACTIVE" }], onChange: choose("status") },
     { id: "orientation", label: "Paper", value: filter.orientation, options: [ANY, { label: "Landscape", value: "LANDSCAPE" }, { label: "Portrait", value: "PORTRAIT" }], onChange: choose("orientation") },
     { id: "font", label: "Font", value: filter.font, options: [ANY, ...REPORT_FONTS.map((font) => ({ label: font.label, value: font.value }))], onChange: choose("font") },
-    { id: "cover", label: "Cover page", value: filter.cover, options: ON_OFF, onChange: choose("cover") },
+    { id: "cover", label: tr("Cover page"), value: filter.cover, options: ON_OFF, onChange: choose("cover") },
     { id: "logo", label: "Logo", value: filter.logo, options: ON_OFF, onChange: choose("logo") },
   ];
   const dates: ReportDateFilter[] = [
-    { id: "changed", label: "Last Updated", from: changed.from, to: changed.to, onChange: (from, to) => { setChanged({ from, to }); table.setCurrentPage(1); } },
-    { id: "activated", label: "Activated At", from: activated.from, to: activated.to, onChange: (from, to) => { setActivated({ from, to }); table.setCurrentPage(1); } },
+    { id: "changed", label: tr("Last Updated"), from: changed.from, to: changed.to, onChange: (from, to) => { setChanged({ from, to }); table.setCurrentPage(1); } },
+    { id: "activated", label: tr("Activated At"), from: activated.from, to: activated.to, onChange: (from, to) => { setActivated({ from, to }); table.setCurrentPage(1); } },
   ];
   const hasActiveFilters = Object.values(filter).some(Boolean) || Boolean(changed.from || changed.to || activated.from || activated.to);
 
@@ -164,7 +165,7 @@ export function ReportAppearanceListView() {
             {canManage && (
               <Button size="sm" variant="default" onClick={() => navigate("/settings/report-appearance/new")}>
                 <IconPlus className="mr-2 h-4 w-4" />
-                Create Appearance
+                {tr("Create Appearance")}
               </Button>
             )}
           </div>
@@ -172,7 +173,7 @@ export function ReportAppearanceListView() {
       />
       {error && <WarningBanner variant="error" description={error} />}
       <ReportListToolbar
-        searchPlaceholder="Search by name…"
+        searchPlaceholder={tr("Search by name…")}
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);
@@ -193,7 +194,7 @@ export function ReportAppearanceListView() {
           rows={table.items}
           getRowKey={(row) => row.id}
           isLoading={table.isLoading}
-          emptyState={<TableEmptyState title="No Appearances Found" description="Create an appearance, or change your search or filters." />}
+          emptyState={<TableEmptyState title={tr("No Appearances Found")} description={tr("Create an appearance, or change your search or filters.")} />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}
           isDragging={drag.isDragging}
@@ -212,21 +213,21 @@ export function ReportAppearanceListView() {
         {actionRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconBinoculars className="h-4 w-4" />} onClick={() => { setPreviewing(actionRow); menu.close(); }}>
-              Preview Report Appearance
+              {tr("Preview Report Appearance")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigate(`/settings/report-appearance/${actionRow.id}`); menu.close(); }}>
-              {canManage ? "Edit" : "View Detail"}
+              {canManage ? "Edit" : tr("View Detail")}
             </DropdownMenuItem>
             {canManage && (
               <>
                 <DropdownMenuItem icon={<IconCopy className="h-4 w-4" />} onClick={() => { navigate(`/settings/report-appearance/new?copyFrom=${actionRow.id}`); menu.close(); }}>
-                  Duplicate
+                  {tr("Duplicate")}
                 </DropdownMenuItem>
                 <DropdownMenuItem icon={<IconToggleRight className="h-4 w-4" />} disabled={actionRow.status === "ACTIVE"} onClick={() => { setModalError(""); setActivating(actionRow); menu.close(); }}>
-                  Activate
+                  {tr("Activate")}
                 </DropdownMenuItem>
                 <DropdownMenuItem icon={<IconTrash className="h-4 w-4" />} disabled={actionRow.status === "ACTIVE"} onClick={() => { setModalError(""); setDeleting(actionRow); menu.close(); }}>
-                  Delete
+                  {tr("Delete")}
                 </DropdownMenuItem>
               </>
             )}
@@ -241,13 +242,13 @@ export function ReportAppearanceListView() {
         onClose={() => setActivating(null)}
         onConfirm={() => activating && run(() => reportAppearanceApi.activate(activating.id), "Appearance activated", () => setActivating(null))}
         type="confirm"
-        title="Activate this appearance?"
+        title={tr("Activate this appearance?")}
         description={
           <div className="space-y-2 text-sm text-slate-600">
             <p>
-              <strong>{activating?.name}</strong> becomes the Active appearance: every new report is drawn with it. The appearance that is Active now becomes Inactive. Reports that are already made are not changed.
+              {trFormat("{name} becomes the Active appearance: every new report is drawn with it. The appearance that is Active now becomes Inactive. Reports that are already made are not changed.", { name: activating?.name })}
             </p>
-            <p>This is recorded in the Audit Trail.</p>
+            <p>{tr("This is recorded in the Audit Trail.")}</p>
             {modalError && <WarningBanner variant="error" description={modalError} />}
           </div>
         }
@@ -261,11 +262,11 @@ export function ReportAppearanceListView() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && run(() => reportAppearanceApi.remove(deleting.id), "Appearance deleted", () => setDeleting(null))}
         type="confirm"
-        title="Delete this appearance?"
+        title={tr("Delete this appearance?")}
         description={
           <div className="space-y-2 text-sm text-slate-600">
             <p>
-              <strong>{deleting?.name}</strong> will be deleted. This cannot be undone, and it is recorded in the Audit Trail.
+              <strong>{deleting?.name}</strong> {tr("will be deleted. This cannot be undone, and it is recorded in the Audit Trail.")}
             </p>
             {modalError && <WarningBanner variant="error" description={modalError} />}
           </div>

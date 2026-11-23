@@ -21,6 +21,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import { trainingError, trainingNotificationsApi, type TrainingNotificationLogRow, type TrainingNotificationLogPage } from "@/services/api/trainingActivities";
 import { formatDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 type StatusFilter = "All" | TrainingNotificationLogRow["status"];
 type ChannelFilter = "All" | TrainingNotificationLogRow["channel"];
@@ -134,13 +135,13 @@ export const TrainingNotificationsView: React.FC = () => {
       setResultModal({
         isOpen: true,
         type: "success",
-        title: "Reminders Run",
+        title: tr("Reminders Run"),
         description: `${run.sent} notice${run.sent === 1 ? "" : "s"} sent, ${run.skipped} skipped (already sent for this day or week), ${run.failed} failed.`,
       });
       reload();
     } catch (error) {
       setShowRunModal(false);
-      setResultModal({ isOpen: true, type: "error", title: "Reminders Run Failed", description: trainingError(error) });
+      setResultModal({ isOpen: true, type: "error", title: tr("Reminders Run Failed"), description: trainingError(error) });
     } finally {
       setIsRunning(false);
     }
@@ -178,13 +179,13 @@ export const TrainingNotificationsView: React.FC = () => {
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title="Training Notifications"
+        title={tr("Training Notifications")}
         breadcrumbItems={trainingNotifications(navigate)}
         actions={
           canManage ? (
             <Button size="sm" onClick={() => setShowRunModal(true)} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700">
               <BellRing className="h-4 w-4" />
-              Run Reminders Now
+              {tr("Run Reminders Now")}
             </Button>
           ) : undefined
         }
@@ -194,20 +195,20 @@ export const TrainingNotificationsView: React.FC = () => {
         <div className="flex-1 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex-1 overflow-auto p-4 md:p-5">
             <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
-              <div className="flex flex-wrap items-center gap-2" aria-label="Notices by outcome">
+              <div className="flex flex-wrap items-center gap-2" aria-label={tr("Notices by outcome")}>
                 {(["SENT", "SKIPPED", "FAILED"] as const).map(stat)}
-                <span className="text-xs text-slate-500">Totals follow the other filters. The reminders also run by themselves every day at 06:30 (Asia/Ho_Chi_Minh).</span>
+                <span className="text-xs text-slate-500">{tr("Totals follow the other filters. The reminders also run by themselves every day at 06:30 (Asia/Ho_Chi_Minh).")}</span>
               </div>
 
               <div className="bg-white w-full">
                 <div className="flex md:hidden flex-col gap-1.5 w-full">
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Search notices..."
+                        placeholder={tr("Search notices...")}
                         value={searchQuery}
                         onChange={(e) => {
                           setSearchQuery(e.target.value);
@@ -229,7 +230,7 @@ export const TrainingNotificationsView: React.FC = () => {
                     </div>
                     <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                       <IconFilter2 className="h-4 w-4" />
-                      Filters
+                      {tr("Filters")}
                     </Button>
                   </div>
                 </div>
@@ -238,13 +239,13 @@ export const TrainingNotificationsView: React.FC = () => {
                   trailing={<div className="hidden md:block">{control}</div>}
                   search={
                     <input
-                      aria-label="Search"
+                      aria-label={tr("Search")}
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search notices..."
+                      placeholder={tr("Search notices...")}
                       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
                     />
                   }
@@ -255,7 +256,7 @@ export const TrainingNotificationsView: React.FC = () => {
                   dates={[
                     {
                       id: "sentDate",
-                      label: "Sent Date Range",
+                      label: tr("Sent Date Range"),
                       from: sentFromDate,
                       to: sentToDate,
                       onFromChange: (v) => { setSentFromDate(v); setCurrentPage(1); },
@@ -265,12 +266,12 @@ export const TrainingNotificationsView: React.FC = () => {
                 >
                   <div className="hidden items-end gap-4 md:grid [grid-template-columns:repeat(auto-fill,minmax(max(15rem,calc((100%-2rem)/3)),1fr))]">
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                           type="text"
-                          placeholder="Search notices..."
+                          placeholder={tr("Search notices...")}
                           value={searchQuery}
                           onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -281,19 +282,19 @@ export const TrainingNotificationsView: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <Select label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder="All" />
+                      <Select label={tr("Status")} value={statusFilter} onChange={(value) => { setStatusFilter(value as StatusFilter); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder={tr("All")} />
                     </div>
                     <div>
-                      <Select label="Channel" value={channelFilter} onChange={(value) => { setChannelFilter(value as ChannelFilter); setCurrentPage(1); }} options={CHANNEL_OPTIONS} placeholder="All" />
+                      <Select label={tr("Channel")} value={channelFilter} onChange={(value) => { setChannelFilter(value as ChannelFilter); setCurrentPage(1); }} options={CHANNEL_OPTIONS} placeholder={tr("All")} />
                     </div>
                     <div>
                       <DateRangePicker
-                        label="Sent Date Range"
+                        label={tr("Sent Date Range")}
                         startDate={sentFromDate}
                         endDate={sentToDate}
                         onStartDateChange={(v) => { setSentFromDate(v); setCurrentPage(1); }}
                         onEndDateChange={(v) => { setSentToDate(v); setCurrentPage(1); }}
-                        placeholder="Select range"
+                        placeholder={tr("Select range")}
                       />
                     </div>
                     {/* The last cell, as in User Management: Clear Filters and the Custom Column control side by side. */}
@@ -311,7 +312,7 @@ export const TrainingNotificationsView: React.FC = () => {
                   getRowKey={(item) => item.id}
                   columns={layout.columns}
                   columnLayout={layout}
-                  emptyState={<TableEmptyState title="No notices found" description="Try adjusting your search or filters" />}
+                  emptyState={<TableEmptyState title={tr("No notices found")} description={tr("Try adjusting your search or filters")} />}
                   pagination={
                     totalItems > 0 ? (
                       <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
@@ -325,14 +326,13 @@ export const TrainingNotificationsView: React.FC = () => {
                 onClose={() => setShowRunModal(false)}
                 onConfirm={runReminders}
                 type="confirm"
-                title="Run the reminders now?"
+                title={tr("Run the reminders now?")}
                 description={
                   <p className="text-sm text-slate-600">
-                    This sends today's reminders at once: trainings due soon, trainings overdue, steps waiting for a person, and the attendance list for QA.
-                    A reminder already sent for the same day or week is not sent again. The run is recorded in the Audit Trail.
+                    {tr("This sends today's reminders at once: trainings due soon, trainings overdue, steps waiting for a person, and the attendance list for QA. A reminder already sent for the same day or week is not sent again. The run is recorded in the Audit Trail.")}
                   </p>
                 }
-                confirmText="Run Reminders"
+                confirmText={tr("Run Reminders")}
                 cancelText="Cancel"
                 isLoading={isRunning}
               />
@@ -348,7 +348,7 @@ export const TrainingNotificationsView: React.FC = () => {
               />
 
               <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-                <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+                <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
                   <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                     {STATUS_OPTIONS.map((opt) => (
                       <button key={opt.value} onClick={() => { setStatusFilter(opt.value as StatusFilter); setCurrentPage(1); }} className={getOptionClassName(statusFilter === opt.value)}>
@@ -358,7 +358,7 @@ export const TrainingNotificationsView: React.FC = () => {
                     ))}
                   </div>
                 </FilterAccordionItem>
-                <FilterAccordionItem label="Channel" isExpanded={expandedSections.has("channel")} onToggle={() => toggleSection("channel")}>
+                <FilterAccordionItem label={tr("Channel")} isExpanded={expandedSections.has("channel")} onToggle={() => toggleSection("channel")}>
                   <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                     {CHANNEL_OPTIONS.map((opt) => (
                       <button key={opt.value} onClick={() => { setChannelFilter(opt.value as ChannelFilter); setCurrentPage(1); }} className={getOptionClassName(channelFilter === opt.value)}>
@@ -368,7 +368,7 @@ export const TrainingNotificationsView: React.FC = () => {
                     ))}
                   </div>
                 </FilterAccordionItem>
-                <FilterAccordionItem label="Sent Date Range" isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
+                <FilterAccordionItem label={tr("Sent Date Range")} isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
                   <div className="pt-2 pb-4">
                     <DateRangePicker
                       label=""
@@ -376,7 +376,7 @@ export const TrainingNotificationsView: React.FC = () => {
                       endDate={sentToDate}
                       onStartDateChange={(v) => { setSentFromDate(v); setCurrentPage(1); }}
                       onEndDateChange={(v) => { setSentToDate(v); setCurrentPage(1); }}
-                      placeholder="Select range"
+                      placeholder={tr("Select range")}
                     />
                   </div>
                 </FilterAccordionItem>

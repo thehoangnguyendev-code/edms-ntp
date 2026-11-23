@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import { settingsApi } from "@/services/api";
 import type { PermissionSetResponse } from "@/services/api/settings";
+import { tr } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -62,7 +63,7 @@ export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = (
         isOpen={isOpen}
         onClose={onClose}
         onConfirm={handleSave}
-        title="Clone Permission Set"
+        title={tr("Clone Permission Set")}
         description={`Create a copy of "${source.name}" with custom options.`}
         confirmText="Clone"
         cancelText="Cancel"
@@ -73,22 +74,22 @@ export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = (
         <div className="space-y-4">
           <div>
             <label className={labelClass}>
-              Name <span className="text-red-500">*</span>
+              {tr("Name")} <span className="text-red-500">*</span>
             </label>
             <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea
               className={textareaClass}
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the responsibility scope of this permission set"
+              placeholder={tr("Describe the responsibility scope of this permission set")}
             />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Clone Options</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{tr("Clone Options")}</p>
             <Checkbox
               checked={clonePermissions}
               onChange={setClonePermissions}

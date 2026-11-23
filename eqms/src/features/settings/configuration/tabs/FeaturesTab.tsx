@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { cn } from "@/components/ui/utils";
 import type { FeatureFlag } from "../types";
 import { IconCheck, IconX } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 interface FeaturesTabProps {
   features: FeatureFlag[];
@@ -59,7 +60,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
         <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 mb-1">Total Features</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">{tr("Total Features")}</p>
               <p className="text-2xl font-bold text-slate-900">{features.length}</p>
             </div>
             <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-100">
@@ -70,7 +71,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
         <div className="bg-white border border-emerald-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-emerald-600 mb-1">Enabled / Active</p>
+              <p className="text-xs font-medium text-emerald-600 mb-1">{tr("Enabled / Active")}</p>
               <p className="text-2xl font-bold text-emerald-800">{enabledCount}</p>
             </div>
             <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-100">
@@ -81,7 +82,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
         <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 mb-1">Disabled / Inactive</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">{tr("Disabled / Inactive")}</p>
               <p className="text-2xl font-bold text-slate-700">{disabledCount}</p>
             </div>
             <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-100">
@@ -92,7 +93,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
       </div>
 
       {/* Main Features List */}
-      <h3 className="pt-2 text-sm font-semibold text-slate-900">Module Capabilities</h3>
+      <h3 className="pt-2 text-sm font-semibold text-slate-900">{tr("Module Capabilities")}</h3>
       <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
           {features.length > 0 ? (
             features.filter(f => !f.parentId).map((rootFeature) => {
@@ -215,7 +216,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
                                   </label>
                                   {parentDisabled && (
                                     <span className="text-2xs text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                                      Parent Disabled
+                                      {tr("Parent Disabled")}
                                     </span>
                                   )}
                                 </div>
@@ -240,7 +241,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ features, onChange }) 
             })
           ) : (
             <div className="py-12 text-center">
-              <p className="text-sm text-slate-400 italic">No features found in the system.</p>
+              <p className="text-sm text-slate-400 italic">{tr("No features found in the system.")}</p>
             </div>
           )}
       </div>

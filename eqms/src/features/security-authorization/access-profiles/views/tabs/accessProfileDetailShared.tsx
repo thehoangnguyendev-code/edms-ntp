@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 import { Check, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
+import { tr } from "@/i18n";
 
 export const labelCls =
   "mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm";
@@ -43,7 +44,7 @@ export const WorkflowRoleDrawer: React.FC<{
     ref={drawer}
     onClose={onClose}
     title={role.label}
-    subtitle="Workflow Role"
+    subtitle={tr("Workflow Role")}
     icon={<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50"><Workflow className="h-4 w-4 text-emerald-600" /></span>}
     headerActions={<Badge color="slate" size="sm">{role.code}</Badge>}
     description={role.description || "No description has been configured for this workflow role."}
@@ -55,12 +56,12 @@ export const WorkflowRoleDrawer: React.FC<{
         className="w-fit"
         onClick={closeWithAnimation}
       >
-        Close
+        {tr("Close")}
       </Button>
     </>}
   >
 
-    <RoleDetailSection title="Workflow Stages">
+    <RoleDetailSection title={tr("Workflow Stages")}>
       {stages.length ? (
         <div className="flex flex-wrap gap-1.5">
           {stages.map((stage) => (
@@ -73,7 +74,7 @@ export const WorkflowRoleDrawer: React.FC<{
         <EmptyRoleDetail text="No active workflow policy references this workflow capacity." />
       )}
     </RoleDetailSection>
-    <RoleDetailSection title="Available Actions">
+    <RoleDetailSection title={tr("Available Actions")}>
       {policies.length ? (
         <div className="space-y-2">
           {policies.map((policy) => (

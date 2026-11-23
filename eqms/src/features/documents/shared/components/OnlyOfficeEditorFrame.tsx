@@ -4,6 +4,7 @@ import { config } from "@/config";
 import { documentApi } from "@/services/api/documents";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { OnlyOfficeCapacityNotice } from "./OnlyOfficeCapacityNotice";
+import { tr } from "@/i18n";
 
 declare global {
   interface Window {
@@ -145,7 +146,7 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
           type="button"
           onClick={onClose}
           className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          aria-label="Close editor"
+          aria-label={tr("Close editor")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -156,7 +157,7 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
         {loadState === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="text-sm">Loading OnlyOffice editor...</span>
+            <span className="text-sm">{tr("Loading OnlyOffice editor...")}</span>
           </div>
         )}
         {loadState === "error" && (
@@ -175,7 +176,7 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
               onClick={onClose}
               className="rounded-md border border-emerald-600 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50"
             >
-              Close
+              {tr("Close")}
             </button>
           </div>
         )}

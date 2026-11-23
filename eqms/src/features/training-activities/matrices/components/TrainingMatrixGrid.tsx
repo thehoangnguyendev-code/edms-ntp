@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, Search, Trash2, X } from "lucide-react";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import type { TrainingMatrixRow, TrainingPosition } from "@/services/api/trainingActivities";
+import { tr, trFormat } from "@/i18n";
 
 type Line = { row: TrainingMatrixRow; index: number };
 type Change = { kind: "added" | "changed"; positions: Set<string>; annual: boolean };
@@ -17,9 +18,9 @@ const keyOf = (r: TrainingMatrixRow) => (r.topicText ? `T${r.topicText.trim().re
 
 /** The three groups of rows of APD.0011 (SOP.0003 5.3.1): the training of the whole factory, of the department, and the SOP for each Work Position. */
 const GROUPS: { id: TrainingMatrixRow["rowGroup"]; title: string }[] = [
-  { id: "FACTORY_GENERAL", title: "General training of the whole factory" },
-  { id: "DEPARTMENT_GENERAL", title: "General training of the department" },
-  { id: "SOP", title: "SOP for each Work Position" },
+  { id: "FACTORY_GENERAL", title: tr("General training of the whole factory") },
+  { id: "DEPARTMENT_GENERAL", title: tr("General training of the department") },
+  { id: "SOP", title: tr("SOP for each Work Position") },
 ];
 
 const rowCode = (r: TrainingMatrixRow) => (r.topicText ? "" : r.documentNumber) ?? "";
@@ -95,9 +96,9 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
     && (!onlyAnnual || x.row.annualRequired)
     && (!onlyChanged || diff?.changes.has(keyOf(x.row))));
   const filters: ReportSelectFilter[] = [
-    { id: "jobRole", label: "Work Position", value: onlyPosition, options: [{ label: "All", value: "" }, ...allPositions.map((p) => ({ label: p.name, value: p.id }))], onChange: setOnlyPosition },
-    { id: "annual", label: "Annual Training", value: onlyAnnual, options: [{ label: "All", value: "" }, { label: "Annual only", value: "yes" }], onChange: setOnlyAnnual },
-    ...(diff ? [{ id: "changes", label: "Changes", value: onlyChanged, options: [{ label: "All", value: "" }, { label: "Changed since the previous version", value: "yes" }], onChange: setOnlyChanged }] : []),
+    { id: "jobRole", label: tr("Work Position"), value: onlyPosition, options: [{ label: "All", value: "" }, ...allPositions.map((p) => ({ label: p.name, value: p.id }))], onChange: setOnlyPosition },
+    { id: "annual", label: tr("Annual Training"), value: onlyAnnual, options: [{ label: "All", value: "" }, { label: tr("Annual only"), value: "yes" }], onChange: setOnlyAnnual },
+    ...(diff ? [{ id: "changes", label: "Changes", value: onlyChanged, options: [{ label: "All", value: "" }, { label: tr("Changed since the previous version"), value: "yes" }], onChange: setOnlyChanged }] : []),
   ];
   const filtered = Boolean(needle || onlyPosition || onlyAnnual || onlyChanged);
   const toggleGroup = (id: string) => setCollapsed(collapsed.includes(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id]);
@@ -110,7 +111,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
       framed={false}
       flush
       bare
-      searchPlaceholder="Search a Training Topic or an SOP…"
+      searchPlaceholder={tr("Search a Training Topic or an SOP…")}
       search={search}
       onSearch={setSearch}
       filters={filters}
@@ -119,12 +120,12 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
     >
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="inline-flex items-center gap-1.5 text-slate-600"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"><Check className="h-3 w-3" strokeWidth={3} /></span>The Work Position must be trained on this row</span>
+        <span className="inline-flex items-center gap-1.5 text-slate-600"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"><Check className="h-3 w-3" strokeWidth={3} /></span>{tr("The Work Position must be trained on this row")}</span>
       </div>
       {diff && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <p className="font-medium">Compared with version {baselineNo}: {[...diff.changes.values()].filter((c) => c.kind === "added").length} added, {diff.removed.length} removed, {[...diff.changes.values()].filter((c) => c.kind === "changed").length} changed. Changed cells have an amber ring.</p>
-          {diff.removed.length > 0 && <p className="mt-1">Removed: {diff.removed.map((r) => `${rowCode(r)} ${rowName(r)}`.trim()).join("; ")}</p>}
+          <p className="font-medium">{trFormat("Compared with version {version}: {added} added, {removed} removed, {changed} changed. Changed cells have an amber ring.", { version: baselineNo, added: [...diff.changes.values()].filter((c) => c.kind === "added").length, removed: diff.removed.length, changed: [...diff.changes.values()].filter((c) => c.kind === "changed").length })}</p>
+          {diff.removed.length > 0 && <p className="mt-1">{trFormat("Removed: {list}", { list: diff.removed.map((r) => `${rowCode(r)} ${rowName(r)}`.trim()).join("; ") })}</p>}
         </div>
       )}
 
@@ -140,13 +141,13 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
           </TableMarkup.ColumnGroup>
           <TableMarkup.Head className="sticky top-0 z-30">
             <TableMarkup.Row>
-              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_NO} className="w-8 min-w-8 md:w-12 md:min-w-12 md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-2 md:text-xs text-slate-600">No</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_CODE} className="w-[84px] min-w-[84px] md:w-[120px] md:min-w-[120px] md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">Code</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">Subject / Title</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell rowSpan={2} title="Every employee of the department, with or without a Work Position (SOP.0003 5.3.1)" className="w-24 min-w-24 max-w-24 border-b border-r border-slate-200 bg-blue-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-normal text-blue-900 md:text-xs">All<br />employees</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell colSpan={Math.max(positions.length, 1)} className="border-b border-r border-slate-200 bg-emerald-600 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-white"><span className={`sticky left-0 block w-[min(100%,100cqw)] whitespace-nowrap text-center md:left-[428px] ${editing ? "md:w-[min(100%,calc(100cqw-580px))]" : "md:w-[min(100%,calc(100cqw-540px))]"}`}>Work Position</span></TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell rowSpan={2} style={stickyAnnual(editing)} className="w-16 min-w-16 md:w-[84px] md:min-w-[84px] md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">Annual training<br />required</TableMarkup.HeaderCell>
-              {editing && <TableMarkup.HeaderCell rowSpan={2} style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2"><span className="sr-only">Remove</span></TableMarkup.HeaderCell>}
+              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_NO} className="w-8 min-w-8 md:w-12 md:min-w-12 md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-2 md:text-xs text-slate-600">{tr("No.")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_CODE} className="w-[84px] min-w-[84px] md:w-[120px] md:min-w-[120px] md:sticky z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">{tr("Code")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell rowSpan={2} style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky md:shadow-[6px_0_8px_-6px_rgba(15,23,42,0.28)] z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">{tr("Subject / Title")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell rowSpan={2} title={tr("Every employee of the department, with or without a Work Position (SOP.0003 5.3.1)")} className="w-24 min-w-24 max-w-24 border-b border-r border-slate-200 bg-blue-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-normal text-blue-900 md:text-xs">{tr("All")}<br />{tr("employees")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell colSpan={Math.max(positions.length, 1)} className="border-b border-r border-slate-200 bg-emerald-600 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-white"><span className={`sticky left-0 block w-[min(100%,100cqw)] whitespace-nowrap text-center md:left-[428px] ${editing ? "md:w-[min(100%,calc(100cqw-580px))]" : "md:w-[min(100%,calc(100cqw-540px))]"}`}>{tr("Work Position")}</span></TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell rowSpan={2} style={stickyAnnual(editing)} className="w-16 min-w-16 md:w-[84px] md:min-w-[84px] md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide md:px-3 md:text-xs text-slate-600">{tr("Annual training required")}</TableMarkup.HeaderCell>
+              {editing && <TableMarkup.HeaderCell rowSpan={2} style={STICKY_REMOVE} className="w-10 min-w-10 md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-40 border-b border-r border-slate-200 bg-slate-50 px-2"><span className="sr-only">{tr("Remove")}</span></TableMarkup.HeaderCell>}
             </TableMarkup.Row>
             <TableMarkup.Row>
               {positions.map((p) => (
@@ -168,29 +169,29 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
                   <TableMarkup.Row>
                     <TableMarkup.Cell colSpan={span} className="border-b border-slate-200 bg-emerald-50/70 px-3 py-2">
                       <div className="sticky left-3 flex w-[min(100%,56rem)] flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                        <button type="button" aria-expanded={!closed} aria-label={`${closed ? "Expand" : "Collapse"} ${g.title}`} onClick={() => toggleGroup(g.id)} className="self-center text-emerald-800"><motion.span className="block" animate={{ rotate: closed ? -90 : 0 }} transition={expandTransition}><ChevronDown className="h-4 w-4" /></motion.span></button>
-                        <span className="text-xs font-semibold text-emerald-900 md:text-sm">{g.title}</span>
+                        <button type="button" aria-expanded={!closed} aria-label={`${closed ? tr("Expand") : tr("Collapse")} ${tr(g.title)}`} onClick={() => toggleGroup(g.id)} className="self-center text-emerald-800"><motion.span className="block" animate={{ rotate: closed ? -90 : 0 }} transition={expandTransition}><ChevronDown className="h-4 w-4" /></motion.span></button>
+                        <span className="text-xs font-semibold text-emerald-900 md:text-sm">{tr(g.title)}</span>
                         <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-800">{part.length}</span>
                       </div>
                     </TableMarkup.Cell>
                   </TableMarkup.Row>
                   <AnimatePresence initial={false}>
-                  {part.length === 0 && !closed && <MotionRow key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={expandTransition}><TableMarkup.Cell colSpan={span} className="px-4 text-xs text-slate-400">{expandContent(<div className="py-3">No row in this group.</div>)}</TableMarkup.Cell></MotionRow>}
+                  {part.length === 0 && !closed && <MotionRow key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={expandTransition}><TableMarkup.Cell colSpan={span} className="px-4 text-xs text-slate-400">{expandContent(<div className="py-3">{tr("No row in this group.")}</div>)}</TableMarkup.Cell></MotionRow>}
                   {!closed && part.map((x) => {
                     const change = diff?.changes.get(keyOf(x.row));
                     return (
                     <MotionRow key={keyOf(x.row)} className="group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={expandTransition}>
                       <TableMarkup.Cell style={STICKY_NO} className="w-8 min-w-8 md:w-12 md:min-w-12 md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-center text-xs tabular-nums text-slate-500 group-hover:bg-emerald-50">{expandContent(<div className="py-1.5">{x.index + 1}</div>)}</TableMarkup.Cell>
                       <TableMarkup.Cell style={STICKY_CODE} className="w-[84px] min-w-[84px] md:w-[120px] md:min-w-[120px] md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="py-1.5">{rowCode(x.row)}</div>)}</TableMarkup.Cell>
-                      <TableMarkup.Cell style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-900 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="whitespace-normal py-1.5 leading-snug">{x.row.locked && <span className="mr-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">Required by QA</span>}{editing && canLock && x.row.allEmployees && onLock && <button type="button" onClick={() => onLock(x.index, !x.row.locked)} className="mr-1.5 rounded-full border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">{x.row.locked ? "Unlock" : "Lock for QA"}</button>}{change?.kind === "added" && <span className="mr-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">New</span>}{rowName(x.row)}</div>)}</TableMarkup.Cell>
+                      <TableMarkup.Cell style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky md:shadow-[6px_0_8px_-6px_rgba(15,23,42,0.28)] z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-900 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="whitespace-normal py-1.5 leading-snug">{x.row.locked && <span className="mr-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">{tr("Required by QA")}</span>}{editing && canLock && x.row.allEmployees && onLock && <button type="button" onClick={() => onLock(x.index, !x.row.locked)} className="mr-1.5 rounded-full border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">{x.row.locked ? tr("Unlock") : tr("Lock for QA")}</button>}{change?.kind === "added" && <span className="mr-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">{tr("New")}</span>}{rowName(x.row)}</div>)}</TableMarkup.Cell>
                       <TableMarkup.Cell className="border-b border-r border-slate-200 bg-blue-50/40 p-0 text-center group-hover:bg-blue-50">
                         {expandContent(editing && (!x.row.locked || canLock) ? (
-                          <button type="button" role="checkbox" aria-checked={Boolean(x.row.allEmployees)} aria-label={`All employees: ${rowCode(x.row)} ${rowName(x.row)}`} onClick={() => onAllEmployees?.(x.index, !x.row.allEmployees)}
+                          <button type="button" role="checkbox" aria-checked={Boolean(x.row.allEmployees)} aria-label={trFormat("All employees: {code} {name}", { code: rowCode(x.row), name: rowName(x.row) })} onClick={() => onAllEmployees?.(x.index, !x.row.allEmployees)}
                             className="mx-auto flex h-8 w-9 md:h-9 md:w-11 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                             <span className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${x.row.allEmployees ? "border-blue-600 bg-blue-500 text-white shadow-sm" : "border-slate-300 bg-white text-transparent hover:border-blue-400"}`}><Check className="h-3 w-3" strokeWidth={3} /></span>
                           </button>
                         ) : (
-                          <span className="mx-auto flex h-8 w-9 md:h-9 md:w-11 items-center justify-center" title={x.row.locked ? "Required of all employees by Quality Assurance" : undefined} aria-label={x.row.allEmployees ? "All employees" : "Not for all employees"}>
+                          <span className="mx-auto flex h-8 w-9 md:h-9 md:w-11 items-center justify-center" title={x.row.locked ? tr("Required of all employees by Quality Assurance") : undefined} aria-label={x.row.allEmployees ? tr("All employees") : tr("Not for all employees")}>
                             {x.row.allEmployees ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white"><Check className="h-3 w-3" strokeWidth={3} /></span> : <span className="h-1 w-1 rounded-full bg-slate-300" />}
                           </span>
                         ))}
@@ -211,7 +212,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
                                 <span className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${on ? "scale-100 border-emerald-600 bg-emerald-500 text-white shadow-sm" : "border-slate-300 bg-white text-transparent hover:border-emerald-400"}`}><Check className="h-3 w-3" strokeWidth={3} /></span>
                               </button>
                             ) : (
-                              <span className="mx-auto flex h-8 w-9 md:h-9 md:w-11 items-center justify-center" aria-label={on ? "Required" : "Not required"}>
+                              <span className="mx-auto flex h-8 w-9 md:h-9 md:w-11 items-center justify-center" aria-label={on ? "Required" : tr("Not required")}>
                                 {on ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"><Check className="h-3 w-3" strokeWidth={3} /></span> : <span className="h-1 w-1 rounded-full bg-slate-300" />}
                               </span>
                             ))}
@@ -239,7 +240,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
           </TableMarkup.Body>
           <TableMarkup.Foot className="sticky bottom-0 z-30">
             <TableMarkup.Row>
-              <TableMarkup.Cell colSpan={3} style={{ left: 0 }} className="md:sticky z-40 border-r border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">Rows required of the Work Position</TableMarkup.Cell>
+              <TableMarkup.Cell colSpan={3} style={{ left: 0 }} className="md:sticky md:shadow-[6px_0_8px_-6px_rgba(15,23,42,0.28)] z-40 border-r border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">{tr("Rows required of the Work Position")}</TableMarkup.Cell>
               <TableMarkup.Cell aria-hidden="true" className="border-r border-slate-200 bg-blue-50" />
               {positions.map((p) => <TableMarkup.Cell key={p.id} className={`border-r border-slate-200 py-2 text-center text-xs font-semibold tabular-nums text-emerald-800 ${hotCol === p.id ? "bg-emerald-100" : "bg-emerald-50"}`}>{perPosition[p.id]}</TableMarkup.Cell>)}
               <TableMarkup.Cell style={stickyAnnual(editing)} className="w-16 min-w-16 md:w-[84px] md:min-w-[84px] md:sticky md:shadow-[inset_1px_0_0_0_#e2e8f0] z-20 border-r border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold tabular-nums text-slate-600">{rows.filter((r) => r.annualRequired).length}</TableMarkup.Cell>
@@ -249,7 +250,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
         </TableMarkup.Root>
       </div>
       <p className="px-1 text-xs text-slate-500">{rows.length} row{rows.length !== 1 ? "s" : ""} × {allPositions.length} Work Position{allPositions.length !== 1 ? "s" : ""}</p>
-      {filtered && visible.length === 0 && <p className="text-sm text-slate-500">Nothing matches the search or the filters.</p>}
+      {filtered && visible.length === 0 && <p className="text-sm text-slate-500">{tr("Nothing matches the search or the filters.")}</p>}
     </div>
     </ReportListToolbar>
   );

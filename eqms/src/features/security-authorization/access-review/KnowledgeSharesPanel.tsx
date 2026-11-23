@@ -23,6 +23,7 @@ import { dictionaryApi } from "@/services/api/dictionary";
 import { knowledgeSharesApi, type KnowledgeShareRow } from "@/services/api/knowledgeShares";
 import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const EFFECT_OPTIONS: SelectOption[] = [
   { value: "ALL", label: "All" },
@@ -60,7 +61,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [version, setVersion] = useState(0);
-  const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([{ value: "", label: "All Departments" }]);
+  const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([{ value: "", label: tr("All Departments") }]);
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedFilterSections, setExpandedFilterSections] = useState<Set<string>>(() => new Set(["department"]));
@@ -77,7 +78,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
 
   useEffect(() => {
     dictionaryApi.getDepartments()
-      .then((items) => setDepartmentOptions([{ value: "", label: "All Departments" }, ...items.map((d) => ({ value: d.id, label: d.name }))]))
+      .then((items) => setDepartmentOptions([{ value: "", label: tr("All Departments") }, ...items.map((d) => ({ value: d.id, label: d.name }))]))
       .catch(() => undefined);
   }, []);
 
@@ -94,7 +95,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
       setTotalPages(Math.max(1, result.pagination.totalPages));
     } catch (error) {
       setLoadError(true);
-      showToast({ type: "error", message: errorMessage(error, "Unable to load the Knowledge shares.") });
+      showToast({ type: "error", message: errorMessage(error, tr("Unable to load the Knowledge shares.")) });
     } finally {
       setLoading(false);
     }
@@ -115,10 +116,10 @@ export const KnowledgeSharesPanel: React.FC = () => {
     if (!revokeTarget) return;
     try {
       await knowledgeSharesApi.revoke(revokeTarget.ruleId);
-      showToast({ type: "success", message: "Share removed. The Audit Trail records who removed it." });
+      showToast({ type: "success", message: tr("Share removed. The Audit Trail records who removed it.") });
       setVersion((v) => v + 1);
     } catch (error) {
-      showToast({ type: "error", message: errorMessage(error, "Unable to remove the share.") });
+      showToast({ type: "error", message: errorMessage(error, tr("Unable to remove the share.")) });
     } finally {
       setRevokeTarget(null);
     }
@@ -135,7 +136,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
       cell: (_row, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     { id: "department", header: "Department", label: "Department", sort: sortOf("department"), cell: (r) => <span className="font-medium text-slate-800">{r.departmentName}</span> },
-    { id: "item", header: "Shared item", label: "Shared item", sort: sortOf("scope"), cellClassName: "text-slate-700", cell: (r) => r.scopeLabel },
+    { id: "item", header: tr("Shared item"), label: tr("Shared item"), sort: sortOf("scope"), cellClassName: "text-slate-700", cell: (r) => r.scopeLabel },
     {
       id: "effect",
       header: "Effect",
@@ -172,14 +173,14 @@ export const KnowledgeSharesPanel: React.FC = () => {
               ref={getRef(r.ruleId)}
               onClick={(e) => toggle(r.ruleId, e)}
               className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
-              aria-label={`Actions for the share of ${r.scopeLabel}`}
+              aria-label={trFormat("Actions for the share of {scope}", { scope: r.scopeLabel })}
             >
               <MoreVertical className="h-4 w-4 text-slate-600" />
             </button>
             <PortalDropdownMenu isOpen={openId === r.ruleId} onClose={close} position={position}>
               <div className="py-1">
                 <DropdownMenuItem icon={<IconTrash className="h-4 w-4" />} onClick={() => { setRevokeTarget(r); close(); }}>
-                  Remove this share
+                  {tr("Remove this share")}
                 </DropdownMenuItem>
               </div>
             </PortalDropdownMenu>
@@ -216,15 +217,13 @@ export const KnowledgeSharesPanel: React.FC = () => {
       <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
         <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
           <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-            The Department Heads decide who sees the Effective documents of their Department in the Knowledge Base (right-click &gt; Share in the
-            Knowledge explorer). This list is for oversight: you can see every share and, if you hold the permission to manage object access rules,
-            remove one on behalf of the Department Head. It matters only while Document Properties &gt; Knowledge Base Visibility is{" "}
-            <strong>Sharing</strong>.
+            {tr("The Department Heads decide who sees the Effective documents of their Department in the Knowledge Base (right-click > Share in the Knowledge explorer). This list is for oversight: you can see every share and, if you hold the permission to manage object access rules, remove one on behalf of the Department Head. It matters only while Document Properties > Knowledge Base Visibility is")}{" "}
+            <strong>{tr("Sharing")}</strong>.
           </div>
 
           {/* Mobile: search + filter drawer */}
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -232,21 +231,21 @@ export const KnowledgeSharesPanel: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  aria-label="Search shares"
-                  placeholder="Search by item, person or Department..."
+                  aria-label={tr("Search shares")}
+                  placeholder={tr("Search by item, person or Department...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
                 />
                 {search && (
-                  <button onClick={() => { setSearch(""); setCurrentPage(1); }} aria-label="Clear search" className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
+                  <button onClick={() => { setSearch(""); setCurrentPage(1); }} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
@@ -256,10 +255,10 @@ export const KnowledgeSharesPanel: React.FC = () => {
             trailing={<div className="hidden md:block">{control}</div>}
             search={
               <FilterSearchInput
-                aria-label="Search"
+                aria-label={tr("Search")}
                 value={search}
                 onChange={(value) => { setSearch(value); setCurrentPage(1); }}
-                placeholder="Search by item, person or Department..."
+                placeholder={tr("Search by item, person or Department...")}
               />
             }
             filters={[
@@ -269,28 +268,28 @@ export const KnowledgeSharesPanel: React.FC = () => {
           >
             <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
                     <Search className="h-4 w-4 text-slate-400 transition-colors" />
                   </div>
                   <input
                     type="text"
-                    aria-label="Search shares"
-                    placeholder="Search by item, person or Department..."
+                    aria-label={tr("Search shares")}
+                    placeholder={tr("Search by item, person or Department...")}
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
                   />
                   {search && (
-                    <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
+                    <button onClick={() => setSearch("")} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
               </div>
-              <Select label="Department" value={departmentId} onChange={(v) => { setDepartmentId(String(v)); setCurrentPage(1); }} options={departmentOptions} />
-              <Select label="Effect" value={effect} onChange={(v) => { setEffect(String(v)); setCurrentPage(1); }} options={EFFECT_OPTIONS} enableSearch={false} />
+              <Select label={tr("Department")} value={departmentId} onChange={(v) => { setDepartmentId(String(v)); setCurrentPage(1); }} options={departmentOptions} />
+              <Select label={tr("Effect")} value={effect} onChange={(v) => { setEffect(String(v)); setCurrentPage(1); }} options={EFFECT_OPTIONS} enableSearch={false} />
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                 {control}
@@ -310,11 +309,11 @@ export const KnowledgeSharesPanel: React.FC = () => {
         {!loading && rows.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white py-12">
             <TableEmptyState
-              title={loadError ? "Unable to load the shares" : hasFilters ? "No share matches the filters" : "No share yet"}
+              title={loadError ? tr("Unable to load the shares") : hasFilters ? tr("No share matches the filters") : "No share yet"}
               description={
-                loadError ? "Reload the page to try again."
-                  : hasFilters ? "Try another search or clear the filters."
-                  : "No Department Head has shared anything in the Knowledge Base."
+                loadError ? tr("Reload the page to try again.")
+                  : hasFilters ? tr("Try another search or clear the filters.")
+                  : tr("No Department Head has shared anything in the Knowledge Base.")
               }
             />
           </div>
@@ -352,10 +351,10 @@ export const KnowledgeSharesPanel: React.FC = () => {
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Department" isExpanded={expandedFilterSections.has("department")} onToggle={() => toggleFilterSection("department")}>
+        <FilterAccordionItem label={tr("Department")} isExpanded={expandedFilterSections.has("department")} onToggle={() => toggleFilterSection("department")}>
           {optionButtons(departmentOptions, departmentId, setDepartmentId)}
         </FilterAccordionItem>
-        <FilterAccordionItem label="Effect" isExpanded={expandedFilterSections.has("effect")} onToggle={() => toggleFilterSection("effect")}>
+        <FilterAccordionItem label={tr("Effect")} isExpanded={expandedFilterSections.has("effect")} onToggle={() => toggleFilterSection("effect")}>
           {optionButtons(EFFECT_OPTIONS, effect, setEffect)}
         </FilterAccordionItem>
       </FilterDrawer>
@@ -365,11 +364,10 @@ export const KnowledgeSharesPanel: React.FC = () => {
         onClose={() => setRevokeTarget(null)}
         onConfirm={revoke}
         type="confirm"
-        title="Remove this share?"
+        title={tr("Remove this share?")}
         description={
           <p className="text-sm text-slate-600">
-            The {revokeTarget?.effect === "DENY" ? "exclusion" : "share"} of <strong>{revokeTarget?.scopeLabel}</strong> in{" "}
-            <strong>{revokeTarget?.departmentName}</strong> is removed on behalf of the Department Head. The Audit Trail records who removed it.
+            {trFormat("The {kind} of {scope} in {department} is removed on behalf of the Department Head. The Audit Trail records who removed it.", { kind: revokeTarget?.effect === "DENY" ? tr("exclusion") : tr("share"), scope: revokeTarget?.scopeLabel, department: revokeTarget?.departmentName })}
           </p>
         }
         confirmText="Remove"

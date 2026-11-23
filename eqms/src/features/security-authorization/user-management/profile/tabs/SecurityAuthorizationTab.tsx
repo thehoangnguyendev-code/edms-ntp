@@ -31,6 +31,7 @@ import type { DataTableColumn } from "@/components/ui/table";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import { IconTile } from "@/components/ui/icon-tile";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** One normalized table row, shared by both modes so the Access Profiles table renders
  *  identically in the Add New User flow and the Detail/Edit screen -- only the Action column's
@@ -62,17 +63,17 @@ const MfaSection: React.FC<MfaSectionProps> = ({ mfaRequiredByAdmin, onMfaRequir
       />
     ) : mfaRequiredByAdmin ? (
       <Badge color="emerald" size="sm" className="mt-0.5 shrink-0">
-        Required
+        {tr("Required")}
       </Badge>
     ) : (
       <Checkbox checked={false} onChange={() => {}} disabled className="mt-0.5 shrink-0" />
     )}
     <span className="min-w-0 flex-1">
       <span className="block text-sm font-medium text-slate-700">
-        Require Multifactor Authentication
+        {tr("Require Multifactor Authentication")}
       </span>
       <span className="mt-1 block text-xs text-slate-500">
-        The user must set up MFA before using the system, even if Two-Factor Authentication is off globally.
+        {tr("The user must set up MFA before using the system, even if Two-Factor Authentication is off globally.")}
       </span>
       {disabledReason && (
         <span className="mt-1.5 block text-2xs text-slate-400">{disabledReason}</span>
@@ -120,7 +121,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
     { id: "rowNo", header: "No.", locked: true, cell: (_row, index) => rowOffset + index + 1 },
     {
       id: "profile",
-      header: "Access Profile",
+      header: tr("Access Profile"),
       cell: (row) => (
         <div className="flex items-center gap-2.5">
           <IconTile size="sm" color="emerald" icon={<IconUserKey className="h-3.5 w-3.5" />} />
@@ -166,10 +167,10 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
         <>
           <div className="mb-3 flex items-end gap-2">
             <div className="min-w-0 flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search")}</label>
               <FilterSearchInput
-                aria-label="Search access profiles"
-                placeholder="Search access profiles..."
+                aria-label={tr("Search access profiles")}
+                placeholder={tr("Search access profiles...")}
                 value={searchQuery}
                 onChange={onSearchChange}
                 debounceMs={0}
@@ -185,7 +186,7 @@ const AccessProfilesSection: React.FC<AccessProfilesSectionProps> = ({
             action={action}
             getRowKey={(row) => row.id}
             isLoading={isLoading}
-            emptyState={<TableEmptyState title="No access profiles found" description={noSearchMatchDescription} />}
+            emptyState={<TableEmptyState title={tr("No access profiles found")} description={noSearchMatchDescription} />}
             pagination={pagination}
           />
         </>
@@ -254,7 +255,7 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
       <button
         onClick={() => navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
         className="h-7 w-7 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-        title="View Access Profile Details"
+        title={tr("View Access Profile Details")}
       >
         <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </button>
@@ -277,7 +278,7 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
         headerAction={
           <Button variant={selectedProfileIds.length === 0 ? "default" : "default"} size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setIsPickerOpen(true)}>
             {selectedProfileIds.length === 0 ? <Plus className="h-3.5 w-3.5" /> : <IconPencilMinus className="h-3.5 w-3.5" />}
-            {selectedProfileIds.length === 0 ? "New Access Profile" : "Edit Access Profile"}
+            {selectedProfileIds.length === 0 ? tr("New Access Profile") : tr("Edit Access Profile")}
           </Button>
         }
         rows={rows}
@@ -360,7 +361,7 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
       <button
         onClick={() => navigate(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
         className="h-7 w-7 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-        title="View Access Profile Details"
+        title={tr("View Access Profile Details")}
       >
         <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </button>
@@ -371,14 +372,14 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
     <div>
       {isSelf && hasPermission("security.access_profiles.assign") && (
         <p className="text-2xs text-slate-400 mb-4">
-          Edit disabled for your own account.
+          {tr("Edit disabled for your own account.")}
         </p>
       )}
       <MfaSection
         mfaRequiredByAdmin={mfaRequiredByAdmin}
         onMfaRequiredByAdminChange={onMfaRequiredByAdminChange}
         editable={isEditingProfile && canEditMfaRequirement}
-        disabledReason={isSelf ? "You cannot change your own MFA requirement here. Use Preferences > Security." : undefined}
+        disabledReason={isSelf ? tr("You cannot change your own MFA requirement here. Use Preferences > Security.") : undefined}
       />
       <AccessProfilesSection
         eyebrow="Access Profiles"
@@ -390,7 +391,7 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
           canEditAccessProfiles && isEditingProfile ? (
             <Button variant={summary.assignedProfileIds.length === 0 ? "default" : "default"} size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setIsEditModalOpen(true)}>
               {summary.assignedProfileIds.length === 0 ? <Plus className="h-3.5 w-3.5" /> : <IconPencilMinus className="h-3.5 w-3.5" />}
-              {summary.assignedProfileIds.length === 0 ? "New Access Profile" : "Edit Access Profile"}
+              {summary.assignedProfileIds.length === 0 ? tr("New Access Profile") : tr("Edit Access Profile")}
             </Button>
           ) : undefined
         }

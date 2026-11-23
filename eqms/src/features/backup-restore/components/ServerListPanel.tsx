@@ -13,6 +13,7 @@ import { FilterDrawer, FilterAccordionItem } from "@/components/ui/filter/Filter
 import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
+import { tr } from "@/i18n";
 
 export interface ListFilter {
   id: string;
@@ -107,7 +108,7 @@ export function ServerListPanel<T>({
       <div className={framed ? "flex flex-1 flex-col p-4 md:p-5" : "flex flex-1 flex-col"}>
         <div className="flex w-full flex-col">
           <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
-            <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
+            <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -121,14 +122,14 @@ export function ServerListPanel<T>({
                   className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {search && (
-                  <button onClick={() => onSearch("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400" aria-label="Clear search">
+                  <button onClick={() => onSearch("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400" aria-label={tr("Clear search")}>
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
               <Button variant="outline" onClick={() => setDrawerOpen(true)} className="h-10 gap-2 whitespace-nowrap">
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
             {toolbarActions && <div className="flex gap-2">{toolbarActions}</div>}
@@ -142,7 +143,7 @@ export function ServerListPanel<T>({
           >
             <div className="hidden items-end gap-4 pb-4 md:grid md:grid-cols-2 md:pb-5 lg:grid-cols-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
                   <input
@@ -166,7 +167,7 @@ export function ServerListPanel<T>({
                   onStartDateChange={d.onFromChange}
                   onEndDateChange={d.onToChange}
                   includeTime={d.includeTime}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               ))}
               <div className="filter-actions flex items-end gap-2">
@@ -197,7 +198,7 @@ export function ServerListPanel<T>({
                     onStartDateChange={d.onFromChange}
                     onEndDateChange={d.onToChange}
                     includeTime={d.includeTime}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>

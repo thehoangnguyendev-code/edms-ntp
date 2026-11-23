@@ -44,14 +44,15 @@ import {
   type ReportNameFormat,
   type ReportNameFormatListItem,
 } from "@/services/api/reportNameFormats";
+import { tr } from "@/i18n";
 
 type RoleGrant = NonNullable<ReportTemplate["roleScopes"]>[number];
 const tabs = [
   { id: "general", label: "General" },
-  { id: "fields", label: "Fields & Defaults" },
+  { id: "fields", label: tr("Fields & Defaults") },
   { id: "charts", label: "Charts" },
-  { id: "scope", label: "Access & Scope" },
-  { id: "audit", label: "Audit Trail" },
+  { id: "scope", label: tr("Access & Scope") },
+  { id: "audit", label: tr("Audit Trail") },
 ];
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50";
@@ -371,8 +372,8 @@ export function ReportTemplateEditor() {
       <FormModal
         isOpen={rejecting?.step === "form"}
         onClose={() => setRejecting(undefined)}
-        title="Reject Revision"
-        description="The reason is required. The author is told, in the application and by e-mail, with this reason, and must change the template and submit it again."
+        title={tr("Reject Revision")}
+        description={tr("The reason is required. The author is told, in the application and by e-mail, with this reason, and must change the template and submit it again.")}
         confirmText="Continue to Sign"
         confirmDisabled={!rejecting?.reason.trim() || saving}
         onConfirm={() => rejecting && setRejecting({ ...rejecting, step: "sign" })}
@@ -413,8 +414,8 @@ export function ReportTemplateEditor() {
       <FormModal
         isOpen={approving?.step === "form"}
         onClose={() => setApproving(undefined)}
-        title="Approve Revision"
-        description="You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked."
+        title={tr("Approve Revision")}
+        description={tr("You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked.")}
         confirmText="Continue to Sign"
         confirmDisabled={!approving?.reason.trim()}
         onConfirm={() => approving && setApproving({ ...approving, step: "sign" })}
@@ -525,13 +526,13 @@ export function ReportTemplateEditor() {
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                     {/* Template Number (read-only, issued by the system) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Template Number</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Template Number")}</label>
                       <input type="text" readOnly value={create ? "" : code} className={CONTROL_STATE_CLASSES.readonlyField} placeholder="Assigned automatically when saved" />
                     </div>
 
                     {/* Revision (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Revision</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Revision")}</label>
                       <input
                         type="text"
                         readOnly
@@ -543,7 +544,7 @@ export function ReportTemplateEditor() {
 
                     {/* Created Time (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Created Time</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Created Time")}</label>
                       <input
                         type="text"
                         readOnly
@@ -555,7 +556,7 @@ export function ReportTemplateEditor() {
 
                     {/* Last Updated (read-only) */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Last Updated</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Last Updated")}</label>
                       <input
                         type="text"
                         readOnly
@@ -568,7 +569,7 @@ export function ReportTemplateEditor() {
                     {/* Metadata source (Select) */}
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                        Report Type<span className="ml-1 text-red-500">*</span>
+                        {tr("Report Type")}<span className="ml-1 text-red-500">*</span>
                       </label>
                       <Select
                         value={value.sourceCode}
@@ -578,7 +579,7 @@ export function ReportTemplateEditor() {
                             ? sources.map((item) => ({ value: item.code, label: item.name }))
                             : [{ value: value.sourceCode, label: value.sourceCode }]
                         }
-                        placeholder="Select a report type..."
+                        placeholder={tr("Select a report type...")}
                         onChange={(id) => {
                           const source = sources.find((item) => item.code === String(id));
                           if (source)
@@ -601,13 +602,13 @@ export function ReportTemplateEditor() {
 
                     {/* Name format (read-only): the active Report Name Format names a new template; a template keeps the format that named it */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">Name Format</label>
+                      <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Name Format")}</label>
                       <input
                         type="text"
                         readOnly
                         value={nameFormat ? `${nameFormat.name}${create ? " (active)" : ""}` : ""}
                         className={CONTROL_STATE_CLASSES.readonlyField}
-                        placeholder={create ? "No active format: type the name" : "No format: the name was typed"}
+                        placeholder={create ? tr("No active format: type the name") : tr("No format: the name was typed")}
                       />
                     </div>
 
@@ -637,7 +638,7 @@ export function ReportTemplateEditor() {
                     {/* Template Name - full width */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                        Template Name<span className="ml-1 text-red-500">*</span>
+                        {tr("Template Name")}<span className="ml-1 text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -645,7 +646,7 @@ export function ReportTemplateEditor() {
                         maxLength={255}
                         readOnly={!!nameFormat}
                         onChange={(event) => change({ displayName: event.target.value })}
-                        placeholder="Enter template name"
+                        placeholder={tr("Enter template name")}
                         className={cn(
                           "h-9 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500",
                           !!nameFormat && CONTROL_STATE_CLASSES.readonlyField,
@@ -657,7 +658,7 @@ export function ReportTemplateEditor() {
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-3">
                         <label htmlFor="gmpUse" className="cursor-pointer text-xs font-medium text-slate-700 sm:text-sm">
-                          Use for GMP Decisions?
+                          {tr("Use for GMP Decisions?")}
                         </label>
                         <Checkbox id="gmpUse" checked={value.gmpUse ?? false} onChange={(gmpUse) => change({ gmpUse })} />
                       </div>
@@ -667,7 +668,7 @@ export function ReportTemplateEditor() {
                     {/* Allowed output formats */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                        Allowed Output Formats<span className="ml-1 text-red-500">*</span>
+                        {tr("Allowed Output Formats")}<span className="ml-1 text-red-500">*</span>
                       </label>
                       <div className="flex flex-wrap gap-5">
                         {(["PDF", "XLSX", "CSV"] as ReportFormat[]).map((format) => (
@@ -686,7 +687,7 @@ export function ReportTemplateEditor() {
                     {/* Description */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                        Description<span className="ml-1 text-red-500">*</span>
+                        {tr("Description")}<span className="ml-1 text-red-500">*</span>
                       </label>
                       <textarea
                         value={value.description}

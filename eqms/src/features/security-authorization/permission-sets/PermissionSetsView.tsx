@@ -36,6 +36,7 @@ import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleSelectOptions } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
@@ -166,7 +167,7 @@ export const PermissionSetsView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load permission sets" });
+      showToast({ type: "error", message: tr("Failed to load permission sets") });
     } finally {
       setLoading(false);
       setInitialLoaded(true);
@@ -246,7 +247,7 @@ export const PermissionSetsView: React.FC = () => {
       showToast({ type: "success", message: `Permission set ${ps.active ? "deactivated" : "activated"}` });
       void load();
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: tr("Failed to update status") });
     }
   };
 
@@ -262,7 +263,7 @@ export const PermissionSetsView: React.FC = () => {
         sortBy: sortKey, sortDir,
       }, options);
     } catch {
-      showToast({ type: "error", message: "Export failed" });
+      showToast({ type: "error", message: tr("Export failed") });
     }
   };
 
@@ -320,7 +321,7 @@ export const PermissionSetsView: React.FC = () => {
         <>
           <div className="flex items-center gap-1.5 font-semibold text-slate-900">
             <span>{ps.name}</span>
-            {ps.testData && <Badge color="amber" size="xs">Test</Badge>}
+            {ps.testData && <Badge color="amber" size="xs">{tr("Test")}</Badge>}
           </div>
           <div className="mt-0.5 text-xs text-slate-400">{ps.code}</div>
         </>
@@ -332,8 +333,8 @@ export const PermissionSetsView: React.FC = () => {
     { id: "category", header: "Category", label: "Category", cell: (ps) => ps.category ?? "—" },
     { id: "status", header: "Status", label: "Status", sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") }, cell: (ps) => <Badge color={flagColor(ps.active)} size="sm">{ps.active ? "Active" : "Inactive"}</Badge> },
     { id: "type", header: "Type", label: "Type", sort: { direction: sortKey === "type" ? sortDir : undefined, onSort: () => handleSort("type") }, cell: (ps) => <Badge color={ps.system ? "blue" : "slate"} size="sm">{ps.system ? "System" : "Custom"}</Badge> },
-    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (ps) => formatDateTime(ps.createdAt) },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (ps) => formatDateTime(ps.updatedAt) },
+    { id: "createdAt", header: tr("Created Date"), label: tr("Created Date"), sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (ps) => formatDateTime(ps.createdAt) },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (ps) => formatDateTime(ps.updatedAt) },
   ];
   const setAction: DataTableAction<SetRow> = {
     header: "Action",
@@ -348,14 +349,14 @@ export const PermissionSetsView: React.FC = () => {
             ref={getRef(ps.id)}
             onClick={(e) => handleActionMenuToggle(ps.id, e)}
             className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="More actions"
+            aria-label={tr("More actions")}
           >
             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
           </button>
           <PortalDropdownMenu isOpen={openId === ps.id} onClose={close} position={position}>
             <div className="py-1">
               <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`); close(); }}>
-                View Detail
+                {tr("View Detail")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={<IconPencilMinus className="h-4 w-4" />}
@@ -363,7 +364,7 @@ export const PermissionSetsView: React.FC = () => {
                 title={loaded && !can("edit") ? reason("edit") : undefined}
                 onClick={() => { navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}/edit`); close(); }}
               >
-                Edit Shared Permission
+                {tr("Edit Shared Permission")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={<Copy className="h-4 w-4" />}
@@ -371,7 +372,7 @@ export const PermissionSetsView: React.FC = () => {
                 title={loaded && !can("clone") ? reason("clone") : undefined}
                 onClick={() => { setCloneTarget(ps); close(); }}
               >
-                Clone
+                {tr("Clone")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={ps.active ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />}
@@ -379,7 +380,7 @@ export const PermissionSetsView: React.FC = () => {
                 title={loaded && !can("toggleStatus") ? reason("toggleStatus") : undefined}
                 onClick={() => { void handleDeactivate(ps); close(); }}
               >
-                {ps.active ? "Deactivate" : "Activate"}
+                {ps.active ? tr("Deactivate") : "Activate"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={<Trash2 className="h-4 w-4" />}
@@ -387,7 +388,7 @@ export const PermissionSetsView: React.FC = () => {
                 title={loaded && !can("delete") ? reason("delete") : undefined}
                 onClick={() => { setDeleteTarget(ps); close(); }}
               >
-                Delete
+                {tr("Delete")}
               </DropdownMenuItem>
             </div>
           </PortalDropdownMenu>
@@ -405,13 +406,13 @@ export const PermissionSetsView: React.FC = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="permission-sets"
-        title="Permission Sets"
+        title={tr("Permission Sets")}
         totalRecords={totalItems}
         onExport={handleExport}
       />
 
       <PageHeader
-        title="Shared Permission Sets"
+        title={tr("Shared Permission Sets")}
         breadcrumbItems={permissionSetsBreadcrumb()}
         actions={
           activeTab === "sets" ? (
@@ -419,17 +420,17 @@ export const PermissionSetsView: React.FC = () => {
               {canManagePermissionSets && (
                 <Button variant="outline" size="sm" onClick={handleImportClick} className="whitespace-nowrap gap-2">
                   <Import className="h-4 w-4" />
-                  Import
+                  {tr("Import")}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setIsExportOpen(true)} className="whitespace-nowrap gap-2">
                 <Download className="h-4 w-4" />
-                Export
+                {tr("Export")}
               </Button>
               {canManagePermissionSets && (
                 <Button size="sm" onClick={() => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/new`)} className="whitespace-nowrap gap-2">
                   <Plus className="h-4 w-4" />
-                  New Shared Permission Set
+                  {tr("New Shared Permission Set")}
                 </Button>
               )}
             </>
@@ -447,7 +448,7 @@ export const PermissionSetsView: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden">
         <TabNav
-          tabs={[{ id: "sets", label: "Permission Sets" }, { id: "catalog", label: "Browse Catalog" }] satisfies TabItem[]}
+          tabs={[{ id: "sets", label: tr("Permission Sets") }, { id: "catalog", label: tr("Browse Catalog") }] satisfies TabItem[]}
           activeTab={activeTab}
           onChange={(tab) => setActiveTab(tab as "sets" | "catalog")}
           variant="underline"
@@ -457,13 +458,13 @@ export const PermissionSetsView: React.FC = () => {
           {activeTab === "sets" && (
             <>
       {!canViewPermissionSets ? (
-        <TableEmptyState title="Permission denied" description="You do not have permission to view permission sets." />
+        <TableEmptyState title={tr("Permission denied")} description={tr("You do not have permission to view permission sets.")} />
       ) : (
         <div className="flex-1 flex flex-col">
 
           {/* Mobile: search + filter button */}
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -471,7 +472,7 @@ export const PermissionSetsView: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search permission sets..."
+                  placeholder={tr("Search permission sets...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -484,14 +485,14 @@ export const PermissionSetsView: React.FC = () => {
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
 
           {/* Desktop: labeled filter grid */}
           {compactDesktopFilters && <DesktopSelectFilters
-            search={<input aria-label="Search permission sets" value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search by name, description or code..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+            search={<input aria-label={tr("Search permission sets")} value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} placeholder={tr("Search by name, description or code...")} className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
             filters={[
               { id: 'status', label: 'Status', value: statusFilter, defaultValue: 'ALL', options: STATUS_OPTIONS, onChange: setStatusFilter },
               { id: 'type', label: 'Type', value: typeFilter, defaultValue: 'ALL', options: TYPE_OPTIONS, onChange: setTypeFilter },
@@ -499,19 +500,19 @@ export const PermissionSetsView: React.FC = () => {
               { id: 'category', label: 'Category', value: categoryFilter, defaultValue: 'ALL', options: categoryOptions, onChange: setCategoryFilter },
             ]}
             dates={[
-              { id: 'created', label: 'Created Date Range', from: createdFrom, to: createdTo, onFromChange: setCreatedFrom, onToChange: setCreatedTo },
-              { id: 'updated', label: 'Last Updated Range', from: updatedFrom, to: updatedTo, onFromChange: setUpdatedFrom, onToChange: setUpdatedTo },
+              { id: 'created', label: tr('Created Date Range'), from: createdFrom, to: createdTo, onFromChange: setCreatedFrom, onToChange: setCreatedTo },
+              { id: 'updated', label: tr('Last Updated Range'), from: updatedFrom, to: updatedTo, onFromChange: setUpdatedFrom, onToChange: setUpdatedTo },
             ]} onApplied={() => setCurrentPage(1)} />}
           <div className={cn("hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search by name, description or code..."
+                  placeholder={tr("Search by name, description or code...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-3 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -519,36 +520,36 @@ export const PermissionSetsView: React.FC = () => {
               </div>
             </div>
             <div className="w-full">
-              <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder="Select status" />
+              <Select label={tr("Status")} value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} placeholder={tr("Select status")} />
             </div>
             <div className="w-full">
-              <Select label="Type" value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} placeholder="Select type" />
+              <Select label={tr("Type")} value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} placeholder={tr("Select type")} />
             </div>
             <div className="w-full">
-              <Select label="Module" value={moduleFilter} onChange={(v) => { setModuleFilter(String(v)); setCurrentPage(1); }} options={moduleOptions} placeholder="Select module" searchPlaceholder="Search module..." />
+              <Select label={tr("Module")} value={moduleFilter} onChange={(v) => { setModuleFilter(String(v)); setCurrentPage(1); }} options={moduleOptions} placeholder={tr("Select module")} searchPlaceholder={tr("Search module...")} />
             </div>
             <div className="w-full">
-              <Select label="Category" value={categoryFilter} onChange={(v) => { setCategoryFilter(String(v)); setCurrentPage(1); }} options={categoryOptions} placeholder="Select category" />
+              <Select label={tr("Category")} value={categoryFilter} onChange={(v) => { setCategoryFilter(String(v)); setCurrentPage(1); }} options={categoryOptions} placeholder={tr("Select category")} />
             </div>
             <div className="w-full">
               <DateRangePicker
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 startDate={createdFrom}
                 endDate={createdTo}
                 onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }}
                 onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }}
-                placeholder="Select created date range"
+                placeholder={tr("Select created date range")}
                 autoApply
               />
             </div>
             <div className="w-full">
               <DateRangePicker
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 startDate={updatedFrom}
                 endDate={updatedTo}
                 onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }}
                 onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }}
-                placeholder="Select last updated range"
+                placeholder={tr("Select last updated range")}
                 autoApply
               />
             </div>
@@ -578,8 +579,8 @@ export const PermissionSetsView: React.FC = () => {
               onRowClick={(ps) => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${ps.id}`)}
               emptyState={
                 <TableEmptyState
-                  title="No Shared Permission Sets Found"
-                  description="We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria."
+                  title={tr("No Shared Permission Sets Found")}
+                  description={tr("We couldn't find any shared permission sets matching your filters. Try adjusting your search criteria.")}
                 />
               }
               pagination={
@@ -610,7 +611,7 @@ export const PermissionSetsView: React.FC = () => {
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setStatusFilter(String(opt.value)); setCurrentPage(1); }} className={getOptionClassName(statusFilter === opt.value)}>
@@ -621,7 +622,7 @@ export const PermissionSetsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+        <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {TYPE_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setTypeFilter(String(opt.value)); setCurrentPage(1); }} className={getOptionClassName(typeFilter === opt.value)}>
@@ -632,7 +633,7 @@ export const PermissionSetsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Module" isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
+        <FilterAccordionItem label={tr("Module")} isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {moduleOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setModuleFilter(String(opt.value)); setCurrentPage(1); }} className={getOptionClassName(moduleFilter === opt.value)}>
@@ -643,7 +644,7 @@ export const PermissionSetsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Category" isExpanded={expandedSections.has("category")} onToggle={() => toggleSection("category")}>
+        <FilterAccordionItem label={tr("Category")} isExpanded={expandedSections.has("category")} onToggle={() => toggleSection("category")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {categoryOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setCategoryFilter(String(opt.value)); setCurrentPage(1); }} className={getOptionClassName(categoryFilter === opt.value)}>
@@ -654,29 +655,29 @@ export const PermissionSetsView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Created Date Range" isExpanded={expandedSections.has("created")} onToggle={() => toggleSection("created")}>
+        <FilterAccordionItem label={tr("Created Date Range")} isExpanded={expandedSections.has("created")} onToggle={() => toggleSection("created")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
-              label="Created Date Range"
+              label={tr("Created Date Range")}
               startDate={createdFrom}
               endDate={createdTo}
               onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }}
               onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }}
-              placeholder="Select created date range"
+              placeholder={tr("Select created date range")}
               autoApply
             />
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Last Updated Range" isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
+        <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
-              label="Last Updated Range"
+              label={tr("Last Updated Range")}
               startDate={updatedFrom}
               endDate={updatedTo}
               onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }}
               onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }}
-              placeholder="Select last updated range"
+              placeholder={tr("Select last updated range")}
               autoApply
             />
           </div>
@@ -697,7 +698,7 @@ export const PermissionSetsView: React.FC = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && void handleDelete(deleteTarget)}
         type="warning"
-        title="Delete Permission Set"
+        title={tr("Delete Permission Set")}
         description={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ""}
         confirmText="Delete"
         cancelText="Cancel"

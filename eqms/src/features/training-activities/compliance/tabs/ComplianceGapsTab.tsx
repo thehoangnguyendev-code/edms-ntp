@@ -9,17 +9,31 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
+import { Select } from "@/components/ui/select/Select";
+import { usePrintAction, type RegisterPrint } from "../usePrintAction";
+import { TrainingChips } from "../components/TrainingChips";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
-import { trainingActivitiesApi, trainingComplianceApi, trainingError, type TrainingGap, type TrainingPlannedSession } from "@/services/api/trainingActivities";
-import { day } from "@/features/training-activities/shared/trainingLabels";
+import { trainingActivitiesApi, trainingComplianceApi, trainingError, type TrainingGap, type TrainingGapTrainings, type TrainingPlannedSession } from "@/services/api/trainingActivities";
+import { day, saveBlob } from "@/features/training-activities/shared/trainingLabels";
+import { tr, trFormat } from "@/i18n";
 
 const STATUS_LABEL: Record<string, string> = { MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" };
 const STATUS_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", DUE: "amber", OK: "emerald" };
-const trainingKey = (g: TrainingGap) => `${g.code ?? ""}|${g.title}`;
+/** One total of the gaps with its colour bar on the left, the same figure style as the Summary tab. */
+function GapStat({ value, label, tone }: { value: number; label: string; tone: "red" | "amber" | "slate" }) {
+  const bar = { red: "border-red-600", amber: "border-amber-500", slate: "border-slate-300" }[tone];
+  return (
+    <div className={`min-w-0 border-l-[3px] pl-3 ${bar}`}>
+      <div className="text-2xl font-semibold leading-none tabular-nums text-slate-900 md:text-3xl">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{label}</div>
+    </div>
+  );
+}
+const trainingKey =(g: TrainingGap) => `${g.code ?? ""}|${g.title}`;
 const rowKey = (g: TrainingGap) => `${g.pid}|${trainingKey(g)}`;
 
 /**
@@ -27,7 +41,7 @@ const rowKey = (g: TrainingGap) => `${g.pid}|${trainingKey(g)}`;
  * Assurance requires, and the department-wide ones the head of department ticked) apply to every employee, with or without a Work Position; the others to the holders of the Work Position. A new
  * employee has a blue mark, a person without a Work Position an amber one. People who miss the same training can be chosen and added to a planned training activity, or a new one is started for them.
  */
-export function ComplianceGapsTab({ departmentId, departmentFilter }: { departmentId: string; departmentFilter: ReportSelectFilter }) {
+export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrint }: { departmentId: string; departmentFilter: ReportSelectFilter; registerPrint?: RegisterPrint }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { hasPermission } = usePermissions();
@@ -39,6 +53,9 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
   const [adding, setAdding] = useState(false);
   const [planned, setPlanned] = useState<TrainingPlannedSession[]>();
   const [busy, setBusy] = useState("");
+  // the required training chosen on the left ("" is all of them)
+  const [rowId, setRowId] = useState("");
+  const [trainings, setTrainings] = useState<TrainingGapTrainings>();
 
   const fetcher = useCallback(
     (params: Record<string, string | number | boolean | undefined>) =>
@@ -48,8 +65,25 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
       }),
     [],
   );
-  const extra = useMemo(() => ({ departmentId: departmentId || undefined, status: status || undefined, newOnly: fresh === "yes" ? true : undefined }), [departmentId, status, fresh]);
+  const extra = useMemo(() => ({ departmentId: departmentId || undefined, status: status || undefined, newOnly: fresh === "yes" ? true : undefined, rowId: rowId || undefined }), [departmentId, status, fresh, rowId]);
   const table = useServerTable<TrainingGap>({ persistKey: "training.compliance.gaps", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "status", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+  useEffect(() => {
+    setRowId("");
+    setTrainings(undefined);
+    trainingComplianceApi.gapTrainings(departmentId || undefined).then(setTrainings).catch((e) => setError(trainingError(e)));
+  }, [departmentId]);
+  const print = async () => {
+    try {
+      saveBlob(await trainingComplianceApi.printGaps({ departmentId: departmentId || undefined, status: status || undefined, newOnly: fresh === "yes" ? true : undefined, search: table.searchQuery || undefined, rowId: rowId || undefined }), "training-gap-list.pdf");
+    } catch (e) {
+      setError(trainingError(e));
+    }
+  };
+  usePrintAction(registerPrint, trainings?.matrixVersionNo != null, print);
+  const chooseTraining = (id: string) => { setRowId(id); table.setCurrentPage(1); };
+  const trainingNow = trainings?.data.find((t) => t.id === rowId);
+  const totalMissing = (trainings?.data ?? []).reduce((sum, t) => sum + t.missing, 0);
+  const totalDue = (trainings?.data ?? []).reduce((sum, t) => sum + t.due, 0);
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   // what is chosen: lines that miss the same training (a person is added to a session of one training)
@@ -71,12 +105,12 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
     setBusy(session.sessionId);
     try {
       await trainingActivitiesApi.addParticipants(session.activityId, { sessionId: session.sessionId, personUserIds: [...new Set(chosen.map((g) => g.pid))], reason: allNew ? "Initial training of new employees" : "Training required by the matrix" });
-      showToast({ type: "success", title: "Added to the training", message: `${new Set(chosen.map((g) => g.pid)).size} people, ${session.trainingNumber}` });
+      showToast({ type: "success", title: tr("Added to the training"), message: `${new Set(chosen.map((g) => g.pid)).size} people, ${session.trainingNumber}` });
       setPicked({});
       setAdding(false);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The people were not added", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The people were not added"), message: trainingError(e) });
     } finally {
       setBusy("");
     }
@@ -94,52 +128,71 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
 
   const columns: DataTableColumn<TrainingGap>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (g) => g.employeeCode ?? "—" },
+    { id: "employeeCode", header: tr("Employee ID"), sort: sorted("employeeCode"), cell: (g) => g.employeeCode ?? "—" },
     {
       id: "name", header: "Full Name", sort: sorted("fullName"),
       cell: (g) => (
         <div className="flex flex-wrap items-center gap-2">
           <TrainingPersonName fullName={g.fullName} avatar={g.avatar} />
-          {g.isNew && <Badge color="blue">New employee</Badge>}
-          {g.noRole && <Badge color="amber">No Work Position</Badge>}
+          {g.isNew && <Badge color="blue">{tr("New employee")}</Badge>}
+          {g.noRole && <Badge color="amber">{tr("No Work Position")}</Badge>}
         </div>
       ),
     },
-    { id: "position", header: "Work Position", sort: sorted("positionName"), cell: (g) => g.positionName ?? "—" },
-    { id: "topic", header: "Required training", sort: sorted("title"), cell: (g) => <div className="max-w-80 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}{g.allEmployees && <Badge color="slate" size="sm">All employees</Badge>}</div> },
+    { id: "position", header: tr("Work Position"), sort: sorted("positionName"), cell: (g) => g.positionName ?? "—" },
+    { id: "topic", header: tr("Required training"), sort: sorted("title"), cell: (g) => <div className="max-w-80 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}{g.allEmployees && <Badge color="slate" size="sm">{tr("All employees")}</Badge>}</div> },
     { id: "annual", header: "Annual", sort: sorted("annualRequired"), cell: (g) => (g.annualRequired ? "Yes" : "No") },
-    { id: "last", header: "Last trained", sort: sorted("lastDone"), cell: (g) => day(g.lastDone) },
+    { id: "last", header: tr("Last trained"), sort: sorted("lastDone"), cell: (g) => day(g.lastDone) },
     { id: "status", header: "Status", sort: sorted("status"), cell: (g) => <Badge color={STATUS_COLOR[g.status]}>{STATUS_LABEL[g.status]}</Badge> },
   ];
   const { layout, control } = useCustomColumnLayout("training.compliance.coverage", columns);
   const filters: ReportSelectFilter[] = [
-    departmentFilter,
     { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
-    { id: "new", label: "Employees", value: fresh, options: [{ label: "All", value: "" }, { label: "New employees only", value: "yes" }], onChange: (v) => { setFresh(v); table.setCurrentPage(1); } },
+    { id: "new", label: "Employees", value: fresh, options: [{ label: "All", value: "" }, { label: tr("New employees only"), value: "yes" }], onChange: (v) => { setFresh(v); table.setCurrentPage(1); } },
   ];
   const selection = canOrganize ? {
     visible: true,
-    header: <Checkbox checked={allShown} onChange={toggleAll} aria-label="Select the lines shown that are not done" />,
+    header: <Checkbox checked={allShown} onChange={toggleAll} aria-label={tr("Select the lines shown that are not done")} />,
     cell: (g: TrainingGap) => (g.status === "OK" ? null : <Checkbox checked={Boolean(picked[rowKey(g)])} onChange={() => toggle(g)} aria-label={`Select ${g.fullName}: ${g.title}`} />),
   } : undefined;
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-600">
-        <Badge color="blue">New employee</Badge> started in the last days that Training Properties allows. <Badge color="amber">No Work Position</Badge> has no Work Position yet: only the trainings for all employees apply until a job assignment gives one.
-      </p>
+      <div className="w-full lg:w-72"><Select label={departmentFilter.label} value={departmentFilter.value} options={departmentFilter.options} onChange={(v) => departmentFilter.onChange(String(v))} /></div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      <div className="space-y-4 md:space-y-5">
+      {trainings && trainings.data.length > 0 && (
+        <>
+          <div className="grid grid-cols-3 gap-x-4">
+            <GapStat value={trainings.data.length} label={tr("Required training with a gap")} tone="slate" />
+            <GapStat value={totalMissing} label={tr("not trained")} tone={totalMissing > 0 ? "red" : "slate"} />
+            <GapStat value={totalDue} label={tr("annual training due")} tone={totalDue > 0 ? "amber" : "slate"} />
+          </div>
+          <TrainingChips
+            ariaLabel={tr("Required training with a gap")}
+            allLabel={tr("All required trainings")}
+            allCount={trainings.data.length}
+            selectedId={rowId}
+            onSelect={chooseTraining}
+            items={trainings.data.map((t) => ({ id: t.id, name: `${t.code ? `${t.code} ` : ""}${t.title}`, count: t.people, tone: t.missing > 0 ? "bad" : "warn" }))}
+          />
+        </>
+      )}
+      {trainingNow && <p className="text-sm text-slate-500">{trFormat("{count} people have a gap", { count: trainingNow.people })}</p>}
+      <p className="text-xs text-slate-600">
+              <Badge color="blue">{tr("New employee")}</Badge> {tr("started in the last days that Training Properties allows.")} <Badge color="amber">{tr("No Work Position")}</Badge> {tr("has no Work Position yet: only the trainings for all employees apply until a job assignment gives one.")}
+      </p>
       {canOrganize && chosen.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          <span>{chosen.length} line{chosen.length === 1 ? "" : "s"} chosen{sameTraining ? "" : ". Choose people who miss the same training to add them to a training."}</span>
+                <span>{trFormat("{count} lines chosen", { count: chosen.length })}{sameTraining ? "" : tr(". Choose people who miss the same training to add them to a training.")}</span>
           <span className="flex gap-2">
-            <Button size="sm" variant="outline-emerald" onClick={() => setPicked({})}>Clear</Button>
-            <Button size="sm" disabled={!sameTraining} onClick={() => setAdding(true)}>Add to a Training</Button>
+            <Button size="sm" variant="outline-emerald" onClick={() => setPicked({})}>{tr("Clear")}</Button>
+            <Button size="sm" disabled={!sameTraining} onClick={() => setAdding(true)}>{tr("Add to a Training")}</Button>
           </span>
         </div>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search employee or training…"
+        searchPlaceholder={tr("Search employee or training…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters}
@@ -158,7 +211,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
           columns={columns}
           columnLayout={layout}
           selection={selection}
-          emptyState={<TableEmptyState title="Nothing to show" description="The department needs an effective matrix; the rows for all employees apply to everyone, the others to the holders of a Work Position." />}
+          emptyState={<TableEmptyState title={tr("Nothing to show")} description={tr("The department needs an effective matrix; the rows for all employees apply to everyone, the others to the holders of a Work Position.")} />}
           pagination={
             table.totalItems > 0 ? (
               <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />
@@ -166,12 +219,13 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
           }
         />
       </ReportListToolbar>
+      </div>
 
       <FormModal isOpen={adding} onClose={() => setAdding(false)} onConfirm={() => setAdding(false)} confirmText="Close" size="xl" title={chosen[0] ? `Add to a training: ${chosen[0].title}` : "Add to a training"}
         description={`${new Set(chosen.map((g) => g.pid)).size} people miss this training. Add them to a planned training (the list is not confirmed yet), or start a new training for them. Quality Assurance gives the training number of the initial and periodic training.`}>
         {!planned ? <SectionLoading text="Loading…" /> : (
           <div className="space-y-3">
-            {planned.length === 0 && <p className="text-sm text-slate-500">No planned training covers it yet.</p>}
+            {planned.length === 0 && <p className="text-sm text-slate-500">{tr("No planned training covers it yet.")}</p>}
             {planned.length > 0 && (
               <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
                 {planned.map((a) => (
@@ -179,14 +233,14 @@ export function ComplianceGapsTab({ departmentId, departmentFilter }: { departme
                     <div className="min-w-0">
                       <button type="button" className="font-medium text-emerald-700 hover:underline" onClick={() => navigate(`/training-management/activities/${a.activityId}`)}>{a.trainingNumber}</button>
                       <span className="ml-2 text-slate-800">{a.trainingTopics}</span>
-                      <span className="ml-2 text-xs text-slate-500">Session {a.sessionNo}{a.scheduledOn ? `, ${day(a.scheduledOn)}` : ""}, {a.participants} people</span>
+                      <span className="ml-2 text-xs text-slate-500">{tr("Session")} {a.sessionNo}{a.scheduledOn ? `, ${day(a.scheduledOn)}` : ""}, {a.participants} {tr("people")}</span>
                     </div>
-                    {a.canAdd ? <Button size="sm" loading={busy === a.sessionId} onClick={() => void addTo(a)}>Add to This Training</Button> : <Badge color="slate">The list is confirmed</Badge>}
+                    {a.canAdd ? <Button size="sm" loading={busy === a.sessionId} onClick={() => void addTo(a)}>{tr("Add to This Training")}</Button> : <Badge color="slate">{tr("The list is confirmed")}</Badge>}
                   </li>
                 ))}
               </ul>
             )}
-            <div><Button size="sm" variant="outline-emerald" onClick={create}>Create a Training for Them</Button></div>
+            <div><Button size="sm" variant="outline-emerald" onClick={create}>{tr("Create a Training for Them")}</Button></div>
           </div>
         )}
       </FormModal>

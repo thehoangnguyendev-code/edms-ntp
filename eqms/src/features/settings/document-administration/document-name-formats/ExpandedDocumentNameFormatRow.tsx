@@ -4,6 +4,7 @@ import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/tabl
 import { documentNameFormatApi } from "@/services/api";
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 interface ExpandedDocumentNameFormatRowProps {
   format: DocumentNameFormatItem;
@@ -81,30 +82,30 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
                   {isLoadingCatalog && (
                     <div className="flex items-center gap-2 text-slate-500 text-xs font-medium py-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
-                      Loading component details...
+                      {tr("Loading component details...")}
                     </div>
                   )}
 
                   {!isLoadingCatalog && hasComponents && (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Document Components ({orderedComponents.length})
+                        {trFormat("Document Components ({count})", { count: orderedComponents.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Name
+                                {tr("Name")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Value
+                                {tr("Value")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Description
+                                {tr("Description")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className="py-1.5 px-2.5 text-right text-2xs md:text-xs font-semibold text-slate-600 whitespace-nowrap">
-                                Order
+                                {tr("Order")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -135,7 +136,7 @@ export const ExpandedDocumentNameFormatRow: React.FC<ExpandedDocumentNameFormatR
                   )}
 
                   {!isLoadingCatalog && !hasComponents && (
-                    <p className="text-xs text-slate-500 py-2">This format has no components configured.</p>
+                    <p className="text-xs text-slate-500 py-2">{tr("This format has no components configured.")}</p>
                   )}
                 </div>
               </div>

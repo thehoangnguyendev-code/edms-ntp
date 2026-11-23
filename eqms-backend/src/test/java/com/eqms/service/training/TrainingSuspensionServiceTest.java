@@ -1,9 +1,7 @@
 package com.eqms.service.training;
 
-import com.eqms.entity.ElectronicSignature;
 import com.eqms.entity.UserAccount;
 import com.eqms.repository.UserAccountRepository;
-import com.eqms.service.ElectronicSignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +10,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -21,9 +18,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -31,7 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** D-12: a failed assessment raises "work suspended"; the retraining that is passed ends it; the head of the unit may resume it with a reason and a signature, never for oneself. */
+/** D-12: a failed assessment raises "work suspended"; the retraining that is passed ends it; nobody resumes it by hand (owner decision 2026-11-23). */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class TrainingSuspensionServiceTest {
@@ -39,7 +35,6 @@ class TrainingSuspensionServiceTest {
     @Mock JdbcTemplate jdbc;
     @Mock TrainingAccess access;
     @Mock TrainingStore store;
-    @Mock ElectronicSignatureService signatures;
     @Mock UserAccountRepository users;
     @Mock TrainingNotifier notifier;
     @Mock TrainingRecipients recipients;
@@ -60,7 +55,7 @@ class TrainingSuspensionServiceTest {
         when(users.findById(personId)).thenReturn(Optional.of(trainee));
         when(access.departmentOf(trainee)).thenReturn(departmentId);
         when(access.departmentOf(any(UserAccount.class))).thenReturn(departmentId);
-        service = new TrainingSuspensionService(jdbc, access, store, signatures, users, notifier, recipients, com.eqms.service.authorization.TestGuards.allowingTraining());
+        service = new TrainingSuspensionService(jdbc, access, store, users, notifier, recipients);
     }
 
     private Map<String, Object> activity() {
@@ -141,59 +136,10 @@ class TrainingSuspensionServiceTest {
         verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("retraining was passed"), any());
     }
 
-    private Map<String, Object> open() {
-        Map<String, Object> row = new HashMap<>();
-        row.put("id", UUID.randomUUID());
-        row.put("person_user_id", personId);
-        row.put("activity_id", activityId);
-        row.put("status", "OPEN");
-        when(jdbc.queryForList(contains("from training_work_suspensions where id=? for update"), any(Object[].class))).thenReturn(List.of(row));
-        when(store.activity(activityId)).thenReturn(Optional.of(activity()));
-        return row;
-    }
-
     @Test
-    void thePersonConcernedCannotResumeTheirOwnWork() {
-        Map<String, Object> row = open();
-        when(actor.getId()).thenReturn(personId);
-        // the person kept apart is a rule of the engine now (the policy forbids the relation SUBJECT: TrainingOtherLifecyclesMatrixTest); here the engine refuses and nothing is signed
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "shadow", com.eqms.service.authorization.TestGuards.refusingTraining("SEPARATION_OF_DUTIES"));
-
-        assertThatThrownBy(() -> service.resume(actor, (UUID) row.get("id"), new TrainingSuspensionService.ResumeRequest("ok", "token")))
-                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class).hasMessage("SEPARATION_OF_DUTIES");
-        verify(signatures, org.mockito.Mockito.never()).createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void resumingNeedsAReasonAndASignature() {
-        Map<String, Object> row = open();
-        UUID id = (UUID) row.get("id");
-
-        assertThatThrownBy(() -> service.resume(actor, id, new TrainingSuspensionService.ResumeRequest(" ", "token"))).hasMessage("TRAINING_REASON_REQUIRED");
-        assertThatThrownBy(() -> service.resume(actor, id, new TrainingSuspensionService.ResumeRequest("Retrained on the job", null))).hasMessage("TRAINING_SIGNATURE_REQUIRED");
-    }
-
-    @Test
-    void aSuspensionThatIsAlreadyClearedCannotBeResumedAgain() {
-        Map<String, Object> row = open();
-        row.put("status", "CLEARED");
-
-        assertThatThrownBy(() -> service.resume(actor, (UUID) row.get("id"), new TrainingSuspensionService.ResumeRequest("ok", "token")))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_SUSPENSION_NOT_OPEN");
-    }
-
-    @Test
-    void theHeadOfTheUnitResumesWithAReasonAndASignatureAndThePersonIsTold() {
-        Map<String, Object> row = open();
-        ElectronicSignature signature = mock(ElectronicSignature.class);
-        when(signature.getId()).thenReturn(UUID.randomUUID());
-        when(signatures.createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
-
-        service.resume(actor, (UUID) row.get("id"), new TrainingSuspensionService.ResumeRequest("Retrained on the job", "token"));
-
-        verify(signatures).createEntitySignature(any(), any(), any(), any(), eq("token"), eq("TRAINING_WORK_RESUMED"), any(), any(), any(), any());
-        verify(store).auditActivity(eq(actor), any(), eq("TRAINING_WORK_SUSPENSION_CLEARED"), eq("OPEN"), eq("CLEARED"), contains("Retrained on the job"),
-                argThat(changes -> changes.size() == 1 && "Reason for Resuming Work".equals(changes.get(0).field()) && "Retrained on the job".equals(changes.get(0).newValue())));
-        verify(notifier).send(eq("TRAINING_WORK_RESUMED"), eq(trainee), eq(actor), any(), any(), any(), eq(activityId), any());
+    void noOneCanResumeTheWorkByHandOnlyThePassedRetrainingEndsTheFlag() {
+        // the owner decided on 2026-11-23 that the flag ends only when the retraining is passed (SOP.0003 5.3.7); the old resume path must not come back unnoticed
+        assertThat(java.util.Arrays.stream(TrainingSuspensionService.class.getDeclaredMethods()).map(java.lang.reflect.Method::getName)).noneMatch(n -> n.toLowerCase().contains("resume"));
+        assertThat(java.util.Arrays.stream(TrainingSuspensionService.class.getDeclaredClasses()).map(Class::getSimpleName)).doesNotContain("ResumeRequest");
     }
 }

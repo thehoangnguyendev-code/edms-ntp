@@ -28,7 +28,7 @@ vi.mock("@/components/ui/esign-modal/ESignatureModal", () => ({
   ESignatureModal: ({ isOpen, onConfirm }: { isOpen: boolean; onConfirm: (d: { signatureToken: string }) => void }) => (isOpen ? <button onClick={() => onConfirm({ signatureToken: "tok" })}>SIGN</button> : null),
 }));
 
-import { TrainingAssessmentDetailPage, distributePoints, itemValid, reorderAnswers, type Draft } from "../TrainingAssessmentDetailPage";
+import { TrainingAssessmentDetailPage, distributePoints, itemIssues, itemValid, reorderAnswers, type Draft } from "../TrainingAssessmentDetailPage";
 
 const NO_CAPS = { edit: false, delete: false, submit: false, returnToDraft: false, approve: false, upgradeRevision: false };
 const detail = (over: Record<string, unknown> = {}, caps: Record<string, boolean> = {}) => ({
@@ -346,6 +346,141 @@ describe("the flow of the assessment", () => {
     api.get.mockResolvedValue(detail({ status: "EFFECTIVE" }, { ...NO_CAPS, upgradeRevision: true }));
     renderPage("/training-management/assessments/d1");
     expect((await screen.findAllByRole("button", { name: "Preview" })).length).toBe(2);
+  });
+});
+
+describe("what is missing in a question", () => {
+  const single = (over: Partial<Draft>): Draft => ({ ...draftOf("1"), kind: "SINGLE", prompt: "q", options: [{ key: "a", text: "x" }, { key: "b", text: "y" }], correct: ["A"], ...over });
+  it("is said in words, one line for each thing, and a complete question has none", () => {
+    expect(itemIssues(single({}))).toEqual([]);
+    expect(itemIssues(single({ prompt: " ", options: [{ key: "a", text: "" }, { key: "b", text: "y" }], correct: [] }))).toEqual([
+      "The question text is missing", "Answer A is empty", "The right answer is not ticked",
+    ]);
+    expect(itemIssues(single({ points: "0" }))).toEqual(["The points must be above 0 and not more than 100"]);
+    expect(itemIssues({ ...draftOf("1"), kind: "MULTI", options: [{ key: "a", text: "x" }, { key: "b", text: "y" }], correct: [] })).toEqual(["No right answer is ticked"]);
+    expect(itemValid(single({ correct: [] }))).toBe(false);
+  });
+});
+
+describe("the questions fold like an accordion", () => {
+  const two = () => detail({ items: [
+    { no: 1, kind: "SINGLE", prompt: "Q1", options: [{ id: "A", text: "Một" }, { id: "B", text: "Hai" }], correct: ["A"], points: 1, modelAnswer: null },
+    { no: 2, kind: "ESSAY", prompt: "Mô tả hai", options: [], correct: [], points: 3, modelAnswer: "Ý" },
+  ] });
+
+  it("every question starts open; a click folds one to a line that keeps its text, its points and what is missing, and keeps what was typed", async () => {
+    api.get.mockResolvedValue(two());
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    expect(await screen.findByLabelText("Answer A")).toBeTruthy();
+    const first = screen.getByRole("button", { name: /Question 1/, expanded: true });
+    fireEvent.change(screen.getByLabelText("Answer A"), { target: { value: "Một sửa" } });
+    fireEvent.click(first);
+    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    expect(screen.getByRole("button", { name: /Question 1/, expanded: false }).textContent).toMatch(/Q1/);
+    expect(screen.getByLabelText("Drag Question 1")).toBeTruthy(); // the grip stays: a folded question is still dragged
+    fireEvent.click(screen.getByRole("button", { name: /Question 1/ }));
+    expect((await screen.findByLabelText("Answer A") as HTMLInputElement).value).toBe("Một sửa");
+  });
+
+  it("Collapse all folds every question and Expand all opens them again", async () => {
+    api.get.mockResolvedValue(two());
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    fireEvent.click(await screen.findByRole("button", { name: "Collapse all" }));
+    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    expect(screen.getAllByRole("button", { expanded: false }).length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    expect(await screen.findByLabelText("Answer A")).toBeTruthy();
+  });
+
+  it("the chip of the first incomplete question opens it when it is folded", async () => {
+    renderPage("/training-management/assessments/new", true);
+    await openItems();
+    fireEvent.click(await screen.findByRole("button", { name: /Question 1/, expanded: true }));
+    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /1 not complete/ }));
+    expect(await screen.findByLabelText("Answer A")).toBeTruthy();
+  });
+});
+
+describe("the paper beside the questions", () => {
+  const madePaper = (b: { key: boolean }) => Object.assign(new Blob(["%PDF"]), { tag: b.key ? "key" : "paper" });
+
+  const slow = { timeout: 4000 };
+
+  it("is the real PDF of the server and follows the editor: a moment after the last change it is made again, once for several changes", async () => {
+    api.get.mockResolvedValue(detail());
+    api.preview.mockImplementation(async (b: { key: boolean }) => madePaper(b));
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    expect((await screen.findByTestId("pdf", {}, slow)).textContent).toBe("blob:preview-paper");
+    expect(api.preview).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("The paper shows your latest changes.")).toBeTruthy();
+    // two changes at once: one new paper, with both
+    fireEvent.change(screen.getByLabelText("Answer A"), { target: { value: "Một nữa" } });
+    fireEvent.change(screen.getByLabelText("Answer B"), { target: { value: "Hai nữa" } });
+    expect(await screen.findByText("Changes not shown yet.")).toBeTruthy();
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2), slow);
+    expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining({ items: [expect.objectContaining({ options: [{ text: "Một nữa" }, { text: "Hai nữa" }] })] }));
+    await waitFor(() => expect(screen.getByText("The paper shows your latest changes.")).toBeTruthy(), slow);
+    expect(api.preview).toHaveBeenCalledTimes(2);
+  });
+
+  it("the Answer Key follows the editor too, while it is the tab that is looked at", async () => {
+    api.get.mockResolvedValue(detail());
+    api.preview.mockImplementation(async (b: { key: boolean }) => madePaper(b));
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    await screen.findByTestId("pdf", {}, slow);
+    fireEvent.click(screen.getByRole("tab", { name: "Answer Key" }));
+    await waitFor(() => expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining({ key: true })), slow);
+    expect((await screen.findByTestId("pdf", {}, slow)).textContent).toBe("blob:preview-key");
+    fireEvent.change(screen.getByLabelText("Answer A"), { target: { value: "Một nữa" } });
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(3), slow);
+    expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining({ key: true, items: [expect.objectContaining({ options: [{ text: "Một nữa" }, { text: "Hai" }] })] }));
+  });
+
+  it("the person can switch the automatic update off: the paper is then made and updated by hand, and the answer key is another paper", async () => {
+    api.get.mockResolvedValue(detail());
+    api.preview.mockImplementation(async (b: { key: boolean }) => madePaper(b));
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Update automatically/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Make the preview" }));
+    expect((await screen.findByTestId("pdf")).textContent).toBe("blob:preview-paper");
+    expect(api.preview).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText("Answer A"), { target: { value: "Một nữa" } });
+    expect(await screen.findByText(/does not show your latest changes/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Update preview" }));
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText(/does not show your latest changes/)).toBeNull());
+    fireEvent.click(screen.getByRole("tab", { name: "Answer Key" }));
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    fireEvent.click(await screen.findByRole("button", { name: "Make the preview" }));
+    await waitFor(() => expect(api.preview).toHaveBeenLastCalledWith(expect.objectContaining({ key: true })));
+    expect((await screen.findByTestId("pdf")).textContent).toBe("blob:preview-key");
+  });
+
+  it("a refusal of the server is not tried again and again by itself", async () => {
+    api.get.mockResolvedValue(detail());
+    api.preview.mockRejectedValue({ response: { data: { message: "TRAINING_ASSESSMENT_ITEM_INVALID" } } });
+    renderPage("/training-management/assessments/d1");
+    await openItems();
+    expect(await screen.findByText("The paper could not be made. Try again.", {}, slow)).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 1600));
+    expect(api.preview).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Update preview" })).toBeTruthy();
+  });
+
+  it("is not made while a question is not complete, and the question says what is missing", async () => {
+    renderPage("/training-management/assessments/new", true);
+    await openItems();
+    expect(await screen.findByText("Complete the assessment name and every question or line to see the preview.")).toBeTruthy();
+    expect(screen.getByText("The question text is missing")).toBeTruthy();
+    expect(screen.getByText("Answer A is empty")).toBeTruthy();
+    expect(screen.getByText("The right answer is not ticked")).toBeTruthy();
+    expect(api.preview).not.toHaveBeenCalled();
   });
 });
 

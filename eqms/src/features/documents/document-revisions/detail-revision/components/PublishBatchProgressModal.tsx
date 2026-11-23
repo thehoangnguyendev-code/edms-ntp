@@ -2,6 +2,7 @@ import React from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Progress } from "@/components/ui/progress/Progress";
+import { tr } from "@/i18n";
 
 interface PublishBatchProgressModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title="Publish Processing"
+      title={tr("Publish Processing")}
       showFooter={false}
       size="md"
       className="max-w-md"
@@ -50,7 +51,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
             {isCompleted
               ? "Publish complete"
               : hasErrors
-                ? "Publish failed"
+                ? tr("Publish failed")
                 : "Publishing document package..."}
           </h3>
           <span className="text-xs font-semibold text-slate-500 tabular-nums shrink-0">
@@ -60,7 +61,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
 
         {!isCompleted && !hasErrors && (
           <p className="mb-4 text-xs sm:text-sm text-slate-500">
-            Publishing this document together with its Related Document(s). Please wait a moment.
+            {tr("Publishing this document together with its Related Document(s). Please wait a moment.")}
           </p>
         )}
 
@@ -74,7 +75,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
         />
 
         <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1 text-xs text-slate-700">
-          <div className="font-medium text-slate-800">This revision</div>
+          <div className="font-medium text-slate-800">{tr("This revision")}</div>
           {relatedLabels.map((label) => (
             <div key={label}>{label}</div>
           ))}

@@ -1,4 +1,10 @@
 import '@testing-library/jest-dom/vitest';
+import { beforeEach } from 'vitest';
+import { setCatalogLanguage } from './src/i18n/catalog';
+
+// `tr` reads the last language painted by the provider; a test that switches language must not leak that state into
+// the next test, which expects the English fallback.
+beforeEach(() => setCatalogLanguage('en'));
 
 // No test reaches the CDN of the icon libraries: the newest icons are read from there while the application runs (see remoteIcons.tsx), and a test that wants them
 // stubs fetch itself. Without this a test that opens the icon picker would make a real request.

@@ -6,6 +6,7 @@ import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
 import type { User } from "../../types";
+import { tr, trFormat } from "@/i18n";
 
 const EMPLOYEE_CODE_PREFIX = "NTP.";
 
@@ -58,13 +59,13 @@ const EmployeeIdField: React.FC<EmployeeIdFieldProps> = ({ value, draftValue, is
   }, [debouncedDigits, isEditing, excludeUserId]);
 
   if (!isEditing) {
-    return <InfoField label="Employee ID" value={value} />;
+    return <InfoField label={tr("Employee ID")} value={value} />;
   }
 
   return (
     <div className="min-w-0">
       <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-        Employee ID <span className="text-red-500">*</span>
+        {tr("Employee ID")} <span className="text-red-500">*</span>
       </label>
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-slate-500">
@@ -86,11 +87,11 @@ const EmployeeIdField: React.FC<EmployeeIdFieldProps> = ({ value, draftValue, is
         />
       </div>
       {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
-      {!error && checking && <p className="text-xs text-slate-400 mt-1.5">Checking availability...</p>}
+      {!error && checking && <p className="text-xs text-slate-400 mt-1.5">{tr("Checking availability...")}</p>}
       {!error && !checking && conflictUser && (
         <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          This Employee ID is already assigned to {conflictUser.fullName}.
+                    {trFormat("This Employee ID is already assigned to {name}.", { name: conflictUser.fullName })}
         </p>
       )}
     </div>
@@ -117,7 +118,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
   onDraftChange,
 }) => {
   const filteredLanguageOptions = React.useMemo(() => {
-    const base = [{ label: "Select Language", value: "" }];
+    const base = [{ label: tr("Select Language"), value: "" }];
     const normalized = languageOptions.filter((option) => option.value && option.label);
     const current = (draft.language || "").trim();
     if (current && !normalized.some((option) => option.value === current)) {
@@ -128,7 +129,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
 
   return (
     <div>
-      <FieldGroup title="Identity">
+      <FieldGroup title={tr("Identity")}>
         <EmployeeIdField
           value={user.employeeCode}
           draftValue={draft.employeeCode}
@@ -138,21 +139,21 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           error={fieldErrors.employeeCode}
         />
         <EditableField
-          label="Full Name *" value={user.fullName} draftValue={draft.fullName}
+          label={tr("Full Name *")} value={user.fullName} draftValue={draft.fullName}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "fullName" }}
           onChange={onDraftChange}
           error={fieldErrors.fullName}
           />
         <EditableField
-          label="Username *" value={user.username} draftValue={draft.username}
+          label={tr("Username *")} value={user.username} draftValue={draft.username}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "username" }}
           onChange={onDraftChange}
           error={fieldErrors.username}
           />
         <EditableField
-          label="Gender" value={user.gender} draftValue={draft.gender}
+          label={tr("Gender")} value={user.gender} draftValue={draft.gender}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "gender", options: [
             { label: "Male", value: "Male" },
@@ -163,7 +164,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           error={fieldErrors.gender}
           />
         <EditableField
-          label="Date of Birth"
+          label={tr("Date of Birth")}
           value={user.dateOfBirth ? formatDate(user.dateOfBirth) : null}
           draftValue={draft.dateOfBirth}
           isEditing={isEditing}
@@ -172,44 +173,44 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
           error={fieldErrors.dateOfBirth}
           />
         <EditableField
-          label="Nationality" value={user.nationality} draftValue={draft.nationality}
+          label={tr("Nationality")} value={user.nationality} draftValue={draft.nationality}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "nationality" }}
           onChange={onDraftChange}
           error={fieldErrors.nationality}
           />
         <EditableField
-          label="Language(s)" value={user.language} draftValue={draft.language}
+          label={tr("Language(s)")} value={user.language} draftValue={draft.language}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "language", options: filteredLanguageOptions }}
           onChange={onDraftChange}
           error={fieldErrors.language}
           />
         <EditableField
-          label="Personal ID / Passport No." value={user.idNumber} draftValue={draft.idNumber}
+          label={tr("Personal ID / Passport No.")} value={user.idNumber} draftValue={draft.idNumber}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "idNumber" }}
           onChange={onDraftChange}
           error={fieldErrors.idNumber}
           />
       </FieldGroup>
-      <FieldGroup title="Contact" divided>
+      <FieldGroup title={tr("Contact")} divided>
         <EditableField
-          label="Email *" value={user.email} draftValue={draft.email}
+          label={tr("Email *")} value={user.email} draftValue={draft.email}
           isEditing={isEditing}
           field={{ type: "email", fieldKey: "email" }}
           onChange={onDraftChange}
           error={fieldErrors.email}
         />
         <EditableField
-          label="Phone Number" value={user.phone} draftValue={draft.phone}
+          label={tr("Phone Number")} value={user.phone} draftValue={draft.phone}
           isEditing={isEditing}
           field={{ type: "tel", fieldKey: "phone" }}
           onChange={onDraftChange}
           error={fieldErrors.phone}
         />
         <EditableField
-          label="Address" value={user.address} draftValue={draft.address}
+          label={tr("Address")} value={user.address} draftValue={draft.address}
           isEditing={isEditing}
           field={{ type: "text", fieldKey: "address" }}
           onChange={onDraftChange}

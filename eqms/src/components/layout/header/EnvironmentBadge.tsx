@@ -1,10 +1,11 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useState } from 'react';
 import { Badge } from '../../ui/badge/Badge';
 import { systemEnvironmentApi, type DeploymentEnvironment } from '@/services/api/systemEnvironment';
 
 const LABEL: Record<Exclude<DeploymentEnvironment, 'PROD'>, { text: string; title: string; color: 'blue' | 'amber' }> = {
-  DEV: { text: 'DEV', title: 'Development environment. Data here is not a GMP record.', color: 'blue' },
-  TEST: { text: 'TEST', title: 'Validation environment. Synthetic data only; not a GMP record.', color: 'amber' },
+  DEV: { text: 'DEV', title: tr('Development environment. Data here is not a GMP record.'), color: 'blue' },
+  TEST: { text: 'TEST', title: tr('Validation environment. Synthetic data only; not a GMP record.'), color: 'amber' },
 };
 
 let cached: DeploymentEnvironment | undefined;

@@ -26,6 +26,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 const PAGE_SIZE = 20;
 
@@ -112,7 +113,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     {
       id: "batchNumber",
       sort: sort("batchNumber"),
-      header: "Batch number",
+      header: tr("Batch number"),
       cellClassName: "font-medium text-slate-800",
       cell: (row) => (
         <span className="flex items-center gap-2">
@@ -141,7 +142,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     {
       id: "storedStatus",
       sort: sort("storedStatus"),
-      header: "Stored status",
+      header: tr("Stored status"),
       cell: (row) => (
         <Badge color="amber" size="sm">
           {normalizeControlledCopyStatusLabel(row.actualStatusCode)}
@@ -151,7 +152,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     {
       id: "expectedStatus",
       sort: sort("expectedStatus"),
-      header: "Expected status",
+      header: tr("Expected status"),
       cell: (row) => (
         <Badge color="emerald" size="sm">
           {normalizeControlledCopyStatusLabel(row.expectedStatusCode)}
@@ -161,13 +162,13 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
     {
       id: "detectedAt",
       sort: sort("detectedAt"),
-      header: "Detected at",
+      header: tr("Detected at"),
       cell: (row) => formatDateTime(row.detectedAt),
     },
     {
       id: "lastCheckedAt",
       sort: sort("lastCheckedAt"),
-      header: "Last checked",
+      header: tr("Last checked"),
       cell: (row) => formatDateTime(row.lastCheckedAt),
     },
   ];
@@ -175,7 +176,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   return (
     <div className="flex h-full w-full flex-1 flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Batch Status Discrepancies"
+        title={tr("Batch Status Discrepancies")}
         breadcrumbItems={controlledCopyBatchStatusDiscrepancies(navigate)}
         actions={
           <Button
@@ -184,7 +185,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
             variant="outline-emerald"
             className="whitespace-nowrap"
           >
-            Back
+            {tr("Back")}
           </Button>
         }
       />
@@ -203,12 +204,10 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                 id="batch-discrepancy-heading"
                 className="text-sm font-semibold text-slate-900 md:text-base"
               >
-                Review required
+                {tr("Review required")}
               </h2>
               <p className="mt-0.5 max-w-3xl text-xs leading-5 text-slate-600 md:text-sm">
-                The stored batch status differs from the status derived from
-                member copies. The hourly scan flags discrepancies but never
-                corrects records automatically.
+                {tr("The stored batch status differs from the status derived from member copies. The hourly scan flags discrepancies but never corrects records automatically.")}
               </p>
             </div>
           </div>
@@ -230,8 +229,8 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
             <EmptyState
               icon={AlertTriangle}
               variant="dashed"
-              title="Unable to load discrepancies"
-              description="The review list could not be retrieved. No status records were changed."
+              title={tr("Unable to load discrepancies")}
+              description={tr("The review list could not be retrieved. No status records were changed.")}
               action={
                 <Button
                   variant="outline"
@@ -239,14 +238,14 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                   onClick={() => setReloadToken((value) => value + 1)}
                   className="gap-1.5"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" /> Try again
+                  <RefreshCw className="h-3.5 w-3.5" /> {tr("Try again")}
                 </Button>
               }
             />
           ) : rows.length === 0 ? (
             <TableEmptyState
-              title="No status mismatches to review"
-              description="All active batches currently match the status of their member copies."
+              title={tr("No status mismatches to review")}
+              description={tr("All active batches currently match the status of their member copies.")}
             />
           ) : (
             <>
@@ -275,7 +274,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                 }}
                 rowTabIndex={0}
                 action={{
-                  header: <span className="sr-only">Open batch</span>,
+                  header: <span className="sr-only">{tr("Open batch")}</span>,
                   cell: (row) => (
                     <Button
                       variant="ghost"
@@ -338,12 +337,12 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
                       <span>
-                        <span className="block text-slate-400">Detected</span>
+                        <span className="block text-slate-400">{tr("Detected")}</span>
                         {formatDateTime(row.detectedAt)}
                       </span>
                       <span>
                         <span className="block text-slate-400">
-                          Last checked
+                          {tr("Last checked")}
                         </span>
                         {formatDateTime(row.lastCheckedAt)}
                       </span>

@@ -11,6 +11,7 @@ import type { GeneralConfig, ImageWatermarkSettings } from "../types";
 import { ConfigTabs, HISTORY_TAB } from "./ConfigTabs";
 import { ConfigHistory } from "./ConfigHistory";
 import type { WatermarkTabId } from "./pageTabs";
+import { tr, trFormat } from "@/i18n";
 
 /** The settings of a purpose that was never set up: evidence keeps the earlier behaviour (the system logo at the top left), a specimen signature is not stamped. */
 export const WATERMARK_DEFAULTS: Record<ImageWatermarkTarget, Required<Omit<ImageWatermarkSettings, "logoData">>> = {
@@ -40,8 +41,8 @@ export const UTC_OFFSETS: Array<{ value: string; label: string }> = (() => {
 const POSITIONS: Array<{ value: ImageWatermarkPosition; label: string }> = [
   { value: "TOP_LEFT", label: "Top Left" },
   { value: "TOP_RIGHT", label: "Top Right" },
-  { value: "BOTTOM_LEFT", label: "Bottom Left" },
-  { value: "BOTTOM_RIGHT", label: "Bottom Right" },
+  { value: "BOTTOM_LEFT", label: tr("Bottom Left") },
+  { value: "BOTTOM_RIGHT", label: tr("Bottom Right") },
 ];
 
 const readAsDataUrl = (file: File) =>
@@ -135,7 +136,7 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
       <h3 className="mb-3 text-sm font-semibold text-slate-900">{title}</h3>
       <div className="space-y-4">
         <div>
-          <Checkbox id={`watermark-${target}-enabled`} label="Add a watermark to every picture uploaded here" checked={settings.enabled} onChange={(enabled) => set({ enabled })} />
+          <Checkbox id={`watermark-${target}-enabled`} label={tr("Add a watermark to every picture uploaded here")} checked={settings.enabled} onChange={(enabled) => set({ enabled })} />
           <p className="ml-7 mt-0.5 text-xs text-slate-500">{description}</p>
         </div>
 
@@ -143,25 +144,25 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <Checkbox id={`watermark-${target}-logo`} label="Logo" checked={settings.showLogo} onChange={(showLogo) => set({ showLogo })} />
+                <Checkbox id={`watermark-${target}-logo`} label={tr("Logo")} checked={settings.showLogo} onChange={(showLogo) => set({ showLogo })} />
                 {settings.showLogo && (
                   <div className="ml-7 mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Select
-                      label="Logo Source"
+                      label={tr("Logo Source")}
                       value={settings.logoSource}
                       enableSearch={false}
                       onChange={(logoSource) => set({ logoSource: logoSource as "SYSTEM" | "CUSTOM" })}
-                      options={[{ label: "System Logo", value: "SYSTEM" }, { label: "Custom Logo", value: "CUSTOM" }]}
+                      options={[{ label: tr("System Logo"), value: "SYSTEM" }, { label: tr("Custom Logo"), value: "CUSTOM" }]}
                     />
                     {settings.logoSource === "CUSTOM" && (
                       <div>
-                        <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Custom Logo</p>
+                        <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Custom Logo")}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           {value?.logoData && <img src={value.logoData} alt="Custom watermark logo" className="h-9 max-w-24 rounded border border-slate-200 bg-white object-contain p-0.5" />}
-                          <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInput.current?.click()}>{value?.logoData ? "Replace Logo" : "Upload Logo"}</Button>
+                          <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInput.current?.click()}>{value?.logoData ? "Replace Logo" : tr("Upload Logo")}</Button>
                         </div>
                         <input ref={logoInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={`Upload ${title} watermark logo`} onChange={(e) => { void pickLogo(e.target.files?.[0]); e.currentTarget.value = ""; }} />
-                        <p className="mt-1 text-xs text-slate-500">PNG or JPEG, up to 2 MB.</p>
+                        <p className="mt-1 text-xs text-slate-500">{tr("PNG or JPEG, up to 2 MB.")}</p>
                       </div>
                     )}
                   </div>
@@ -170,36 +171,36 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Text</p>
+                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Text")}</p>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <Checkbox id={`watermark-${target}-by`} label="Uploaded by" checked={settings.showUploadedBy} onChange={(showUploadedBy) => set({ showUploadedBy })} />
-                  <Checkbox id={`watermark-${target}-at`} label="Upload time" checked={settings.showUploadedAt} onChange={(showUploadedAt) => set({ showUploadedAt })} />
+                  <Checkbox id={`watermark-${target}-by`} label={tr("Uploaded by")} checked={settings.showUploadedBy} onChange={(showUploadedBy) => set({ showUploadedBy })} />
+                  <Checkbox id={`watermark-${target}-at`} label={tr("Upload time")} checked={settings.showUploadedAt} onChange={(showUploadedAt) => set({ showUploadedAt })} />
                 </div>
-                <p className="mt-1.5 text-xs text-slate-500">The server writes the name of the signed-in user and its own clock, so neither can be changed by the person who uploads.</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("The server writes the name of the signed-in user and its own clock, so neither can be changed by the person who uploads.")}</p>
                 {settings.showUploadedAt && (
                   <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                     <Select
-                      label="Upload Time Zone"
+                      label={tr("Upload Time Zone")}
                       value={settings.utcOffset}
                       enableSearch={false}
                       onChange={(utcOffset) => set({ utcOffset: String(utcOffset) })}
                       options={UTC_OFFSETS}
                     />
-                    <p className="mt-1 text-xs text-slate-500">Printed with the time, for example 02/11/2026 11:20:43 ({UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7"}).</p>
+                    <p className="mt-1 text-xs text-slate-500">{trFormat("Printed with the time, for example 02/11/2026 11:20:43 ({zone}).", { zone: UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7" })}</p>
                     </div>
                   </div>
                 )}
                 {(settings.showUploadedBy || settings.showUploadedAt) && (
                   <div className="mt-2">
-                    <Checkbox id={`watermark-${target}-bg`} label="Light panel behind the text" checked={settings.textBackground} onChange={(textBackground) => set({ textBackground })} />
+                    <Checkbox id={`watermark-${target}-bg`} label={tr("Light panel behind the text")} checked={settings.textBackground} onChange={(textBackground) => set({ textBackground })} />
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Select
-                  label="Position"
+                  label={tr("Position")}
                   value={settings.position}
                   enableSearch={false}
                   onChange={(position) => set({ position: position as ImageWatermarkPosition })}
@@ -209,39 +210,39 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
 
               <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
                 <div>
-                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>Size</span><span className="text-slate-500">{settings.sizePercent}% of the picture width</span></p>
-                  <Slider label="Watermark size" min={5} max={40} value={settings.sizePercent} onChange={(sizePercent) => set({ sizePercent })} />
+                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>{tr("Size")}</span><span className="text-slate-500">{settings.sizePercent}{tr("% of the picture width")}</span></p>
+                  <Slider label={tr("Watermark size")} min={5} max={40} value={settings.sizePercent} onChange={(sizePercent) => set({ sizePercent })} />
                 </div>
                 <div>
-                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>Opacity</span><span className="text-slate-500">{settings.opacityPercent}%</span></p>
-                  <Slider label="Watermark opacity" min={10} max={100} value={settings.opacityPercent} onChange={(opacityPercent) => set({ opacityPercent })} />
+                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>{tr("Opacity")}</span><span className="text-slate-500">{settings.opacityPercent}%</span></p>
+                  <Slider label={tr("Watermark opacity")} min={10} max={100} value={settings.opacityPercent} onChange={(opacityPercent) => set({ opacityPercent })} />
                 </div>
                 <div>
-                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>Distance from the edge</span><span className="text-slate-500">{settings.marginPercent}%</span></p>
-                  <Slider label="Watermark margin" min={0} max={10} value={settings.marginPercent} onChange={(marginPercent) => set({ marginPercent })} />
+                  <p className="flex justify-between text-xs font-medium text-slate-700 sm:text-sm"><span>{tr("Distance from the edge")}</span><span className="text-slate-500">{settings.marginPercent}%</span></p>
+                  <Slider label={tr("Watermark margin")} min={0} max={10} value={settings.marginPercent} onChange={(marginPercent) => set({ marginPercent })} />
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Preview</p>
+              <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Preview")}</p>
               <div className="relative grid min-h-[260px] place-items-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-100 p-2" aria-busy={loading}>
-                {nothingToStamp && <p className="px-6 text-center text-sm text-amber-700">Choose at least one thing to stamp: the logo, the uploader or the upload time.</p>}
-                {!nothingToStamp && needsLogo && <p className="px-6 text-center text-sm text-amber-700">Upload the custom logo to see the preview.</p>}
+                {nothingToStamp && <p className="px-6 text-center text-sm text-amber-700">{tr("Choose at least one thing to stamp: the logo, the uploader or the upload time.")}</p>}
+                {!nothingToStamp && needsLogo && <p className="px-6 text-center text-sm text-amber-700">{tr("Upload the custom logo to see the preview.")}</p>}
                 {!nothingToStamp && !needsLogo && preview && <img src={showOriginal && original ? original : preview.url} alt={showOriginal && original ? `${title} original picture` : `${title} watermark preview`} className={cn("max-h-[420px] w-full rounded object-contain transition-opacity", loading && "opacity-60")} />}
-                {!nothingToStamp && !needsLogo && !preview && !previewError && <p className="text-sm text-slate-500">Making the preview…</p>}
+                {!nothingToStamp && !needsLogo && !preview && !previewError && <p className="text-sm text-slate-500">{tr("Making the preview…")}</p>}
                 {previewError && <p role="alert" className="px-6 text-center text-sm text-red-700">{previewError}</p>}
               </div>
-              {preview && !preview.applied && !nothingToStamp && !needsLogo && <p className="mt-1.5 text-xs text-amber-700">Not stamped: {preview.note ?? "the server returned the picture as it is"}.</p>}
+              {preview && !preview.applied && !nothingToStamp && !needsLogo && <p className="mt-1.5 text-xs text-amber-700">{tr("Not stamped:")} {preview.note ?? tr("the server returned the picture as it is")}.</p>}
               {preview?.applied && preview.note && <p className="mt-1.5 text-xs text-amber-700">{preview.note}.</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="outline-emerald" onClick={() => pictureInput.current?.click()}>Try With Your Own Picture</Button>
+                <Button type="button" size="sm" variant="outline-emerald" onClick={() => pictureInput.current?.click()}>{tr("Try With Your Own Picture")}</Button>
                 <Button type="button" size="sm" variant="outline-emerald" disabled={nothingToStamp || needsLogo} aria-pressed={showOriginal} onClick={() => setShowOriginal((value) => !value)}>{showOriginal ? "Show With Watermark" : "Show Original"}</Button>
-                {picture && <Button type="button" size="sm" variant="ghost" onClick={() => setPicture(null)}>Back To The Sample Picture</Button>}
+                {picture && <Button type="button" size="sm" variant="ghost" onClick={() => setPicture(null)}>{tr("Back To The Sample Picture")}</Button>}
                 <span className="min-w-0 truncate text-xs text-slate-500">{picture ? picture.name : "A sample picture is shown."}</span>
                 <input ref={pictureInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={`Choose a picture to preview the ${title} watermark`} onChange={(e) => { setPicture(e.target.files?.[0] ?? null); e.currentTarget.value = ""; }} />
               </div>
-              <p className="mt-1 text-xs text-slate-500">Made by the server with the settings on this screen, before they are saved. The picture is not stored. The name and time shown are yours and now.</p>
+              <p className="mt-1 text-xs text-slate-500">{tr("Made by the server with the settings on this screen, before they are saved. The picture is not stored. The name and time shown are yours and now.")}</p>
             </div>
           </div>
         )}
@@ -251,8 +252,8 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
 };
 
 const TABS = [
-  { id: "controlled-copy", label: "Controlled Copy Destruction Evidence", icon: IconCamera },
-  { id: "specimen-signature", label: "Specimen Signature", icon: IconSignature },
+  { id: "controlled-copy", label: tr("Controlled Copy Destruction Evidence"), icon: IconCamera },
+  { id: "specimen-signature", label: tr("Specimen Signature"), icon: IconSignature },
   HISTORY_TAB,
 ] as const;
 
@@ -308,8 +309,8 @@ export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange, active
       {activeTab === "controlled-copy" && (
         <ImageWatermarkCard
           target="controlledCopyEvidence"
-          title="Controlled Copy Destruction Evidence"
-          description="Evidence photos of a damaged controlled copy. Stamped from the moment this was set up with the system logo at the top left."
+          title={tr("Controlled Copy Destruction Evidence")}
+          description={tr("Evidence photos of a damaged controlled copy. Stamped from the moment this was set up with the system logo at the top left.")}
           value={watermark.controlledCopyEvidence}
           onChange={(value) => setTarget("controlledCopyEvidence", value)}
         />
@@ -317,8 +318,8 @@ export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange, active
       {activeTab === "specimen-signature" && (
         <ImageWatermarkCard
           target="specimenSignature"
-          title="Specimen Signature"
-          description="The two pictures of a specimen signature. They are compared by their strokes, so keep the stamp small and faint, in a corner; the original stays available."
+          title={tr("Specimen Signature")}
+          description={tr("The two pictures of a specimen signature. They are compared by their strokes, so keep the stamp small and faint, in a corner; the original stays available.")}
           value={watermark.specimenSignature}
           onChange={(value) => setTarget("specimenSignature", value)}
         />

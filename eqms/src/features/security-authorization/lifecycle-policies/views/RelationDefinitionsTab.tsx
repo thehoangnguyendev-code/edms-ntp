@@ -18,6 +18,7 @@ import { cn } from "@/components/ui/utils";
 import { securityApi, type AuthorizationRelationDefinition } from "@/services/api/security";
 import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 // Display only: the codes stay what the server sends.
 const humanize = (code: string) =>
@@ -42,28 +43,28 @@ const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
   { label: "Document", value: "DOCUMENT" },
   { label: "Revision", value: "REVISION" },
-  { label: "Controlled Copy", value: "CONTROLLED_COPY" },
-  { label: "Controlled Copy Batch", value: "CONTROLLED_COPY_BATCH" },
-  { label: "Report Template (review)", value: "REPORT_TEMPLATE" },
-  { label: "Training Requirement", value: "TRAINING_REQUIREMENT" },
-  { label: "Training Matrix Version", value: "TRAINING_MATRIX_VERSION" },
-  { label: "Training Activity", value: "TRAINING_ACTIVITY" },
-  { label: "Training Participant", value: "TRAINING_PARTICIPANT" },
-  { label: "Training Assessment", value: "TRAINING_ASSESSMENT" },
-  { label: "Training Job Assignment", value: "TRAINING_JOB_ASSIGNMENT" },
-  { label: "Training Personnel Review", value: "TRAINING_PERSONNEL_REVIEW" },
-  { label: "Training Record Export", value: "TRAINING_RECORD_EXPORT" },
-  { label: "Training Record Export Batch", value: "TRAINING_RECORD_EXPORT_BATCH" },
-  { label: "Training Trainer Exception", value: "TRAINING_TRAINER_EXCEPTION" },
-  { label: "Training Suspension", value: "TRAINING_SUSPENSION" },
-  { label: "Training Vendor", value: "TRAINING_VENDOR" },
-  { label: "Training Record", value: "TRAINING_RECORD" },
-  { label: "Report Schedule", value: "REPORT_SCHEDULE" },
-  { label: "Report Run", value: "REPORT_RUN" },
-  { label: "Report File (legal hold)", value: "REPORT_ARTIFACT" },
-  { label: "Access Review Campaign", value: "ACCESS_REVIEW_CAMPAIGN" },
-  { label: "Audit Trail Review Campaign", value: "AUDIT_REVIEW_CAMPAIGN" },
-  { label: "Uncontrolled Copy", value: "UNCONTROLLED_COPY" },
+  { label: tr("Controlled Copy"), value: "CONTROLLED_COPY" },
+  { label: tr("Controlled Copy Batch"), value: "CONTROLLED_COPY_BATCH" },
+  { label: tr("Report Template (review)"), value: "REPORT_TEMPLATE" },
+  { label: tr("Training Requirement"), value: "TRAINING_REQUIREMENT" },
+  { label: tr("Training Matrix Version"), value: "TRAINING_MATRIX_VERSION" },
+  { label: tr("Training Activity"), value: "TRAINING_ACTIVITY" },
+  { label: tr("Training Participant"), value: "TRAINING_PARTICIPANT" },
+  { label: tr("Training Assessment"), value: "TRAINING_ASSESSMENT" },
+  { label: tr("Training Job Assignment"), value: "TRAINING_JOB_ASSIGNMENT" },
+  { label: tr("Training Personnel Review"), value: "TRAINING_PERSONNEL_REVIEW" },
+  { label: tr("Training Record Export"), value: "TRAINING_RECORD_EXPORT" },
+  { label: tr("Training Record Export Batch"), value: "TRAINING_RECORD_EXPORT_BATCH" },
+  { label: tr("Training Trainer Exception"), value: "TRAINING_TRAINER_EXCEPTION" },
+  { label: tr("Training Suspension"), value: "TRAINING_SUSPENSION" },
+  { label: tr("Training Vendor"), value: "TRAINING_VENDOR" },
+  { label: tr("Training Record"), value: "TRAINING_RECORD" },
+  { label: tr("Report Schedule"), value: "REPORT_SCHEDULE" },
+  { label: tr("Report Run"), value: "REPORT_RUN" },
+  { label: tr("Report File (legal hold)"), value: "REPORT_ARTIFACT" },
+  { label: tr("Access Review Campaign"), value: "ACCESS_REVIEW_CAMPAIGN" },
+  { label: tr("Audit Trail Review Campaign"), value: "AUDIT_REVIEW_CAMPAIGN" },
+  { label: tr("Uncontrolled Copy"), value: "UNCONTROLLED_COPY" },
 ];
 
 const STATUS_OPTIONS: SelectOption[] = [
@@ -77,9 +78,9 @@ type SortKey = "resourceType" | "code" | "resolverCode" | "active" | "updatedAt"
 const TABLE_COLS: { id: SortKey | "no" | "resolverConfig"; label: string; sortable: boolean }[] = [
   { id: "no", label: "No.", sortable: false },
   { id: "code", label: "Code", sortable: true },
-  { id: "resourceType", label: "Resource Type", sortable: true },
+  { id: "resourceType", label: tr("Resource Type"), sortable: true },
   { id: "resolverCode", label: "Resolver", sortable: true },
-  { id: "resolverConfig", label: "Resolver Config", sortable: false },
+  { id: "resolverConfig", label: tr("Resolver Config"), sortable: false },
   { id: "active", label: "Status", sortable: true },
   { id: "updatedAt", label: "Updated", sortable: true },
 ];
@@ -213,8 +214,8 @@ export const RelationDefinitionsTab: React.FC = () => {
     },
     {
       id: "appliesTo",
-      header: "Applies to",
-      label: "Applies to",
+      header: tr("Applies to"),
+      label: tr("Applies to"),
       sort: sortOf("resourceType"),
       cell: (d) => <Badge color="purple" size="xs">{humanize(d.resourceType)}</Badge>,
     },
@@ -228,8 +229,8 @@ export const RelationDefinitionsTab: React.FC = () => {
     },
     {
       id: "resolverConfig",
-      header: "Resolver Config",
-      label: "Resolver Config",
+      header: tr("Resolver Config"),
+      label: tr("Resolver Config"),
       cell: (d) => (
         <div className="max-w-[240px] whitespace-normal">
           <ConfigChips config={d.resolverConfig} />
@@ -257,8 +258,7 @@ export const RelationDefinitionsTab: React.FC = () => {
   return (
     <div className="flex flex-col flex-1">
       <p className="w-full text-xs sm:text-sm text-slate-500 mb-4 md:mb-5">
-        Server-owned resolvers resolved with the configuration below. Relation codes are
-        migration-managed — this view is read-only.
+        {tr("Server-owned resolvers resolved with the configuration below. Relation codes are migration-managed — this view is read-only.")}
       </p>
 
       {/* Matches the common User Management filter layout: compact drawer on mobile,
@@ -266,7 +266,7 @@ export const RelationDefinitionsTab: React.FC = () => {
       <div className="compact-filter-section md:pb-5 flex flex-col">
         <div>
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -275,13 +275,13 @@ export const RelationDefinitionsTab: React.FC = () => {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search code, display name, resolver..."
+                  placeholder={tr("Search code, display name, resolver...")}
                   className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
                 />
                 {search && (
                   <button
                     type="button"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                     onClick={() => setSearch("")}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                   >
@@ -296,7 +296,7 @@ export const RelationDefinitionsTab: React.FC = () => {
                 className="whitespace-nowrap gap-2"
               >
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
@@ -305,17 +305,17 @@ export const RelationDefinitionsTab: React.FC = () => {
   trailing={<div className="hidden md:block">{relationControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => setSearch(e.target.value)}
-      placeholder={"Search code, display name, resolver..."}
+      placeholder={tr("Search code, display name, resolver...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
   filters={[
     {
       id: "resourceTypeFilter",
-      label: "Resource Type",
+      label: tr("Resource Type"),
       value: String(resourceTypeFilter),
       options: RESOURCE_TYPE_OPTIONS,
       onChange: setResourceTypeFilter,
@@ -331,7 +331,7 @@ export const RelationDefinitionsTab: React.FC = () => {
   dates={[
     {
       id: "updatedFrom",
-      label: "Updated Date Range",
+      label: tr("Updated Date Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: setUpdatedFrom,
@@ -341,7 +341,7 @@ export const RelationDefinitionsTab: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
                   <Search className="h-4 w-4 text-slate-400 transition-colors" />
@@ -349,13 +349,13 @@ export const RelationDefinitionsTab: React.FC = () => {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search code, display name, resolver..."
+                  placeholder={tr("Search code, display name, resolver...")}
                   className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
                 />
                 {search && (
                   <button
                     type="button"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                     onClick={() => setSearch("")}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                   >
@@ -366,26 +366,26 @@ export const RelationDefinitionsTab: React.FC = () => {
             </div>
 
             <Select
-              label="Resource Type"
+              label={tr("Resource Type")}
               value={resourceTypeFilter}
               onChange={setResourceTypeFilter}
               options={RESOURCE_TYPE_OPTIONS}
             />
 
             <Select
-              label="Status"
+              label={tr("Status")}
               value={statusFilter}
               onChange={setStatusFilter}
               options={STATUS_OPTIONS}
             />
 
             <DateRangePicker
-              label="Updated Date Range"
+              label={tr("Updated Date Range")}
               startDate={updatedFrom}
               endDate={updatedTo}
               onStartDateChange={setUpdatedFrom}
               onEndDateChange={setUpdatedTo}
-              placeholder="Select updated date range"
+              placeholder={tr("Select updated date range")}
               autoApply
             />
 
@@ -419,11 +419,11 @@ export const RelationDefinitionsTab: React.FC = () => {
                 isDragging={isDragging}
                 emptyState={
                   error ? (
-                    <TableEmptyState title="Failed to Load" description={error} />
+                    <TableEmptyState title={tr("Failed to Load")} description={error} />
                   ) : (
                     <TableEmptyState
-                      title="No Relation Definitions"
-                      description={hasFilters ? "Try adjusting your search or filters." : "No relation definitions match this filter."}
+                      title={tr("No Relation Definitions")}
+                      description={hasFilters ? tr("Try adjusting your search or filters.") : "No relation definitions match this filter."}
                     />
                   )
                 }
@@ -456,7 +456,7 @@ export const RelationDefinitionsTab: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Resource Type"
+          label={tr("Resource Type")}
           isExpanded={expandedFilterSections.has("resourceType")}
           onToggle={() => toggleFilterSection("resourceType")}
         >
@@ -478,7 +478,7 @@ export const RelationDefinitionsTab: React.FC = () => {
           </div>
         </FilterAccordionItem>
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedFilterSections.has("status")}
           onToggle={() => toggleFilterSection("status")}
         >
@@ -500,7 +500,7 @@ export const RelationDefinitionsTab: React.FC = () => {
           </div>
         </FilterAccordionItem>
         <FilterAccordionItem
-          label="Updated Date Range"
+          label={tr("Updated Date Range")}
           isExpanded={expandedFilterSections.has("updatedDate")}
           onToggle={() => toggleFilterSection("updatedDate")}
         >
@@ -510,7 +510,7 @@ export const RelationDefinitionsTab: React.FC = () => {
               endDate={updatedTo}
               onStartDateChange={setUpdatedFrom}
               onEndDateChange={setUpdatedTo}
-              placeholder="Select updated date range"
+              placeholder={tr("Select updated date range")}
               autoApply
             />
           </div>

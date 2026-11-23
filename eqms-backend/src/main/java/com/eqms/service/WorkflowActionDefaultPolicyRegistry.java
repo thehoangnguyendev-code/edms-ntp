@@ -298,12 +298,7 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "NOTIFIED", "training.activity.organize", 100, true,
                 "An organizer reopens the reviewed and approved content, with a reason and a signature.",
                 List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "IN_PROGRESS", "training.activity.organize", 100, true,
-                "An organizer opens a supplementary training for people who were absent or failed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "PENDING_QA_CONFIRMATION", "training.activity.organize", 100, true,
-                "An organizer opens a supplementary training for people who were absent or failed.",
-                List.of(permission("training.activity.organize")))));
+        // Only a Completed activity gets a supplementary training (owner decision 2026-11-23, DEC-TRAINING-2026-11-23-02; V842 retired the IN_PROGRESS and PENDING_QA_CONFIRMATION policies).
         m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|COMPLETED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "COMPLETED", "training.activity.organize", 100, true,
                 "An organizer opens a supplementary training for people who were absent or failed.",
                 List.of(permission("training.activity.organize")))));

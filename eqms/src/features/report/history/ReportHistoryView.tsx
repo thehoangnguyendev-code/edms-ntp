@@ -17,6 +17,7 @@ import { codeLabel, reportRevisionLabel, runStatusColor, runStatusLabel } from "
 import { reportsApi, type ReportRunSummary } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
 import { displayDateTime, formatFileSize } from "@/utils/format";
+import { tr } from "@/i18n";
 
 const STATUSES = ["QUEUED", "PROCESSING", "COMPLETED", "RETRY_SCHEDULED", "FAILED", "DEAD_LETTERED"];
 
@@ -98,21 +99,21 @@ export function ReportHistoryView() {
   const filters: ReportSelectFilter[] = [
     {
       id: "status",
-      label: "Run Status",
+      label: tr("Run Status"),
       value: status,
       options: [{ label: "All", value: "" }, ...STATUSES.map((s) => ({ label: runStatusLabel(s), value: s }))],
       onChange: (value) => reset(() => setStatus(value)),
     },
     {
       id: "template",
-      label: "Report Template",
+      label: tr("Report Template"),
       value: definitionCode,
       options: [{ label: "All", value: "" }, ...templates],
       onChange: (value) => reset(() => setDefinitionCode(value)),
     },
     {
       id: "format",
-      label: "Output Format",
+      label: tr("Output Format"),
       value: format,
       options: [{ label: "All", value: "" }, ...["PDF", "XLSX", "CSV"].map((f) => ({ label: f, value: f }))],
       onChange: (value) => reset(() => setFormat(value)),
@@ -121,14 +122,14 @@ export function ReportHistoryView() {
   const dates: ReportDateFilter[] = [
     {
       id: "queued",
-      label: "Queued Date Range",
+      label: tr("Queued Date Range"),
       from: queued.from,
       to: queued.to,
       onChange: (from, to) => reset(() => setQueued({ from, to })),
     },
     {
       id: "completed",
-      label: "Completed Date Range",
+      label: tr("Completed Date Range"),
       from: completed.from,
       to: completed.to,
       onChange: (from, to) => reset(() => setCompleted({ from, to })),
@@ -158,7 +159,7 @@ export function ReportHistoryView() {
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     {
       id: "name",
-      header: "Generated Report Name",
+      header: tr("Generated Report Name"),
       cell: (r) => (
         <div className="max-w-80 whitespace-normal">
           <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/report/runs/${r.id}`)}>
@@ -169,17 +170,17 @@ export function ReportHistoryView() {
     },
     {
       id: "template",
-      header: "Report Template Number",
+      header: tr("Report Template Number"),
       sort: { direction: table.sortConfig.key === "definitionCode" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("definitionCode") },
       cell: (r) => r.definitionCode,
     },
-    { id: "revision", header: "Report Template Revision", cell: (r) => (r.revision != null ? reportRevisionLabel(r.revision) : "—") },
-    { id: "format", header: "Output Format", cell: (r) => (r.artifactFormat ? <Badge color="slate">{r.artifactFormat}</Badge> : r.requestedFormat ? <span className="text-slate-400">{r.requestedFormat}</span> : "—") },
+    { id: "revision", header: tr("Report Template Revision"), cell: (r) => (r.revision != null ? reportRevisionLabel(r.revision) : "—") },
+    { id: "format", header: tr("Output Format"), cell: (r) => (r.artifactFormat ? <Badge color="slate">{r.artifactFormat}</Badge> : r.requestedFormat ? <span className="text-slate-400">{r.requestedFormat}</span> : "—") },
     { id: "size", header: "File Size", cell: (r) => (r.artifactSize != null ? formatFileSize(r.artifactSize) : "—") },
-    { id: "scope", header: "Run Type", cell: (r) => (r.fullRun ? <Badge color="blue">Full</Badge> : "Filtered") },
+    { id: "scope", header: "Run Type", cell: (r) => (r.fullRun ? <Badge color="blue">{tr("Full")}</Badge> : "Filtered") },
     {
       id: "status",
-      header: "Run Status",
+      header: tr("Run Status"),
       sort: { direction: table.sortConfig.key === "status" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("status") },
       cell: (r) => (
         <Badge color={runStatusColor(r.status)}>{runStatusLabel(r.status)}</Badge>
@@ -193,19 +194,19 @@ export function ReportHistoryView() {
     },
     {
       id: "completed",
-      header: "Completed At",
+      header: tr("Completed At"),
       sort: { direction: table.sortConfig.key === "completedAt" ? table.sortConfig.direction : undefined, onSort: () => table.handleSort("completedAt") },
       cell: (r) => (r.completedAt ? displayDateTime(r.completedAt) : "—"),
     },
-    { id: "progress", header: "Run Progress", cell: (r) => `${r.progress}%` },
-    { id: "reason", header: "Failure Reason", cell: (r) => codeLabel(r.reasonCode) },
+    { id: "progress", header: tr("Run Progress"), cell: (r) => `${r.progress}%` },
+    { id: "reason", header: tr("Failure Reason"), cell: (r) => codeLabel(r.reasonCode) },
   ];
   const action = {
     cell: (r: ReportRunSummary) => (
       <button
         type="button"
         ref={menu.getRef(r.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(r.id, event)}
       >
@@ -225,7 +226,7 @@ export function ReportHistoryView() {
       )}
       <ReportListToolbar
         framed={false}
-        searchPlaceholder="Search report name, template or run…"
+        searchPlaceholder={tr("Search report name, template or run…")}
         search={table.searchQuery}
         onSearch={(value) => {
           table.setSearchQuery(value);
@@ -250,7 +251,7 @@ export function ReportHistoryView() {
             getRowKey={(r) => r.id}
             isLoading={table.isLoading}
 
-            emptyState={<TableEmptyState title="No Reports Found" description="Generated reports will appear here. Try changing your search or filters." />}
+            emptyState={<TableEmptyState title={tr("No Reports Found")} description={tr("Generated reports will appear here. Try changing your search or filters.")} />}
             scrollerRef={drag.scrollerRef}
             scrollProps={drag.dragEvents}
             isDragging={drag.isDragging}
@@ -286,7 +287,7 @@ export function ReportHistoryView() {
                 menu.close();
               }}
             >
-              View Detail
+              {tr("View Detail")}
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<IconFileDownload className="h-4 w-4" />}
@@ -296,7 +297,7 @@ export function ReportHistoryView() {
                 menu.close();
               }}
             >
-              Download Report
+              {tr("Download Report")}
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<IconBinoculars className="h-4 w-4" />}
@@ -306,7 +307,7 @@ export function ReportHistoryView() {
                 menu.close();
               }}
             >
-              Preview Report
+              {tr("Preview Report")}
             </DropdownMenuItem>
           </div>
         )}

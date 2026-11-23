@@ -20,6 +20,7 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { createTimeLimitedUser } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TimeLimitedUserGrantFields } from "../components/TimeLimitedUserGrantFields";
 import { toTimeLimitedUserIsoInstant } from "../utils/timeLimitedUserDate";
+import { tr, trFormat } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 
@@ -98,13 +99,13 @@ export const TimeLimitedUserCreateView: React.FC = () => {
       });
       showToast({
         type: "success",
-        title: "Time-Limited User Created",
+        title: tr("Time-Limited User Created"),
         message: `Created ${selectedUserIds.length} time-limited access grant(s).`,
       });
       setIsSignOpen(false);
       navigate(ROUTES.SECURITY.TIME_LIMITED_USERS);
     } catch (err) {
-      showToast({ type: "error", title: "Failed to create grant", message: extractApiMessage(err, "Failed to create time-limited access grant.") });
+      showToast({ type: "error", title: tr("Failed to create grant"), message: extractApiMessage(err, "Failed to create time-limited access grant.") });
     } finally {
       setIsSaving(false);
     }
@@ -113,12 +114,12 @@ export const TimeLimitedUserCreateView: React.FC = () => {
   return (
     <div className="flex h-full flex-col gap-6">
       <PageHeader
-        title="New Time-Limited User"
+        title={tr("New Time-Limited User")}
         breadcrumbItems={createTimeLimitedUser(go)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             {canManage && (
               <Button size="sm" variant="outline-emerald" onClick={handleSubmit} disabled={!canSubmit} className="whitespace-nowrap">
@@ -130,15 +131,15 @@ export const TimeLimitedUserCreateView: React.FC = () => {
       />
 
       <FormSection
-        title="Time-Limited Access"
-        description="Configure the user selection, access window and expiry notification."
+        title={tr("Time-Limited Access")}
+        description={tr("Configure the user selection, access window and expiry notification.")}
         icon={<Timer className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >
         <div className="space-y-5">
           <div>
             <label className={labelClass}>
-              Select user(s) <span className="text-red-500">*</span>
+              {tr("Select user(s)")} <span className="text-red-500">*</span>
             </label>
             <MultiSelect
               value={selectedUserIds}
@@ -146,12 +147,12 @@ export const TimeLimitedUserCreateView: React.FC = () => {
               options={selectedUserOptions}
               onSearch={searchUsers}
               minSearchLength={0}
-              placeholder="Search and select one or more users..."
-              searchPlaceholder="Search name, username, email..."
+              placeholder={tr("Search and select one or more users...")}
+              searchPlaceholder={tr("Search name, username, email...")}
               disabled={isSaving || !canManage}
             />
             <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">
-              Selecting several users creates one separate record for each -- they are never merged into a single row.
+              {tr("Selecting several users creates one separate record for each -- they are never merged into a single row.")}
             </p>
           </div>
 
@@ -175,16 +176,16 @@ export const TimeLimitedUserCreateView: React.FC = () => {
       {/* Summary -- most useful when several users are selected at once, so there's something to
           review before submitting a bulk grant instead of trusting the MultiSelect's tag list alone. */}
       <FormSection
-        title="Summary"
-        description="Review the access grant before confirming with an electronic signature."
+        title={tr("Summary")}
+        description={tr("Review the access grant before confirming with an electronic signature.")}
         icon={<GalleryVerticalEnd className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
           <div>
-            <p className={labelClass}>Selected Users ({selectedUsers.length})</p>
+              <p className={labelClass}>{trFormat("Selected Users ({count})", { count: selectedUsers.length })}</p>
             {selectedUsers.length === 0 ? (
-              <p className="text-2xs font-normal text-slate-400 sm:text-xs">No users selected yet.</p>
+              <p className="text-2xs font-normal text-slate-400 sm:text-xs">{tr("No users selected yet.")}</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {selectedUsers.map((u) => (
@@ -194,19 +195,19 @@ export const TimeLimitedUserCreateView: React.FC = () => {
             )}
           </div>
           <div>
-            <p className={labelClass}>Active Window</p>
+            <p className={labelClass}>{tr("Active Window")}</p>
             <p className="text-xs text-slate-700 sm:text-sm">
-              {startDisplay && endDisplay ? `${startDisplay} → ${endDisplay}` : <span className="text-2xs font-normal text-slate-400 sm:text-xs">Not set yet.</span>}
+              {startDisplay && endDisplay ? `${startDisplay} → ${endDisplay}` : <span className="text-2xs font-normal text-slate-400 sm:text-xs">{tr("Not set yet.")}</span>}
             </p>
           </div>
           <div>
-            <p className={labelClass}>Notify on Expiry</p>
+            <p className={labelClass}>{tr("Notify on Expiry")}</p>
             <Badge size="sm" color={flagColor(notifyEmailOnExpiry)}>{notifyEmailOnExpiry ? "Yes" : "No"}</Badge>
           </div>
           <div>
-            <p className={labelClass}>Records to be created</p>
+            <p className={labelClass}>{tr("Records to be created")}</p>
             <p className="text-xs text-slate-700 sm:text-sm">
-              {selectedUsers.length} separate record{selectedUsers.length === 1 ? "" : "s"} -- one per selected user, never merged.
+              {trFormat("{count} separate records -- one per selected user, never merged.", { count: selectedUsers.length })}
             </p>
           </div>
         </div>

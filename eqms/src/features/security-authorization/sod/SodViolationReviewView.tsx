@@ -16,6 +16,7 @@ import type { SodViolationResponse, SodViolationScanSummary } from "@/services/a
 import { sodViolationReview as sodViolationReviewBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { formatDateTime } from "@/utils/format";
+import { tr, trFormat } from "@/i18n";
 
 type SeverityFilter = "ALL" | "BLOCK" | "WARN";
 
@@ -137,13 +138,13 @@ export const SodViolationReviewView: React.FC = () => {
             <code className="min-w-0 flex-1 break-all rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">{code}</code>
           </div>
         ))}
-        <p className="flex items-center gap-1.5 pl-7 text-2xs text-slate-400"><ArrowLeftRight className="h-3 w-3" />no one may hold both</p>
+        <p className="flex items-center gap-1.5 pl-7 text-2xs text-slate-400"><ArrowLeftRight className="h-3 w-3" />{tr("no one may hold both")}</p>
       </div>
 
       {v.violatingAccessProfiles.length > 0 && (
         <div>
           <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-            Profile alone grants both sides — fix the profile
+            {tr("Profile alone grants both sides — fix the profile")}
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {v.violatingAccessProfiles.map((profile) => (
@@ -156,7 +157,7 @@ export const SodViolationReviewView: React.FC = () => {
       {v.violatingUserCombinations.length > 0 && (
         <div>
           <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-            No single profile is at fault — these people's combined profiles are
+            {tr("No single profile is at fault — these people's combined profiles are")}
           </p>
           <ul className="mt-1">
             {v.violatingUserCombinations.map((combo) => (
@@ -170,12 +171,12 @@ export const SodViolationReviewView: React.FC = () => {
                 </div>
                 <div className="flex w-full flex-col gap-1 text-xs text-slate-500 sm:w-auto sm:items-end">
                   <span className="flex flex-wrap items-center gap-1.5">
-                    A via {combo.profilesGrantingA.map((p) => (
+                    {tr("A via")} {combo.profilesGrantingA.map((p) => (
                       <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
                     ))}
                   </span>
                   <span className="flex flex-wrap items-center gap-1.5">
-                    B via {combo.profilesGrantingB.map((p) => (
+                    {tr("B via")} {combo.profilesGrantingB.map((p) => (
                       <Badge key={p.accessProfileId} color="slate" variant="outline" size="xs">{p.accessProfileName}</Badge>
                     ))}
                   </span>
@@ -197,7 +198,7 @@ export const SodViolationReviewView: React.FC = () => {
       headerRight={
         <>
           {sevBadge(v)}
-          <Badge color="slate" size="sm">{foundCount(v)} found</Badge>
+          <Badge color="slate" size="sm">{foundCount(v)} {tr("found")}</Badge>
         </>
       }
       contentClassName="p-4 md:p-5"
@@ -233,14 +234,14 @@ export const SodViolationReviewView: React.FC = () => {
     if (shown === null) {
       return (
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
-          <TableEmptyState title="No scan on screen" description='Click "Scan Now" to check every Access Profile and every active user, or open a past scan from the history.' />
+          <TableEmptyState title={tr("No scan on screen")} description={tr("Click \"Scan Now\" to check every Access Profile and every active user, or open a past scan from the history.")} />
         </div>
       );
     }
     if (shown.length === 0) {
       return (
-        <WarningBanner variant="success" title="No violations found.">
-          All Access Profiles comply with SoD constraints.
+        <WarningBanner variant="success" title={tr("No violations found.")}>
+          {tr("All Access Profiles comply with SoD constraints.")}
         </WarningBanner>
       );
     }
@@ -254,7 +255,7 @@ export const SodViolationReviewView: React.FC = () => {
       {chip("WARN", `WARN · ${summary.warn}`)}
     </div>
   );
-  const noneOfSeverity = <p className="py-6 text-center text-sm text-slate-400">No violation of this severity.</p>;
+  const noneOfSeverity = <p className="py-6 text-center text-sm text-slate-400">{tr("No violation of this severity.")}</p>;
 
   const selectRule = (key: string) => {
     setActiveKey(key);
@@ -278,7 +279,7 @@ export const SodViolationReviewView: React.FC = () => {
                     {sevDot(v.severity)}
                     <span className="min-w-0 flex-1">
                       <span className="block break-words text-sm font-medium text-slate-900">{v.constraintName}</span>
-                      <span className="block text-xs text-slate-500">{v.violatingAccessProfiles.length} profiles · {v.violatingUserCombinations.length} people</span>
+                      <span className="block text-xs text-slate-500">{trFormat("{profiles} profiles · {people} people", { profiles: v.violatingAccessProfiles.length, people: v.violatingUserCombinations.length })}</span>
                     </span>
                     <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
                   </button>
@@ -296,15 +297,15 @@ export const SodViolationReviewView: React.FC = () => {
 
   const historyCard = (
     <FormSection
-      title="Scan History"
+      title={tr("Scan History")}
       icon={<History className="h-4 w-4" />}
-      description="Each scan is kept as GxP self-inspection evidence."
+      description={tr("Each scan is kept as GxP self-inspection evidence.")}
       contentClassName="p-0"
     >
       {historyLoading ? (
         <SectionLoading minHeight="150px" />
       ) : history.length === 0 ? (
-        <TableEmptyState title="No scans yet" description="Run a scan to start building review history." />
+        <TableEmptyState title={tr("No scans yet")} description={tr("Run a scan to start building review history.")} />
       ) : (
         <>
           <ul>
@@ -324,9 +325,9 @@ export const SodViolationReviewView: React.FC = () => {
                     <span className="block truncate text-xs text-slate-500">{run.scannedByName ?? "-"}</span>
                   </span>
                   {run.violationCount === 0 ? (
-                    <Badge semantic="success" size="sm">None</Badge>
+                    <Badge semantic="success" size="sm">{tr("None")}</Badge>
                   ) : (
-                    <Badge semantic="danger" size="sm">{run.violationCount} violation{run.violationCount === 1 ? "" : "s"}</Badge>
+                    <Badge semantic="danger" size="sm">{run.violationCount} {tr("violation")}{run.violationCount === 1 ? "" : "s"}</Badge>
                   )}
                 </button>
               </li>
@@ -354,7 +355,7 @@ export const SodViolationReviewView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
-        title="SoD Violation Review"
+        title={tr("SoD Violation Review")}
         breadcrumbItems={sodViolationReviewBreadcrumb(navigate)}
         actions={
           canView ? (
@@ -370,7 +371,7 @@ export const SodViolationReviewView: React.FC = () => {
 
       {!canView ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
-          <TableEmptyState title="Permission denied" description="You do not have permission to view segregation-of-duties violations." />
+          <TableEmptyState title={tr("Permission denied")} description={tr("You do not have permission to view segregation-of-duties violations.")} />
         </div>
       ) : (
         <>

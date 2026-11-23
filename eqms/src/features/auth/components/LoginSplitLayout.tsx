@@ -2,7 +2,9 @@ import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { LoginCarousel } from "./LoginCarousel";
+import { AuthLanguageSwitch } from "./AuthLanguageSwitch";
 import type { LoginCarouselConfig } from "@/services/api/branding";
+import { tr } from "@/i18n";
 
 /**
  * The "Split" sign-in screen: a rounded card on a light page, the form on the left and a blue product
@@ -62,17 +64,17 @@ const DashboardPreview: React.FC = () => (
     <div className="absolute inset-0 overflow-hidden rounded-[10px] bg-[#f3f4f8] p-[10px] shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
       <div className="grid grid-cols-[84px_1fr_1fr] gap-[8px]">
         <div className="rounded-[7px] bg-[#6a56f6] p-2 text-white">
-          <p className="text-[6px] opacity-80">Effective documents</p>
+          <p className="text-[6px] opacity-80">{tr("Effective documents")}</p>
           <p className="mt-2 text-[15px] font-semibold leading-none">1,284</p>
-          <p className="mt-2 inline-block rounded bg-white/20 px-1 text-[5px]">↑ 7% from last month</p>
+          <p className="mt-2 inline-block rounded bg-white/20 px-1 text-[5px]">{tr("↑ 7% from last month")}</p>
         </div>
         <Tile>
-          <p className="text-[6px] font-medium text-slate-700">Training compliance</p>
+          <p className="text-[6px] font-medium text-slate-700">{tr("Training compliance")}</p>
           <p className="mt-1 text-[11px] font-semibold text-slate-900">94%</p>
           <svg viewBox="0 0 100 34" className="mt-1 h-[26px] w-full"><defs><linearGradient id="lg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6a56f6" stopOpacity=".25" /><stop offset="1" stopColor="#6a56f6" stopOpacity="0" /></linearGradient></defs><path d="M0 26 C14 28 18 8 32 14 S52 30 64 16 S86 4 100 8 V34 H0Z" fill="url(#lg)" /><path d="M0 26 C14 28 18 8 32 14 S52 30 64 16 S86 4 100 8" fill="none" stroke="#6a56f6" strokeWidth="1.6" /></svg>
         </Tile>
         <Tile>
-          <p className="text-[6px] font-medium text-slate-700">Open reviews</p>
+          <p className="text-[6px] font-medium text-slate-700">{tr("Open reviews")}</p>
           <div className="mt-1 flex items-end gap-[3px]">
             {[18, 26, 14, 30, 22, 34, 20].map((h, i) => <span key={i} className="w-[7px] rounded-full bg-[#d9d6fc]" style={{ height: h }} />)}
           </div>
@@ -80,13 +82,13 @@ const DashboardPreview: React.FC = () => (
       </div>
       <div className="mt-[8px] grid grid-cols-[84px_1fr] gap-[8px]">
         <Tile>
-          <p className="text-[6px] text-slate-500">Pending approvals</p>
+          <p className="text-[6px] text-slate-500">{tr("Pending approvals")}</p>
           <p className="mt-1 text-[13px] font-semibold text-slate-900">38</p>
-          <p className="mt-1 text-[5px] text-[#16a34a]">↑ 5% from last month</p>
+          <p className="mt-1 text-[5px] text-[#16a34a]">{tr("↑ 5% from last month")}</p>
         </Tile>
         <Tile className="py-2">
-          <p className="mb-1 text-[7px] font-semibold text-slate-800">Recent documents</p>
-          <div className="grid grid-cols-[52px_1fr_46px_40px] gap-x-2 border-b border-slate-100 pb-1 text-[5px] text-slate-400"><span>Number</span><span>Title</span><span>Date</span><span>Status</span></div>
+          <p className="mb-1 text-[7px] font-semibold text-slate-800">{tr("Recent documents")}</p>
+          <div className="grid grid-cols-[52px_1fr_46px_40px] gap-x-2 border-b border-slate-100 pb-1 text-[5px] text-slate-400"><span>{tr("Number")}</span><span>{tr("Title")}</span><span>{tr("Date")}</span><span>{tr("Status")}</span></div>
           {ROWS.map(([id, title, date, status]) => (
             <div key={id} className="grid grid-cols-[52px_1fr_46px_40px] items-center gap-x-2 border-b border-slate-50 py-[3px] text-[5px] text-slate-600">
               <span>{id}</span><span className="truncate">{title}</span><span>{date}</span>
@@ -98,14 +100,14 @@ const DashboardPreview: React.FC = () => (
     </div>
     <div className="absolute -right-[52px] top-[58px] w-[188px] rounded-[10px] bg-white p-3 shadow-[0_10px_32px_rgba(0,0,0,0.2)]">
       <div className="flex items-start justify-between">
-        <div><p className="text-[7px] font-semibold text-slate-800">Document status</p><p className="text-[5px] text-slate-400">Share of documents by state</p></div>
-        <span className="rounded border border-slate-200 px-1.5 py-px text-[5px] text-slate-500">Monthly</span>
+        <div><p className="text-[7px] font-semibold text-slate-800">{tr("Document status")}</p><p className="text-[5px] text-slate-400">{tr("Share of documents by state")}</p></div>
+        <span className="rounded border border-slate-200 px-1.5 py-px text-[5px] text-slate-500">{tr("Monthly")}</span>
       </div>
       <svg viewBox="0 0 120 70" className="mx-auto mt-2 h-[70px] w-[120px]">
         <path d="M10 62 A50 50 0 0 1 42 16" fill="none" stroke="#4340f5" strokeWidth="13" strokeLinecap="round" />
         <path d="M52 12 A50 50 0 0 1 90 18" fill="none" stroke="#7c4dff" strokeWidth="13" strokeLinecap="round" />
         <path d="M98 26 A50 50 0 0 1 110 62" fill="none" stroke="#a78bfa" strokeWidth="13" strokeLinecap="round" />
-        <text x="60" y="48" textAnchor="middle" fontSize="5" fill="#9ca3af">Total documents</text>
+        <text x="60" y="48" textAnchor="middle" fontSize="5" fill="#9ca3af">{tr("Total documents")}</text>
         <text x="60" y="60" textAnchor="middle" fontSize="9" fontWeight="600" fill="#111827">1,284</text>
       </svg>
       {[["#4340f5", "Effective", "1,031"], ["#7c4dff", "In review", "162"], ["#a78bfa", "Draft", "91"]].map(([color, name, n]) => (
@@ -172,6 +174,7 @@ export const LoginSplitLayout: React.FC<LoginSplitLayoutProps> = ({ logo, childr
       >
         <div className={SPLIT_UI.grid}>
           <div className={`${SPLIT_UI.left} relative [&_.auth-brand]:absolute [&_.auth-brand]:left-6 [&_.auth-brand]:top-8 [&_.auth-brand]:!m-0 sm:[&_.auth-brand]:left-10 sm:[&_.auth-brand]:top-10 lg:[&_.auth-brand]:left-[45px] lg:[&_.auth-brand]:top-[45px]`}>
+            <AuthLanguageSwitch className="absolute right-6 top-8 z-20 sm:right-10 sm:top-10 lg:right-[45px] lg:top-[45px]" />
             {logo ? <div className="flex items-center gap-3 text-slate-900">{logo}</div> : null}
             <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-16">{children}</div>
             <div className={SPLIT_UI.footer}>

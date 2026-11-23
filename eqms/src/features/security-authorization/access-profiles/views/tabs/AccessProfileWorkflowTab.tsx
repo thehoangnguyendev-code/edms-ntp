@@ -13,6 +13,7 @@ import { WorkflowRoleDrawer, type WorkflowRolePreview } from "./accessProfileDet
 import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 type SortKey = "label" | "code" | "module" | "users";
 type WorkflowRoleRow = WorkflowRolePreview & { moduleKey?: string | null; totalUsers?: number; assignedProfiles?: { id: string; assignedUsers: number }[] };
@@ -115,7 +116,7 @@ export const WorkflowTab: React.FC<{
         ref={getButtonRef(row.code)}
         onClick={(e) => { e.stopPropagation(); toggleMenu(row.code, e); }}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
-        aria-label="More actions"
+        aria-label={tr("More actions")}
       >
         <MoreVertical className="h-3.5 w-3.5 text-slate-600 sm:h-4 sm:w-4" />
       </button>
@@ -123,7 +124,7 @@ export const WorkflowTab: React.FC<{
   };
 
   return <div className="space-y-4">
-    {canAssign && <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Roles exist for Document Control and Training Management; the actions of the other modules (such as Reports and Security Review) follow permissions alone, which are set on the Permissions tab. Changes are applied when you click <b>Save</b>.</>} />}
+    {canAssign && <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Roles exist for Document Control and Training Management; the actions of the other modules (such as Reports and Security Review) follow permissions alone, which are set on the Permissions tab. Changes are applied when you click <b>{tr("Save")}</b>.</>} />}
     {!canAssign && deniedReason && <WarningBanner variant="warning" description={deniedReason} />}
     <div className="relative">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -131,7 +132,7 @@ export const WorkflowTab: React.FC<{
         className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         value={search}
         onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        placeholder="Search workflow roles…"
+        placeholder={tr("Search workflow roles…")}
       />
     </div>
     <DataTable
@@ -153,8 +154,8 @@ export const WorkflowTab: React.FC<{
       }}
       emptyState={
         <TableEmptyState
-          title={searchTerm.trim() ? "No workflow roles match your search" : "No workflow roles"}
-          description={searchTerm.trim() ? "Try a different search." : canAssign ? "No active workflow roles are configured in the catalog." : "No workflow role is assigned to this Access Profile."}
+          title={searchTerm.trim() ? tr("No workflow roles match your search") : tr("No workflow roles")}
+          description={searchTerm.trim() ? tr("Try a different search.") : canAssign ? tr("No active workflow roles are configured in the catalog.") : tr("No workflow role is assigned to this Access Profile.")}
         />
       }
       pagination={total > 0 ? (
@@ -174,7 +175,7 @@ export const WorkflowTab: React.FC<{
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 transition-colors hover:bg-slate-50"
         >
           <IconInfoCircle className="h-3.5 w-3.5" />
-          <span>View Details</span>
+          <span>{tr("View Details")}</span>
         </button>
       </div>
     </PortalDropdownMenu>

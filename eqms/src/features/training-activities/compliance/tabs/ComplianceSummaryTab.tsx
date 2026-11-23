@@ -1,90 +1,55 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useBarWipe } from "@/hooks/useBarFill";
+import { useEffect, useState, type ReactNode } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
-import { IconAlertTriangle, IconCalendarDue, IconClipboardCheck, IconUserOff, IconUsers } from "@tabler/icons-react";
 import { Select } from "@/components/ui/select/Select";
 import { SectionLoading } from "@/components/ui/loading/Loading";
-import { trainingComplianceApi, trainingError, type TrainingComplianceSummary } from "@/services/api/trainingActivities";
+import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
+import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
+import { trainingComplianceApi, trainingError, type TrainingComplianceSummary, type TrainingComplianceSummaryPosition } from "@/services/api/trainingActivities";
+import { saveBlob } from "../../shared/trainingLabels";
+import { usePrintAction, type RegisterPrint } from "../usePrintAction";
+import { tr, trFormat } from "@/i18n";
 
-type Tone = "emerald" | "amber" | "red" | "slate";
-const TONE: Record<Tone, { dot: string; icon: string; value: string }> = {
-  emerald: { dot: "bg-emerald-500", icon: "bg-emerald-50 text-emerald-600", value: "text-slate-900" },
-  amber: { dot: "bg-amber-500", icon: "bg-amber-50 text-amber-600", value: "text-slate-900" },
-  red: { dot: "bg-red-500", icon: "bg-red-50 text-red-600", value: "text-red-700" },
-  slate: { dot: "bg-slate-400", icon: "bg-slate-100 text-slate-500", value: "text-slate-900" },
-};
+const percent = (value: number | null | undefined) => (value == null ? "—" : `${Math.round(value)}%`);
+const BAR = { ok: "bg-emerald-500", due: "bg-amber-500", missing: "bg-red-500" };
 
-function Tile({ icon, label, value, hint, tone = "slate" }: { icon: ReactNode; label: string; value: ReactNode; hint?: string; tone?: Tone }) {
+/** One number of the department with its colour bar on the left; the number is big because the page is read for it. */
+function Stat({ value, label, tone }: { value: ReactNode; label: string; tone: "green" | "red" | "amber" | "slate" }) {
+  const bar = { green: "border-emerald-600", red: "border-red-600", amber: "border-amber-500", slate: "border-slate-300" }[tone];
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TONE[tone].icon}`}>{icon}</span>
-      <div className="min-w-0">
-        <div className="text-xs font-medium text-slate-500">{label}</div>
-        <div className={`mt-0.5 text-2xl font-semibold leading-tight ${TONE[tone].value}`}>{value}</div>
-        {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
-      </div>
+    <div className={`border-l-[3px] pl-3 ${bar}`}>
+      <div className="text-3xl font-semibold leading-none tabular-nums text-slate-900">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{label}</div>
     </div>
   );
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+function Chip({ label, value }: { label: string; value: number }) {
   return (
-    <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
-    </section>
+    <li className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700">
+      {label} <b className={`tabular-nums ${value > 0 ? "text-slate-900" : "text-slate-400"}`}>{value}</b>
+    </li>
   );
 }
 
-/** Trained, due and not trained as shares of every requirement of the department, drawn from the numbers the server counted. */
-function CoverageCard({ summary }: { summary: TrainingComplianceSummary }) {
-  const parts: { key: string; label: string; value: number; tone: Tone }[] = [
-    { key: "ok", label: "Trained", value: summary.ok, tone: "emerald" },
-    { key: "due", label: "Annual training due", value: summary.due, tone: "amber" },
-    { key: "missing", label: "Not trained", value: summary.missing, tone: "red" },
-  ];
-  const total = parts.reduce((sum, p) => sum + p.value, 0);
-  const barRef = useRef<HTMLDivElement>(null);
-  useBarWipe(barRef, parts.map((p) => p.value).join(","));
+/** Trained, annual training due and not trained as shares of the requirement lines of one position, drawn from the numbers the server counted. */
+function CoverageBar({ position }: { position: TrainingComplianceSummaryPosition }) {
+  const total = position.ok + position.due + position.missing;
+  const label = `${tr("Trained")}: ${position.ok}, ${tr("Annual training due")}: ${position.due}, ${tr("Not trained")}: ${position.missing}`;
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-xs font-medium text-slate-500">Requirements met</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-4xl font-semibold leading-none text-slate-900">{summary.percentTrained == null ? "—" : `${summary.percentTrained}%`}</span>
-            <span className="text-sm text-slate-500">{summary.ok} of {summary.required} requirements</span>
-          </div>
-        </div>
-      </div>
-      <div
-        ref={barRef}
-        className="mt-4 flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100"
-        role="img"
-        aria-label={parts.map((p) => `${p.label}: ${p.value}`).join(", ")}
-      >
-        {total > 0 && parts.filter((p) => p.value > 0).map((p) => (
-          <div key={p.key} className={`h-full first:rounded-l-full last:rounded-r-full ${TONE[p.tone].dot}`} style={{ width: `${(p.value / total) * 100}%` }} title={`${p.label}: ${p.value}`} />
-        ))}
-      </div>
-      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {parts.map((p) => (
-          <li key={p.key} className="flex items-center gap-2.5">
-            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${TONE[p.tone].dot}`} />
-            <span className="text-sm text-slate-600">{p.label}</span>
-            <span className="ml-auto text-sm font-semibold text-slate-900">{p.value}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div role="img" aria-label={label} title={label} className="flex h-2 w-full gap-px overflow-hidden rounded-full bg-slate-100">
+      {total > 0 && ([["ok", position.ok], ["due", position.due], ["missing", position.missing]] as const).filter(([, n]) => n > 0).map(([key, n]) => (
+        <span key={key} className={BAR[key]} style={{ width: `${(n / total) * 100}%` }} />
+      ))}
+    </div>
   );
 }
 
-/** The numbers of one department at a glance. Everything is computed by the server from the effective matrix, the positions and the records. */
-export function ComplianceSummaryTab({ departmentId, departments, onDepartment }: {
+/** The numbers of one department at a glance, then every Work Position side by side, the lowest first. Everything is computed by the server from the effective matrix, the positions and the records. */
+export function ComplianceSummaryTab({ departmentId, departments, onDepartment, registerPrint }: {
   departmentId: string;
   departments: { label: string; value: string }[];
   onDepartment: (id: string) => void;
+  registerPrint?: RegisterPrint;
 }) {
   const [summary, setSummary] = useState<TrainingComplianceSummary>();
   const [error, setError] = useState("");
@@ -97,48 +62,67 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment }
   // A change made by anyone refreshes the figures in place.
   useEntityChanged(["TRAINING"], () => { trainingComplianceApi.summary(departmentId || undefined).then(setSummary).catch(() => undefined); });
 
+  const print = async () => {
+    try {
+      saveBlob(await trainingComplianceApi.printSummary({ departmentId: departmentId || undefined }), "training-compliance-summary.pdf");
+    } catch (e) {
+      setError(trainingError(e));
+    }
+  };
+  usePrintAction(registerPrint, Boolean(summary?.hasEffectiveMatrix), print);
+  const positions = summary?.positions ?? [];
+
+  const columns: DataTableColumn<TrainingComplianceSummaryPosition>[] = [
+    { id: "no", header: "No.", label: "No.", locked: true, cell: (_p, i) => i + 1 },
+    { id: "name", header: tr("Work Position"), label: tr("Work Position"), cellClassName: "min-w-56 whitespace-normal font-medium text-slate-900", cell: (p) => p.name },
+    { id: "people", header: "People", label: "People", headerClassName: "text-right", cellClassName: "text-right tabular-nums", cell: (p) => p.people },
+    { id: "coverage", header: "Coverage", label: "Coverage", cellClassName: "min-w-48", cell: (p) => <CoverageBar position={p} /> },
+    { id: "missing", header: tr("Not trained"), label: tr("Not trained"), headerClassName: "text-right", cellClassName: (p) => `text-right tabular-nums ${p.missing > 0 ? "text-red-700" : ""}`, cell: (p) => p.missing },
+    { id: "due", header: "Due", label: "Due", headerClassName: "text-right", cellClassName: "text-right tabular-nums", cell: (p) => p.due },
+    { id: "met", header: "Met", label: "Met", headerClassName: "text-right", cellClassName: (p) => `text-right font-semibold tabular-nums ${(p.percentTrained ?? 100) < 60 ? "text-red-700" : "text-slate-900"}`, cell: (p) => percent(p.percentTrained) },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="w-full md:w-80">
-        <Select label="Department" value={departmentId} options={departments} onChange={onDepartment} />
-      </div>
+    <div className="space-y-4 md:space-y-5">
+      <div className="w-full lg:w-72"><Select label={tr("Department")} value={departmentId} options={departments} onChange={onDepartment} /></div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!summary ? (
         !error && <SectionLoading text="Loading…" />
       ) : !summary.hasEffectiveMatrix ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">This department has no effective training matrix, so there is nothing to measure yet.</p>
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{tr("This department has no effective training matrix, so there is nothing to measure yet.")}</p>
       ) : (
         <>
-          <CoverageCard summary={summary} />
-          <Group title="People">
-            <Tile icon={<IconUsers className="h-5 w-5" />} label="People measured" value={summary.people} hint="Every employee of the department: the rows for all employees apply to everyone, the others to the holders of a Work Position" />
-            <Tile
-              icon={<IconUsers className="h-5 w-5" />}
-              label="New employees"
-              value={summary.newEmployees ?? 0}
-              tone={(summary.newEmployeesWithGaps ?? 0) > 0 ? "amber" : "slate"}
-              hint={(summary.newEmployeesWithGaps ?? 0) > 0 ? `${summary.newEmployeesWithGaps} still miss a training: see the Gap List, filter New employees only` : "No new employee misses a training"}
-            />
-            <Tile icon={<IconClipboardCheck className="h-5 w-5" />} label="Open training reviews" value={summary.openReviews ?? 0} tone={(summary.openReviews ?? 0) > 0 ? "amber" : "slate"} hint="New employees, returns after absence and transfers still being worked through" />
-            <Tile
-              icon={<IconUserOff className="h-5 w-5" />}
-              label="People without a Work Position"
-              value={summary.peopleWithoutPosition}
-              tone={summary.peopleWithoutPosition > 0 ? "amber" : "slate"}
-              hint={summary.peopleWithoutPosition > 0 ? "Give them a Work Position (job assignment) so their requirements can be measured" : "Everyone has a Work Position"}
-            />
-          </Group>
-          <Group title="Trainings">
-            <Tile
-              icon={<IconAlertTriangle className="h-5 w-5" />}
-              label="Overdue trainings"
-              value={summary.overdueActivities}
-              tone={summary.overdueActivities > 0 ? "red" : "slate"}
-              hint={summary.overdueActivities > 0 ? "Past their due date and not yet completed" : "None past their due date"}
-            />
-            <Tile icon={<IconAlertTriangle className="h-5 w-5" />} label="Moved beyond the SOP window" value={summary.linesBeyondSopWindow ?? 0} tone={(summary.linesBeyondSopWindow ?? 0) > 0 ? "amber" : "slate"} hint="Requirement lines moved later than the month after the approved one" />
-            <Tile icon={<IconCalendarDue className="h-5 w-5" />} label="Due in 14 days" value={summary.dueSoonActivities} tone={summary.dueSoonActivities > 0 ? "amber" : "slate"} hint="Open trainings coming due" />
-          </Group>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-4">
+            <Stat value={percent(summary.percentTrained)} label={trFormat("requirements met · {ok} / {required}", { ok: summary.ok, required: summary.required })} tone="green" />
+            <Stat value={summary.missing} label={tr("not trained")} tone={summary.missing > 0 ? "red" : "slate"} />
+            <Stat value={summary.due} label={tr("annual training due")} tone={summary.due > 0 ? "amber" : "slate"} />
+            <Stat value={summary.overdueActivities} label={tr("overdue trainings")} tone={summary.overdueActivities > 0 ? "red" : "slate"} />
+          </div>
+          <ul className="flex flex-wrap gap-2" aria-label={tr("Also needs attention")}>
+            <Chip label={tr("Without a Work Position")} value={summary.peopleWithoutPosition} />
+            <Chip label={tr("Open reviews")} value={summary.openReviews ?? 0} />
+            <Chip label={tr("Beyond SOP window")} value={summary.linesBeyondSopWindow ?? 0} />
+            <Chip label={tr("Due in 14 days")} value={summary.dueSoonActivities} />
+            <Chip label={tr("New employees")} value={summary.newEmployees ?? 0} />
+          </ul>
+          <section className="space-y-2">
+            <h3 className="text-2xs font-semibold uppercase tracking-wide text-slate-600 md:text-xs">{tr("Work positions · lowest first")}</h3>
+            <div className="hidden md:block">
+              <DataTable rows={positions} columns={columns} getRowKey={(p) => p.id} emptyState={<TableEmptyState title={tr("Nothing to show")} description={tr("The effective matrix has no Work Position yet.")} />} />
+            </div>
+            <ul className="space-y-2 md:hidden">
+              {positions.map((p) => (
+                <li key={p.id} className="rounded-xl border border-slate-200 bg-white p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 text-sm font-medium text-slate-900">{p.name}</span>
+                    <span className={`shrink-0 text-sm font-semibold tabular-nums ${(p.percentTrained ?? 100) < 60 ? "text-red-700" : "text-slate-900"}`}>{percent(p.percentTrained)}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">{trFormat("{count} people", { count: p.people })} · {p.missing} {tr("not trained")} · {p.due} {tr("Due").toLowerCase()}</p>
+                  <div className="mt-2"><CoverageBar position={p} /></div>
+                </li>
+              ))}
+            </ul>
+          </section>
         </>
       )}
     </div>

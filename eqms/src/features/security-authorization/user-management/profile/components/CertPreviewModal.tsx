@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { formatDate } from "@/utils/format";
 import { settingsApi } from "@/services/api/settings";
 import type { Certification } from "../../types";
+import { tr } from "@/i18n";
 
 interface CertPreviewModalProps {
   isOpen: boolean; // Added isOpen prop for external control
@@ -100,28 +101,28 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
         {/* Info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5 pb-5 border-b border-slate-100 bg-white shrink-0">
           <div>
-            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Issue Date</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">{tr("Issue Date")}</p>
             <p className="text-sm font-semibold text-slate-700">
               {cert?.issueDate ? formatDate(cert.issueDate) : "—"}
             </p>
           </div>
           <div>
-            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Expiry Date</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">{tr("Expiry Date")}</p>
             <p className={cn("text-sm font-semibold", isExpired ? "text-red-600" : "text-slate-700")}>
               {cert?.expiryDate ? formatDate(cert.expiryDate) : "No expiry"}
             </p>
           </div>
           <div>
-            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">Status</p>
+            <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">{tr("Status")}</p>
             {isExpired ? (
-              <Badge color="red" size="sm" pill>Expired</Badge>
+              <Badge color="red" size="sm" pill>{tr("Expired")}</Badge>
             ) : (
-              <Badge color="emerald" size="sm" pill>Valid</Badge>
+              <Badge color="emerald" size="sm" pill>{tr("Valid")}</Badge>
             )}
           </div>
           {cert?.fileName && (
             <div>
-              <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">File</p>
+              <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">{tr("File")}</p>
               <p className="text-sm font-semibold text-slate-700 truncate">{cert.fileName}</p>
             </div>
           )}
@@ -132,17 +133,17 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
           {!hasFile ? (
             <div className="flex flex-col items-center justify-center py-12 rounded-lg border-2 border-dashed border-slate-100 gap-3 bg-slate-50/10">
               <Award className="h-10 w-10 text-slate-200" />
-              <p className="text-sm font-medium text-slate-400 italic">No file attached to this certificate</p>
+              <p className="text-sm font-medium text-slate-400 italic">{tr("No file attached to this certificate")}</p>
             </div>
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 rounded-lg border-2 border-dashed border-slate-200 gap-3 bg-slate-50/30">
               <div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-slate-500">Loading file...</p>
+              <p className="text-sm text-slate-500">{tr("Loading file...")}</p>
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center py-12 rounded-lg border-2 border-dashed border-red-200 gap-3 bg-red-50/30">
               <Award className="h-10 w-10 text-red-200" />
-              <p className="text-sm font-medium text-red-500">Unable to load the certificate file</p>
+              <p className="text-sm font-medium text-red-500">{tr("Unable to load the certificate file")}</p>
             </div>
           ) : blobUrl && isImage ? (
             <div className="rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center p-2 min-h-[200px]">

@@ -15,6 +15,7 @@ import { IconCertificate, IconSchool, IconEdit, IconPencilMinus } from "@tabler/
 import { usePortalDropdown } from "@/hooks";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 interface QualificationsTabProps {
   user: User;
@@ -105,14 +106,14 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
       {/* Education Details — same table style as External Certifications below, for one
           consistent list UI across the tab instead of two different visual languages. */}
       <FormSection
-        title="Education Details"
+        title={tr("Education Details")}
         icon={<IconSchool className="h-4 w-4" />}
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && isEditing && (
               <Button variant="default" size="sm" onClick={handleEduOpenAdd} className="flex-shrink-0 gap-2 sm:h-9 sm:px-4 sm:text-sm">
                 <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                Add Education
+                {tr("Add Education")}
               </Button>
             )}
           </div>
@@ -123,15 +124,15 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
             <TableMarkup.Root className="w-full">
               <TableMarkup.Head className="bg-slate-50 border-b border-slate-200 text-slate-500">
                 <TableMarkup.Row>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>No.</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Degree</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Field of Study</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Institution</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Graduation Year</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>{tr("No.")}</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Degree")}</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Field of Study")}</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Institution")}</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Graduation Year")}</TableMarkup.HeaderCell>
                   <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>GPA</TableMarkup.HeaderCell>
                   {canEdit && (
                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell22}>
-                      Action
+                      {tr("Action")}
                     </TableMarkup.HeaderCell>
                   )}
                 </TableMarkup.Row>
@@ -140,7 +141,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                 {educationList.length === 0 ? (
                   <TableMarkup.Row>
                     <TableMarkup.Cell colSpan={7} className="p-0">
-                      <TableEmptyState title="No education items recorded" description="Add your degrees and academic qualifications." />
+                      <TableEmptyState title={tr("No education items recorded")} description={tr("Add your degrees and academic qualifications.")} />
                     </TableMarkup.Cell>
                   </TableMarkup.Row>
                 ) : (
@@ -197,7 +198,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
           {educationList.length > 0 && (
             <div className="px-4 md:px-5 py-3 border-t border-slate-200 bg-slate-50/50">
               <p className="text-xs text-slate-500">
-                Showing <span className="font-semibold text-slate-700">{educationList.length}</span> education item{educationList.length !== 1 ? "s" : ""}
+                  {trFormat("Showing {count} education items", { count: educationList.length })}
               </p>
             </div>
           )}
@@ -206,42 +207,42 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
 
       {/* Professional Expertise */}
       <FormSection
-        title="Professional Expertise"
+        title={tr("Professional Expertise")}
         icon={<Briefcase className="h-4 w-4" />}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
           <EditableField
-            label="Professional Level" value={user.professionalLevel} draftValue={draft.professionalLevel}
+            label={tr("Professional Level")} value={user.professionalLevel} draftValue={draft.professionalLevel}
             isEditing={isEditing}
             field={{ type: "text", fieldKey: "professionalLevel" }}
             onChange={onDraftChange}
-            placeholder="e.g. Senior, Specialist, Manager"
+            placeholder={tr("e.g. Senior, Specialist, Manager")}
             className="sm:col-span-2"
             error={fieldErrors.professionalLevel}
             />
           <EditableField
-            label="Area of Expertise" value={user.areaOfExpertise} draftValue={draft.areaOfExpertise}
+            label={tr("Area of Expertise")} value={user.areaOfExpertise} draftValue={draft.areaOfExpertise}
             isEditing={isEditing}
             field={{ type: "text", fieldKey: "areaOfExpertise" }}
             onChange={onDraftChange}
-            placeholder="e.g. Quality Assurance, Document Control"
+            placeholder={tr("e.g. Quality Assurance, Document Control")}
             className="sm:col-span-2"
             error={fieldErrors.areaOfExpertise}
             />
           <EditableField
-            label="Years of Experience" value={user.yearsOfExperience} draftValue={draft.yearsOfExperience}
+            label={tr("Years of Experience")} value={user.yearsOfExperience} draftValue={draft.yearsOfExperience}
             isEditing={isEditing}
             field={{ type: "text", fieldKey: "yearsOfExperience" }}
             onChange={onDraftChange}
-            placeholder="e.g. 5"
+            placeholder={tr("e.g. 5")}
             error={fieldErrors.yearsOfExperience}
             />
           <EditableField
-            label="Previous Employer" value={user.previousEmployer} draftValue={draft.previousEmployer}
+            label={tr("Previous Employer")} value={user.previousEmployer} draftValue={draft.previousEmployer}
             isEditing={isEditing}
             field={{ type: "text", fieldKey: "previousEmployer" }}
             onChange={onDraftChange}
-            placeholder="e.g. Acme Corp"
+            placeholder={tr("e.g. Acme Corp")}
             error={fieldErrors.previousEmployer}
             />
         </div>
@@ -249,14 +250,14 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
 
       {/* External Certifications */}
       <FormSection
-        title="External Certifications"
+        title={tr("External Certifications")}
         icon={<IconCertificate className="h-4 w-4" />}
         headerRight={
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && isEditing && (
               <Button variant="default" size="sm" onClick={handleOpenAdd} className="flex-shrink-0 gap-2 sm:h-9 sm:px-4 sm:text-sm">
                 <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                Add Certificate
+                {tr("Add Certificate")}
               </Button>
             )}
           </div>
@@ -269,15 +270,15 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
               <TableMarkup.Root className="w-full ">
                 <TableMarkup.Head className="bg-slate-50 border-b border-slate-200 text-slate-500">
                   <TableMarkup.Row>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>No.</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Certificate Name</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Issuing Organization</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Issue Date</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Expiry Date</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>Attachment</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell8}>{tr("No.")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Certificate Name")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Issuing Organization")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Issue Date")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Expiry Date")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell9}>{tr("Attachment")}</TableMarkup.HeaderCell>
                     {canEdit && (
                       <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell22}>
-                        Action
+                        {tr("Action")}
                       </TableMarkup.HeaderCell>
                     )}
                   </TableMarkup.Row>
@@ -286,7 +287,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                   {certifications.length === 0 ? (
                     <TableMarkup.Row>
                       <TableMarkup.Cell colSpan={7} className="p-0">
-                        <TableEmptyState title="No certifications recorded" description="Add external certifications and licenses." />
+                        <TableEmptyState title={tr("No certifications recorded")} description={tr("Add external certifications and licenses.")} />
                       </TableMarkup.Cell>
                     </TableMarkup.Row>
                   ) : (
@@ -322,7 +323,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                                 <span className={cn("font-medium", isExpired ? "text-rose-600" : "text-slate-700")}>
                                   {formatDate(cert.expiryDate)}
                                 </span>
-                                {isExpired && <span className="text-xs font-semibold text-rose-500 tracking-tight">Expired</span>}
+                                {isExpired && <span className="text-xs font-semibold text-rose-500 tracking-tight">{tr("Expired")}</span>}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic">-</span>
@@ -339,7 +340,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                                 <span className="truncate max-w-[150px]">{cert.fileName}</span>
                               </button>
                             ) : (
-                              <span className="text-xs text-slate-400 italic">No file</span>
+                              <span className="text-xs text-slate-400 italic">{tr("No file")}</span>
                             )}
                           </TableMarkup.Cell>
                           {/* Action Sticky */}
@@ -372,10 +373,10 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
             {certifications.length > 0 && (
               <div className="px-4 md:px-5 py-3 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between flex-wrap gap-2">
                 <p className="text-xs text-slate-500">
-                  Showing <span className="font-semibold text-slate-700">{certifications.length}</span> certification{certifications.length !== 1 ? "s" : ""}
+                  {trFormat("Showing {count} certifications", { count: certifications.length })}
                 </p>
                 <div className="flex items-center gap-3 text-xs font-semibold text-slate-700">
-                  <span>Last Updated: {formatDate(new Date().toISOString())}</span>
+                  <span>{tr("Last Updated:")} {formatDate(new Date().toISOString())}</span>
                 </div>
               </div>
             )}
@@ -387,8 +388,8 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
           onClose={() => setCertDeleteId(null)}
           onConfirm={() => { onCertDelete(certDeleteId!); setCertDeleteId(null); }}
           type="confirm"
-          title="Delete Certificate"
-          description="Are you sure you want to delete this certificate? This action cannot be undone."
+          title={tr("Delete Certificate")}
+          description={tr("Are you sure you want to delete this certificate? This action cannot be undone.")}
         />
       </FormSection>
 
@@ -419,8 +420,8 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
         onClose={() => setEduDeleteId(null)}
         onConfirm={() => { onEduDelete(eduDeleteId!); setEduDeleteId(null); }}
         type="confirm"
-        title="Delete Education Entry"
-        description="Are you sure you want to delete this education entry? This action cannot be undone."
+        title={tr("Delete Education Entry")}
+        description={tr("Are you sure you want to delete this education entry? This action cannot be undone.")}
       />
 
       {/* Education Action Menu Portal */}
@@ -435,14 +436,14 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 <IconPencilMinus className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
-                Edit Education
+                {tr("Edit Education")}
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setEduDeleteId(edu.id); closeEduMenu(); }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5 flex-shrink-0" />
-                Delete
+                {tr("Delete")}
               </button>
             </div>
           );
@@ -461,14 +462,14 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 <Eye className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
-                Preview
+                {tr("Preview")}
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleOpenEdit(cert); close(); }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 <IconEdit className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
-                Edit Certificate
+                {tr("Edit Certificate")}
               </button>
               <div className="my-1 h-px bg-slate-100" />
               <button
@@ -476,7 +477,7 @@ export const QualificationsTab: React.FC<QualificationsTabProps> = ({
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5 flex-shrink-0" />
-                Delete
+                {tr("Delete")}
               </button>
             </div>
           );

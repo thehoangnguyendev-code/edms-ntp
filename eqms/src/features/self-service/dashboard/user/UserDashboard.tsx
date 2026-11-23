@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDebounce } from '@/hooks';
@@ -45,11 +46,11 @@ export function UserDashboard() {
 
       <DashboardWidgets widgets={[
       ...userDashboardWidgets(summary),
-      { id: 'effective-by-type', label: 'Effective documents by type', width: 'half', content: <EffectiveByTypePanel /> },
+      { id: 'effective-by-type', label: tr('Effective documents by type'), width: 'half', content: <EffectiveByTypePanel /> },
       ...backupWidgets,
       ...moduleWidgets,
 
-      { id: 'pending-work', label: 'Pending work', width: 'full', content: <PendingWorkPanel
+      { id: 'pending-work', label: tr('Pending work'), width: 'full', content: <PendingWorkPanel
         query={taskQuery}
         onQueryChange={setTaskQuery}
         tasks={tasks}

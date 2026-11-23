@@ -11,6 +11,7 @@ import { flagColor } from "@/utils/status";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { ReportTabsFrame } from "../../report/shared/ReportTabsFrame";
 import { displayDateTime } from "@/utils/format";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * Frame of the report registers (Legal Hold Register, Delivery Log): each is the second tab of a menu entry (Report Run History, Scheduled Reports), so the header,
@@ -30,9 +31,9 @@ const DeliveryNote: React.FC = () => {
   const navigate = useNavigate();
   return (
     <p>
-      Every notice sent about a scheduled report, including the ones skipped or failed. The most people one schedule can notify is set in{" "}
+              {tr("Every notice sent about a scheduled report, including the ones skipped or failed. The most people one schedule can notify is set in")}{" "}
       <button type="button" onClick={() => navigate("/settings/report-properties")} className="font-medium text-emerald-700 underline underline-offset-2">
-        Report Properties
+        {tr("Report Properties")}
       </button>
       .
     </p>
@@ -77,9 +78,9 @@ export const ReportRetentionView: React.FC = () => {
       ),
     },
     { id: "file", header: "File", sort: sortOf("fileName"), cell: (row) => <span className="break-all text-xs">{row.fileName}</span> },
-    { id: "requester", header: "Requested by", sort: sortOf("requester"), cell: (row) => row.requester ?? "—" },
-    { id: "heldBy", header: "Hold placed by", cell: (row) => row.heldBy ?? "—" },
-    { id: "heldAt", header: "Hold placed", sort: sortOf("heldAt"), cell: (row) => (row.heldAt ? displayDateTime(row.heldAt) : "—") },
+    { id: "requester", header: tr("Requested by"), sort: sortOf("requester"), cell: (row) => row.requester ?? "—" },
+    { id: "heldBy", header: tr("Hold placed by"), cell: (row) => row.heldBy ?? "—" },
+    { id: "heldAt", header: tr("Hold placed"), sort: sortOf("heldAt"), cell: (row) => (row.heldAt ? displayDateTime(row.heldAt) : "—") },
     { id: "reason", header: "Reason", cell: (row) => <span className="block max-w-96 whitespace-normal">{row.reason ?? "—"}</span> },
   ];
   const { layout, control } = useCustomColumnLayout("reportLegalHolds", columns);
@@ -87,7 +88,7 @@ export const ReportRetentionView: React.FC = () => {
     <ReportAdminListPage pair="runs">
               <ReportListToolbar
           framed={false}
-          searchPlaceholder="Search report or file name…"
+          searchPlaceholder={tr("Search report or file name…")}
           search={table.searchQuery}
           onSearch={(value) => {
             table.setSearchQuery(value);
@@ -103,7 +104,7 @@ export const ReportRetentionView: React.FC = () => {
             isLoading={table.isLoading}
             columns={columns}
             columnLayout={layout}
-            emptyState={<TableEmptyState title="No legal holds" description="No file is held now." />}
+            emptyState={<TableEmptyState title={tr("No legal holds")} description={tr("No file is held now.")} />}
             pagination={
               table.totalItems > 0 ? (
                 <TablePagination
@@ -125,7 +126,7 @@ export const ReportRetentionView: React.FC = () => {
 const DELIVERY_STATUS = {
   SENT: { label: "Sent", color: "emerald" },
   FAILED: { label: "Failed", color: "red" },
-  SKIPPED_NOT_AUTHORIZED: { label: "Skipped: not authorized", color: "amber" },
+  SKIPPED_NOT_AUTHORIZED: { label: tr("Skipped: not authorized"), color: "amber" },
 } as const;
 const DELIVERY_EVENT = { REPORT_READY: "Report ready", REPORT_SCHEDULE_SUSPENDED: "Schedule suspended" } as const;
 
@@ -179,7 +180,7 @@ export const ReportDeliveryView: React.FC = () => {
     <ReportAdminListPage pair="scheduled" note={<DeliveryNote />}>
         <ReportListToolbar
           framed={false}
-          searchPlaceholder="Search recipient or schedule…"
+          searchPlaceholder={tr("Search recipient or schedule…")}
           search={table.searchQuery}
           onSearch={(value) => {
             table.setSearchQuery(value);
@@ -208,7 +209,7 @@ export const ReportDeliveryView: React.FC = () => {
                 { label: "All", value: "" },
                 { label: "Sent", value: "SENT" },
                 { label: "Failed", value: "FAILED" },
-                { label: "Skipped: not authorized", value: "SKIPPED_NOT_AUTHORIZED" },
+                { label: tr("Skipped: not authorized"), value: "SKIPPED_NOT_AUTHORIZED" },
               ],
               onChange: (value) => {
                 setDeliveryStatus(value);
@@ -230,7 +231,7 @@ export const ReportDeliveryView: React.FC = () => {
             isLoading={table.isLoading}
             columns={columns}
             columnLayout={layout}
-            emptyState={<TableEmptyState title="No notices" description="No notice matches the search or filter." />}
+            emptyState={<TableEmptyState title={tr("No notices")} description={tr("No notice matches the search or filter.")} />}
             pagination={
               table.totalItems > 0 ? (
                 <TablePagination

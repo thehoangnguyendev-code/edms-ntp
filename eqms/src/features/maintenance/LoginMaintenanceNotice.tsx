@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchMaintenanceStatus, formatCountdown, pollIntervalMs, remainingSeconds, type MaintenanceStatus } from "./maintenanceStatus";
+import { tr } from "@/i18n";
 
 /**
  * Shown on the sign-in page while a maintenance notice is running (SDS 11.5.4). It counts down on the server's clock, so a wrong
@@ -46,8 +47,8 @@ export const LoginMaintenanceNotice: React.FC = () => {
 
   return (
     <div role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      <p className="font-semibold">System maintenance starts in {formatCountdown(remaining)}.</p>
-      <p className="mt-1">Save your work and sign out before then. When the window starts, users are signed out and ordinary sign-in is closed until it is reopened.</p>
+            <p className="font-semibold">{tr("System maintenance starts in")} {formatCountdown(remaining)}.</p>
+      <p className="mt-1">{tr("Save your work and sign out before then. When the window starts, users are signed out and ordinary sign-in is closed until it is reopened.")}</p>
     </div>
   );
 };

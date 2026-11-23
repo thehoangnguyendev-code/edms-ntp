@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
 import { SORT_OPTIONS, type SortKey, type ViewMode } from "./explorerModel";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface ExplorerOptionsSheetProps {
   open: boolean;
@@ -57,7 +57,7 @@ export const ExplorerOptionsSheet: React.FC<ExplorerOptionsSheetProps> = ({
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Sort and view options"
+            aria-label={tr("Sort and view options")}
             className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl outline-none custom-scrollbar"
             initial={reduceMotion ? false : { y: "100%" }}
             animate={{ y: 0 }}

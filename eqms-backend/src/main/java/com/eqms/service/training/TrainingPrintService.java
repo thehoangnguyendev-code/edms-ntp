@@ -36,8 +36,10 @@ public class TrainingPrintService {
     private final AuditTrailService audit;
     private final TrainingMatrixCompletionService completion;
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final TrainingComplianceService compliance;
 
-    public TrainingPrintService(TrainingMatrixService matrices, TrainingRequirementService requirements, AuditTrailService audit, TrainingMatrixCompletionService completion, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+    public TrainingPrintService(TrainingMatrixService matrices, TrainingRequirementService requirements, AuditTrailService audit, TrainingMatrixCompletionService completion, org.springframework.jdbc.core.JdbcTemplate jdbc, TrainingComplianceService compliance) {
+        this.compliance = compliance;
         this.completion = completion;
         this.jdbc = jdbc;
         this.matrices = matrices;
@@ -84,6 +86,64 @@ public class TrainingPrintService {
         UUID id = positionId;
         audit.logAs(actor, "TRAINING_COMPLETION", String.valueOf(position), id, "TRAINING_COMPLETION_PRINTED", null, null, body.size() + " person(s)");
         return file("Training matrix completion", head, List.of("No.", "Employee", "Open requirements", "Completed"), body, List.of(), 3, "training-matrix-completion-" + position.replaceAll("[^A-Za-z0-9]+", "-"), id);
+    }
+
+    private String departmentName(UUID departmentId) {
+        return departmentId == null ? "" : jdbc.queryForList("select name from departments where id = ?", String.class, departmentId).stream().findFirst().orElse("");
+    }
+
+    private static String number(Object value) { return value == null ? "0" : String.valueOf(value); }
+
+    private static java.time.Instant instant(Object value) { return java.time.OffsetDateTime.parse(String.valueOf(value)).toInstant(); }
+
+    /** The Summary of the compliance screen as a list: the department, then each Work Position, with the matrix version it was measured against and the moment of printing. */
+    @SuppressWarnings("unchecked")
+    @Transactional(readOnly = true)
+    public Map<String, Object> summary(UserAccount actor, UUID departmentId) {
+        Map<String, Object> s = compliance.summary(actor, departmentId);
+        if (!Boolean.TRUE.equals(s.get("hasEffectiveMatrix"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
+        String department = departmentName(departmentId);
+        List<String[]> body = new ArrayList<>();
+        body.add(new String[]{"1", "Department (all positions)", number(s.get("people")) + " people; " + number(s.get("missing")) + " not trained; " + number(s.get("due")) + " annual training due",
+                number(s.get("ok")) + " / " + number(s.get("required")) + (s.get("percentTrained") == null ? "" : " (" + s.get("percentTrained") + "%)")});
+        int n = 1;
+        for (Map<String, Object> p : (List<Map<String, Object>>) s.get("positions")) {
+            body.add(new String[]{String.valueOf(++n), String.valueOf(p.get("name")), number(p.get("people")) + " people; " + number(p.get("missing")) + " not trained; " + number(p.get("due")) + " annual training due",
+                    number(p.get("ok")) + " / " + number(p.get("required")) + (p.get("percentTrained") == null ? "" : " (" + p.get("percentTrained") + "%)")});
+        }
+        List<String> head = List.of("Department: " + department + "    Effective matrix v" + s.get("matrixVersionNo") + (s.get("matrixEffectiveAt") == null ? "" : ", effective " + DateTimeFormatUtils.formatDate(instant(s.get("matrixEffectiveAt")))),
+                "People without a Work Position: " + number(s.get("peopleWithoutPosition")) + "    New employees: " + number(s.get("newEmployees")) + " (" + number(s.get("newEmployeesWithGaps")) + " with a gap)    Open training reviews: " + number(s.get("openReviews")),
+                "Moved beyond the SOP window: " + number(s.get("linesBeyondSopWindow")) + "    Due in 14 days: " + number(s.get("dueSoonActivities")) + "    Overdue trainings: " + number(s.get("overdueActivities")),
+                "Data as of " + DateTimeFormatUtils.formatDateTime(instant(s.get("generatedAt"))) + "    Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + " by " + actor.getFullName());
+        audit.logAs(actor, "TRAINING_COMPLIANCE", department, departmentId, "TRAINING_COMPLIANCE_SUMMARY_PRINTED", null, null, body.size() + " line(s)");
+        return file("Training compliance summary", head, List.of("No.", "Work Position", "Figures", "Requirements met"), body, List.of(), 3, "training-compliance-summary", departmentId);
+    }
+
+    /** The Gap List as a list: every person who misses or must repeat a required training (all of them, or one), with the same filters as the screen. */
+    @SuppressWarnings("unchecked")
+    @Transactional(readOnly = true)
+    public Map<String, Object> gaps(UserAccount actor, UUID departmentId, String status, boolean newOnly, String search, UUID rowId) {
+        Map<String, Object> trainings = compliance.gapTrainings(actor, departmentId);
+        if (trainings.get("matrixVersionNo") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PRINT_NOT_APPROVED");
+        List<String[]> body = new ArrayList<>();
+        int n = 0;
+        for (int page = 1; ; page++) {
+            Map<String, Object> r = compliance.coverage(actor, departmentId, status, newOnly, search, rowId, null, null, page, 100);
+            for (Map<String, Object> g : (List<Map<String, Object>>) r.get("data")) {
+                if ("OK".equals(g.get("status"))) continue;
+                String last = g.get("lastDone") == null ? "never" : String.valueOf(g.get("lastDone")).substring(0, 10);
+                body.add(new String[]{String.valueOf(++n), g.get("fullName") + (g.get("employeeCode") == null ? "" : " (" + g.get("employeeCode") + ")") + (g.get("positionName") == null ? "" : ", " + g.get("positionName")),
+                        (g.get("code") == null ? "" : g.get("code") + " ") + g.get("title"), ("MISSING".equals(g.get("status")) ? "Not trained" : "Annual training due") + "; last trained " + last});
+            }
+            Map<String, Object> pg = (Map<String, Object>) r.get("pagination");
+            if (page >= ((Number) pg.get("totalPages")).intValue()) break;
+        }
+        String department = departmentName(departmentId);
+        List<String> head = List.of("Department: " + department + "    Effective matrix v" + trainings.get("matrixVersionNo") + (trainings.get("matrixEffectiveAt") == null ? "" : ", effective " + DateTimeFormatUtils.formatDate(instant(trainings.get("matrixEffectiveAt")))),
+                (rowId == null ? "All required trainings" : "One required training") + (newOnly ? "    New employees only" : "") + (status == null || status.isBlank() ? "" : "    Status: " + ("MISSING".equals(status) ? "Not trained" : "Annual training due")) + (search == null || search.isBlank() ? "" : "    Search: " + search),
+                "Data as of " + DateTimeFormatUtils.formatDateTime(instant(trainings.get("generatedAt"))) + "    Printed " + DateTimeFormatUtils.formatDateTime(java.time.Instant.now()) + " by " + actor.getFullName());
+        audit.logAs(actor, "TRAINING_COMPLIANCE", department, departmentId, "TRAINING_COMPLIANCE_GAPS_PRINTED", null, null, body.size() + " line(s)");
+        return file("Training gap list", head, List.of("No.", "Employee", "Required training", "Status"), body, List.of(), 3, "training-gap-list", departmentId);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ PDF

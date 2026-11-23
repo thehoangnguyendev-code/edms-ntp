@@ -6,8 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../button/Button';
 import { cn } from '../utils';
 import { ButtonLoading } from '../loading/Loading';
-import { useLanguage } from '@/i18n';
-import { tr } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 export interface FormModalProps {
   isOpen: boolean;

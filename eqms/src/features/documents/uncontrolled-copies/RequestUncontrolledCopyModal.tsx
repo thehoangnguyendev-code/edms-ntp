@@ -15,6 +15,7 @@ import {
 } from "@/services/api/uncontrolledCopy";
 import { UncontrolledCopyMarkingPreview } from "./UncontrolledCopyMarkingPreview";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** The document part of the number of an Uncontrolled Copy, as the server writes it: cut at every dot, dash, underscore or space, an EXT part left out, joined with dots (SOP-0007 gives SOP.0007). */
 export const uncontrolledCopyBaseCode = (documentNumber?: string | null) => {
@@ -57,7 +58,7 @@ const SystemUserPicker: React.FC<{
       value={value ? String(value.value) : ""}
       options={value ? [value] : []}
       placeholder={placeholder}
-      searchPlaceholder="Search by name, e-mail or code..."
+      searchPlaceholder={tr("Search by name, e-mail or code...")}
       onSearch={async (query) => {
         const options = await searchSystemUsers(query, value);
         options.forEach((o) => labels.current.set(String(o.value), o.label));
@@ -167,8 +168,8 @@ export const RequestUncontrolledCopyModal: React.FC<{
         isOpen={isOpen && !isSigning}
         onClose={onClose}
         onConfirm={() => setIsSigning(true)}
-        title="Request Uncontrolled Copy"
-        description="A reference copy of the current Effective revision. It is watermarked, not tracked and never recalled after issue."
+        title={tr("Request Uncontrolled Copy")}
+        description={tr("A reference copy of the current Effective revision. It is watermarked, not tracked and never recalled after issue.")}
         confirmText="Sign & Request"
         confirmDisabled={!canSubmit}
         size="2xl"
@@ -177,12 +178,12 @@ export const RequestUncontrolledCopyModal: React.FC<{
           <div className="space-y-4 min-w-0">
             {!documentId && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Document number</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Document number")}</label>
                 <div className="flex items-center gap-2">
                   <input
                     className={FIELD_INPUT}
                     value={documentRef}
-                    placeholder="e.g. SOP.QA.0001"
+                    placeholder={tr("e.g. SOP.QA.0001")}
                     onChange={(e) => setDocumentRef(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -193,7 +194,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
                   />
                   <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void loadContext(documentRef)} disabled={!documentRef.trim()}>
                     <Search className="h-4 w-4" />
-                    Find
+                    {tr("Find")}
                   </Button>
                 </div>
               </div>
@@ -211,21 +212,21 @@ export const RequestUncontrolledCopyModal: React.FC<{
                     {context.documentNumber} - {context.documentTitle}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {context.documentTypeName || "No document type"} · Revision {context.revisionNumber || "—"}
+                    {context.documentTypeName || tr("No document type")} · {tr("Revision")} {context.revisionNumber || "—"}
                   </p>
                   <p className="text-xs text-slate-500">
                                         {context.validityBasis === "DOCUMENT_VALID_UNTIL" ? (
                       context.computedValidUntil ? (
                         <>
-                          Valid until <span className="font-bold text-emerald-600">{context.computedValidUntil}</span> (the document's Valid Until date{" "}
-                          {context.documentValidUntil} + {context.validityHours} hours).
+                          {tr("Valid until")} <span className="font-bold text-emerald-600">{context.computedValidUntil}</span> {tr("(the document's Valid Until date")}{" "}
+                          {context.documentValidUntil} + {context.validityHours} {tr("hours).")}
                         </>
                       ) : (
                         "Its validity follows the document's Valid Until date."
                       )
                     ) : (
                       <>
-                        Valid for <span className="font-bold text-emerald-600">{context.validityHours} hours</span> after distribution.
+                        {tr("Valid for")} <span className="font-bold text-emerald-600">{context.validityHours} {tr("hours")}</span> {tr("after distribution.")}
                       </>
                     )}
                   </p>
@@ -242,20 +243,20 @@ export const RequestUncontrolledCopyModal: React.FC<{
                   <>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                        Reason / Purpose <span className="text-rose-500">*</span>
+                        {tr("Reason / Purpose")} <span className="text-rose-500">*</span>
                       </label>
                       <textarea
                         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                         rows={3}
                         value={reason}
                         maxLength={1000}
-                        placeholder="e.g. Customer audit reference submission"
+                        placeholder={tr("e.g. Customer audit reference submission")}
                         onChange={(e) => setReason(e.target.value)}
                       />
                     </div>
                     {context.canRequestForOthers && (
                       <Select
-                        label="Recipient"
+                        label={tr("Recipient")}
                         value={recipientMode}
                         onChange={(v) => {
                           setRecipientMode(v as RecipientMode);
@@ -264,41 +265,39 @@ export const RequestUncontrolledCopyModal: React.FC<{
                         enableSearch={false}
                         options={[
                           { label: "Myself", value: "SELF" },
-                          { label: "Another system user", value: "USER" },
-                          { label: "External party (handed over by an internal user)", value: "EXTERNAL" },
+                          { label: tr("Another system user"), value: "USER" },
+                          { label: tr("External party (handed over by an internal user)"), value: "EXTERNAL" },
                         ]}
                       />
                     )}
                     {recipientMode === "USER" && (
                       <SystemUserPicker
-                        label="Recipient"
+                        label={tr("Recipient")}
                         value={recipientUser}
                         onChange={setRecipientUser}
-                        placeholder="Select a system user"
+                        placeholder={tr("Select a system user")}
                       />
                     )}
                     {recipientMode === "EXTERNAL" && (
                       <>
                         <div>
-                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">External recipient</label>
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("External recipient")}</label>
                           <input
                             className={FIELD_INPUT}
                             value={externalLabel}
                             maxLength={255}
                             onChange={(e) => setExternalLabel(e.target.value)}
-                            placeholder="e.g. J. Smith, ACME Corp (customer auditor)"
+                            placeholder={tr("e.g. J. Smith, ACME Corp (customer auditor)")}
                           />
                         </div>
                         <SystemUserPicker
-                          label="Handed over by"
+                          label={tr("Handed over by")}
                           value={recipientUser}
                           onChange={setRecipientUser}
-                          placeholder="Myself (or select another system user)"
+                          placeholder={tr("Myself (or select another system user)")}
                         />
                         <p className="flex items-start gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-2xs sm:text-xs text-sky-800">
-                          The external party does not get a download link. The internal user above downloads the watermarked
-                          copy after sign-in and hands it over outside the system. The external name is only printed on the
-                          copy and recorded in the audit trail.
+                          {tr("The external party does not get a download link. The internal user above downloads the watermarked copy after sign-in and hands it over outside the system. The external name is only printed on the copy and recorded in the audit trail.")}
                         </p>
                       </>
                     )}
@@ -318,7 +317,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
               />
             ) : (
               <div className="flex h-full min-h-[200px] items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
-                Find a document to preview the watermark.
+                {tr("Find a document to preview the watermark.")}
               </div>
             )}
           </div>

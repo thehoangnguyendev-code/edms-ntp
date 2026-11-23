@@ -14,6 +14,7 @@ import { saveBlob } from "../../shared/trainingLabels";
 import { displayDateTime } from "@/utils/format";
 import { LedgerAction, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
 import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
+import { tr } from "@/i18n";
 
 export const DELIVERY_LABEL: Record<string, string> = { ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" };
 const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
@@ -37,7 +38,7 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
   /** Any numbered copy of the session, of any kind: the server asks for a reason to change the delivery after the first one, so the screen asks too. */
   const hasPrint = (sessionId: string) => packs.some((p) => p.sessionId === sessionId);
   const printedExam = (sessionId: string) => packs.filter((p) => p.sessionId === sessionId && p.packKind === "EXAM").length;
-  const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+  const fail = (e: unknown) => showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
 
   const print = async (session: TrainingSession, why?: string) => {
     setBusy(true);
@@ -103,13 +104,13 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
       onClose={() => { setCopyAsk(undefined); setReason(""); }}
       onConfirm={() => markCopy(copyAsk.pack, copyAsk.status, reason.trim())}
       title={`${copyAsk.status === "LOST" ? "Record the loss of" : "Void"} the copy ${copyAsk.pack.packCode}`}
-      description="The copy is closed and does not change again. The reason stays in the Audit Trail."
+      description={tr("The copy is closed and does not change again. The reason stays in the Audit Trail.")}
       confirmText={copyAsk.status === "LOST" ? "Record loss" : "Void"}
       isLoading={busy}
       confirmDisabled={!reason.trim()}
       size="md"
     >
-      <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+      <FormField label={tr("Reason")} required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
     </FormModal>
   );
   const dialog = ask && (
@@ -124,7 +125,7 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
         confirmDisabled={!reason.trim()}
         size="md"
       >
-        <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+        <FormField label={tr("Reason")} required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       </FormModal>
   );
   return { packs, printed, hasPrint, printedExam, busy, ask: setAsk, print, printExam, changeMode, dialog: <>{dialog}{copyDialog}</>, markCopy, askCopy: setCopyAsk };
@@ -153,8 +154,8 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
     const closing = (p: TrainingPaperPack) => (p.status !== "ISSUED" && p.statusByName ? `${p.statusByName}, ${p.statusAt ? displayDateTime(p.statusAt) : ""}${p.statusReason && p.statusReason !== p.reason ? ` · ${p.statusReason}` : ""}` : undefined);
     const actionsOf = (p: TrainingPaperPack): RowAction[] => (p.status === "ISSUED"
       ? [
-          { key: "lost", label: "Record as Lost", disabled: busy, run: () => askCopy({ pack: p, status: "LOST" }) },
-          { key: "void", label: "Void the copy", danger: true, disabled: busy, run: () => askCopy({ pack: p, status: "VOIDED" }) },
+          { key: "lost", label: tr("Record as Lost"), disabled: busy, run: () => askCopy({ pack: p, status: "LOST" }) },
+          { key: "void", label: tr("Void the copy"), danger: true, disabled: busy, run: () => askCopy({ pack: p, status: "VOIDED" }) },
         ]
       : []);
     const tableColumns: DataTableColumn<TrainingPaperPack>[] = [
@@ -163,13 +164,13 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
       { id: "copy", header: "Copy", cell: (p) => p.copyNo },
       { id: "pages", header: "Pages", cell: (p) => p.pageCount },
       { id: "people", header: "Trainees", cell: (p) => p.peopleCount },
-      { id: "by", header: "Printed by", cell: (p) => p.printedByName },
-      { id: "at", header: "Printed at", cell: (p) => displayDateTime(p.printedAt) },
+      { id: "by", header: tr("Printed by"), cell: (p) => p.printedByName },
+      { id: "at", header: tr("Printed at"), cell: (p) => displayDateTime(p.printedAt) },
       { id: "reason", header: "Reason", cell: (p) => <div className="max-w-64 whitespace-normal">{p.reason ?? "—"}</div> },
       { id: "scans", header: "Scans", cell: (p) => (p.scanCount > 0 ? p.scanCount : "—") },
       {
         id: "where",
-        header: "Where is the copy",
+        header: tr("Where is the copy"),
         cell: (p) => (
           <div className="max-w-64 whitespace-normal">
             <Badge color={p.status === "ISSUED" ? "amber" : p.status === "RETURNED" ? "emerald" : "red"}>{stateLabel(p)}</Badge>
@@ -183,7 +184,7 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
     };
     return (
       <div className="space-y-3">
-        <LedgerNote>A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail.</LedgerNote>
+        <LedgerNote>{tr("A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail.")}</LedgerNote>
         <div className="md:hidden">
           <LedgerList>
             {packs.map((p) => (
@@ -195,8 +196,8 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
                 tone={p.status === "ISSUED" ? "amber" : p.status === "LOST" ? "red" : "mute"}
                 actions={p.status === "ISSUED" ? (
                   <>
-                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "LOST" })}>Lost</LedgerAction>
-                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "VOIDED" })}>Void</LedgerAction>
+                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "LOST" })}>{tr("Lost")}</LedgerAction>
+                    <LedgerAction disabled={busy} onClick={() => askCopy({ pack: p, status: "VOIDED" })}>{tr("Void")}</LedgerAction>
                   </>
                 ) : undefined}
               />
@@ -218,19 +219,19 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
     { id: "copy", header: "Copy", cell: (p) => p.copyNo },
     { id: "pages", header: "Pages", cell: (p) => p.pageCount },
     { id: "people", header: "Trainees", cell: (p) => p.peopleCount },
-    { id: "by", header: "Printed by", cell: (p) => p.printedByName },
-    { id: "at", header: "Printed at", cell: (p) => displayDateTime(p.printedAt) },
+    { id: "by", header: tr("Printed by"), cell: (p) => p.printedByName },
+    { id: "at", header: tr("Printed at"), cell: (p) => displayDateTime(p.printedAt) },
     { id: "reason", header: "Reason", cell: (p) => <div className="max-w-64 whitespace-normal">{p.reason ?? "—"}</div> },
     { id: "scans", header: "Scans", cell: (p) => (p.scanCount > 0 ? p.scanCount : "—") },
   ];
   // Where the copy is stays at the right edge while the table scrolls sideways: it is the column the person acts on.
   const where: DataTableAction<TrainingPaperPack> = {
-    header: "Where is the copy",
+    header: tr("Where is the copy"),
     cell: (p) => (p.status === "ISSUED" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <Badge color="amber">Issued</Badge>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => askCopy({ pack: p, status: "LOST" })}>Lost</Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => askCopy({ pack: p, status: "VOIDED" })}>Void</Button>
+          <Badge color="amber">{tr("Issued")}</Badge>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => askCopy({ pack: p, status: "LOST" })}>{tr("Lost")}</Button>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => askCopy({ pack: p, status: "VOIDED" })}>{tr("Void")}</Button>
         </div>
       ) : (
         <div className="max-w-64 whitespace-normal">
@@ -244,13 +245,13 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
   return (
     <div className="space-y-6">
       <TabBlock
-        title="Printed packs"
+        title={tr("Printed packs")}
         count={packs.length}
-        hint="A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail."
+        hint={tr("A copy is Returned when its scan is uploaded in Scans and filled files (choose the copy there); record it as Lost or Voided if the paper will not come back. Do this before the training is confirmed as completed; QA can still confirm, and the open copies are written in the Audit Trail.")}
       >
         {open > 0 && (
           <p role="status" className="px-4 py-3 text-xs font-medium text-amber-700">
-            {open} still Issued
+            {open} {tr("still Issued")}
           </p>
         )}
         <DataTable rows={packs} getRowKey={(p) => p.id} columns={packColumns} action={where} scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging} />

@@ -5,7 +5,6 @@ import com.eqms.service.training.TrainingImpactService;
 import com.eqms.service.training.TrainingImpactService.AssessRequest;
 import com.eqms.service.training.TrainingRetentionService;
 import com.eqms.service.training.TrainingSuspensionService;
-import com.eqms.service.training.TrainingSuspensionService.ResumeRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,9 +32,6 @@ public class TrainingFollowUpController {
                                          @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(suspensions.list(users.requireCurrentUser(), departmentId, status, search, sortBy, sortDirection, page, limit));
     }
-
-    @PostMapping("/compliance/suspensions/{id}/resume")
-    public ResponseEntity<?> resume(@PathVariable UUID id, @RequestBody ResumeRequest request) { return ResponseEntity.ok(suspensions.resume(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/compliance/retention")
     public ResponseEntity<?> retention(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String state, @RequestParam(required = false) String search,

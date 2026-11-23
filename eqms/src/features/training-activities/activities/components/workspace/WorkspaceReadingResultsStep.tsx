@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import type { TrainingActivityDetail } from "@/services/api/trainingActivities";
+import { tr, trFormat } from "@/i18n";
 
 type Department = NonNullable<TrainingActivityDetail["selfReadingDepartments"]>[number];
 
@@ -25,26 +26,26 @@ export function WorkspaceReadingResultsStep({ departments, canFinish, finished, 
   const columns: DataTableColumn<Department>[] = [
     { id: "no", header: "No.", locked: true, cell: (_d, i) => i + 1 },
     { id: "department", header: "Department", cell: (d) => <span className="font-medium text-slate-900">{d.departmentName}</span> },
-    { id: "head", header: "Head", cell: (d) => d.headName ?? <span className="text-slate-500">No head set</span> },
+    { id: "head", header: "Head", cell: (d) => d.headName ?? <span className="text-slate-500">{tr("No head set")}</span> },
     { id: "read", header: "Signed", cell: (d) => `${d.waiting + d.verified} of ${d.people}` },
-    { id: "invited", header: "Not signed", cell: (d) => (d.invited > 0 ? <Badge color="amber">{d.invited}</Badge> : 0) },
+    { id: "invited", header: tr("Not signed"), cell: (d) => (d.invited > 0 ? <Badge color="amber">{d.invited}</Badge> : 0) },
     {
       id: "confirmation",
-      header: "Head's e-signature",
+      header: tr("Head's e-signature"),
       cell: (d) => {
-        if (d.waiting + d.verified === 0) return <Badge color="slate">Nobody read</Badge>;
+        if (d.waiting + d.verified === 0) return <Badge color="slate">{tr("Nobody read")}</Badge>;
         if (d.waiting === 0) {
           return (
             <div className="whitespace-normal">
-              <Badge color="emerald">Signed electronically</Badge>
+              <Badge color="emerald">{tr("Signed electronically")}</Badge>
               <div className="mt-1 text-xs text-slate-600">{d.signedByName ?? "—"}{d.signedAt ? ` · ${formatTime(d.signedAt)}` : ""}</div>
             </div>
           );
         }
-        if (d.invited > 0) return <Badge color="amber">Waiting for {d.invited} to sign</Badge>;
+        if (d.invited > 0) return <Badge color="amber">{trFormat("Waiting for {count} to sign", { count: d.invited })}</Badge>;
         return d.mine && !finished
-          ? <Button size="sm" variant="outline-emerald" onClick={onConfirm}>Confirm with e-signature</Button>
-          : <Badge color="blue">Waiting for the head</Badge>;
+          ? <Button size="sm" variant="outline-emerald" onClick={onConfirm}>{tr("Confirm with e-signature")}</Button>
+          : <Badge color="blue">{tr("Waiting for the head")}</Badge>;
       },
     },
   ];
@@ -60,7 +61,7 @@ export function WorkspaceReadingResultsStep({ departments, canFinish, finished, 
       <DataTable
         rows={departments} getRowKey={(d) => d.departmentId || d.departmentName} columns={columns}
         scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
-        emptyState={<p className="py-6 text-center text-sm text-slate-500">No person on the list.</p>}
+        emptyState={<p className="py-6 text-center text-sm text-slate-500">{tr("No person on the list.")}</p>}
       />
     </>
   );

@@ -79,6 +79,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 // Default Columns Configuration
 
@@ -102,9 +103,9 @@ type ControlledCopyRow = ControlledCopy & {
 };
 
 const CONTROLLED_COPY_TABS: TabItem[] = [
-  { id: "all", label: "All Controlled Copies" },
-  { id: "ready", label: "Ready for Distribution" },
-  { id: "distributed", label: "Distributed Copies" },
+  { id: "all", label: tr("All Controlled Copies") },
+  { id: "ready", label: tr("Ready for Distribution") },
+  { id: "distributed", label: tr("Distributed Copies") },
 ];
 
 const mapBatchToRow = (batch: ControlledCopyDistributionBatch): ControlledCopyRow => {
@@ -203,24 +204,24 @@ const DropdownMenu: React.FC<{
         <div className="py-1">
           {onViewDetails && (
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { onViewDetails!(); onClose(); }}>
-              View Details
+              {tr("View Details")}
             </DropdownMenuItem>
           )}
           {onDistribute && !isCapabilityLoading && distributeDecision?.allowed && (
             <DropdownMenuItem
               icon={<IconShare3 className="h-4 w-4" />}
               disabled={isCapabilityLoading || isDistributeBusy}
-              title={isCapabilityLoading ? "Capability information is still loading." : isDistributeBusy ? "A distribution is already being processed." : ""}
+              title={isCapabilityLoading ? tr("Capability information is still loading.") : isDistributeBusy ? tr("A distribution is already being processed.") : ""}
               onClick={() => { onDistribute!(); onClose(); }}
             >
-              {isBatch ? "Distribute Batch" : "Distribute"}
+              {isBatch ? "Distribute Batch" : tr("Distribute")}
             </DropdownMenuItem>
           )}
           {onRecall && !isCapabilityLoading && recallDecision?.allowed && (
             <DropdownMenuItem
               icon={<IconArrowBackUp className="h-4 w-4" />}
               disabled={isCapabilityLoading}
-              title={isCapabilityLoading ? "Capability information is still loading." : ""}
+              title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
               onClick={() => { onRecall!(); onClose(); }}
             >
               {isBatch ? "Recall Batch Immediately" : "Recall Immediately"}
@@ -231,7 +232,7 @@ const DropdownMenu: React.FC<{
               icon={<IconShredder className="h-4 w-4" />}
               onClick={() => { onReportLostDamaged!(); onClose(); }}
             >
-              Report Lost/Damaged
+              {tr("Report Lost/Damaged")}
             </DropdownMenuItem>
           )}
           {!isBatch && onReissue && !isCapabilityLoading && reissueDecision?.allowed && (
@@ -239,17 +240,17 @@ const DropdownMenu: React.FC<{
               icon={<RefreshCw className="h-4 w-4" />}
               onClick={() => { onReissue!(); onClose(); }}
             >
-              Reissue Copy
+              {tr("Reissue Copy")}
             </DropdownMenuItem>
           )}
           {(viewType === "ready" || viewType === "all") && onCancel && !isCapabilityLoading && cancelDecision?.allowed && (
             <DropdownMenuItem
               icon={<IconX className="h-4 w-4" />}
               disabled={isCapabilityLoading}
-              title={isCapabilityLoading ? "Capability information is still loading." : ""}
+              title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
               onClick={() => { onCancel!(); onClose(); }}
             >
-              {isBatch ? "Cancel Batch Distribution" : "Cancel Request"}
+              {isBatch ? tr("Cancel Batch Distribution") : tr("Cancel Request")}
             </DropdownMenuItem>
           )}
         </div>
@@ -438,7 +439,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           showToast({
             type: "error",
             title: "Error",
-            message: "Failed to load controlled copies",
+            message: tr("Failed to load controlled copies"),
           });
         }
       } finally {
@@ -626,8 +627,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           console.error("Failed to load recall result", error);
           showToast({
             type: "success",
-            title: "Controlled Copy Recalled",
-            message: "The recall batch has finished processing.",
+            title: tr("Controlled Copy Recalled"),
+            message: tr("The recall batch has finished processing."),
             duration: 4000,
           });
         }
@@ -657,7 +658,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       setRecallResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copy recalls.",
@@ -713,8 +714,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
           console.error("Failed to load cancel result", error);
           showToast({
             type: "success",
-            title: "Controlled Copy Cancelled",
-            message: "The cancel batch has finished processing.",
+            title: tr("Controlled Copy Cancelled"),
+            message: tr("The cancel batch has finished processing."),
             duration: 4000,
           });
         }
@@ -744,7 +745,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       setCancelResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copy cancellations.",
@@ -817,7 +818,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             showToast({
               type: hasErrors ? "error" : "success",
               title: hasErrors ? "Distribution completed with errors" : "Controlled Copy Distributed",
-              message: "The distribution batch has finished processing.",
+              message: tr("The distribution batch has finished processing."),
               duration: 4000,
             });
           }
@@ -827,8 +828,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
 
       showToast({
         type: "success",
-        title: "Controlled Copy Distributed",
-        message: "The controlled copy has been successfully distributed and sent to its recipient.",
+        title: tr("Controlled Copy Distributed"),
+        message: tr("The controlled copy has been successfully distributed and sent to its recipient."),
         duration: 3500,
       });
     }, hasErrors ? 1800 : 600);
@@ -859,7 +860,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       setDistributeResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copies.",
@@ -1015,8 +1016,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     if (!detailId) {
       showToast({
         type: "error",
-        title: "Unable to open controlled copy",
-        message: "This distribution batch does not expose a controlled copy record yet.",
+        title: tr("Unable to open controlled copy"),
+        message: tr("This distribution batch does not expose a controlled copy record yet."),
         duration: 3500,
       });
       return;
@@ -1097,7 +1098,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       }
       showToast({
         type: "error",
-        title: "Cancellation failed",
+        title: tr("Cancellation failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to cancel the controlled copy.",
@@ -1124,7 +1125,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       const decision = getControlledCopyActionDecision(capabilities, isBatch ? "distributeBatch" : "distributeCopy");
       if (!decision?.allowed) {
         setRefreshToken(Date.now());
-        showToast({ type: "error", title: "Distribution unavailable", message: getControlledCopyActionDeniedReason(decision), duration: 3500 });
+        showToast({ type: "error", title: tr("Distribution unavailable"), message: getControlledCopyActionDeniedReason(decision), duration: 3500 });
         close();
         return;
       }
@@ -1218,7 +1219,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       }
       showToast({
         type: "error",
-        title: "Distribution failed",
+        title: tr("Distribution failed"),
         message: (error as any)?.response?.data?.message
           ?? (error as any)?.response?.data?.error?.message
           ?? "Unable to distribute the controlled copy.",
@@ -1286,7 +1287,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       setRefreshToken(Date.now());
       showToast({
         type: "success",
-        title: "Replacement Copy Reissued",
+        title: tr("Replacement Copy Reissued"),
         message: `New controlled copy ${created?.controlledCopyNumber || ""} created (Ready for Distribution) for the same recipient.`,
         duration: 4500,
       });
@@ -1296,7 +1297,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Reissue failed",
+        title: tr("Reissue failed"),
         message: backendMessage || "Unable to reissue a replacement controlled copy.",
         duration: 3500,
       });
@@ -1381,7 +1382,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       } else {
         showToast({
           type: "success",
-          title: "Controlled Copy Recalled",
+          title: tr("Controlled Copy Recalled"),
           message: `Controlled copy ${selectedCopyForRecall.controlledCopyNumber} has been recalled and moved to Obsoleted status.`,
           duration: 3500,
         });
@@ -1395,7 +1396,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       }
       showToast({
         type: "error",
-        title: "Recall failed",
+        title: tr("Recall failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to recall the controlled copy.",
@@ -1431,7 +1432,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         usagePurpose: usagePurposeFilter !== USAGE_PURPOSE_ALL ? usagePurposeFilter : undefined,
         sortBy: sortConfig.key, sortDirection: sortConfig.direction,
       }, options);
-    } catch { showToast({ type: 'error', title: 'Export failed', message: 'Unable to export controlled copies.' }); }
+    } catch { showToast({ type: 'error', title: tr('Export failed'), message: 'Unable to export controlled copies.' }); }
     finally { setIsExporting(false); }
   };
 
@@ -1479,15 +1480,15 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     { id: "no", header: "No.", label: "No.", locked: true, cell: (_copy, index) => (currentPage - 1) * itemsPerPage + index + 1 },
     {
       id: "controlledCopyNumber",
-      header: "Document Number",
-      label: "Document Number",
+      header: tr("Document Number"),
+      label: tr("Document Number"),
       sort: { direction: sortConfig.key === "controlledCopyNumber" ? sortConfig.direction : undefined, onSort: () => handleSort("controlledCopyNumber") },
       cell: (copy) => (
         <button
           type="button"
           onClick={() => handleViewDetails(copy)}
           className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left"
-          title={copyMeta(copy).isExpandable ? "Open controlled copy batch details" : "Open controlled copy details"}
+          title={copyMeta(copy).isExpandable ? tr("Open controlled copy batch details") : tr("Open controlled copy details")}
         >
           {controlledCopyDisplayNumber(copy, copyMeta(copy).isExpandable)}
         </button>
@@ -1495,7 +1496,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
     },
     { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "created" ? sortConfig.direction : undefined, onSort: () => handleSort("created") }, cell: (copy) => formatDateTimeParts(copyMeta(copy).displayFields.createdDate, copyMeta(copy).displayFields.createdTime) },
     { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "openedBy" ? sortConfig.direction : undefined, onSort: () => handleSort("openedBy") }, cell: (copy) => copy.openedBy },
-    { id: "name", header: "Controlled Copy Name", label: "Controlled Copy Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: "font-medium text-slate-900", cell: (copy) => copy.name },
+    { id: "name", header: tr("Controlled Copy Name"), label: tr("Controlled Copy Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: "font-medium text-slate-900", cell: (copy) => copy.name },
     {
       id: "quantity",
       header: "Quantity",
@@ -1527,11 +1528,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         );
       },
     },
-    { id: "validUntil", header: "Valid Until", label: "Valid Until", sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cell: (copy) => formatDateUS(copyMeta(copy).displayFields.validUntil) },
+    { id: "validUntil", header: tr("Valid Until"), label: tr("Valid Until"), sort: { direction: sortConfig.key === "validUntil" ? sortConfig.direction : undefined, onSort: () => handleSort("validUntil") }, cell: (copy) => formatDateUS(copyMeta(copy).displayFields.validUntil) },
     {
       id: "expiryDate",
-      header: "Expiry Date",
-      label: "Expiry Date",
+      header: tr("Expiry Date"),
+      label: tr("Expiry Date"),
       sort: { direction: sortConfig.key === "expiryDate" ? sortConfig.direction : undefined, onSort: () => handleSort("expiryDate") },
       cell: (copy) => {
         const expiryDate = copyMeta(copy).displayFields.expiryDate;
@@ -1539,11 +1540,11 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
       },
     },
     { id: "document", header: "Document", label: "Document", sort: { direction: sortConfig.key === "document" ? sortConfig.direction : undefined, onSort: () => handleSort("document") }, cell: (copy) => (copy.documentId ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigateTo(ROUTES.DOCUMENTS.DETAIL(copy.documentId!))}>{formatDocumentLabel(copy)}</button> : <span className="font-medium text-slate-900">{formatDocumentLabel(copy)}</span>) },
-    { id: "distributionList", header: "Distribution List", label: "Distribution List", sort: { direction: sortConfig.key === "distributionList" ? sortConfig.direction : undefined, onSort: () => handleSort("distributionList") }, cell: (copy) => getControlledCopyDistributionListText(copy) || "-" },
-    { id: "recallDate", header: "Recall Date", label: "Recall Date", sort: { direction: sortConfig.key === "recallDate" ? sortConfig.direction : undefined, onSort: () => handleSort("recallDate") }, cell: (copy) => (copy.recallDate ? formatDateUS(copy.recallDate) : "-") },
-    { id: "recallReason", header: "Reason for Recall", label: "Reason for Recall", sort: { direction: sortConfig.key === "recallReason" ? sortConfig.direction : undefined, onSort: () => handleSort("recallReason") }, cell: (copy) => copy.recallReason || "-" },
-    { id: "documentRevision", header: "Document Revision", label: "Document Revision", sort: { direction: sortConfig.key === "documentRevision" ? sortConfig.direction : undefined, onSort: () => handleSort("documentRevision") }, cell: (copy) => (copy.sourceRevisionId ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(copy.sourceRevisionId!))}>{formatDocumentRevisionLabel(copy)}</button> : <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>) },
-    { id: "lastUpdated", header: "Last Updated", label: "Last Updated", sort: { direction: sortConfig.key === "lastUpdated" ? sortConfig.direction : undefined, onSort: () => handleSort("lastUpdated") }, cell: (copy) => (copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-") },
+    { id: "distributionList", header: tr("Distribution List"), label: tr("Distribution List"), sort: { direction: sortConfig.key === "distributionList" ? sortConfig.direction : undefined, onSort: () => handleSort("distributionList") }, cell: (copy) => getControlledCopyDistributionListText(copy) || "-" },
+    { id: "recallDate", header: tr("Recall Date"), label: tr("Recall Date"), sort: { direction: sortConfig.key === "recallDate" ? sortConfig.direction : undefined, onSort: () => handleSort("recallDate") }, cell: (copy) => (copy.recallDate ? formatDateUS(copy.recallDate) : "-") },
+    { id: "recallReason", header: tr("Reason for Recall"), label: tr("Reason for Recall"), sort: { direction: sortConfig.key === "recallReason" ? sortConfig.direction : undefined, onSort: () => handleSort("recallReason") }, cell: (copy) => copy.recallReason || "-" },
+    { id: "documentRevision", header: tr("Document Revision"), label: tr("Document Revision"), sort: { direction: sortConfig.key === "documentRevision" ? sortConfig.direction : undefined, onSort: () => handleSort("documentRevision") }, cell: (copy) => (copy.sourceRevisionId ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(copy.sourceRevisionId!))}>{formatDocumentRevisionLabel(copy)}</button> : <span className="font-medium text-slate-900">{formatDocumentRevisionLabel(copy)}</span>) },
+    { id: "lastUpdated", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortConfig.key === "lastUpdated" ? sortConfig.direction : undefined, onSort: () => handleSort("lastUpdated") }, cell: (copy) => (copy.lastUpdatedAt ? formatDateTime(copy.lastUpdatedAt) : "-") },
   ];
   const controlledAction: DataTableAction<Row> = {
     header: "Action",
@@ -1556,7 +1557,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             toggle(copy.id, e);
           }}
           className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
         </button>
@@ -1573,7 +1574,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="controlled-copies"
-        title="Controlled Copies"
+        title={tr("Controlled Copies")}
         totalRecords={totalItems}
         onExport={handleExport}
       />
@@ -1591,7 +1592,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               className="whitespace-nowrap gap-2"
             >
               <Download className="h-4 w-4" />
-              Export
+              {tr("Export")}
             </Button>
                         {canRecallByScan && (
               <Button
@@ -1606,7 +1607,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 className="whitespace-nowrap gap-2"
               >
                 <ScanLine className="h-4 w-4" />
-                Recall by Scan
+                {tr("Recall by Scan")}
               </Button>
             )}
             {canReviewBatchDiscrepancies && (
@@ -1621,7 +1622,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 className="whitespace-nowrap gap-2"
               >
                 <IconHandClick className="h-4 w-4" />
-                Needs Review
+                {tr("Needs Review")}
               </Button>
             )}
           </div>
@@ -1634,7 +1635,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <div className="flex flex-col w-full">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -1642,7 +1643,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                   </div>
                   <input
                     type="text"
-                    placeholder="Search copies..."
+                    placeholder={tr("Search copies...")}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -1668,22 +1669,22 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                   className="whitespace-nowrap gap-2 h-10"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
 
             {compactDesktopFilters && <CopyDesktopFilters
-              search={<input aria-label="Search controlled copies" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Document #, Name, ID..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
-              status={viewType === 'all' ? statusFilter : viewType === 'ready' ? 'Ready for Distribution' : 'Distributed'}
-              statusOptions={viewType === 'all' ? statusOptions : [{ value: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed', label: viewType === 'ready' ? 'Ready for Distribution' : 'Distributed' }]}
+              search={<input aria-label={tr("Search controlled copies")} value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder={tr("Document #, Name, ID...")} className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+              status={viewType === 'all' ? statusFilter : viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed'}
+              statusOptions={viewType === 'all' ? statusOptions : [{ value: viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed', label: viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed' }]}
               statusLocked={viewType !== 'all'} allStatus="All"
               selects={[{ id: 'usagePurpose', label: 'Purpose', value: usagePurposeFilter, defaultValue: USAGE_PURPOSE_ALL, options: USAGE_PURPOSE_FILTER_OPTIONS }]}
               dates={[
-                { id: 'created', label: 'Created Date Range', from: createdFromDate, to: createdToDate },
-                { id: 'valid', label: 'Valid Until Date Range', from: validFromDate, to: validToDate },
-                { id: 'expiry', label: 'Expiry Date Range', from: expiryFromDate, to: expiryToDate },
-                { id: 'recall', label: 'Recall Date Range', from: recallFromDate, to: recallToDate },
+                { id: 'created', label: tr('Created Date Range'), from: createdFromDate, to: createdToDate },
+                { id: 'valid', label: tr('Valid Until Date Range'), from: validFromDate, to: validToDate },
+                { id: 'expiry', label: tr('Expiry Date Range'), from: expiryFromDate, to: expiryToDate },
+                { id: 'recall', label: tr('Recall Date Range'), from: recallFromDate, to: recallToDate },
               ]}
               onApply={draft => {
                 if (viewType === 'all') setStatusFilter(draft.status);
@@ -1696,7 +1697,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               }} />}
             <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
               <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors" />
                   <input
@@ -1706,14 +1707,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Document #, Name, ID..."
+                    placeholder={tr("Document #, Name, ID...")}
                     className="w-full h-9 pl-10 pr-4 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all placeholder:text-slate-400 bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Status</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Status")}</label>
                 {viewType === "all" ? (
                   <Select
                     value={statusFilter}
@@ -1722,26 +1723,26 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       setCurrentPage(1);
                     }}
                     options={statusOptions}
-                    placeholder="All"
+                    placeholder={tr("All")}
                   />
                 ) : (
                   <Select
-                    value={viewType === "ready" ? "Ready for Distribution" : "Distributed"}
+                    value={viewType === "ready" ? tr("Ready for Distribution") : "Distributed"}
                     onChange={() => { }}
                     options={[
                       {
-                        label: viewType === "ready" ? "Ready for Distribution" : "Distributed",
-                        value: viewType === "ready" ? "Ready for Distribution" : "Distributed",
+                        label: viewType === "ready" ? tr("Ready for Distribution") : "Distributed",
+                        value: viewType === "ready" ? tr("Ready for Distribution") : "Distributed",
                       },
                     ]}
-                    placeholder={viewType === "ready" ? "Ready for Distribution" : "Distributed"}
+                    placeholder={viewType === "ready" ? tr("Ready for Distribution") : "Distributed"}
                     disabled
                   />
                 )}
               </div>
 
               <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Purpose</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Purpose")}</label>
                 <Select
                   value={usagePurposeFilter}
                   onChange={(value) => {
@@ -1749,14 +1750,14 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                     setCurrentPage(1);
                   }}
                   options={USAGE_PURPOSE_FILTER_OPTIONS}
-                  placeholder="All"
+                  placeholder={tr("All")}
                   enableSearch={false}
                 />
               </div>
 
               <div>
                 <DateRangePicker
-                  label="Created Date Range"
+                  label={tr("Created Date Range")}
                   startDate={createdFromDate}
                   endDate={createdToDate}
                   onStartDateChange={(val) => {
@@ -1767,13 +1768,13 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                     setCreatedToDate(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
 
               <div>
                 <DateRangePicker
-                  label="Valid Until Date Range"
+                  label={tr("Valid Until Date Range")}
                   startDate={validFromDate}
                   endDate={validToDate}
                   onStartDateChange={(val) => {
@@ -1784,29 +1785,29 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                     setValidToDate(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
 
               <div>
                 <DateRangePicker
-                  label="Expiry Date Range"
+                  label={tr("Expiry Date Range")}
                   startDate={expiryFromDate}
                   endDate={expiryToDate}
                   onStartDateChange={(val) => { setExpiryFromDate(val); setCurrentPage(1); }}
                   onEndDateChange={(val) => { setExpiryToDate(val); setCurrentPage(1); }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
 
               <div>
                 <DateRangePicker
-                  label="Recall Date Range"
+                  label={tr("Recall Date Range")}
                   startDate={recallFromDate}
                   endDate={recallToDate}
                   onStartDateChange={(val) => { setRecallFromDate(val); setCurrentPage(1); }}
                   onEndDateChange={(val) => { setRecallToDate(val); setCurrentPage(1); }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
 
@@ -1824,7 +1825,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               
             >
               <FilterAccordionItem
-                label="Status"
+                label={tr("Status")}
                 isExpanded={expandedSections.has("status")}
                 onToggle={() => toggleSection("status")}
                 disabled={viewType !== "all"}
@@ -1833,9 +1834,9 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                   {(viewType === "all"
                     ? statusOptions
                     : statusOptions.filter(
-                      (opt) => opt.label === (viewType === "ready" ? "Ready for Distribution" : "Distributed")
+                      (opt) => opt.label === (viewType === "ready" ? tr("Ready for Distribution") : "Distributed")
                         || opt.value === (viewType === "ready" ? "READY_FOR_DISTRIBUTION" : "DISTRIBUTED")
-                        || opt.value === (viewType === "ready" ? "Ready for Distribution" : "Distributed")
+                        || opt.value === (viewType === "ready" ? tr("Ready for Distribution") : "Distributed")
                     )
                   ).map((opt) => (
                     <button
@@ -1858,7 +1859,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Purpose"
+                label={tr("Purpose")}
                 isExpanded={expandedSections.has("purpose")}
                 onToggle={() => toggleSection("purpose")}
               >
@@ -1880,13 +1881,13 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 isExpanded={expandedSections.has("createdDates")}
                 onToggle={() => toggleSection("createdDates")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Created Date Range"
+                    label={tr("Created Date Range")}
                     startDate={createdFromDate}
                     endDate={createdToDate}
                     onStartDateChange={(val) => {
@@ -1897,19 +1898,19 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       setCreatedToDate(val);
                       setCurrentPage(1);
                     }}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Valid Until Date Range"
+                label={tr("Valid Until Date Range")}
                 isExpanded={expandedSections.has("validDates")}
                 onToggle={() => toggleSection("validDates")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Valid Until Date Range"
+                    label={tr("Valid Until Date Range")}
                     startDate={validFromDate}
                     endDate={validToDate}
                     onStartDateChange={(val) => {
@@ -1920,41 +1921,41 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                       setValidToDate(val);
                       setCurrentPage(1);
                     }}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Expiry Date Range"
+                label={tr("Expiry Date Range")}
                 isExpanded={expandedSections.has("expiryDates")}
                 onToggle={() => toggleSection("expiryDates")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Expiry Date Range"
+                    label={tr("Expiry Date Range")}
                     startDate={expiryFromDate}
                     endDate={expiryToDate}
                     onStartDateChange={(val) => { setExpiryFromDate(val); setCurrentPage(1); }}
                     onEndDateChange={(val) => { setExpiryToDate(val); setCurrentPage(1); }}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Recall Date Range"
+                label={tr("Recall Date Range")}
                 isExpanded={expandedSections.has("recallDates")}
                 onToggle={() => toggleSection("recallDates")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Recall Date Range"
+                    label={tr("Recall Date Range")}
                     startDate={recallFromDate}
                     endDate={recallToDate}
                     onStartDateChange={(val) => { setRecallFromDate(val); setCurrentPage(1); }}
                     onEndDateChange={(val) => { setRecallToDate(val); setCurrentPage(1); }}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
@@ -1996,16 +1997,16 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                   <TableEmptyState
                     title={
                       error
-                        ? "Unable to load controlled copies"
+                        ? tr("Unable to load controlled copies")
                         : viewType === "ready"
-                          ? "No Distribution Batches Found"
-                          : "No Controlled Copies Found"
+                          ? tr("No Distribution Batches Found")
+                          : tr("No Controlled Copies Found")
                     }
                     description={
                       error ||
                       (viewType === "ready"
-                        ? "We couldn't find any distribution batches matching your filters. Try adjusting your search criteria."
-                        : "We couldn't find any controlled copies matching your filters. Try adjusting your search criteria.")
+                        ? tr("We couldn't find any distribution batches matching your filters. Try adjusting your search criteria.")
+                        : tr("We couldn't find any controlled copies matching your filters. Try adjusting your search criteria."))
                     }
                   />
                 }

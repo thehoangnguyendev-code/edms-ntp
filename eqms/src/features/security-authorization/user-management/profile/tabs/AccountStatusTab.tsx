@@ -8,11 +8,12 @@ import { InfoField, FieldGroup } from "../components/ProfileSectionCard";
 import { AccountActionList } from "../components/AccountActionList";
 import { buildAccountActions } from "../components/accountActions";
 import type { User } from "../../types";
+import { tr } from "@/i18n";
 
 const HOME_PAGE_OPTIONS: { label: string; value: string }[] = [
   { label: "Dashboard", value: "DASHBOARD" },
   { label: "Notifications", value: "NOTIFICATIONS" },
-  { label: "Knowledge Base", value: "KNOWLEDGE" },
+  { label: tr("Knowledge Base"), value: "KNOWLEDGE" },
 ];
 const HOME_PAGE_LABELS: Record<string, string> = {
   DASHBOARD: "Dashboard",
@@ -63,10 +64,10 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
     const { status, statusOptions, onStatusChange, statusError, homePage, onHomePageChange } = props;
     return (
       <div>
-        <FieldGroup title="Account">
+        <FieldGroup title={tr("Account")}>
           <div>
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-              Account Status <span className="text-red-500">*</span>
+              {tr("Account Status")} <span className="text-red-500">*</span>
             </label>
             <Select
               label=""
@@ -78,8 +79,8 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
             {statusError && <p className="text-xs text-red-600 mt-1.5">{statusError}</p>}
           </div>
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
-            <p className="text-xs text-slate-500 mb-2">Where this user lands after signing in.</p>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Home Page")}</label>
+            <p className="text-xs text-slate-500 mb-2">{tr("Where this user lands after signing in.")}</p>
             <Select
               label=""
               value={homePage || "DASHBOARD"}
@@ -130,16 +131,16 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
 
   return (
     <div>
-      <FieldGroup title="Account">
-        <InfoField label="Account Created" value={formatDate(user.createdDate)} />
+      <FieldGroup title={tr("Account")}>
+        <InfoField label={tr("Account Created")} value={formatDate(user.createdDate)} />
         <InfoField
-          label="Last Login"
-          value={`${user.lastLogin !== "Never" ? user.lastLogin : "Never logged in"}${user.inactive ? ` — Inactive: ${user.inactiveDays} days without a sign-in` : ""}`}
+          label={tr("Last Login")}
+          value={`${user.lastLogin !== "Never" ? user.lastLogin : tr("Never signed in")}${typeof user.inactiveDays === "number" ? ` — ${user.inactiveDays === 0 ? tr("Signed in today") : `${user.inactiveDays} ${tr("days since the last sign-in")}`}` : ""}${user.inactive ? ` ${tr("(the account is still Active; this is only a reminder that it has not been used for a long time)")}` : ""}`}
         />
         {isEditingProfile && canEdit ? (
           <div className="md:col-span-2">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Home Page</label>
-            <FieldHint className="mb-2">Where this user lands after signing in.</FieldHint>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Home Page")}</label>
+            <FieldHint className="mb-2">{tr("Where this user lands after signing in.")}</FieldHint>
             <Select
               label=""
               value={draft.homePage || "DASHBOARD"}
@@ -149,13 +150,13 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
             />
           </div>
         ) : (
-          <InfoField label="Home Page" value={HOME_PAGE_LABELS[user.homePage || "DASHBOARD"]} />
+          <InfoField label={tr("Home Page")} value={HOME_PAGE_LABELS[user.homePage || "DASHBOARD"]} />
         )}
       </FieldGroup>
 
       {actions.length > 0 && (
         <div className="mt-5 pt-5 border-t border-slate-100">
-          <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">Account Actions</h3>
+          <h3 className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500">{tr("Account Actions")}</h3>
           <div className="mt-3">
             <AccountActionList actions={actions} />
           </div>

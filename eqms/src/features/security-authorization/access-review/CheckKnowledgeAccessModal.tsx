@@ -5,6 +5,7 @@ import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { knowledgeSharesApi, type KnowledgeAccessExplanation } from "@/services/api/knowledgeShares";
+import { tr, trFormat } from "@/i18n";
 
 const errorMessage = (error: unknown, fallback: string) =>
   (error as { response?: { data?: { error?: { message?: string }; message?: string } } })?.response?.data?.error?.message ?? fallback;
@@ -64,8 +65,8 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
       isOpen={isOpen}
       onClose={() => !running && onClose()}
       onConfirm={run}
-      title="Check access to the Knowledge Base"
-      description="Why can or can't this user see this document?"
+      title={tr("Check access to the Knowledge Base")}
+      description={tr("Why can or can't this user see this document?")}
       confirmText="Check"
       cancelText="Close"
       isLoading={running}
@@ -75,7 +76,7 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4">
           <Select
-            label="User"
+            label={tr("User")}
             value={userId}
             onChange={(v) => { setUserId(String(v)); setResult(null); }}
             options={userOptions}
@@ -85,11 +86,11 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
               setUserOptions((prev) => [...prev, ...options]);
               return options;
             }}
-            placeholder="Search a person by name or employee ID"
+            placeholder={tr("Search a person by name or employee ID")}
             truncateOptions
           />
           <Select
-            label="Document"
+            label={tr("Document")}
             value={documentId}
             onChange={(v) => { setDocumentId(String(v)); setResult(null); }}
             options={documentOptions}
@@ -99,7 +100,7 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
               setDocumentOptions((prev) => [...prev, ...options]);
               return options;
             }}
-            placeholder="Search a document by number or name"
+            placeholder={tr("Search a document by number or name")}
             truncateOptions
           />
         </div>
@@ -123,7 +124,7 @@ export const CheckKnowledgeAccessModal: React.FC<CheckKnowledgeAccessModalProps>
             </ul>
             {result.decidingShare && (
               <p className="text-xs text-slate-500">
-                Deciding share: {result.decidingShare.scopeLabel} in {result.decidingShare.departmentName}
+                {tr("Deciding share:")} {result.decidingShare.scopeLabel} {tr("in")} {result.decidingShare.departmentName}
                 {result.decidingShare.createdBy ? `, made by ${result.decidingShare.createdBy}` : ""}.
               </p>
             )}

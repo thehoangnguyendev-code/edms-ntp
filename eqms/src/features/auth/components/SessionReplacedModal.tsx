@@ -6,6 +6,7 @@ import { dispatchSessionEnded, dispatchSessionReplaced, SESSION_REPLACED_EVENT }
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { authTokenStore } from "@/services/authTokenStore";
 import { secureStorage } from "@/utils/security";
+import { tr } from "@/i18n";
 
 const SESSION_REVOKED_STREAM_EVENT = "session-revoked";
 const SESSION_UNLOCKED_EVENT = "eqms:session-unlocked";
@@ -88,7 +89,7 @@ export const SessionReplacedModal: React.FC<SessionReplacedModalProps> = ({ isAu
     <AlertModal
       isOpen={isOpen}
       type="info"
-      title="Signed Out"
+      title={tr("Signed Out")}
       description={SESSION_REPLACED_MESSAGE}
       confirmText="OK"
       showCancel={false}

@@ -16,6 +16,7 @@ import { PanelError, RowsSkeleton } from './dashboardParts';
 import { Card, CardHeader, KpiStrip, type KpiCellData } from './dashboardUi';
 import { useDashboardResource, type DashboardResource } from './useDashboardResource';
 import type { DashboardWidget } from './DashboardWidgets';
+import { tr } from "@/i18n";
 
 const dash = '—';
 const LIST_ROWS = 5;
@@ -78,7 +79,7 @@ function RecentCard({ title, subtitle, rows, loading, error, onRetry, empty, ope
 
 const NotificationsUnread = () => {
   const summary = useDashboardResource(() => notificationApi.getSummary(), []);
-  return <KpiCard label="Unread notifications" resource={summary} cell={(n) => ({ title: 'Unread notifications', accent: '#10b981', value: n.unread, footValue: n.all, footLabel: 'All notifications' })} />;
+  return <KpiCard label={tr("Unread notifications")} resource={summary} cell={(n) => ({ title: tr('Unread notifications'), accent: '#10b981', value: n.unread, footValue: n.all, footLabel: 'All notifications' })} />;
 };
 
 const NotificationsRecent = () => {
@@ -88,7 +89,7 @@ const NotificationsRecent = () => {
     id: n.id, title: n.title, detail: n.description, at: n.createdAt, unread: !n.readAt,
     onOpen: () => navigate(n.actionUrl || ROUTES.NOTIFICATIONS),
   })) ?? null;
-  return <RecentCard title="Recent notifications" subtitle="Your newest notifications" rows={rows} loading={list.loading} error={list.error} onRetry={list.reload} empty="You have no notifications." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.NOTIFICATIONS) }} />;
+  return <RecentCard title={tr("Recent notifications")} subtitle={tr("Your newest notifications")} rows={rows} loading={list.loading} error={list.error} onRetry={list.reload} empty="You have no notifications." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.NOTIFICATIONS) }} />;
 };
 
 const TrainingCount = ({ field, label, accent, foot }: { field: 'tasks' | 'signatures'; label: string; accent: string; foot: { field: 'tasks' | 'signatures'; label: string } }) => {
@@ -98,7 +99,7 @@ const TrainingCount = ({ field, label, accent, foot }: { field: 'tasks' | 'signa
 
 const NotificationsPersonal = () => {
   const summary = useDashboardResource(() => notificationApi.getSummary(), []);
-  return <KpiCard label="Personal notifications" resource={summary} cell={(n) => ({ title: 'Personal notifications', accent: '#14b8a6', value: n.personal, footValue: n.system, footLabel: 'System notifications' })} />;
+  return <KpiCard label={tr("Personal notifications")} resource={summary} cell={(n) => ({ title: tr('Personal notifications'), accent: '#14b8a6', value: n.personal, footValue: n.system, footLabel: 'System notifications' })} />;
 };
 
 const NotificationsByType = () => {
@@ -107,12 +108,12 @@ const NotificationsByType = () => {
     ? Object.entries(summary.data.byType).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1]).slice(0, LIST_ROWS)
         .map<Row>(([type, count]) => ({ id: type, title: humanize(type), badge: <Badge color="slate" size="sm">{count.toLocaleString()}</Badge> }))
     : null;
-  return <RecentCard title="Notifications by type" subtitle="Which kinds you have, most frequent first" rows={rows} loading={summary.loading} error={summary.error} onRetry={summary.reload} empty="You have no notifications." />;
+  return <RecentCard title={tr("Notifications by type")} subtitle={tr("Which kinds you have, most frequent first")} rows={rows} loading={summary.loading} error={summary.error} onRetry={summary.reload} empty="You have no notifications." />;
 };
 
 const NotificationsDeliveryFailures = () => {
   const failures = useDashboardResource(() => notificationApi.getDeliveryFailures({ page: 1, limit: 1 }), []);
-  return <KpiCard label="Failed notification deliveries" resource={failures} cell={(f) => ({ title: 'Failed notification deliveries', accent: f.pagination.total > 0 ? '#ef4444' : '#10b981', value: f.pagination.total, footValue: dash, footLabel: 'Listed on the notification policy screen' })} />;
+  return <KpiCard label={tr("Failed notification deliveries")} resource={failures} cell={(f) => ({ title: tr('Failed notification deliveries'), accent: f.pagination.total > 0 ? '#ef4444' : '#10b981', value: f.pagination.total, footValue: dash, footLabel: 'Listed on the notification policy screen' })} />;
 };
 
 const TrainingTaskList = () => {
@@ -124,7 +125,7 @@ const TrainingTaskList = () => {
     badge: <Badge color="slate" size="sm">{humanize(task.state)}</Badge>,
     onOpen: () => navigate(ROUTES.TRAINING.MY_TASKS),
   })) ?? null;
-  return <RecentCard title="My trainings to do" subtitle="Your waiting trainings and their due days" rows={rows} loading={tasks.loading} error={tasks.error} onRetry={tasks.reload} empty="No training is waiting for you." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
+  return <RecentCard title={tr("My trainings to do")} subtitle={tr("Your waiting trainings and their due days")} rows={rows} loading={tasks.loading} error={tasks.error} onRetry={tasks.reload} empty="No training is waiting for you." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
 };
 
 const TrainingApprovalList = () => {
@@ -134,7 +135,7 @@ const TrainingApprovalList = () => {
     id: item.id, title: item.trainingNumber || item.subject, detail: item.subject, at: item.assignedAt,
     onOpen: () => navigate(ROUTES.TRAINING.MY_TASKS),
   })) ?? null;
-  return <RecentCard title="Training signatures asked of me" subtitle="What you are asked to sign, newest first" rows={rows} loading={approvals.loading} error={approvals.error} onRetry={approvals.reload} empty="Nothing is waiting for your signature." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
+  return <RecentCard title={tr("Training signatures asked of me")} subtitle={tr("What you are asked to sign, newest first")} rows={rows} loading={approvals.loading} error={approvals.error} onRetry={approvals.reload} empty="Nothing is waiting for your signature." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
 };
 
 const TrainingMyRecords = () => {
@@ -145,7 +146,7 @@ const TrainingMyRecords = () => {
     badge: <Badge color={record.voidedAt ? 'red' : 'emerald'} size="sm">{record.voidedAt ? 'Voided' : humanize(record.result)}</Badge>,
     onOpen: () => navigate(ROUTES.TRAINING.MY_RECORDS),
   })) ?? null;
-  return <RecentCard title="My recent training records" subtitle="The trainings you completed most recently" rows={rows} loading={records.loading} error={records.error} onRetry={records.reload} empty="You have no training record yet." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_RECORDS) }} />;
+  return <RecentCard title={tr("My recent training records")} subtitle={tr("The trainings you completed most recently")} rows={rows} loading={records.loading} error={records.error} onRetry={records.reload} empty="You have no training record yet." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_RECORDS) }} />;
 };
 
 /** How many training activities the server finds for a filter; the figure is the server's own total, not a count of rows loaded. */
@@ -162,7 +163,7 @@ const ReportsRecentRuns = () => {
     badge: <Badge color={runStatusColor(run.status)} size="sm">{runStatusLabel(run.status)}</Badge>,
     onOpen: () => navigate(`/report/runs/${run.id}`),
   })) ?? null;
-  return <RecentCard title="Recent report runs" subtitle="The newest runs and how each ended" rows={rows} loading={runs.loading} error={runs.error} onRetry={runs.reload} empty="No report has been run." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.REPORT.HISTORY) }} />;
+  return <RecentCard title={tr("Recent report runs")} subtitle={tr("The newest runs and how each ended")} rows={rows} loading={runs.loading} error={runs.error} onRetry={runs.reload} empty="No report has been run." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.REPORT.HISTORY) }} />;
 };
 
 /** A run that ended badly is Failed, or Dead-lettered once its retries are used up; both count. */
@@ -171,7 +172,7 @@ const ReportsFailedRuns = () => {
     const [failedRuns, deadLettered] = await Promise.all(['FAILED', 'DEAD_LETTERED'].map((status) => reportsApi.listRuns({ status, page: 1, limit: 1 })));
     return { failed: failedRuns.pagination.total, deadLettered: deadLettered.pagination.total };
   }, []);
-  return <KpiCard label="Failed report runs" resource={failed} cell={(f) => ({ title: 'Failed report runs', accent: f.failed + f.deadLettered > 0 ? '#ef4444' : '#10b981', value: f.failed + f.deadLettered, footValue: f.deadLettered, footLabel: 'Dead-lettered' })} />;
+  return <KpiCard label={tr("Failed report runs")} resource={failed} cell={(f) => ({ title: tr('Failed report runs'), accent: f.failed + f.deadLettered > 0 ? '#ef4444' : '#10b981', value: f.failed + f.deadLettered, footValue: f.deadLettered, footLabel: 'Dead-lettered' })} />;
 };
 
 const AuditRecentEvents = () => {
@@ -182,7 +183,7 @@ const AuditRecentEvents = () => {
     detail: `${event.action}${event.fromStatus || event.toStatus ? ` (${event.fromStatus ?? dash} → ${event.toStatus ?? dash})` : ''} · ${event.userFullName || 'System'}`,
     at: event.eventTime,
   })) ?? null;
-  return <RecentCard title="Recent audit events" subtitle="The newest events written to the audit trail" rows={rows} loading={recent.loading} error={recent.error} onRetry={recent.reload} empty="No audit events." />;
+  return <RecentCard title={tr("Recent audit events")} subtitle={tr("The newest events written to the audit trail")} rows={rows} loading={recent.loading} error={recent.error} onRetry={recent.reload} empty="No audit events." />;
 };
 
 /**
@@ -199,28 +200,28 @@ export function useModuleDashboardWidgets(): DashboardWidget[] {
   return useMemo<DashboardWidget[]>(() => {
     const off = { defaultVisible: false } as const;
     return [
-      { id: 'notifications-unread', label: 'Unread notifications', width: 'half', ...off, content: <NotificationsUnread /> },
-      { id: 'notifications-recent', label: 'Recent notifications', width: 'full', ...off, content: <NotificationsRecent /> },
-      { id: 'notifications-personal', label: 'Personal notifications', width: 'half', ...off, content: <NotificationsPersonal /> },
-      { id: 'notifications-by-type', label: 'Notifications by type', width: 'half', ...off, content: <NotificationsByType /> },
-      ...(notificationPolicy ? [{ id: 'notifications-delivery-failures', label: 'Failed notification deliveries', width: 'half' as const, ...off, content: <NotificationsDeliveryFailures /> }] : []),
+      { id: 'notifications-unread', label: tr('Unread notifications'), width: 'half', ...off, content: <NotificationsUnread /> },
+      { id: 'notifications-recent', label: tr('Recent notifications'), width: 'full', ...off, content: <NotificationsRecent /> },
+      { id: 'notifications-personal', label: tr('Personal notifications'), width: 'half', ...off, content: <NotificationsPersonal /> },
+      { id: 'notifications-by-type', label: tr('Notifications by type'), width: 'half', ...off, content: <NotificationsByType /> },
+      ...(notificationPolicy ? [{ id: 'notifications-delivery-failures', label: tr('Failed notification deliveries'), width: 'half' as const, ...off, content: <NotificationsDeliveryFailures /> }] : []),
       ...(training ? [
-        { id: 'training-my-tasks', label: 'My training tasks', width: 'half' as const, ...off, content: <TrainingCount field="tasks" label="My training tasks" accent="#14b8a6" foot={{ field: 'signatures', label: 'Signatures asked of you' }} /> },
-        { id: 'training-my-signatures', label: 'Training signatures asked of me', width: 'half' as const, ...off, content: <TrainingCount field="signatures" label="Signatures asked of me" accent="#059669" foot={{ field: 'tasks', label: 'Trainings to do' }} /> },
-        { id: 'training-my-task-list', label: 'My trainings to do', width: 'full' as const, ...off, content: <TrainingTaskList /> },
-        { id: 'training-my-approval-list', label: 'Training signatures asked of me (list)', width: 'full' as const, ...off, content: <TrainingApprovalList /> },
-        { id: 'training-my-records', label: 'My recent training records', width: 'full' as const, ...off, content: <TrainingMyRecords /> },
+        { id: 'training-my-tasks', label: tr('My training tasks'), width: 'half' as const, ...off, content: <TrainingCount field="tasks" label={tr("My training tasks")} accent="#14b8a6" foot={{ field: 'signatures', label: tr('Signatures asked of you') }} /> },
+        { id: 'training-my-signatures', label: tr('Training signatures asked of me'), width: 'half' as const, ...off, content: <TrainingCount field="signatures" label={tr("Signatures asked of me")} accent="#059669" foot={{ field: 'tasks', label: tr('Trainings to do') }} /> },
+        { id: 'training-my-task-list', label: tr('My trainings to do'), width: 'full' as const, ...off, content: <TrainingTaskList /> },
+        { id: 'training-my-approval-list', label: tr('Training signatures asked of me (list)'), width: 'full' as const, ...off, content: <TrainingApprovalList /> },
+        { id: 'training-my-records', label: tr('My recent training records'), width: 'full' as const, ...off, content: <TrainingMyRecords /> },
       ] : []),
       ...(activities ? [
-        { id: 'training-activities-in-progress', label: 'Training activities in progress', width: 'half' as const, ...off, content: <ActivityCount label="Training activities in progress" accent="#10b981" filter={{ status: 'IN_PROGRESS' }} foot="Started, not finished" /> },
-        { id: 'training-activities-overdue', label: 'Overdue training activities', width: 'half' as const, ...off, content: <ActivityCount label="Overdue training activities" accent="#ef4444" filter={{ overdue: true }} foot="Past their due date" /> },
-        { id: 'training-activities-awaiting-qa', label: 'Trainings awaiting QA confirmation', width: 'half' as const, ...off, content: <ActivityCount label="Awaiting QA confirmation" accent="#f59e0b" filter={{ status: 'PENDING_QA_CONFIRMATION' }} foot="Waiting for QA" /> },
+        { id: 'training-activities-in-progress', label: tr('Training activities in progress'), width: 'half' as const, ...off, content: <ActivityCount label={tr("Training activities in progress")} accent="#10b981" filter={{ status: 'IN_PROGRESS' }} foot="Started, not finished" /> },
+        { id: 'training-activities-overdue', label: tr('Overdue training activities'), width: 'half' as const, ...off, content: <ActivityCount label={tr("Overdue training activities")} accent="#ef4444" filter={{ overdue: true }} foot="Past their due date" /> },
+        { id: 'training-activities-awaiting-qa', label: tr('Trainings awaiting QA confirmation'), width: 'half' as const, ...off, content: <ActivityCount label={tr("Awaiting QA confirmation")} accent="#f59e0b" filter={{ status: 'PENDING_QA_CONFIRMATION' }} foot="Waiting for QA" /> },
       ] : []),
       ...(reports ? [
-        { id: 'reports-recent-runs', label: 'Recent report runs', width: 'full' as const, ...off, content: <ReportsRecentRuns /> },
-        { id: 'reports-failed-runs', label: 'Failed report runs', width: 'half' as const, ...off, content: <ReportsFailedRuns /> },
+        { id: 'reports-recent-runs', label: tr('Recent report runs'), width: 'full' as const, ...off, content: <ReportsRecentRuns /> },
+        { id: 'reports-failed-runs', label: tr('Failed report runs'), width: 'half' as const, ...off, content: <ReportsFailedRuns /> },
       ] : []),
-      ...(admin ? [{ id: 'audit-recent-events', label: 'Recent audit events', width: 'full' as const, ...off, content: <AuditRecentEvents /> }] : []),
+      ...(admin ? [{ id: 'audit-recent-events', label: tr('Recent audit events'), width: 'full' as const, ...off, content: <AuditRecentEvents /> }] : []),
     ];
   }, [training, reports, admin, activities, notificationPolicy]);
 }

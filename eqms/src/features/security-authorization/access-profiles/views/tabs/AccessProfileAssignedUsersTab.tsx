@@ -13,6 +13,7 @@ import { settingsApi } from "@/services/api/settings";
 import { metadataApi } from "@/services/api/metadata";
 import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** Row shared by the paged assignment list and the paged active-user search. */
 interface UserRow {
@@ -64,7 +65,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       setAssignedIds(ids);
       onChangesChange?.({ added: [], removed: [] });
     } catch {
-      showToast({ type: "error", message: "Failed to load users" });
+      showToast({ type: "error", message: tr("Failed to load users") });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, showToast, reloadKey]);
@@ -110,7 +111,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       setTotal(result.pagination.total);
       const pages = Math.max(1, result.pagination.totalPages); setTotalPages(pages);
       if (page > pages) setPage(pages);
-    }).catch(() => { if (!cancelled) { setRowsPage([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load users" }); } })
+    }).catch(() => { if (!cancelled) { setRowsPage([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: tr("Failed to load users") }); } })
       .finally(() => { if (!cancelled) setSearchLoading(false); });
     return () => { cancelled = true; };
   }, [profileId, page, limit, debouncedSearch, reloadKey, showToast, canAssign, sort]);
@@ -168,7 +169,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   };
   const columns: DataTableColumn<UserRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: "text-center text-slate-500", cell: (_u, index) => (page - 1) * limit + index + 1 },
-    { id: "employeeCode", header: "Employee Code", label: "Employee Code", sort: sortOf("employeeCode"), cellClassName: "text-slate-600", cell: (u) => u.employeeCode || "-" },
+    { id: "employeeCode", header: tr("Employee Code"), label: tr("Employee Code"), sort: sortOf("employeeCode"), cellClassName: "text-slate-600", cell: (u) => u.employeeCode || "-" },
     { id: "fullName", header: "Full Name", label: "Full Name", sort: sortOf("fullName"), cellClassName: "font-medium text-slate-900", cell: (u) => u.fullName },
     { id: "email", header: "Email", label: "Email", sort: sortOf("email"), cellClassName: "text-slate-600", cell: (u) => u.email || "-" },
     { id: "department", header: "Department", label: "Department", sort: sortOf("department"), cellClassName: "text-slate-600", cell: (u) => u.department || "-" },
@@ -179,7 +180,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
       sort: sortOf("status"),
       cell: (u) => (u.status ? <Badge color={flagColor(u.status === "Active")} size="sm">{u.status}</Badge> : "-"),
     },
-    { id: "assignedAt", header: "Assigned At", label: "Assigned At", sort: sortOf("assignedAt"), cellClassName: "text-slate-600", cell: (u) => (u.assignedAt ? formatDateTime(u.assignedAt) : "-") },
+    { id: "assignedAt", header: tr("Assigned At"), label: tr("Assigned At"), sort: sortOf("assignedAt"), cellClassName: "text-slate-600", cell: (u) => (u.assignedAt ? formatDateTime(u.assignedAt) : "-") },
   ];
 
   return (
@@ -189,8 +190,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
           variant="info"
           description={
             <>
-            Removing a user from this profile only removes their access profile assignment — the user account is not affected.
-            Changes are applied when you click <b>Save</b> (a single electronic signature covers all changes).
+            {tr("Removing a user from this profile only removes their access profile assignment — the user account is not affected. Changes are applied when you click")} <b>{tr("Save")}</b> {tr("(a single electronic signature covers all changes).")}
             </>
           }
         />
@@ -204,7 +204,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
           className="w-full h-9 pl-9 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder={canAssign ? "Search all users to assign…" : "Search assigned users…"}
+          placeholder={canAssign ? tr("Search all users to assign…") : "Search assigned users…"}
         />
       </div>
       <DataTable
@@ -226,8 +226,8 @@ export const AccessProfileAssignedUsersTab: React.FC<{
         }}
         emptyState={
           <TableEmptyState
-            title={q ? "No users match your search" : "No users assigned"}
-            description={q ? "Try a different search." : canAssign ? "Search above to add some." : "No user has this access profile."}
+            title={q ? tr("No users match your search") : "No users assigned"}
+            description={q ? tr("Try a different search.") : canAssign ? "Search above to add some." : "No user has this access profile."}
           />
         }
         pagination={total > 0 ? (
@@ -241,7 +241,7 @@ export const AccessProfileAssignedUsersTab: React.FC<{
         onClose={() => setPendingRemove(null)}
         onConfirm={confirmRemove}
         type="warning"
-        title="Remove Assigned User"
+        title={tr("Remove Assigned User")}
         description={
           pendingRemove
             ? `"${pendingRemove.fullName}" will lose all permissions inherited from this Access Profile once you save. Continue?`

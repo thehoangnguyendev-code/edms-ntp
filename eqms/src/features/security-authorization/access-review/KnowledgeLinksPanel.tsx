@@ -22,6 +22,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { knowledgeSharesApi, type KnowledgeLinkAdminRow } from "@/services/api/knowledgeShares";
 import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: "ALL", label: "All" },
@@ -102,7 +103,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
     if (!revokeTarget) return;
     try {
       await knowledgeSharesApi.revokeLink(revokeTarget.id);
-      showToast({ type: "success", message: "Link revoked. It no longer opens anything. The Audit Trail records who revoked it." });
+      showToast({ type: "success", message: tr("Link revoked. It no longer opens anything. The Audit Trail records who revoked it.") });
       setVersion((v) => v + 1);
     } catch (error) {
       showToast({ type: "error", message: errorMessage(error, "Unable to revoke the link.") });
@@ -121,7 +122,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
       cellClassName: "text-center text-slate-500",
       cell: (_row, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
-    { id: "owner", header: "Department / Unit", label: "Department / Unit", sort: sortOf("owner"), cell: (r) => <span className="font-medium text-slate-800">{r.ownerName}</span> },
+    { id: "owner", header: tr("Department / Unit"), label: tr("Department / Unit"), sort: sortOf("owner"), cell: (r) => <span className="font-medium text-slate-800">{r.ownerName}</span> },
     {
       id: "item",
       header: "Points to",
@@ -160,7 +161,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
       label: "Expires",
       sort: sortOf("expiresAt"),
       cellClassName: "text-slate-600",
-      cell: (r) => (r.revokedAt ? <span className="text-red-600">Revoked {formatDateTime(r.revokedAt)}{r.revokedBy ? ` by ${r.revokedBy}` : ""}</span> : r.expiresAt ? formatDateTime(r.expiresAt) : "Never"),
+      cell: (r) => (r.revokedAt ? <span className="text-red-600">{tr("Revoked")} {formatDateTime(r.revokedAt)}{r.revokedBy ? ` by ${r.revokedBy}` : ""}</span> : r.expiresAt ? formatDateTime(r.expiresAt) : "Never"),
     },
     { id: "opens", header: "Opened by", label: "Opened by", sort: sortOf("opens"), cellClassName: "text-slate-600", cell: (r) => `${r.opens} ${r.opens === 1 ? "person" : "people"}` },
   ];
@@ -182,10 +183,10 @@ export const KnowledgeLinksPanel: React.FC = () => {
               <div className="py-1">
                 {r.status === "ACTIVE" ? (
                   <DropdownMenuItem icon={<IconLinkOff className="h-4 w-4" />} onClick={() => { setRevokeTarget(r); close(); }}>
-                    Revoke this link
+                    {tr("Revoke this link")}
                   </DropdownMenuItem>
                 ) : (
-                  <p className="px-3 py-2 text-xs text-slate-500">This link no longer opens anything.</p>
+                  <p className="px-3 py-2 text-xs text-slate-500">{tr("This link no longer opens anything.")}</p>
                 )}
               </div>
             </PortalDropdownMenu>
@@ -208,7 +209,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
           </div>
 
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -216,21 +217,21 @@ export const KnowledgeLinksPanel: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  aria-label="Search links"
-                  placeholder="Search by item, Department or person..."
+                  aria-label={tr("Search links")}
+                  placeholder={tr("Search by item, Department or person...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
                 />
                 {search && (
-                  <button onClick={() => { setSearch(""); setCurrentPage(1); }} aria-label="Clear search" className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
+                  <button onClick={() => { setSearch(""); setCurrentPage(1); }} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
                     <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="gap-2 whitespace-nowrap">
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
@@ -239,37 +240,37 @@ export const KnowledgeLinksPanel: React.FC = () => {
             trailing={<div className="hidden md:block">{control}</div>}
             search={
               <FilterSearchInput
-                aria-label="Search"
+                aria-label={tr("Search")}
                 value={search}
                 onChange={(value) => { setSearch(value); setCurrentPage(1); }}
-                placeholder="Search by item, Department or person..."
+                placeholder={tr("Search by item, Department or person...")}
               />
             }
             filters={[{ id: "statusFilter", label: "Status", value: status, options: STATUS_OPTIONS, onChange: (v) => { setStatus(String(v)); setCurrentPage(1); } }]}
           >
             <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
                     <Search className="h-4 w-4 text-slate-400 transition-colors" />
                   </div>
                   <input
                     type="text"
-                    aria-label="Search links"
-                    placeholder="Search by item, Department or person..."
+                    aria-label={tr("Search links")}
+                    placeholder={tr("Search by item, Department or person...")}
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
                   />
                   {search && (
-                    <button onClick={() => setSearch("")} aria-label="Clear search" className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
+                    <button onClick={() => setSearch("")} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
               </div>
-              <Select label="Status" value={status} onChange={(v) => { setStatus(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} enableSearch={false} />
+              <Select label={tr("Status")} value={status} onChange={(v) => { setStatus(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} enableSearch={false} />
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                 {control}
@@ -289,11 +290,11 @@ export const KnowledgeLinksPanel: React.FC = () => {
         {!loading && rows.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white py-12">
             <TableEmptyState
-              title={loadError ? "Unable to load the links" : hasFilters ? "No link matches the filters" : "No link yet"}
+              title={loadError ? tr("Unable to load the links") : hasFilters ? tr("No link matches the filters") : "No link yet"}
               description={
-                loadError ? "Reload the page to try again."
-                  : hasFilters ? "Try another search or clear the filters."
-                  : "Nobody has made a link to the Knowledge Base."
+                loadError ? tr("Reload the page to try again.")
+                  : hasFilters ? tr("Try another search or clear the filters.")
+                  : tr("Nobody has made a link to the Knowledge Base.")
               }
             />
           </div>
@@ -326,7 +327,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
 
       {/* Mobile filter drawer */}
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Status" isExpanded onToggle={() => undefined}>
+        <FilterAccordionItem label={tr("Status")} isExpanded onToggle={() => undefined}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <button
@@ -352,11 +353,10 @@ export const KnowledgeLinksPanel: React.FC = () => {
         onClose={() => setRevokeTarget(null)}
         onConfirm={revoke}
         type="confirm"
-        title="Revoke this link?"
+        title={tr("Revoke this link?")}
         description={
           <p className="text-sm text-slate-600">
-            The link to <strong>{revokeTarget?.label}</strong> ({revokeTarget?.ownerName}) stops opening anything at once, even for people who saved it.
-            People who already have access through a share keep it. The Audit Trail records who revoked it.
+            {trFormat("The link to {label} ({owner}) stops opening anything at once, even for people who saved it. People who already have access through a share keep it. The Audit Trail records who revoked it.", { label: revokeTarget?.label, owner: revokeTarget?.ownerName })}
           </p>
         }
         confirmText="Revoke"

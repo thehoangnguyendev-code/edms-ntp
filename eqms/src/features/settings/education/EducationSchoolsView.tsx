@@ -36,6 +36,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 const typeLabel = (type: string) => SCHOOL_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
 const ownershipLabel = (ownership: string | null | undefined) => SCHOOL_OWNERSHIP_OPTIONS.find((o) => o.value === ownership)?.label ?? (ownership || "-");
@@ -101,7 +102,7 @@ export const EducationSchoolsView: React.FC = () => {
       })
       .catch((error) => {
         setShowToggleModal(false);
-        showToast({ type: "error", title: "Status Update Failed", message: extractApiMessage(error, "Unable to update school status.") });
+        showToast({ type: "error", title: tr("Status Update Failed"), message: extractApiMessage(error, "Unable to update school status.") });
       })
       .finally(() => setIsSubmitting(false));
   };
@@ -112,12 +113,12 @@ export const EducationSchoolsView: React.FC = () => {
       if (selectedItem) {
         await educationApi.schools.remove(selectedItem.id);
         reload();
-        showToast({ type: "success", title: "School Deleted", message: `"${selectedItem.name}" has been deleted successfully.` });
+        showToast({ type: "success", title: tr("School Deleted"), message: `"${selectedItem.name}" has been deleted successfully.` });
       }
       setShowDeleteModal(false);
       setSelectedItem(null);
     } catch (error) {
-      showToast({ type: "error", title: "Delete Failed", message: extractApiMessage(error, "Unable to delete school.") });
+      showToast({ type: "error", title: tr("Delete Failed"), message: extractApiMessage(error, "Unable to delete school.") });
       setShowDeleteModal(false);
     } finally {
       setIsSubmitting(false);
@@ -143,20 +144,20 @@ export const EducationSchoolsView: React.FC = () => {
   type SchoolRow = (typeof items)[number];
   const schoolColumns: DataTableColumn<SchoolRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "School Name", label: "School Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
+    { id: "name", header: tr("School Name"), label: tr("School Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cellClassName: TABLE_STYLES.cell28, cell: (item) => item.name },
     { id: "abbreviation", header: "Abbreviation", label: "Abbreviation", sort: { direction: sortConfig.key === "abbreviation" ? sortConfig.direction : undefined, onSort: () => handleSort("abbreviation") }, cell: (item) => item.abbreviation || "-" },
     { id: "type", header: "Type", label: "Type", cell: (item) => <Badge color="blue" size="sm">{typeLabel(item.type)}</Badge> },
     { id: "ownership", header: "Ownership", label: "Ownership", cell: (item) => ownershipLabel(item.ownership) },
-    { id: "governingBody", header: "Governing Body", label: "Governing Body", sort: { direction: sortConfig.key === "governingBody" ? sortConfig.direction : undefined, onSort: () => handleSort("governingBody") }, cell: (item) => item.governingBody || item.directGoverningMinistry || "-" },
+    { id: "governingBody", header: tr("Governing Body"), label: tr("Governing Body"), sort: { direction: sortConfig.key === "governingBody" ? sortConfig.direction : undefined, onSort: () => handleSort("governingBody") }, cell: (item) => item.governingBody || item.directGoverningMinistry || "-" },
     { id: "countryOfOriginName", header: "Origin", label: "Origin", sort: { direction: sortConfig.key === "countryOfOriginName" ? sortConfig.direction : undefined, onSort: () => handleSort("countryOfOriginName") }, cell: (item) => item.countryOfOriginName || "-" },
     {
       id: "isActive",
       header: "Status",
       label: "Status",
       sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
-      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>),
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>),
     },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", sort: { direction: sortConfig.key === "modifiedDate" ? sortConfig.direction : undefined, onSort: () => handleSort("modifiedDate") }, cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), sort: { direction: sortConfig.key === "modifiedDate" ? sortConfig.direction : undefined, onSort: () => handleSort("modifiedDate") }, cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const schoolAction: DataTableAction<SchoolRow> = {
     header: "Action",
@@ -176,13 +177,13 @@ export const EducationSchoolsView: React.FC = () => {
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Schools"
+        title={tr("Schools")}
         breadcrumbItems={educationSchoolsBreadcrumb(navigate)}
         actions={
           canManage ? (
             <Button size="sm" onClick={() => navigate("/settings/education/schools/new")} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4" />
-              New School
+              {tr("New School")}
             </Button>
           ) : undefined
         }
@@ -192,11 +193,11 @@ export const EducationSchoolsView: React.FC = () => {
         <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input type="text" placeholder="Search schools..." value={searchQuery}
+                <input type="text" placeholder={tr("Search schools...")} value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   className="w-full h-10 pl-10 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" />
                 {searchQuery && (
@@ -206,7 +207,7 @@ export const EducationSchoolsView: React.FC = () => {
                 )}
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
-                <IconFilter2 className="h-4 w-4" />Filters
+                <IconFilter2 className="h-4 w-4" />{tr("Filters")}
               </Button>
             </div>
           </div>
@@ -214,13 +215,13 @@ export const EducationSchoolsView: React.FC = () => {
 <ConfiguredDesktopFilters
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search schools..."}
+      placeholder={tr("Search schools...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -261,7 +262,7 @@ export const EducationSchoolsView: React.FC = () => {
     },
     {
       id: "governanceFilter",
-      label: "Governing Body",
+      label: tr("Governing Body"),
       value: String(governanceFilter),
       options: [
         { label: "All", value: "All" },
@@ -289,7 +290,7 @@ export const EducationSchoolsView: React.FC = () => {
   dates={[
     {
       id: "modifiedFrom",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFrom,
       to: modifiedTo,
       onFromChange: (value) => setModifiedFrom(toApiDate(value)),
@@ -303,49 +304,49 @@ export const EducationSchoolsView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input type="text" placeholder="Search schools..." value={searchQuery}
+                  <input type="text" placeholder={tr("Search schools...")} value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                     className="w-full h-9 pl-10 pr-4 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" />
                 </div>
               </div>
               <div className="w-full">
-                <Select label="Type" value={typeFilter}
+                <Select label={tr("Type")} value={typeFilter}
                   onChange={(value) => { setTypeFilter(value as "All" | SchoolType); setCurrentPage(1); }}
                   options={[{ label: "All", value: "All" }, ...SCHOOL_TYPE_OPTIONS]}
-                  placeholder="All" />
+                  placeholder={tr("All")} />
               </div>
               <div className="w-full">
-                <Select label="Status" value={statusFilter}
+                <Select label={tr("Status")} value={statusFilter}
                   onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
                   options={[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
-                  placeholder="All" />
+                  placeholder={tr("All")} />
               </div>
               <div className="w-full">
-                <Select label="Ownership" value={ownershipFilter}
+                <Select label={tr("Ownership")} value={ownershipFilter}
                   onChange={(value) => { setOwnershipFilter(value as "All" | SchoolOwnership); setCurrentPage(1); }}
                   options={[{ label: "All", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS]}
-                  placeholder="All" />
+                  placeholder={tr("All")} />
               </div>
               <div className="w-full">
-                <Select label="Governing Body" value={governanceFilter}
+                <Select label={tr("Governing Body")} value={governanceFilter}
                   onChange={(value) => { setGovernanceFilter(value); setCurrentPage(1); }}
                   options={[{ label: "All", value: "All" }, ...governingBodies.map((value) => ({ label: value, value }))]}
-                  placeholder="All" />
+                  placeholder={tr("All")} />
               </div>
               <div className="w-full">
-                <Select label="Origin" value={originFilter}
+                <Select label={tr("Origin")} value={originFilter}
                   onChange={(value) => { setOriginFilter(value); setCurrentPage(1); }}
                   options={[{ label: "All", value: "All" }, ...origins.map((value) => ({ label: value, value }))]}
-                  placeholder="All" />
+                  placeholder={tr("All")} />
               </div>
-              <DateRangePicker label="Modified Date Range" startDate={modifiedFrom} endDate={modifiedTo}
+              <DateRangePicker label={tr("Modified Date Range")} startDate={modifiedFrom} endDate={modifiedTo}
                 onStartDateChange={(value) => setModifiedFrom(toApiDate(value))}
                 onEndDateChange={(value) => setModifiedTo(toApiDate(value))}
                 onApply={({ startDate, endDate }) => { setModifiedFrom(toApiDate(startDate)); setModifiedTo(toApiDate(endDate)); }}
-                placeholder="Select date range" />
+                placeholder={tr("Select date range")} />
             <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
               {schoolControl}
@@ -370,7 +371,7 @@ export const EducationSchoolsView: React.FC = () => {
             action={schoolAction}
             scrollerRef={scrollerRef}
             scrollProps={dragEvents}
-            emptyState={<TableEmptyState title="No schools found" description="Try adjusting your search" />}
+            emptyState={<TableEmptyState title={tr("No schools found")} description={tr("Try adjusting your search")} />}
             pagination={
               !isLoading && totalItems > 0 ? (
                 <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage}
@@ -386,41 +387,41 @@ export const EducationSchoolsView: React.FC = () => {
         <div className="py-1">
           <button onClick={(e) => { e.stopPropagation(); const item = items.find((i) => i.id === openDropdownId)!; handleEdit(item); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-            <IconPencilMinus className="h-3.5 w-3.5" /><span>Edit School</span>
+            <IconPencilMinus className="h-3.5 w-3.5" /><span>{tr("Edit School")}</span>
           </button>
           <button onClick={(e) => { e.stopPropagation(); const item = items.find((i) => i.id === openDropdownId)!; handleRequestToggleStatus(item); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-            {items.find((i) => i.id === openDropdownId)?.isActive ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>) : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
+            {items.find((i) => i.id === openDropdownId)?.isActive ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>{tr("Disable")}</span></>) : (<><IconToggleRight className="h-3.5 w-3.5" /><span>{tr("Enable")}</span></>)}
           </button>
           <button onClick={(e) => { e.stopPropagation(); const item = items.find((i) => i.id === openDropdownId)!; handleDelete(item); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-            <Trash2 className="h-3.5 w-3.5" /><span>Delete</span>
+            <Trash2 className="h-3.5 w-3.5" /><span>{tr("Delete")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
 
       <AlertModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleConfirmDelete} type="warning"
-        title="Delete School?"
+        title={tr("Delete School?")}
         description={
           <div className="space-y-3">
-            <p>Are you sure you want to delete <strong>{selectedItem?.name}</strong>?</p>
+            <p>{tr("Are you sure you want to delete")} <strong>{selectedItem?.name}</strong>?</p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-amber-700"><AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" /> <span className="font-semibold">Warning:</span> This action cannot be undone.</p>
+              <p className="text-amber-700"><AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" /> <span className="font-semibold">{tr("Warning:")}</span> {tr("This action cannot be undone.")}</p>
             </div>
           </div>
         }
         confirmText="Delete" cancelText="Cancel" isLoading={isSubmitting} showCancel />
 
       <AlertModal isOpen={showToggleModal} onClose={() => { setShowToggleModal(false); setSelectedItem(null); }} onConfirm={handleConfirmToggleStatus} type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} School?`}
-        description={<p>Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"} <strong>{selectedItem?.name}</strong>?</p>}
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"} cancelText="Cancel" isLoading={isSubmitting} showCancel />
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("School?")}`}
+        description={<p>{tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")} <strong>{selectedItem?.name}</strong>?</p>}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} cancelText="Cancel" isLoading={isSubmitting} showCancel />
 
       <AlertModal isOpen={resultModal.isOpen} onClose={closeResultModal} onConfirm={closeResultModal} type={resultModal.type}
         title={resultModal.title} description={resultModal.description} confirmText="OK" showCancel={false} />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+        <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "All" }, ...SCHOOL_TYPE_OPTIONS].map((opt) => (
               <button key={opt.value} onClick={() => { setTypeFilter(opt.value as "All" | SchoolType); setCurrentPage(1); }} className={getOptionClassName(typeFilter === opt.value)}>
@@ -430,7 +431,7 @@ export const EducationSchoolsView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
               <button key={opt.value} onClick={() => { setStatusFilter(opt.value as "All" | "Active" | "Inactive"); setCurrentPage(1); }} className={getOptionClassName(statusFilter === opt.value)}>
@@ -440,7 +441,7 @@ export const EducationSchoolsView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Ownership" isExpanded={expandedSections.has("ownership")} onToggle={() => toggleSection("ownership")}>
+        <FilterAccordionItem label={tr("Ownership")} isExpanded={expandedSections.has("ownership")} onToggle={() => toggleSection("ownership")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "All" }, ...SCHOOL_OWNERSHIP_OPTIONS].map((opt) => (
               <button key={opt.value} onClick={() => { setOwnershipFilter(opt.value as "All" | SchoolOwnership); setCurrentPage(1); }} className={getOptionClassName(ownershipFilter === opt.value)}>
@@ -450,13 +451,13 @@ export const EducationSchoolsView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Modified Date Range" isExpanded={expandedSections.has("modifiedDate")} onToggle={() => toggleSection("modifiedDate")}>
+        <FilterAccordionItem label={tr("Modified Date Range")} isExpanded={expandedSections.has("modifiedDate")} onToggle={() => toggleSection("modifiedDate")}>
           <div className="pt-2 pb-4">
             <DateRangePicker label="" startDate={modifiedFrom} endDate={modifiedTo}
               onStartDateChange={(value) => setModifiedFrom(toApiDate(value))}
               onEndDateChange={(value) => setModifiedTo(toApiDate(value))}
               onApply={({ startDate, endDate }) => { setModifiedFrom(toApiDate(startDate)); setModifiedTo(toApiDate(endDate)); }}
-              placeholder="Select date range" />
+              placeholder={tr("Select date range")} />
           </div>
         </FilterAccordionItem>
       </FilterDrawer>
@@ -469,15 +470,15 @@ export const EducationSchoolsView: React.FC = () => {
  *  values (institution_type, governing_body_type, operational_status...) that don't fit a fixed
  *  enum, so the user types them directly. */
 const ENTITY_KIND_OPTIONS = [
-  { label: "Unspecified", value: "" },
-  { label: "Institution", value: "institution" },
-  { label: "International Program / Presence", value: "international_program_or_presence" },
+  { label: tr("Unspecified"), value: "" },
+  { label: tr("Institution"), value: "institution" },
+  { label: tr("International Program / Presence"), value: "international_program_or_presence" },
 ];
 const GOVERNANCE_MODEL_OPTIONS = [
-  { label: "Unspecified", value: "" },
+  { label: tr("Unspecified"), value: "" },
   { label: "Public", value: "public" },
   { label: "Private", value: "private" },
-  { label: "Foreign / Other", value: "foreign_or_other" },
+  { label: tr("Foreign / Other"), value: "foreign_or_other" },
 ];
 
 type SchoolFormData = {
@@ -615,157 +616,157 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
   return (
     <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} School`} isLoading={isSaving} size="lg">
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-        <p className={sectionTitleClass}>Basic Information</p>
+        <p className={sectionTitleClass}>{tr("Basic Information")}</p>
         <div>
-          <label className={fieldLabelClass}>School Name<span className="text-red-500 ml-1">*</span></label>
+          <label className={fieldLabelClass}>{tr("School Name")}<span className="text-red-500 ml-1">*</span></label>
           <input type="text" value={formData.name} onChange={(e) => setField("name", e.target.value)}
-            className={fieldInputClass} placeholder="e.g., Đại học Bách khoa Hà Nội" required disabled={isSaving} />
+            className={fieldInputClass} placeholder={tr("e.g., Đại học Bách khoa Hà Nội")} required disabled={isSaving} />
         </div>
         <div>
-          <label className={fieldLabelClass}>Abbreviation</label>
+          <label className={fieldLabelClass}>{tr("Abbreviation")}</label>
           <input type="text" value={formData.abbreviation} onChange={(e) => setField("abbreviation", e.target.value)}
-            className={fieldInputClass} placeholder="e.g., HUST" disabled={isSaving} />
+            className={fieldInputClass} placeholder={tr("e.g., HUST")} disabled={isSaving} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={fieldLabelClass}>Type<span className="text-red-500 ml-1">*</span></label>
+            <label className={fieldLabelClass}>{tr("Type")}<span className="text-red-500 ml-1">*</span></label>
             <Select value={formData.type} onChange={(value) => setField("type", value as SchoolType)} options={SCHOOL_TYPE_OPTIONS} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Ownership</label>
+            <label className={fieldLabelClass}>{tr("Ownership")}</label>
             <Select value={formData.ownership} onChange={(value) => setField("ownership", value as SchoolOwnership | "")}
-              options={[{ label: "Unspecified", value: "" }, ...SCHOOL_OWNERSHIP_OPTIONS]} />
+              options={[{ label: tr("Unspecified"), value: "" }, ...SCHOOL_OWNERSHIP_OPTIONS]} />
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Checkbox id="isActive-school" checked={formData.isActive} onChange={(checked) => setField("isActive", checked)} label="Active" disabled={isSaving} />
+          <Checkbox id="isActive-school" checked={formData.isActive} onChange={(checked) => setField("isActive", checked)} label={tr("Active")} disabled={isSaving} />
         </div>
 
-        <p className={sectionTitleClass}>Classification</p>
+        <p className={sectionTitleClass}>{tr("Classification")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={fieldLabelClass}>Entity Kind</label>
+            <label className={fieldLabelClass}>{tr("Entity Kind")}</label>
             <Select value={formData.entityKind} onChange={(value) => setField("entityKind", value)} options={ENTITY_KIND_OPTIONS} />
           </div>
           <div className="flex items-end pb-1.5">
             <Checkbox id="isIndependent-school" checked={formData.isIndependentInstitution} onChange={(checked) => setField("isIndependentInstitution", checked)}
-              label="Independent Institution" disabled={isSaving} />
+              label={tr("Independent Institution")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Institution Type</label>
+            <label className={fieldLabelClass}>{tr("Institution Type")}</label>
             <input type="text" value={formData.institutionType} onChange={(e) => setField("institutionType", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., truong_dai_hoc, cao_dang, hoc_vien" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., truong_dai_hoc, cao_dang, hoc_vien")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Institution Type Label</label>
+            <label className={fieldLabelClass}>{tr("Institution Type Label")}</label>
             <input type="text" value={formData.institutionTypeLabel} onChange={(e) => setField("institutionTypeLabel", e.target.value)}
-              className={fieldInputClass} placeholder="Human-readable label" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("Human-readable label")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Presence Type</label>
+            <label className={fieldLabelClass}>{tr("Presence Type")}</label>
             <input type="text" value={formData.presenceType} onChange={(e) => setField("presenceType", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., foreign_university_branch_or_foreign_owned" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., foreign_university_branch_or_foreign_owned")} disabled={isSaving} />
           </div>
         </div>
 
-        <p className={sectionTitleClass}>Status & Verification</p>
+        <p className={sectionTitleClass}>{tr("Status & Verification")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={fieldLabelClass}>Operational Status</label>
+            <label className={fieldLabelClass}>{tr("Operational Status")}</label>
             <input type="text" value={formData.operationalStatus} onChange={(e) => setField("operationalStatus", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., active, needs_recheck" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., active, needs_recheck")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Verified As Of</label>
+            <label className={fieldLabelClass}>{tr("Verified As Of")}</label>
             <input type="date" value={formData.verifiedAsOf} onChange={(e) => setField("verifiedAsOf", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div className="sm:col-span-2">
-            <label className={fieldLabelClass}>Verification Status</label>
+            <label className={fieldLabelClass}>{tr("Verification Status")}</label>
             <input type="text" value={formData.verificationStatus} onChange={(e) => setField("verificationStatus", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., verified_public_source" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., verified_public_source")} disabled={isSaving} />
           </div>
         </div>
         <div>
-          <label className={fieldLabelClass}>Status Note</label>
+          <label className={fieldLabelClass}>{tr("Status Note")}</label>
           <textarea value={formData.statusNote} onChange={(e) => setField("statusNote", e.target.value)} rows={2}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Any free-text note about current status" disabled={isSaving} />
+            placeholder={tr("Any free-text note about current status")} disabled={isSaving} />
         </div>
 
-        <p className={sectionTitleClass}>Governance</p>
+        <p className={sectionTitleClass}>{tr("Governance")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={fieldLabelClass}>Governing Body</label>
+            <label className={fieldLabelClass}>{tr("Governing Body")}</label>
             <input type="text" value={formData.governingBody} onChange={(e) => setField("governingBody", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., Bộ Giáo dục và Đào tạo" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., Bộ Giáo dục và Đào tạo")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Governing Body Type</label>
+            <label className={fieldLabelClass}>{tr("Governing Body Type")}</label>
             <input type="text" value={formData.governingBodyType} onChange={(e) => setField("governingBodyType", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., ministry, local_government" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., ministry, local_government")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Governing Body Verification Status</label>
+            <label className={fieldLabelClass}>{tr("Governing Body Verification Status")}</label>
             <input type="text" value={formData.governingBodyVerificationStatus} onChange={(e) => setField("governingBodyVerificationStatus", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Governance Model</label>
+            <label className={fieldLabelClass}>{tr("Governance Model")}</label>
             <Select value={formData.governanceModel} onChange={(value) => setField("governanceModel", value)} options={GOVERNANCE_MODEL_OPTIONS} />
           </div>
           <div>
-            <label className={fieldLabelClass}>National Education Regulator</label>
+            <label className={fieldLabelClass}>{tr("National Education Regulator")}</label>
             <input type="text" value={formData.nationalEducationRegulator} onChange={(e) => setField("nationalEducationRegulator", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Direct Governing Ministry</label>
+            <label className={fieldLabelClass}>{tr("Direct Governing Ministry")}</label>
             <input type="text" value={formData.directGoverningMinistry} onChange={(e) => setField("directGoverningMinistry", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Supervising Authority</label>
+            <label className={fieldLabelClass}>{tr("Supervising Authority")}</label>
             <input type="text" value={formData.supervisingAuthority} onChange={(e) => setField("supervisingAuthority", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Ultimate Governing Body</label>
+            <label className={fieldLabelClass}>{tr("Ultimate Governing Body")}</label>
             <input type="text" value={formData.ultimateGoverningBody} onChange={(e) => setField("ultimateGoverningBody", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Ownership Verification Status</label>
+            <label className={fieldLabelClass}>{tr("Ownership Verification Status")}</label>
             <input type="text" value={formData.ownershipVerificationStatus} onChange={(e) => setField("ownershipVerificationStatus", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., needs_individual_verification" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., needs_individual_verification")} disabled={isSaving} />
           </div>
         </div>
 
-        <p className={sectionTitleClass}>International</p>
+        <p className={sectionTitleClass}>{tr("International")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={fieldLabelClass}>Country of Origin</label>
+            <label className={fieldLabelClass}>{tr("Country of Origin")}</label>
             <input type="text" value={formData.countryOfOriginName} onChange={(e) => setField("countryOfOriginName", e.target.value)}
-              className={fieldInputClass} placeholder="e.g., United Kingdom" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., United Kingdom")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Country of Origin (ISO2)</label>
+            <label className={fieldLabelClass}>{tr("Country of Origin (ISO2)")}</label>
             <input type="text" value={formData.countryOfOriginIso2} onChange={(e) => setField("countryOfOriginIso2", e.target.value.toUpperCase().slice(0, 2))}
-              className={fieldInputClass} placeholder="e.g., GB" maxLength={2} disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("e.g., GB")} maxLength={2} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Host in Vietnam</label>
+            <label className={fieldLabelClass}>{tr("Host in Vietnam")}</label>
             <input type="text" value={formData.hostInVietnam} onChange={(e) => setField("hostInVietnam", e.target.value)}
-              className={fieldInputClass} placeholder="Vietnamese institution hosting this program" disabled={isSaving} />
+              className={fieldInputClass} placeholder={tr("Vietnamese institution hosting this program")} disabled={isSaving} />
           </div>
           <div>
-            <label className={fieldLabelClass}>Parent / Partner</label>
+            <label className={fieldLabelClass}>{tr("Parent / Partner")}</label>
             <input type="text" value={formData.parentOrPartner} onChange={(e) => setField("parentOrPartner", e.target.value)}
               className={fieldInputClass} disabled={isSaving} />
           </div>
         </div>
 
-        <p className={sectionTitleClass}>Governance Sources</p>
+        <p className={sectionTitleClass}>{tr("Governance Sources")}</p>
         <div className="space-y-2">
           {formData.governingBodySourceUrls.map((url, idx) => (
             <div key={idx} className="flex items-center gap-2">
@@ -779,7 +780,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
           ))}
           <button type="button" onClick={addSourceUrl} disabled={isSaving}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700">
-            <Plus className="h-3.5 w-3.5" /> Add source URL
+            <Plus className="h-3.5 w-3.5" /> {tr("Add source URL")}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { formatDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 export interface RevisionWorkingNoteItem {
   id: string;
@@ -53,12 +54,12 @@ export const WorkingNotesTab: React.FC<WorkingNotesTabProps> = ({
       <div className="flex flex-col gap-2">
         {!isReadOnly && (
           <>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Working Note</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Working Note")}</label>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter your working note or comment about this revision... (Ctrl+Enter to submit)"
+              placeholder={tr("Enter your working note or comment about this revision... (Ctrl+Enter to submit)")}
               rows={4}
               disabled={isReadOnly || isSubmitting}
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400"
@@ -71,7 +72,7 @@ export const WorkingNotesTab: React.FC<WorkingNotesTabProps> = ({
                 disabled={!input.trim() || isReadOnly || !onAddNote}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300"
               >
-                Add Note
+                {tr("Add Note")}
               </Button>
             </div>
           </>
@@ -81,7 +82,7 @@ export const WorkingNotesTab: React.FC<WorkingNotesTabProps> = ({
       <div className="space-y-3">
         {notes.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-            No working notes have been added.
+            {tr("No working notes have been added.")}
           </div>
         )}
         {notes.map((note) => (
@@ -104,7 +105,7 @@ export const WorkingNotesTab: React.FC<WorkingNotesTabProps> = ({
                   <button
                     onClick={() => void handleDeleteNote(note.id)}
                     className="opacity-0 group-hover:opacity-100 p-1 text-amber-600 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-                    title="Delete note"
+                    title={tr("Delete note")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

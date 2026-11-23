@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
+import { tr, trFormat } from "@/i18n";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -173,19 +174,19 @@ export function TrainingSessionWorkspaceShell({
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-5">
       <PageHeader
-        title="Session Workspace"
+        title={tr("Session Workspace")}
         breadcrumbItems={breadcrumbItems}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button size="sm" variant="outline-emerald" onClick={onBack}>
-              Back
+              {tr("Back")}
             </Button>
             {headerActions}
           </div>
         }
       />
 
-      <section className="rounded-xl border border-slate-200 bg-white" aria-label="Session">
+      <section className="rounded-xl border border-slate-200 bg-white" aria-label={tr("Session")}>
         <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
           <div className="min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{trainingNumber}</div>
@@ -215,12 +216,12 @@ export function TrainingSessionWorkspaceShell({
             </dl>
           </div>
 
-          <aside className="flex flex-col gap-4 rounded-lg bg-slate-50 p-4" aria-label="Figures of the session">
+          <aside className="flex flex-col gap-4 rounded-lg bg-slate-50 p-4" aria-label={tr("Figures of the session")}>
             <div>
               <div className="flex items-baseline justify-between text-xs">
-                <span className="font-semibold text-slate-800">Progress</span>
+                <span className="font-semibold text-slate-800">{tr("Progress")}</span>
                 <span className="text-slate-500">
-                  <span className="font-semibold text-slate-900">{doneCount}</span> of {steps.length} steps
+                  {trFormat("{done} of {total} steps", { done: doneCount, total: steps.length })}
                 </span>
               </div>
               <div
@@ -229,7 +230,7 @@ export function TrainingSessionWorkspaceShell({
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={percent}
-                aria-label="Progress of the session"
+                aria-label={tr("Progress of the session")}
               >
                 {steps.map((s, i) => (
                   <span key={s.id} className={cn("h-2 flex-1 rounded-full transition-colors duration-300", i < doneCount ? "bg-emerald-500" : "bg-slate-200")} />
@@ -286,9 +287,9 @@ export function TrainingSessionWorkspaceShell({
           </motion.span>
           <div className="min-w-0 flex-1 text-sm">
             <div className="font-semibold text-emerald-900">
-              {`All ${steps.length === 3 ? "three" : steps.length === 5 ? "five" : steps.length} steps are done. Well done!`}
+              {trFormat("All {count} steps are done. Well done!", { count: steps.length })}
             </div>
-            <div className="text-slate-600">The session is complete.</div>
+            <div className="text-slate-600">{tr("The session is complete.")}</div>
           </div>
         </motion.div>
       )}
@@ -319,7 +320,7 @@ export function TrainingSessionWorkspaceShell({
               variant="outline-emerald"
               onClick={() => onStep(steps[index - 1].id)}
             >
-              Back: {steps[index - 1].label}
+              {tr("Back:")} {steps[index - 1].label}
             </Button>
           )}
         </div>
@@ -331,7 +332,7 @@ export function TrainingSessionWorkspaceShell({
               disabled={!!nextBlocked}
               onClick={() => onStep(steps[index + 1].id)}
             >
-              Next: {steps[index + 1].label}
+              {tr("Next:")} {steps[index + 1].label}
             </Button>
           )}
         </div>

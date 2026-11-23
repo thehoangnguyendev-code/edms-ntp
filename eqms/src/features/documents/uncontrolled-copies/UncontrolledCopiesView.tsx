@@ -54,6 +54,7 @@ import {
 } from "@/services/api/uncontrolledCopy";
 import { useUncontrolledCopyActions } from "./useUncontrolledCopyActions";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 export type UncontrolledCopiesViewType = "all" | "ready" | "distributed";
 
@@ -352,7 +353,7 @@ export const UncontrolledCopiesView: React.FC<{
     },
     {
       id: "number",
-      header: "Document Number",
+      header: tr("Document Number"),
       sort: sort("number"),
       cell: (copy) => (
         <button
@@ -370,7 +371,7 @@ export const UncontrolledCopiesView: React.FC<{
     },
     {
       id: "document",
-      header: "Document Name",
+      header: tr("Document Name"),
       sort: sort("document"),
       cellClassName: "font-medium text-slate-900",
       cell: (copy) =>
@@ -388,7 +389,7 @@ export const UncontrolledCopiesView: React.FC<{
     },
     {
       id: "revision",
-      header: "Document Revision",
+      header: tr("Document Revision"),
       cellClassName: "font-medium text-slate-900",
       cell: (copy) => {
         const label = [copy.documentTitle, copy.revisionNumber].filter(Boolean).join("_") || "-";
@@ -415,23 +416,23 @@ export const UncontrolledCopiesView: React.FC<{
     },
     {
       id: "requestedBy",
-      header: "Requested By",
+      header: tr("Requested By"),
       cell: (copy) => copy.requestedByName || "-",
     },
     {
       id: "requestedAt",
-      header: "Requested Date",
+      header: tr("Requested Date"),
       sort: sort("requested"),
       cell: (copy) => formatOptional(copy.requestedAt),
     },
     {
       id: "distributedBy",
-      header: "Distributed By",
+      header: tr("Distributed By"),
       cell: (copy) => copy.distributedByName || "-",
     },
     {
       id: "distributedAt",
-      header: "Distributed Date",
+      header: tr("Distributed Date"),
       sort: sort("distributed"),
       cell: (copy) => formatOptional(copy.distributedAt),
     },
@@ -454,12 +455,12 @@ export const UncontrolledCopiesView: React.FC<{
     },
     {
       id: "closeReason",
-      header: "Closed Because",
+      header: tr("Closed Because"),
       cell: (copy) => closeReasonLabel(copy.closeReason) || "-",
     },
     {
       id: "validUntil",
-      header: "Valid Until",
+      header: tr("Valid Until"),
       sort: sort("validUntil"),
       cell: (copy) => formatOptional(copy.validUntil),
     },
@@ -475,7 +476,7 @@ export const UncontrolledCopiesView: React.FC<{
                     }}
                     disabled={busyId === copy.id}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50 md:h-8 md:w-8"
-                    aria-label="More actions"
+                    aria-label={tr("More actions")}
                   >
                     <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </button>
@@ -497,7 +498,7 @@ export const UncontrolledCopiesView: React.FC<{
               onClick={() => distributeBatch(selectedRows)}
             >
               <IconShare3 className="h-4 w-4" />
-              Distribute Selected ({selectedRows.length})
+                {trFormat("Distribute Selected ({count})", { count: selectedRows.length })}
             </Button>
           ) : undefined
         }
@@ -507,7 +508,7 @@ export const UncontrolledCopiesView: React.FC<{
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-              Search
+              {tr("Search")}
             </label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
@@ -519,7 +520,7 @@ export const UncontrolledCopiesView: React.FC<{
                     setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Copy #, document #, title, reason..."
+                  placeholder={tr("Copy #, document #, title, reason...")}
                   className="w-full h-10 pl-10 pr-9 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 bg-white"
                 />
                 {searchQuery && (
@@ -527,7 +528,7 @@ export const UncontrolledCopiesView: React.FC<{
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -539,19 +540,19 @@ export const UncontrolledCopiesView: React.FC<{
                 className="whitespace-nowrap gap-2 h-10"
               >
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
 
           {compactDesktopFilters && <CopyDesktopFilters
-            search={<input aria-label="Search uncontrolled copies" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search uncontrolled copies..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+            search={<input aria-label={tr("Search uncontrolled copies")} value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder={tr("Search uncontrolled copies...")} className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
             status={viewType === 'all' ? statusFilter : VIEW_STATUS[viewType] ?? 'ALL'} statusOptions={statusOptions}
             statusLocked={viewType !== 'all'} allStatus="ALL"
             dates={[
-              { id: 'created', label: 'Requested Date Range', from: createdFrom, to: createdTo },
-              { id: 'valid', label: 'Valid Until Date Range', from: validFrom, to: validTo },
-              { id: 'distributed', label: 'Distributed Date Range', from: distributedFrom, to: distributedTo },
+              { id: 'created', label: tr('Requested Date Range'), from: createdFrom, to: createdTo },
+              { id: 'valid', label: tr('Valid Until Date Range'), from: validFrom, to: validTo },
+              { id: 'distributed', label: tr('Distributed Date Range'), from: distributedFrom, to: distributedTo },
             ]}
             onApply={draft => {
               if (viewType === 'all') setStatusFilter(draft.status);
@@ -563,7 +564,7 @@ export const UncontrolledCopiesView: React.FC<{
           <div className={cn("hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5", compactDesktopFilters && "md:!hidden")}>
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -574,7 +575,7 @@ export const UncontrolledCopiesView: React.FC<{
                     setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Copy #, document #, title, reason..."
+                  placeholder={tr("Copy #, document #, title, reason...")}
                   className="w-full h-9 pl-10 pr-9 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 bg-white"
                 />
                 {searchQuery && (
@@ -582,7 +583,7 @@ export const UncontrolledCopiesView: React.FC<{
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -591,7 +592,7 @@ export const UncontrolledCopiesView: React.FC<{
             </div>
             <div>
               <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-                Status
+                {tr("Status")}
               </label>
               <Select
                 value={
@@ -604,13 +605,13 @@ export const UncontrolledCopiesView: React.FC<{
                   setCurrentPage(1);
                 }}
                 options={statusOptions}
-                placeholder="All"
+                placeholder={tr("All")}
                 disabled={viewType !== "all"}
               />
             </div>
             <div>
               <DateRangePicker
-                label="Requested Date Range"
+                label={tr("Requested Date Range")}
                 startDate={createdFrom}
                 endDate={createdTo}
                 onStartDateChange={(val) => {
@@ -621,12 +622,12 @@ export const UncontrolledCopiesView: React.FC<{
                   setCreatedTo(val);
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
             </div>
             <div>
               <DateRangePicker
-                label="Valid Until Date Range"
+                label={tr("Valid Until Date Range")}
                 startDate={validFrom}
                 endDate={validTo}
                 onStartDateChange={(val) => {
@@ -637,12 +638,12 @@ export const UncontrolledCopiesView: React.FC<{
                   setValidTo(val);
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
             </div>
             <div>
               <DateRangePicker
-                label="Distributed Date Range"
+                label={tr("Distributed Date Range")}
                 startDate={distributedFrom}
                 endDate={distributedTo}
                 onStartDateChange={(val) => {
@@ -653,7 +654,7 @@ export const UncontrolledCopiesView: React.FC<{
                   setDistributedTo(val);
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
             </div>
             <div className="filter-actions flex items-end gap-2">
@@ -669,7 +670,7 @@ export const UncontrolledCopiesView: React.FC<{
             onApply={() => setIsFilterDrawerOpen(false)}
           >
             <FilterAccordionItem
-              label="Status"
+              label={tr("Status")}
               isExpanded={expandedSections.has("status")}
               onToggle={() => toggleSection("status")}
               disabled={viewType !== "all"}
@@ -701,7 +702,7 @@ export const UncontrolledCopiesView: React.FC<{
               </div>
             </FilterAccordionItem>
             <FilterAccordionItem
-              label="Requested Date Range"
+              label={tr("Requested Date Range")}
               isExpanded={expandedSections.has("dates")}
               onToggle={() => toggleSection("dates")}
             >
@@ -717,12 +718,12 @@ export const UncontrolledCopiesView: React.FC<{
                     setCreatedTo(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
             </FilterAccordionItem>
             <FilterAccordionItem
-              label="Distributed Date Range"
+              label={tr("Distributed Date Range")}
               isExpanded={expandedSections.has("distributedDates")}
               onToggle={() => toggleSection("distributedDates")}
             >
@@ -738,12 +739,12 @@ export const UncontrolledCopiesView: React.FC<{
                     setDistributedTo(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
             </FilterAccordionItem>
             <FilterAccordionItem
-              label="Valid Until Date Range"
+              label={tr("Valid Until Date Range")}
               isExpanded={expandedSections.has("validDates")}
               onToggle={() => toggleSection("validDates")}
             >
@@ -759,7 +760,7 @@ export const UncontrolledCopiesView: React.FC<{
                     setValidTo(val);
                     setCurrentPage(1);
                   }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
             </FilterAccordionItem>
@@ -779,8 +780,8 @@ export const UncontrolledCopiesView: React.FC<{
                 <TableEmptyState
                   title={
                     error
-                      ? "Unable to load uncontrolled copies"
-                      : "No Uncontrolled Copies Found"
+                      ? tr("Unable to load uncontrolled copies")
+                      : tr("No Uncontrolled Copies Found")
                   }
                   description={
                     error || "No uncontrolled copies match your filters."
@@ -839,7 +840,7 @@ export const UncontrolledCopiesView: React.FC<{
                 close();
               }}
             >
-              View Details
+              {tr("View Details")}
             </DropdownMenuItem>
             {openCopy.capabilities.canDistribute && (
               <DropdownMenuItem
@@ -849,7 +850,7 @@ export const UncontrolledCopiesView: React.FC<{
                   close();
                 }}
               >
-                Distribute
+                {tr("Distribute")}
               </DropdownMenuItem>
             )}
             {openCopy.capabilities.canPreview && (
@@ -860,7 +861,7 @@ export const UncontrolledCopiesView: React.FC<{
                   close();
                 }}
               >
-                Preview
+                {tr("Preview")}
               </DropdownMenuItem>
             )}
             {openCopy.capabilities.canDownload && (
@@ -871,7 +872,7 @@ export const UncontrolledCopiesView: React.FC<{
                   close();
                 }}
               >
-                Download
+                {tr("Download")}
               </DropdownMenuItem>
             )}
             {openCopy.capabilities.canCancel && (
@@ -882,7 +883,7 @@ export const UncontrolledCopiesView: React.FC<{
                   close();
                 }}
               >
-                Cancel Request
+                {tr("Cancel Request")}
               </DropdownMenuItem>
             )}
           </div>

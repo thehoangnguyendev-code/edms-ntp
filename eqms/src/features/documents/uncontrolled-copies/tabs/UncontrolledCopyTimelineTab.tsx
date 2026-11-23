@@ -5,6 +5,7 @@ import {
   type SignatureRecord,
 } from "@/features/documents/shared/components/SignatureFields";
 import type { UncontrolledCopy } from "@/services/api/uncontrolledCopy";
+import { tr } from "@/i18n";
 
 const ReadOnlyField: React.FC<{
   label: string;
@@ -73,12 +74,12 @@ export const UncontrolledCopyTimelineTab: React.FC<{
         <div className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-2 md:gap-4">
           {copy.rejectionReason && (
             <ReadOnlyField
-              label="Rejection Reason"
+              label={tr("Rejection Reason")}
               value={copy.rejectionReason}
             />
           )}
           {copy.cancelReason && (
-            <ReadOnlyField label="Cancel Reason" value={copy.cancelReason} />
+            <ReadOnlyField label={tr("Cancel Reason")} value={copy.cancelReason} />
           )}
         </div>
       )}

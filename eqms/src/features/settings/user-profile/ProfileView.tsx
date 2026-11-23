@@ -21,6 +21,7 @@ import { authApi } from '@/services/api/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAvatarFileWithinLimit, isSupportedAvatarFile, readFileAsDataUrl } from '@/utils/avatar';
+import { tr } from "@/i18n";
 
 /** Fixed, so the tab bar is handed the same list on every keystroke. */
 const PROFILE_TABS = [
@@ -96,7 +97,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     const hasChanges =
         hasProfileChanges || hasPasswordChanges;
     // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload).
-    const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(hasChanges, 'Personal Information', 'the previous page');
+    const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(hasChanges, tr('Personal Information'), tr('the previous page'));
 
     const loadProfile = async () => {
         try {
@@ -147,7 +148,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
 
     const handleAvatarChange = async (file: File) => {
         if (!isSupportedAvatarFile(file)) {
-            showToast({ type: 'error', title: 'Error', message: 'Only .png or .jpg files are accepted.' });
+            showToast({ type: 'error', title: 'Error', message: tr('Only .png or .jpg files are accepted.') });
             return;
         }
         if (!isAvatarFileWithinLimit(file)) {
@@ -192,7 +193,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     // Built once per change of what they are made from, not on every keystroke: the header re-publishes its breadcrumbs whenever it is handed a new list.
     const breadcrumbItems = useMemo(() => personalInformation(go), [go]);
     const pageTitle = useMemo(() => {
-        const base = resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides);
+        const base = tr(resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides));
         const displayName = authUser?.fullName || authUser?.username;
         return displayName ? `${base} - ${displayName}` : base;
     }, [navigationLabelOverrides, authUser?.fullName, authUser?.username]);
@@ -347,7 +348,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                             size="sm"
                             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
                         >
-                            Back
+                            {tr("Back")}
                         </Button>
                         <Button
                             size='sm'
@@ -356,7 +357,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                             disabled={!hasChanges}
                             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Save
+                            {tr("Save")}
                         </Button>
                     </div>
                 }
@@ -409,7 +410,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     onClick={handleCancel}
                     className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
                 >
-                    Cancel
+                    {tr("Cancel")}
                 </Button>
                 <Button
                     size='sm'
@@ -418,7 +419,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     disabled={!hasChanges}
                     className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Save
+                    {tr("Save")}
                 </Button>
             </div>
             {isNavigating && <FullPageLoading text="Loading..." />}

@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2, X } from "lucide-react";
 import { config } from "@/config";
 import { OnlyOfficeCapacityNotice } from "@/features/documents/shared/components/OnlyOfficeCapacityNotice";
 import { trainingError, trainingFilesApi, type AssessmentEditOpen } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 const CONTAINER_ID = "training-assessment-editor";
 
@@ -65,14 +66,14 @@ export function TrainingAssessmentEditorFrame({ activityId, request, onClose }: 
           <img src={`${config.api.baseURL}/branding/logo`} alt="" className="h-7 max-w-[200px] object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900">{request.purpose === "ANSWER_KEY" ? "Answer key" : "Exam template"}{title ? `: ${title}` : ""}</div>
-            <div className="text-xs text-slate-500">Press Save in the editor: the file becomes the {request.purpose === "ANSWER_KEY" ? "answer key" : "exam template"} of this training.</div>
+            <div className="text-xs text-slate-500">{tr("Press Save in the editor: the file becomes the")} {request.purpose === "ANSWER_KEY" ? tr("answer key") : tr("exam template")} {tr("of this training.")}</div>
           </div>
         </div>
-        <button type="button" onClick={onClose} className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900" aria-label="Close editor"><X className="h-4 w-4" /></button>
+        <button type="button" onClick={onClose} className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900" aria-label={tr("Close editor")}><X className="h-4 w-4" /></button>
       </div>
       <OnlyOfficeCapacityNotice kind="edit" className="mx-4 mt-2" />
       <div className="relative flex-1">
-        {state === "loading" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /><span className="text-sm">Opening the editor…</span></div>}
+        {state === "loading" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500"><Loader2 className="h-6 w-6 animate-spin" /><span className="text-sm">{tr("Opening the editor…")}</span></div>}
         {state === "error" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-slate-700"><AlertTriangle className="h-6 w-6 text-amber-400" /><span className="text-sm">{message}</span></div>}
         <div ref={host} className="h-full w-full" />
       </div>

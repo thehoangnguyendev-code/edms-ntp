@@ -25,6 +25,7 @@ import { SecurityAuthorizationTab } from "../tabs/SecurityAuthorizationTab";
 import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
 import type { ProfileTabId } from "../components/ProfileTabLayout";
 import { TOTAL_REQUIRED, countMissingRequired, tabsWithErrors } from "../requiredFields";
+import { tr, trFormat } from "@/i18n";
 
 type LookupOption = { label: string; value: string };
 type DictionaryBusinessUnit = { name: string; isActive?: boolean };
@@ -40,7 +41,7 @@ const toLookupOptions = (items?: Array<{ label?: string | null; value?: string |
 
 const normalizeApiMessage = (error: unknown): { title: string; message: string } => {
  if (typeof error !== "object" || error === null) {
-  return { title: "Create Failed", message: "Unable to create user." };
+  return { title: tr("Create Failed"), message: tr("Unable to create user.") };
  }
 
  const candidate = error as {
@@ -60,16 +61,16 @@ const normalizeApiMessage = (error: unknown): { title: string; message: string }
   "Unable to create user.";
 
  if (/employee id already exists/i.test(message)) {
-  return { title: "Employee ID Exists", message };
+  return { title: tr("Employee ID Exists"), message };
  }
  if (/username already exists/i.test(message)) {
-  return { title: "Username Exists", message };
+  return { title: tr("Username Exists"), message };
  }
  if (/email already exists/i.test(message)) {
-  return { title: "Email Exists", message };
+  return { title: tr("Email Exists"), message };
  }
 
- return { title: "Create Failed", message };
+ return { title: tr("Create Failed"), message };
 };
 
 const dedupeLookupOptions = (options: LookupOption[]) => {
@@ -168,7 +169,7 @@ export const AddUserView: React.FC = () => {
  }, []);
 
  const positionOptions = useMemo(() => {
-   const base = [{ label: "Select Position", value: "" }];
+   const base = [{ label: tr("Select Position"), value: "" }];
    if (!newUser.businessUnit || !newUser.department) return base;
 
    const filtered = positions
@@ -216,8 +217,8 @@ export const AddUserView: React.FC = () => {
     } else {
      showToast({
       type: "error",
-      title: "Unable to Load User Options",
-      message: "User lookup options could not be loaded. Please refresh before creating a user.",
+      title: tr("Unable to Load User Options"),
+      message: tr("User lookup options could not be loaded. Please refresh before creating a user."),
      });
     }
 
@@ -229,8 +230,8 @@ export const AddUserView: React.FC = () => {
     } else {
      showToast({
       type: "error",
-      title: "Unable to Load Access Profiles",
-      message: "Access Profiles could not be loaded. Please refresh before creating a user.",
+      title: tr("Unable to Load Access Profiles"),
+      message: tr("Access Profiles could not be loaded. Please refresh before creating a user."),
      });
     }
 
@@ -437,11 +438,11 @@ export const AddUserView: React.FC = () => {
 
  const handleSubmit = async () => {
  if (!validateForm()) {
- showToast({ type: "error", title: "Error", message: "Please fix all errors before submitting" });
+ showToast({ type: "error", title: "Error", message: tr("Please fix all errors before submitting") });
  return;
  }
  if (hasBlockingSodViolation) {
- showToast({ type: "error", title: "Segregation of Duties Conflict", message: "Resolve the blocked Access Profile conflict before creating this user." });
+ showToast({ type: "error", title: tr("Segregation of Duties Conflict"), message: "Resolve the blocked Access Profile conflict before creating this user." });
  return;
  }
 
@@ -504,7 +505,7 @@ export const AddUserView: React.FC = () => {
   if (qualificationSaveFailures > 0) {
    showToast({
     type: "error",
-    title: "Some Qualification Records Failed",
+    title: tr("Some Qualification Records Failed"),
     message: `${qualificationSaveFailures} education/certification entr${qualificationSaveFailures === 1 ? "y" : "ies"} could not be saved. Add ${qualificationSaveFailures === 1 ? "it" : "them"} from the user's profile.`,
    });
   }
@@ -517,7 +518,7 @@ export const AddUserView: React.FC = () => {
       newErrors[detail.field] = detail.message;
      });
      setFormErrors((prev) => ({ ...prev, ...newErrors }));
-     showToast({ type: "error", title: "Validation Failed", message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: tr("Validation Failed"), message: "Please fix the highlighted fields" });
      return;
     } else if (body.code === "BAD_REQUEST") {
      const msg = body.message || "Bad Request";
@@ -528,9 +529,9 @@ export const AddUserView: React.FC = () => {
      } else if (/email already exists/i.test(msg)) {
       setFormErrors((prev) => ({ ...prev, email: msg }));
      } else {
-      setApiErrorModal({ isOpen: true, title: "Create Failed", message: msg });
+      setApiErrorModal({ isOpen: true, title: tr("Create Failed"), message: msg });
      }
-     showToast({ type: "error", title: "Validation Failed", message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: tr("Validation Failed"), message: "Please fix the highlighted fields" });
      return;
     }
    }
@@ -675,13 +676,13 @@ export const AddUserView: React.FC = () => {
  <div className="flex w-full flex-1 flex-col gap-4 md:gap-6">
   {/* Header */}
   <PageHeader
-   title="Add New User"
+   title={tr("Add New User")}
    breadcrumbItems={addUserBreadcrumb(navigate)}
    actions={
     <>
-     <Button onClick={handleCancel} variant="outline-emerald" size="sm" className="whitespace-nowrap gap-2">Cancel</Button>
+     <Button onClick={handleCancel} variant="outline-emerald" size="sm" className="whitespace-nowrap gap-2">{tr("Cancel")}</Button>
      <Button onClick={handleSubmit} variant="default" size="sm" className="whitespace-nowrap gap-2" disabled={isSubmitting || isLoading || hasBlockingSodViolation || checkingSod}>
-      Create User
+      {tr("Create User")}
      </Button>
     </>
    }
@@ -691,9 +692,9 @@ export const AddUserView: React.FC = () => {
    summary={
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
      <div className="flex items-baseline justify-between gap-2">
-      <h2 className="text-sm font-semibold text-slate-900">Required Fields</h2>
+      <h2 className="text-sm font-semibold text-slate-900">{tr("Required Fields")}</h2>
       <span className="text-xs text-slate-600">
-       <span className="font-semibold text-slate-900">{doneTotal}</span> of {TOTAL_REQUIRED} done
+       {trFormat("{done} of {total} done", { done: doneTotal, total: TOTAL_REQUIRED })}
       </span>
      </div>
      <Progress value={doneTotal} max={TOTAL_REQUIRED} size="sm" className="mt-3" />
@@ -750,7 +751,7 @@ export const AddUserView: React.FC = () => {
    <AccountStatusTab
     mode="create"
     status={newUser.status}
-    statusOptions={[{ label: "Select Account Status", value: "" }, ...lookupStatuses]}
+    statusOptions={[{ label: tr("Select Account Status"), value: "" }, ...lookupStatuses]}
     onStatusChange={(value) => { setNewUser({ ...newUser, status: value as any }); setFormErrors({ ...formErrors, status: "" }); }}
     statusError={formErrors.status}
     homePage={newUser.homePage || "DASHBOARD"}
@@ -777,10 +778,10 @@ export const AddUserView: React.FC = () => {
  onConfirm={handleConfirmCancel}
  mode="discard"
  currentPageTitle="Add User"
- title="Cancel User Creation?"
+ title={tr("Cancel User Creation?")}
  primaryActionLabel="Cancel"
  secondaryActionLabel="Continue editing"
- description="Are you sure you want to cancel? All entered information will be lost."
+ description={tr("Are you sure you want to cancel? All entered information will be lost.")}
  />
 
  <CredentialsModal

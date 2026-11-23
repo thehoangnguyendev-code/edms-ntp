@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import type { WorkflowActionPolicyPreviewResponse } from "../types";
 import { IconCheck } from "@tabler/icons-react";
+import { tr, trFormat } from "@/i18n";
 
 interface WorkflowPolicyDiffModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={onConfirm}
-      title="Preview Changes"
+      title={tr("Preview Changes")}
       description={isPreviewValid
         ? "Review the changes before saving. This action cannot be undone."
         : "The server rejected this configuration. Correct the validation error before saving."}
@@ -45,14 +46,14 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
           {!isPreviewValid && (
             <WarningBanner
               variant="error"
-              description="The preview is invalid. Confirmation is disabled until the policy is corrected."
+              description={tr("The preview is invalid. Confirmation is disabled until the policy is corrected.")}
             />
           )}
           {/* Changes list */}
           {hasChanges ? (
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                Changes
+                {tr("Changes")}
               </p>
               <div className="flex flex-col gap-2">
                 {preview.changes.map((change, i) => (
@@ -79,7 +80,7 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
           ) : (
             <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
               <IconCheck className="h-4 w-4 text-emerald-500" />
-              No changes detected.
+              {tr("No changes detected.")}
             </div>
           )}
 
@@ -87,7 +88,7 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
           {hasWarnings && (
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                Warnings
+                {tr("Warnings")}
               </p>
               <div className="flex flex-col gap-2">
                 {preview.warnings.map((w, i) => (
@@ -105,10 +106,10 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
           {/* Would affect */}
           {preview.wouldAffect && (
             <div className="text-xs text-slate-500 border-t border-slate-100 pt-3">
-              Affects:{" "}
+                {tr("Affects:")}{" "}
               <span className="text-slate-700">
                 {preview.wouldAffect.workflowKey} / {preview.wouldAffect.actionCode} / {preview.wouldAffect.fromStatus}
-                {preview.wouldAffect.documentTypeId ? ` (doc type: ${preview.wouldAffect.documentTypeId})` : " (global)"}
+                {preview.wouldAffect.documentTypeId ? ` (${tr("doc type:")} ${preview.wouldAffect.documentTypeId})` : ` (${tr("global")})`}
               </span>
             </div>
           )}

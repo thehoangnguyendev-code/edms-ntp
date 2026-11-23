@@ -44,6 +44,7 @@ import {
   notificationAdministrationApi,
   type MessageEvent,
 } from "@/services/api/notificationAdministration";
+import { tr } from "@/i18n";
 
 type Field = "subject" | "content";
 
@@ -265,17 +266,17 @@ export const EmailMessageEditView: React.FC = () => {
     return (
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Email Message Details"
+          title={tr("Email Message Details")}
           breadcrumbItems={breadcrumb(navigate, true)}
           actions={
             <Button size="sm" variant="outline-emerald" onClick={back}>
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <WarningBanner
           variant="error"
-          title="Unable to open this email message."
+          title={tr("Unable to open this email message.")}
           description={error}
         />
       </div>
@@ -286,12 +287,12 @@ export const EmailMessageEditView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title={canManage ? "Edit Email Message" : "Email Message Details"}
+        title={canManage ? tr("Edit Email Message") : tr("Email Message Details")}
         breadcrumbItems={breadcrumb(navigate, !canManage)}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline-emerald" onClick={back}>
-              Back
+              {tr("Back")}
             </Button>
             {canManage ? (
               <>
@@ -305,7 +306,7 @@ export const EmailMessageEditView: React.FC = () => {
                     setActive(saved.active);
                   }}
                 >
-                  Discard Changes
+                  {tr("Discard Changes")}
                 </Button>
                 <Button
                   size="sm"
@@ -336,7 +337,7 @@ export const EmailMessageEditView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => void load()}
             >
-              Reload
+              {tr("Reload")}
             </Button>
           </div>
         </WarningBanner>
@@ -346,7 +347,7 @@ export const EmailMessageEditView: React.FC = () => {
         <WarningBanner
           variant="info"
           title={`The notification itself is edited as "${messageEvent.name}".`}
-          description="This message is now used only for an e-mail to an address outside the system, and as the wording the notification started from. Changing it does not change the notification, and switching it off does not stop it."
+          description={tr("This message is now used only for an e-mail to an address outside the system, and as the wording the notification started from. Changing it does not change the notification, and switching it off does not stop it.")}
         >
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -356,7 +357,7 @@ export const EmailMessageEditView: React.FC = () => {
                 go(ROUTES.SETTINGS.NOTIFICATIONS_EVENT(messageEvent.code))
               }
             >
-              Edit In-App Notification
+              {tr("Edit In-App Notification")}
             </Button>
             <Button
               size="sm"
@@ -365,7 +366,7 @@ export const EmailMessageEditView: React.FC = () => {
                 go(ROUTES.SETTINGS.NOTIFICATIONS_EVENT_EMAIL(messageEvent.code))
               }
             >
-              Edit Email Notification
+              {tr("Edit Email Notification")}
             </Button>
           </div>
         </WarningBanner>
@@ -374,21 +375,21 @@ export const EmailMessageEditView: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-4 md:gap-5">
           <FormSection
-            title="Email Message Information"
+            title={tr("Email Message Information")}
             icon={<Mail className="h-4 w-4" />}
           >
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField label="Message">
+                <FormField label={tr("Message")}>
                   <ReadOnlyField value={template.name} />
                 </FormField>
-                <FormField label="Type">
+                <FormField label={tr("Type")}>
                   <ReadOnlyField value={template.type} />
                 </FormField>
-                <FormField label="Sent">
+                <FormField label={tr("Sent")}>
                   <ReadOnlyField value={`${template.usageCount} time(s)`} />
                 </FormField>
-                <FormField label="Updated">
+                <FormField label={tr("Updated")}>
                   <ReadOnlyField
                     value={
                       template.updatedDate
@@ -398,7 +399,7 @@ export const EmailMessageEditView: React.FC = () => {
                   />
                 </FormField>
                 {template.description ? (
-                  <FormField label="Description" className="md:col-span-2">
+                  <FormField label={tr("Description")} className="md:col-span-2">
                     <ReadOnlyField
                       value={template.description}
                       className="h-auto min-h-9 py-2"
@@ -409,17 +410,17 @@ export const EmailMessageEditView: React.FC = () => {
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                 <div className="min-w-0">
                   <span className="text-xs font-medium text-slate-700 sm:text-sm">
-                    Active
+                    {tr("Active")}
                   </span>
                   <p className="mt-0.5 text-2xs text-slate-500 sm:text-xs">
-                    When turned off, the system does not send this email.
+                    {tr("When turned off, the system does not send this email.")}
                   </p>
                 </div>
                 <Switch
                   size="sm"
                   checked={active}
                   disabled={!canManage}
-                  aria-label="Active"
+                  aria-label={tr("Active")}
                   onChange={setActive}
                 />
               </div>
@@ -427,12 +428,12 @@ export const EmailMessageEditView: React.FC = () => {
           </FormSection>
 
           <FormSection
-            title="Email Wording"
+            title={tr("Email Wording")}
             icon={<Pencil className="h-4 w-4" />}
-            description="The logo, colour and footer come from the shared Email Design."
+            description={tr("The logo, colour and footer come from the shared Email Design.")}
           >
             <div className="space-y-4">
-              <FormField label="Email subject" htmlFor="em-subject">
+              <FormField label={tr("Email subject")} htmlFor="em-subject">
                 <TokenTextField
                   id="em-subject"
                   ref={subjectRef}
@@ -444,7 +445,7 @@ export const EmailMessageEditView: React.FC = () => {
                   onFocus={() => setActiveField("subject")}
                 />
               </FormField>
-              <FormField label="Email message">
+              <FormField label={tr("Email message")}>
                 <RichTextEditor
                   ref={contentRef}
                   ariaLabel="Email message"
@@ -455,7 +456,7 @@ export const EmailMessageEditView: React.FC = () => {
                     editorPristine.current = false;
                     setActiveField("content");
                   }}
-                  placeholder="Write the message of the email…"
+                  placeholder={tr("Write the message of the email…")}
                 />
               </FormField>
             </div>
@@ -464,11 +465,11 @@ export const EmailMessageEditView: React.FC = () => {
 
         <div className="flex min-w-0 flex-col gap-4 md:gap-5">
           <FormSection
-            title="Preview"
+            title={tr("Preview")}
             icon={<Eye className="h-4 w-4" />}
             headerRight={<DeviceSwitch mobile={mobile} onChange={setMobile} />}
           >
-            <div aria-label="Preview">
+            <div aria-label={tr("Preview")}>
               <EmailPreviewFrame html={previewHtml} mobile={mobile} />
             </div>
           </FormSection>
@@ -486,7 +487,7 @@ export const EmailMessageEditView: React.FC = () => {
               ),
           )}
           onInsert={insert}
-          target={active_ === "subject" ? "Email subject" : "Email message"}
+          target={active_ === "subject" ? tr("Email subject") : tr("Email message")}
         />
       ) : null}
 

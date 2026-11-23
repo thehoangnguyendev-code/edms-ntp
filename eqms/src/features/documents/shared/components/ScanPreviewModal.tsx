@@ -3,6 +3,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { DocumentPdfViewer } from "./DocumentPdfViewer";
+import { tr } from "@/i18n";
 
 interface ScanPreviewModalProps {
   isOpen: boolean;
@@ -83,7 +84,7 @@ export const ScanPreviewModal: React.FC<ScanPreviewModalProps> = ({ isOpen, onCl
         )}
         {!loading && !error && kind === "other" && (
           <div className="flex h-full min-h-[240px] items-center justify-center px-4 text-center text-sm text-slate-600">
-            This file type cannot be previewed.
+            {tr("This file type cannot be previewed.")}
           </div>
         )}
       </div>

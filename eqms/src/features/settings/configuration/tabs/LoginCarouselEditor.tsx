@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/toast/Toast';
 import { LOGIN_CAROUSEL_LIMITS, type LoginCarouselConfig, type LoginCarouselSlide } from '@/services/api/branding';
 import { readSlideImage, SLIDE_MAX_UPLOAD } from './readSlideImage';
 import { LoginScreenPreview } from './LoginScreenPreview';
+import { tr, trFormat } from "@/i18n";
 
 interface LoginCarouselEditorProps {
   value?: LoginCarouselConfig | null;
@@ -50,7 +51,7 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div>
-          <label htmlFor={`login-slide-title-${id}`} className="mb-1 block text-xs font-medium text-slate-700">Title</label>
+          <label htmlFor={`login-slide-title-${id}`} className="mb-1 block text-xs font-medium text-slate-700">{tr("Title")}</label>
           <input
             id={`login-slide-title-${id}`}
             type="text"
@@ -58,11 +59,11 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
             maxLength={maxTitle}
             onChange={(e) => onPatch({ title: e.target.value.replace(/[\r\n\t]+/g, ' ').slice(0, maxTitle) })}
             className={`${fieldClass} h-9`}
-            placeholder="Keep your quality processes under control."
+            placeholder={tr("Keep your quality processes under control.")}
           />
         </div>
         <div>
-          <label htmlFor={`login-slide-subtitle-${id}`} className="mb-1 block text-xs font-medium text-slate-700">Subtitle</label>
+          <label htmlFor={`login-slide-subtitle-${id}`} className="mb-1 block text-xs font-medium text-slate-700">{tr("Subtitle")}</label>
           <textarea
             id={`login-slide-subtitle-${id}`}
             value={slide.subtitle}
@@ -70,20 +71,20 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
             rows={2}
             onChange={(e) => onPatch({ subtitle: e.target.value.replace(/[\r\n\t]+/g, ' ').slice(0, maxSubtitle) })}
             className={`${fieldClass} resize-none py-2`}
-            placeholder="One short sentence under the title."
+            placeholder={tr("One short sentence under the title.")}
           />
           <p className="mt-0.5 text-right text-2xs tabular-nums text-slate-400">{slide.title.length}/{maxTitle} · {slide.subtitle.length}/{maxSubtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline-emerald" disabled={busy} onClick={onReplace}>
             <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Change picture
+            {tr("Change picture")}
           </Button>
           <Button type="button" size="sm" variant="ghost" aria-label={`Move slide ${index + 1} up`} disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" aria-hidden="true" /></Button>
           <Button type="button" size="sm" variant="ghost" aria-label={`Move slide ${index + 1} down`} disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" aria-hidden="true" /></Button>
           <Button type="button" size="sm" variant="ghost" className="ml-auto text-red-600 hover:text-red-700" onClick={onRemove}>
             <Trash2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Remove
+            {tr("Remove")}
           </Button>
         </div>
       </div>
@@ -91,7 +92,7 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
         <button
           type="button"
           aria-label={`Drag slide ${index + 1} to change its place`}
-          title="Drag to change the order"
+          title={tr("Drag to change the order")}
           onPointerDown={(event) => controls.start(event)}
           className="absolute right-2 top-2 flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing sm:static sm:self-start"
         >
@@ -143,18 +144,18 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
   const pick = async (file: File | undefined, apply: (image: string) => void) => {
     if (!file) return;
     if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
-      showToast({ type: 'error', title: 'Invalid file', message: 'Choose a PNG, JPG or WebP picture.' });
+      showToast({ type: 'error', title: tr('Invalid file'), message: 'Choose a PNG, JPG or WebP picture.' });
       return;
     }
     if (file.size > SLIDE_MAX_UPLOAD) {
-      showToast({ type: 'error', title: 'File too large', message: `The picture must be smaller than ${Math.round(SLIDE_MAX_UPLOAD / 1024 / 1024)} MB.` });
+      showToast({ type: 'error', title: tr('File too large'), message: `The picture must be smaller than ${Math.round(SLIDE_MAX_UPLOAD / 1024 / 1024)} MB.` });
       return;
     }
     setBusy(true);
     try {
       apply(await readSlideImage(file));
     } catch {
-      showToast({ type: 'error', title: 'Picture not used', message: 'The picture could not be read or made small enough. Try another one.' });
+      showToast({ type: 'error', title: tr('Picture not used'), message: 'The picture could not be read or made small enough. Try another one.' });
     } finally {
       setBusy(false);
     }
@@ -165,14 +166,14 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
       <div className="min-w-0">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-800">Right-hand panel slides</p>
+            <p className="text-sm font-semibold text-slate-800">{tr("Right-hand panel slides")}</p>
             <p className="mt-0.5 text-xs text-slate-500">
-              Pictures with a title and a subtitle that change by themselves on the sign-in screens. Up to {maxSlides} slides; PNG, JPG or WebP, reduced to fit automatically. With no slides the screen shows the product preview.
+              {trFormat("Pictures with a title and a subtitle that change by themselves on the sign-in screens. Up to {count} slides; PNG, JPG or WebP, reduced to fit automatically. With no slides the screen shows the product preview.", { count: maxSlides })}
             </p>
           </div>
           <Button type="button" size="sm" variant="outline-emerald" disabled={busy || slides.length >= maxSlides} onClick={() => addInput.current?.click()}>
             <ImagePlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Add slide
+            {tr("Add slide")}
           </Button>
         </div>
 
@@ -205,8 +206,8 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
 
         <div className="mt-4 max-w-md">
           <div className="flex items-center justify-between">
-            <label htmlFor="login-carousel-seconds" className="text-xs sm:text-sm font-medium text-slate-700">Time per slide</label>
-            <span className="text-sm font-medium tabular-nums text-slate-800">{seconds} s</span>
+            <label htmlFor="login-carousel-seconds" className="text-xs sm:text-sm font-medium text-slate-700">{tr("Time per slide")}</label>
+            <span className="text-sm font-medium tabular-nums text-slate-800">{seconds} {tr("s")}</span>
           </div>
           <input
             id="login-carousel-seconds"
@@ -224,7 +225,7 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
 
         {slides.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
-            No slides yet. Use “Add slide” to choose the first picture.
+            {tr("No slides yet. Use “Add slide” to choose the first picture.")}
           </div>
         ) : (
           <Reorder.Group as="ol" axis="y" values={ids.current} onReorder={reorder} className="mt-4 space-y-3">
@@ -248,9 +249,9 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
 
       <div className="min-w-0">
         <div className="xl:sticky xl:top-4">
-          <p className="mb-2 text-sm font-semibold text-slate-800">Preview</p>
+          <p className="mb-2 text-sm font-semibold text-slate-800">{tr("Preview")}</p>
           <LoginScreenPreview carousel={value} logo={logo} />
-          <p className="mt-2 text-xs text-slate-500">The sign-in screen as it is with the slides above, before you save. The slides move at the speed you set.</p>
+          <p className="mt-2 text-xs text-slate-500">{tr("The sign-in screen as it is with the slides above, before you save. The slides move at the speed you set.")}</p>
         </div>
       </div>
     </div>

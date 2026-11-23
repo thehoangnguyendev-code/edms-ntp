@@ -35,6 +35,7 @@ import {
 import { MESSAGE_MAX, TITLE_MAX } from "./types";
 import { IconEye, IconSpeakerphone } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 /** The label, control and hint/error used by the other forms: 12/14px label, 14px control, 12px hint. */
 const CONTROL =
@@ -87,7 +88,7 @@ const Field: React.FC<{
 };
 
 const SEVERITY_OPTIONS: { label: string; value: AnnouncementSeverity }[] = [
-  { label: "Information", value: "INFO" },
+  { label: tr("Information"), value: "INFO" },
   { label: "Warning", value: "WARNING" },
   { label: "Critical", value: "CRITICAL" },
 ];
@@ -187,7 +188,7 @@ export const AnnouncementEditorView: React.FC = () => {
       else await announcementApi.create(payload);
       showToast({
         type: "success",
-        title: "Announcement saved",
+        title: tr("Announcement saved"),
         message: values.enabled
           ? "It is shown to users during its period."
           : "It is saved switched off.",
@@ -198,7 +199,7 @@ export const AnnouncementEditorView: React.FC = () => {
         (error as { response?: { status?: number } })?.response?.status === 409;
       showToast({
         type: "error",
-        title: "Unable to save",
+        title: tr("Unable to save"),
         message: conflict
           ? "Someone else changed this announcement. Reload it and make your change again."
           : getApiErrorMessage(error, "The announcement could not be saved."),
@@ -212,7 +213,7 @@ export const AnnouncementEditorView: React.FC = () => {
   if (loadError) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Edit Announcement" breadcrumbItems={breadcrumbs} />
+        <PageHeader title={tr("Edit Announcement")} breadcrumbItems={breadcrumbs} />
         <WarningBanner variant="error" description={loadError} />
       </div>
     );
@@ -230,7 +231,7 @@ export const AnnouncementEditorView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title={creating ? "New Announcement" : "Edit Announcement"}
+        title={creating ? tr("New Announcement") : tr("Edit Announcement")}
         breadcrumbItems={breadcrumbs}
         actions={
           <div className="flex gap-2">
@@ -240,7 +241,7 @@ export const AnnouncementEditorView: React.FC = () => {
               onClick={back}
               disabled={saving}
             >
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button
               size="sm"
@@ -258,17 +259,17 @@ export const AnnouncementEditorView: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-2">
         <div className="min-w-0 self-start">
           <FormSection
-            title="Announcement Information"
+            title={tr("Announcement Information")}
             icon={<IconSpeakerphone className="h-4 w-4" />}
           >
             <div className="space-y-4">
               {number && (
                 <p className="text-xs text-slate-500">
-                  Announcement Number: <span className="font-mono text-slate-700">{number}</span>
+                  {tr("Announcement Number:")} <span className="font-mono text-slate-700">{number}</span>
                 </p>
               )}
               <Field
-                label="Title"
+                label={tr("Title")}
                 required
                 error={errors.title}
                 hint={`${values.title.length}/${TITLE_MAX}`}
@@ -280,13 +281,13 @@ export const AnnouncementEditorView: React.FC = () => {
                     value={values.title}
                     maxLength={TITLE_MAX}
                     onChange={(event) => set("title", event.target.value)}
-                    placeholder="Planned maintenance tonight"
+                    placeholder={tr("Planned maintenance tonight")}
                     className={cn(CONTROL, "h-9", controlTone(!!errors.title))}
                   />
                 )}
               </Field>
               <Field
-                label="Message"
+                label={tr("Message")}
                 required
                 error={errors.message}
                 hint={`${values.message.length}/${MESSAGE_MAX}. Plain text; line breaks are kept.`}
@@ -298,7 +299,7 @@ export const AnnouncementEditorView: React.FC = () => {
                     maxLength={MESSAGE_MAX}
                     value={values.message}
                     onChange={(event) => set("message", event.target.value)}
-                    placeholder="The system will be unavailable from 22:00 to 23:30. Please save your work before then."
+                    placeholder={tr("The system will be unavailable from 22:00 to 23:30. Please save your work before then.")}
                     className={cn(
                       CONTROL,
                       "resize-none py-2",
@@ -308,7 +309,7 @@ export const AnnouncementEditorView: React.FC = () => {
                 )}
               </Field>
               <Select
-                label="Severity"
+                label={tr("Severity")}
                 value={values.severity}
                 onChange={(value: AnnouncementSeverity) =>
                   set("severity", value)
@@ -318,14 +319,14 @@ export const AnnouncementEditorView: React.FC = () => {
               <div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <DateTimePicker
-                    label="Starts"
+                    label={tr("Starts")}
                     showTime
                     value={values.startsAt}
                     onChange={(value) => set("startsAt", value)}
                     error={errors.startsAt}
                   />
                   <DateTimePicker
-                    label="Ends"
+                    label={tr("Ends")}
                     showTime
                     value={values.endsAt}
                     onChange={(value) => set("endsAt", value)}
@@ -333,17 +334,16 @@ export const AnnouncementEditorView: React.FC = () => {
                   />
                 </div>
                 <p className="mt-1.5 text-2xs text-slate-500 sm:text-xs">
-                  Times are in your browser's time zone.
+                  {tr("Times are in your browser's time zone.")}
                 </p>
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                 <div className="min-w-0">
                   <span className="text-xs font-medium text-slate-700 sm:text-sm">
-                    Switched on
+                    {tr("Switched on")}
                   </span>
                   <p className="mt-0.5 text-2xs text-slate-500 sm:text-xs">
-                    When turned off, notifications are saved but not displayed
-                    to the user.
+                    {tr("When turned off, notifications are saved but not displayed to the user.")}
                   </p>
                 </div>
                 <Switch
@@ -358,7 +358,7 @@ export const AnnouncementEditorView: React.FC = () => {
 
         <div className="min-w-0 self-start">
           <FormSection
-            title="Preview"
+            title={tr("Preview")}
             icon={<IconEye className="h-4 w-4" />}
           >
             <div
@@ -380,7 +380,7 @@ export const AnnouncementEditorView: React.FC = () => {
                 variant="outline-emerald"
                 onClick={() => setPreviewOpen(true)}
               >
-                Preview full screen
+                {tr("Preview full screen")}
               </Button>
             </div>
           </FormSection>

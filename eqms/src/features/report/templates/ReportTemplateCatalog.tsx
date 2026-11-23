@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -166,19 +167,19 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
           ? [
               { value: "DISABLED", label: "Disabled" },
               { value: "DRAFT", label: "Draft" },
-              { value: "PENDING_APPROVAL", label: "Pending Approval" },
+              { value: "PENDING_APPROVAL", label: tr("Pending Approval") },
             ]
           : []),
       ],
     },
     {
       id: "sourceCode",
-      label: "Report Type",
+      label: tr("Report Type"),
       options: [{ value: "", label: "All" }, ...(result?.sources ?? [])],
     },
     {
       id: "format",
-      label: "Output Format",
+      label: tr("Output Format"),
       options: [
         { value: "", label: "All" },
         ...["PDF", "XLSX", "CSV"].map((value) => ({ value, label: value })),
@@ -186,7 +187,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "gmp",
-      label: "Used for GMP Decisions",
+      label: tr("Used for GMP Decisions"),
       options: [
         { value: "", label: "All" },
         { value: "YES", label: "Yes" },
@@ -195,7 +196,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "orientation",
-      label: "Page Orientation",
+      label: tr("Page Orientation"),
       options: [
         { value: "", label: "All" },
         { value: "PORTRAIT", label: "Portrait" },
@@ -216,7 +217,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "code",
-      header: "Report Template Number",
+      header: tr("Report Template Number"),
       sort: sortable("code"),
       cell: (row) => (
         <button
@@ -230,13 +231,13 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "name",
-      header: "Report Template Name",
+      header: tr("Report Template Name"),
       sort: sortable("displayName"),
       cell: (row) => <div className="min-w-48 whitespace-normal">{row.displayName}</div>,
     },
     {
       id: "gmp",
-      header: "Used for GMP Decisions",
+      header: tr("Used for GMP Decisions"),
       sort: sortable("gmpUse"),
       cell: (row) => (
         <Badge semantic={row.gmpUse ? "success" : "neutral"}>{row.gmpUse ? "GMP" : "Not GMP"}</Badge>
@@ -244,7 +245,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "source",
-      header: "Report Type",
+      header: tr("Report Type"),
       sort: sortable("sourceCode"),
       cell: (row) =>
         result?.sources?.find((source) => source.value === row.sourceCode)
@@ -252,7 +253,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "category",
-      header: "Template Category",
+      header: tr("Template Category"),
       sort: sortable("category"),
       cell: (row) => humanize(row.category),
     },
@@ -267,11 +268,11 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       ? [
         {
           id: "inProgress",
-          header: "Revision In Progress",
+          header: tr("Revision In Progress"),
           cell: (row: ReportTemplate) =>
             row.openRevision != null ? (
               <span className="whitespace-nowrap">
-                {reportRevisionLabel(row.openRevision, row.openRevisionStatus ?? "DRAFT")} · {row.openRevisionStatus === "PENDING_APPROVAL" ? "Pending Approval" : "Draft"}
+                {reportRevisionLabel(row.openRevision, row.openRevisionStatus ?? "DRAFT")} · {row.openRevisionStatus === "PENDING_APPROVAL" ? tr("Pending Approval") : "Draft"}
               </span>
             ) : (
               "—"
@@ -281,12 +282,12 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       : []),
     {
       id: "formats",
-      header: "Output Formats",
+      header: tr("Output Formats"),
       cell: (row) => row.allowedFormats.join(" · "),
     },
     {
       id: "orientation",
-      header: "Page Orientation",
+      header: tr("Page Orientation"),
       cell: (row) =>
         row.layout?.orientation === "PORTRAIT" ? "Portrait" : "Landscape",
     },
@@ -302,7 +303,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "updated",
-      header: "Last Updated",
+      header: tr("Last Updated"),
       sort: sortable("updatedAt"),
       cell: (row) => (
         <span className="whitespace-nowrap">{date(row.updatedAt)}</span>
@@ -337,7 +338,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                       toggle(row.code, e);
                     }}
                     className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                    aria-label="More actions"
+                    aria-label={tr("More actions")}
                   >
                     <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   </button>
@@ -394,7 +395,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
             dates={[
               {
                 id: "updated",
-                label: "Last Updated Range",
+                label: tr("Last Updated Range"),
                 from: updated.from,
                 to: updated.to,
                 onChange: (from, to) => {
@@ -424,14 +425,14 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 <TableEmptyState
                   title={
                     error
-                      ? "Unable to load report templates"
-                      : "No Report Templates Found"
+                      ? tr("Unable to load report templates")
+                      : tr("No Report Templates Found")
                   }
                   description={
                     error ||
                     (inAdministration
-                      ? "No templates match these filters."
-                      : "No templates are available for your active roles and filters.")
+                      ? tr("No templates match these filters.")
+                      : tr("No templates are available for your active roles and filters."))
                   }
                 />
               }

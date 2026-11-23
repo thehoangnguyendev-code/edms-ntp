@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { useMaintenance } from "./MaintenanceStatusProvider";
 import { formatCountdown } from "./maintenanceStatus";
+import { tr } from "@/i18n";
 
 /**
  * The countdown in the header while a maintenance notice runs (SDS 11.5.4). It stays after the notice dialog is closed, is red and
@@ -30,7 +31,7 @@ export const MaintenanceCountdownChip: React.FC = () => {
         className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
       >
         <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>Maintenance</span>
+        <span>{tr("Maintenance")}</span>
         <span className="tabular-nums">{formatCountdown(remaining)}</span>
       </motion.button>
       {announcement && (

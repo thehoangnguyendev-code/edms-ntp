@@ -3,6 +3,7 @@
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import type { Reviewer } from "../tabs/subtabs";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 export const ReadOnlyReviewersTable: React.FC<{
   reviewers: Reviewer[];
@@ -11,7 +12,7 @@ export const ReadOnlyReviewersTable: React.FC<{
   if (reviewRequirement === "NONE") {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-        Review is not required for this Document Type and Sub-Type.
+        {tr("Review is not required for this Document Type and Sub-Type.")}
       </div>
     );
   }
@@ -22,22 +23,22 @@ export const ReadOnlyReviewersTable: React.FC<{
           <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
             <TableMarkup.Row>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell16}>
-                No.
+                {tr("No.")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                User
+                {tr("User")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                Email
+                {tr("Email")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                Position
+                {tr("Position")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                Department
+                {tr("Department")}
               </TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                Sequence
+                {tr("Sequence")}
               </TableMarkup.HeaderCell>
             </TableMarkup.Row>
           </TableMarkup.Head>
@@ -45,7 +46,7 @@ export const ReadOnlyReviewersTable: React.FC<{
             {reviewers.length === 0 ? (
               <TableMarkup.Row>
                 <TableMarkup.Cell colSpan={6} className="p-0">
-                  <TableEmptyState title="No Reviewer assigned yet" />
+                  <TableEmptyState title={tr("No Reviewer assigned yet")} />
                 </TableMarkup.Cell>
               </TableMarkup.Row>
             ) : (

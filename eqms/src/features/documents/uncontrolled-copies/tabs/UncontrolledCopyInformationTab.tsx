@@ -2,6 +2,7 @@ import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { formatDateTime } from "@/utils/format";
 import { closeReasonLabel, type UncontrolledCopy } from "@/services/api/uncontrolledCopy";
+import { tr } from "@/i18n";
 
 const ReadOnlyField: React.FC<{
   label: string;
@@ -25,45 +26,44 @@ export const UncontrolledCopyInformationTab: React.FC<{
   <div className="space-y-4 md:space-y-5">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
       <ReadOnlyField
-        label="Document Number"
+        label={tr("Document Number")}
         value={copy.uncontrolledCopyNumber}
       />
-      <ReadOnlyField label="Status" value={copy.status} />
-      {copy.closeReason && <ReadOnlyField label="Closed Because" value={closeReasonLabel(copy.closeReason)} />}
+      <ReadOnlyField label={tr("Status")} value={copy.status} />
+      {copy.closeReason && <ReadOnlyField label={tr("Closed Because")} value={closeReasonLabel(copy.closeReason)} />}
       <ReadOnlyField
-        label="Document"
+        label={tr("Document")}
         value={`${copy.documentNumber}${copy.documentTitle ? ` - ${copy.documentTitle}` : ""}`}
       />
       <ReadOnlyField
-        label="Document Revision"
+        label={tr("Document Revision")}
         value={
           [copy.documentTitle, copy.revisionNumber]
             .filter(Boolean)
             .join("_") || copy.revisionNumber
         }
       />
-      <ReadOnlyField label="Reason / Purpose" value={copy.reason} />
+      <ReadOnlyField label={tr("Reason / Purpose")} value={copy.reason} />
       <ReadOnlyField
-        label="Watermark applied"
+        label={tr("Watermark applied")}
         value={copy.markingApplied ? "Yes" : "Not yet generated"}
       />
       <ReadOnlyField
-        label="File available"
+        label={tr("File available")}
         value={copy.fileAvailable ? "Yes" : "Not yet generated"}
       />
-      <ReadOnlyField label="Downloads" value={copy.downloadCount ?? 0} />
+      <ReadOnlyField label={tr("Downloads")} value={copy.downloadCount ?? 0} />
       <ReadOnlyField
-        label="Created"
+        label={tr("Created")}
         value={copy.createdAt ? formatDateTime(copy.createdAt) : "-"}
       />
       <ReadOnlyField
-        label="Last Updated"
+        label={tr("Last Updated")}
         value={copy.updatedAt ? formatDateTime(copy.updatedAt) : "-"}
       />
     </div>
     <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-      Uncontrolled copies are issued for reference only. They are not tracked,
-      reconciled or recalled after issue and may become out of date at any time.
+      {tr("Uncontrolled copies are issued for reference only. They are not tracked, reconciled or recalled after issue and may become out of date at any time.")}
     </p>
   </div>
 );

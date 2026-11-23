@@ -33,6 +33,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -240,7 +241,7 @@ export const DocumentSubTypesView: React.FC = () => {
         setShowToggleModal(false);
         showToast({
           type: "error",
-          title: "Sub-Type Status Update Failed",
+          title: tr("Sub-Type Status Update Failed"),
           message: extractApiMessage(
             error,
             "Unable to update sub-type status.",
@@ -288,22 +289,22 @@ export const DocumentSubTypesView: React.FC = () => {
   type Row = (typeof items)[number];
   const subTypesColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Sub-Type Name", label: "Sub-Type Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
-    { id: "documentType", header: "Document Type", label: "Document Type", cell: (item) => <span className="text-slate-700">{item.documentType || "-"}</span> },
+    { id: "name", header: tr("Sub-Type Name"), label: tr("Sub-Type Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "documentType", header: tr("Document Type"), label: tr("Document Type"), cell: (item) => <span className="text-slate-700">{item.documentType || "-"}</span> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const subTypesAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: subTypesLayout, control: subTypesControl } = useCustomColumnLayout("subTypes", subTypesColumns, subTypesAction);
 
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title="Document Sub-Types"
+        title={tr("Document Sub-Types")}
         breadcrumbItems={documentSubTypesAdmin(navigate)}
         actions={
           canManage ? (
@@ -313,7 +314,7 @@ export const DocumentSubTypesView: React.FC = () => {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              New Sub-Type
+              {tr("New Sub-Type")}
             </Button>
           ) : undefined
         }
@@ -326,14 +327,14 @@ export const DocumentSubTypesView: React.FC = () => {
         <div className="bg-white w-full">
           <div className="flex md:hidden flex-col gap-1.5 w-full">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-              Search
+              {tr("Search")}
             </label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search sub-types..."
+                  placeholder={tr("Search sub-types...")}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -359,7 +360,7 @@ export const DocumentSubTypesView: React.FC = () => {
                 className="whitespace-nowrap gap-2"
               >
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
@@ -368,13 +369,13 @@ export const DocumentSubTypesView: React.FC = () => {
   trailing={<div className="hidden md:block">{subTypesControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search sub-types..."}
+      placeholder={tr("Search sub-types...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -395,7 +396,7 @@ export const DocumentSubTypesView: React.FC = () => {
     },
     {
       id: 'documentTypeFilter || "All"',
-      label: "Document Type",
+      label: tr("Document Type"),
       value: String(documentTypeFilter || "All"),
       options: filterDocumentTypeOptions,
       onChange: (value) => {
@@ -407,7 +408,7 @@ export const DocumentSubTypesView: React.FC = () => {
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -424,13 +425,13 @@ export const DocumentSubTypesView: React.FC = () => {
 <div className="hidden md:grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
               <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search sub-types..."
+                  placeholder={tr("Search sub-types...")}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -443,7 +444,7 @@ export const DocumentSubTypesView: React.FC = () => {
 
             <div className="w-full">
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={(value) => {
                   setStatusFilter(value as "All" | "Active" | "Inactive");
@@ -454,27 +455,27 @@ export const DocumentSubTypesView: React.FC = () => {
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All"
+                placeholder={tr("All")}
               />
             </div>
 
             <div className="w-full">
               <Select
-                label="Document Type"
+                label={tr("Document Type")}
                 value={documentTypeFilter || "All"}
                 onChange={(value) => {
                   setDocumentTypeFilter(value === "All" ? "" : String(value));
                   setCurrentPage(1);
                 }}
                 options={filterDocumentTypeOptions}
-                placeholder="All"
+                placeholder={tr("All")}
                 enableSearch={true}
               />
             </div>
 
             <div className="w-full">
               <DateRangePicker
-                label="Modified Date Range"
+                label={tr("Modified Date Range")}
                 startDate={modifiedFromDate}
                 endDate={modifiedToDate}
                 onStartDateChange={(v) => {
@@ -485,7 +486,7 @@ export const DocumentSubTypesView: React.FC = () => {
                   setModifiedToDate(v);
                   setCurrentPage(1);
                 }}
-                placeholder="Select range"
+                placeholder={tr("Select range")}
               />
             </div>
 
@@ -506,7 +507,7 @@ export const DocumentSubTypesView: React.FC = () => {
             action={subTypesAction}
             emptyState={
               <TableEmptyState
-  title="No items found" description="Try adjusting your search" />
+  title={tr("No items found")} description={tr("Try adjusting your search")} />
             }
             pagination={
               totalItems > 0 ? (
@@ -535,7 +536,7 @@ export const DocumentSubTypesView: React.FC = () => {
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <IconPencilMinus className="h-3.5 w-3.5" />
-              <span>Edit Sub-Type</span>
+              <span>{tr("Edit Sub-Type")}</span>
             </button>
             <button
               onClick={(e) => {
@@ -551,12 +552,12 @@ export const DocumentSubTypesView: React.FC = () => {
                 ?.isActive ? (
                 <>
                   <IconToggleLeft className="h-3.5 w-3.5" />
-                  <span>Disable</span>
+                  <span>{tr("Disable")}</span>
                 </>
               ) : (
                 <>
                   <IconToggleRight className="h-3.5 w-3.5" />
-                  <span>Enable</span>
+                  <span>{tr("Enable")}</span>
                 </>
               )}
             </button>
@@ -588,24 +589,23 @@ export const DocumentSubTypesView: React.FC = () => {
           }}
           onConfirm={handleConfirmToggleStatus}
           type="warning"
-          title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Sub-Type?`}
+          title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Sub-Type?")}`}
           description={
             <div className="space-y-3">
               <p>
-                Are you sure you want to{" "}
-                {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+                {tr("Are you sure you want to")}{" "}
+                {selectedItem?.isActive ? tr("deactivate") : tr("activate")}{" "}
                 <strong>{selectedItem?.name}</strong>?
               </p>
               <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-amber-800">
                   <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                  <span className="font-semibold">Warning:</span> This change
-                  will take effect immediately.
+                  <span className="font-semibold">{tr("Warning:")}</span> {tr("This change will take effect immediately.")}
                 </p>
               </div>
             </div>
           }
-          confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+          confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
           cancelText="Cancel"
           isLoading={isSubmitting}
           showCancel
@@ -628,7 +628,7 @@ export const DocumentSubTypesView: React.FC = () => {
           onApply={() => setIsFilterDrawerOpen(false)}
         >
           <FilterAccordionItem
-            label="Status"
+            label={tr("Status")}
             isExpanded={expandedSections.has("status")}
             onToggle={() => toggleSection("status")}
           >
@@ -656,7 +656,7 @@ export const DocumentSubTypesView: React.FC = () => {
           </FilterAccordionItem>
 
           <FilterAccordionItem
-            label="Document Type"
+            label={tr("Document Type")}
             isExpanded={expandedSections.has("documentType")}
             onToggle={() => toggleSection("documentType")}
           >
@@ -682,7 +682,7 @@ export const DocumentSubTypesView: React.FC = () => {
           </FilterAccordionItem>
 
           <FilterAccordionItem
-            label="Modified Date Range"
+            label={tr("Modified Date Range")}
             isExpanded={expandedSections.has("date")}
             onToggle={() => toggleSection("date")}
           >
@@ -699,7 +699,7 @@ export const DocumentSubTypesView: React.FC = () => {
                   setModifiedToDate(v);
                   setCurrentPage(1);
                 }}
-                placeholder="Select range"
+                placeholder={tr("Select range")}
               />
             </div>
           </FilterAccordionItem>
@@ -795,14 +795,14 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Sub-Type Name<span className="text-red-500 ml-1">*</span>
+            {tr("Sub-Type Name")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter name"
+            placeholder={tr("Enter name")}
             required
             disabled={isSaving}
           />
@@ -810,13 +810,13 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
 
         <div>
           <Select
-            label={<>Document Type<span className="text-red-500 ml-1">*</span></>}
+            label={<>{tr("Document Type")}<span className="text-red-500 ml-1">*</span></>}
             value={formData.documentTypeId}
             onChange={(value) =>
               setFormData({ ...formData, documentTypeId: String(value) })
             }
             options={documentTypeSelectOptions}
-            placeholder="Select document type..."
+            placeholder={tr("Select document type...")}
             enableSearch={true}
             disabled={isSaving}
           />
@@ -824,7 +824,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Description
+            {tr("Description")}
           </label>
           <textarea
             value={formData.description}
@@ -832,7 +832,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
               setFormData({ ...formData, description: e.target.value })
             }
             className="w-full h-24 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-            placeholder="Enter description"
+            placeholder={tr("Enter description")}
             disabled={isSaving}
           />
         </div>
@@ -842,7 +842,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
           checked={formData.isActive}
           onChange={(checked) => setFormData({ ...formData, isActive: checked })}
           disabled={isSaving}
-          label="Active"
+          label={tr("Active")}
         />
       </div>
     </FormModal>

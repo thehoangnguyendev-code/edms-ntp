@@ -1,4 +1,5 @@
 import React from "react";
+import { tr } from "@/i18n";
 import { Hammer } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
@@ -17,7 +18,7 @@ export const ComingSoonView: React.FC<ComingSoonViewProps> = ({ title, breadcrum
       <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-600">
         <Hammer className="h-6 w-6" />
       </span>
-      <p className="text-sm font-semibold text-slate-900">{title} — coming soon</p>
+          <p className="text-sm font-semibold text-slate-900">{title} {tr("— coming soon")}</p>
       <p className="max-w-md text-sm leading-relaxed text-slate-500">{description}</p>
     </div>
   </div>

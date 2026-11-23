@@ -9,6 +9,7 @@ import {
 } from "../../display";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { usagePurposeLabel } from "../../usagePurpose";
+import { tr } from "@/i18n";
 
 interface DocumentInformationTabProps {
   controlledCopy: ControlledCopy;
@@ -40,7 +41,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             Number" label. distributionBatchNumber is always the batch's own number, unconditionally. */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            {isBatchParent ? "Batch Number" : "Document Number"}
+            {isBatchParent ? "Batch Number" : tr("Document Number")}
           </label>
           <input
             type="text"
@@ -53,7 +54,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Created */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Created
+            {tr("Created")}
           </label>
           <input
             type="text"
@@ -66,7 +67,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Opened By */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Opened By
+            {tr("Opened By")}
           </label>
           <input
             type="text"
@@ -79,7 +80,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Business Unit */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Business Unit
+            {tr("Business Unit")}
           </label>
           <input
             type="text"
@@ -92,7 +93,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Controlled Copy Name - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Controlled Copy Name
+            {tr("Controlled Copy Name")}
           </label>
           <input
             type="text"
@@ -105,7 +106,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Document */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Document
+            {tr("Document")}
           </label>
           <input
             type="text"
@@ -122,7 +123,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Document Revision */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Document Revision
+            {tr("Document Revision")}
           </label>
           <input
             type="text"
@@ -135,7 +136,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Valid Until */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Valid Until
+            {tr("Valid Until")}
           </label>
           <input
             type="text"
@@ -148,7 +149,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Expiry Date */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Expiry Date
+            {tr("Expiry Date")}
           </label>
           <input
             type="text"
@@ -158,7 +159,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           />
           {controlledCopy.statusCode === "OBSOLETED" && controlledCopy.obsoleteReason === "EXPIRED" && (
             <p className="text-[11px] sm:text-xs text-amber-600 font-medium">
-              This controlled copy has been automatically obsoleted because the expiry date was reached.
+              {tr("This controlled copy has been automatically obsoleted because the expiry date was reached.")}
             </p>
           )}
         </div>
@@ -166,7 +167,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Revision */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Revision
+            {tr("Revision")}
           </label>
           <input
             type="text"
@@ -179,7 +180,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Purpose (a dash for a copy issued before the purpose existed) */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Purpose
+            {tr("Purpose")}
           </label>
           <input
             type="text"
@@ -192,7 +193,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Copy Number / Quantity */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            {isBatchParent ? "Quantity" : "Copy Number"}
+            {isBatchParent ? "Quantity" : tr("Copy Number")}
           </label>
           <div className="space-y-1.5">
             <input
@@ -203,8 +204,8 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             />
             <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
               {isBatchParent
-                ? "The Quantity field represents the total number of controlled copies in this batch"
-                : "The Copy Number field represents the n'th copy of the related revision"}
+                ? tr("The Quantity field represents the total number of controlled copies in this batch")
+                : tr("The Copy Number field represents the n'th copy of the related revision")}
             </p>
           </div>
         </div>
@@ -212,7 +213,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Total Copies Number */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Total Copies Number
+            {tr("Total Copies Number")}
           </label>
           <div className="space-y-1.5">
             <input
@@ -223,8 +224,8 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             />
             <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
               {isBatchParent
-                ? "The Total Copies Number field matches the total quantity assigned to this batch"
-                : "The Total Copies Number field represents the total number of all copies of the related revision"}
+                ? tr("The Total Copies Number field matches the total quantity assigned to this batch")
+                : tr("The Total Copies Number field represents the total number of all copies of the related revision")}
             </p>
           </div>
         </div>
@@ -232,7 +233,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Recall Date */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Recall Date
+            {tr("Recall Date")}
           </label>
           <input
             type="text"
@@ -247,11 +248,11 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {(controlledCopy.destructionType || controlledCopy.destroyedBy || controlledCopy.destroyedDate || controlledCopy.destroyReason) && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Report Type</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Report Type")}</label>
               <input type="text" value={displayText(controlledCopy.destructionType)} readOnly className={CONTROL_STATE_CLASSES.readonlyField} />
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Report Reason</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Report Reason")}</label>
               <textarea value={displayText(controlledCopy.destroyReason)} readOnly rows={2} className={CONTROL_STATE_CLASSES.readonlyTextarea} />
             </div>
           </>
@@ -261,7 +262,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
             Lost/Damaged record it replaced (Replaced by). */}
         {controlledCopy.replacedControlledCopyId && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Reissued From</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Reissued From")}</label>
             <button
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacedControlledCopyId!)}
@@ -274,7 +275,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         )}
         {controlledCopy.replacementControlledCopyId && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">Replaced By</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">{tr("Replaced By")}</label>
             <button
               type="button"
               onClick={() => onNavigateToLinkedCopy?.(controlledCopy.replacementControlledCopyId!)}
@@ -289,7 +290,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
         {/* Comments - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            Comments
+            {tr("Comments")}
           </label>
           <textarea
             value={controlledCopy.distributionComment || controlledCopy.reason || ""}

@@ -70,7 +70,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   label,
   value,
   onChange,
-  placeholder = "Select date",
+  placeholder = tr("Select date"),
   disabled = false,
   showTime = false,
   error,

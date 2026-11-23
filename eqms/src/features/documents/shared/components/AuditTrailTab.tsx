@@ -25,6 +25,7 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { AuditTimeline } from "@/features/audit-trail/components/timeline/AuditTimeline";
 import { normalizeTimelineStyle } from "@/features/audit-trail/components/timeline/auditTimelineModel";
+import { tr } from "@/i18n";
 export type { AuditTrailRecord };
 
 interface DropdownMenuProps {
@@ -55,7 +56,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
           <span className="flex h-4 w-4 items-center justify-center">
             <IconInfoCircle className="h-4 w-4" />
           </span>
-          <span className="font-medium">View Details</span>
+          <span className="font-medium">{tr("View Details")}</span>
         </button>
         <button
           onClick={(e) => {
@@ -65,7 +66,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
         >
           <Download className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium">Export</span>
+          <span className="font-medium">{tr("Export")}</span>
         </button>
       </div>
     </PortalDropdownMenu>
@@ -134,26 +135,26 @@ const DEFAULT_ACTION_OPTIONS = [
   { label: "Publish", value: "Publish" },
   { label: "Login", value: "Login" },
   { label: "Logout", value: "Logout" },
-  { label: "Failed Login", value: "Failed Login" },
+  { label: tr("Failed Login"), value: "Failed Login" },
   { label: "Export", value: "Export" },
   { label: "Download", value: "Download" },
   { label: "View", value: "View" },
   { label: "Open", value: "Open" },
   { label: "Preview", value: "Preview" },
-  { label: "Open Preview", value: "Open Preview" },
+  { label: tr("Open Preview"), value: "Open Preview" },
   { label: "View Page", value: "View Page" },
-  { label: "Close Preview", value: "Close Preview" },
+  { label: tr("Close Preview"), value: "Close Preview" },
   { label: "Upload", value: "Upload" },
-  { label: "Download Evidence", value: "Download Evidence" },
-  { label: "Add Working Note", value: "Add Working Note" },
-  { label: "Delete Working Note", value: "Delete Working Note" },
+  { label: tr("Download Evidence"), value: "Download Evidence" },
+  { label: tr("Add Working Note"), value: "Add Working Note" },
+  { label: tr("Delete Working Note"), value: "Delete Working Note" },
   { label: "Cancel", value: "Cancel" },
   { label: "Obsoleted", value: "Obsoleted" },
   { label: "Submit", value: "Submit" },
-  { label: "Open Edit Online", value: "Open Edit Online" },
-  { label: "Upload to Office Online", value: "Upload to Office Online" },
-  { label: "Edit Online Synced Back to MinIO", value: "Edit Online Synced Back to MinIO" },
-  { label: "Edit Online Session Closed", value: "Edit Online Session Closed" },
+  { label: tr("Open Edit Online"), value: "Open Edit Online" },
+  { label: tr("Upload to Office Online"), value: "Upload to Office Online" },
+  { label: tr("Edit Online Synced Back to MinIO"), value: "Edit Online Synced Back to MinIO" },
+  { label: tr("Edit Online Session Closed"), value: "Edit Online Session Closed" },
 ];
 
 export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
@@ -368,14 +369,14 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
       {/* Filters section - max 3 fields per row, equal width */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end pb-2">
         <div className="w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-400" />
             </div>
             <input
               type="text"
-              placeholder="Search audit trail..."
+              placeholder={tr("Search audit trail...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -385,7 +386,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                aria-label="Clear search"
+                aria-label={tr("Clear search")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -395,21 +396,21 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
 
         <div className="w-full">
           <Select
-            label="Action Type"
+            label={tr("Action Type")}
             value={actionFilter}
             onChange={(value) => setActionFilter(String(value) as AuditAction | "All")}
             options={actionOptions}
-            placeholder="All"
+            placeholder={tr("All")}
           />
         </div>
 
         <div className="w-full">
           <Select
-            label="User"
+            label={tr("User")}
             value={userFilter}
             onChange={(value) => setUserFilter(String(value))}
             options={userOptions}
-            placeholder="All"
+            placeholder={tr("All")}
             enableSearch={true}
             isLoading={isUserOptionsLoading}
             loadingText="Loading users..."
@@ -418,7 +419,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
 
         <div className="w-full">
           <Select
-            label="E-Signature"
+            label={tr("E-Signature")}
             value={eSignatureFilter}
             onChange={(value) => setESignatureFilter(value as "All" | "Yes" | "No")}
             options={[
@@ -426,18 +427,18 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
               { label: "Yes", value: "Yes" },
               { label: "No", value: "No" },
             ]}
-            placeholder="All"
+            placeholder={tr("All")}
           />
         </div>
 
         <div className="w-full">
           <DateRangePicker
-            label="Date Range"
+            label={tr("Date Range")}
             startDate={dateFrom}
             endDate={dateTo}
             onStartDateChange={setDateFrom}
             onEndDateChange={setDateTo}
-            placeholder="Select date range"
+            placeholder={tr("Select date range")}
             includeTime
           />
         </div>
@@ -486,12 +487,12 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
               <div className="py-12 text-center">
                 {loadError && /403|forbidden|permission/i.test(loadError) ? (
                   <TableEmptyState
-                    title="Access Denied"
-                    description="You don't have permission to view the audit trail for this record."
+                    title={tr("Access Denied")}
+                    description={tr("You don't have permission to view the audit trail for this record.")}
                   />
                 ) : (
                   <TableEmptyState
-                    title="No Audit Records Found"
+                    title={tr("No Audit Records Found")}
                     description={loadError || emptyMessage}
                   />
                 )}
@@ -501,21 +502,21 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                 <TableMarkup.Head className="sticky top-0 z-30">
                   <TableMarkup.Row>
                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell35}>
-                      No.
+                      {tr("No.")}
                     </TableMarkup.HeaderCell>
                     {[
                       { label: "Timestamp", key: "timestamp" as const },
                       { label: "User", key: "user" as const },
-                      { label: "Employee ID" },
-                      { label: "Access Profile" },
+                      { label: tr("Employee ID") },
+                      { label: tr("Access Profile") },
                       { label: "Position" },
                       { label: "Department" },
                       { label: "Action", key: "action" as const },
                       { label: "Entity" },
-                      { label: "Change Summary" },
-                      { label: "E-Signature" },
-                      { label: "IP Address" },
-                      { label: "Device / Browser" },
+                      { label: tr("Change Summary") },
+                      { label: tr("E-Signature") },
+                      { label: tr("IP Address") },
+                      { label: tr("Device / Browser") },
                     ].map(({ label, key }) => (
                       <TableMarkup.HeaderCell
                         key={label}
@@ -547,7 +548,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                       </TableMarkup.HeaderCell>
                     ))}
                     <TableMarkup.HeaderCell className="sticky top-0 z-30 bg-slate-50 py-3 px-4 text-2xs md:text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 whitespace-nowrap text-center right-0 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)]">
-                      Action
+                      {tr("Action")}
                     </TableMarkup.HeaderCell>
                   </TableMarkup.Row>
                 </TableMarkup.Head>
@@ -598,8 +599,8 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
 
                         <TableMarkup.Cell className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap text-slate-700">
                           {accessProfileNames.length === 0 ? (
-                            <Badge size="sm" color="amber" title="No Access Profile was assigned at the time of this event.">
-                              Unassigned
+                            <Badge size="sm" color="amber" title={tr("No Access Profile was assigned at the time of this event.")}>
+                              {tr("Unassigned")}
                             </Badge>
                           ) : (
                             <span className="inline-flex items-center gap-1.5">
@@ -672,7 +673,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                             ref={getRef(record.id)}
                             onClick={(e) => handleDropdownToggle(record.id, e)}
                             className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-                            aria-label="More actions"
+                            aria-label={tr("More actions")}
                           >
                             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                           </button>

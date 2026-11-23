@@ -11,6 +11,7 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { TrainingPersonName } from "@/features/training-activities/shared/TrainingPersonName";
 import { ProposedParticipantsPicker, type PeopleSource } from "@/features/training-activities/shared/ProposedParticipantsPicker";
 import { reportsApi, type ReportRecipientPerson } from "@/services/api/reports";
+import { tr } from "@/i18n";
 
 /** The people of the picker of a Training are looked for in the people who may receive a report. */
 const recipientSource: PeopleSource = {
@@ -45,7 +46,7 @@ export function ScheduleRecipientsField({
 
   const columns: DataTableColumn<ReportRecipientPerson>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_p, i) => (current - 1) * limit + i + 1 },
-    { id: "code", header: "Employee ID", cell: (p) => <span className="font-semibold text-emerald-600">{p.employeeCode ?? "—"}</span> },
+    { id: "code", header: tr("Employee ID"), cell: (p) => <span className="font-semibold text-emerald-600">{p.employeeCode ?? "—"}</span> },
     { id: "name", header: "Full Name", cell: (p) => <TrainingPersonName fullName={p.fullName} avatar={p.avatar} /> },
     { id: "username", header: "Username", cell: (p) => p.username ?? "—" },
     { id: "email", header: "Email", cell: (p) => p.email ?? "—" },
@@ -59,7 +60,7 @@ export function ScheduleRecipientsField({
           <button
             type="button"
             ref={menu.getRef(p.id)}
-            aria-label="More actions"
+            aria-label={tr("More actions")}
             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
             onClick={(event) => menu.toggle(p.id, event)}
           >
@@ -74,9 +75,9 @@ export function ScheduleRecipientsField({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            List of recipients{hasPeople ? ` (${people.length})` : ""}
+            {tr("List of recipients")}{hasPeople ? ` (${people.length})` : ""}
           </h3>
-          <p className="text-xs text-slate-500">These people are told when a run of the schedule is ready. Each must be active and allowed to download report files.</p>
+          <p className="text-xs text-slate-500">{tr("These people are told when a run of the schedule is ready. Each must be active and allowed to download report files.")}</p>
         </div>
         {!disabled && (
           <Button
@@ -115,7 +116,7 @@ export function ScheduleRecipientsField({
         }
         emptyState={
           <TableEmptyState
-            title="No recipient selected"
+            title={tr("No recipient selected")}
             description={disabled ? "Nobody receives this schedule." : "Use Add Recipients to choose the people who receive the report."}
           />
         }
@@ -130,7 +131,7 @@ export function ScheduleRecipientsField({
                 onChange(people.filter((p) => p.id !== actionRow.id));
               }}
             >
-              Remove
+              {tr("Remove")}
             </DropdownMenuItem>
           </div>
         )}
@@ -138,7 +139,7 @@ export function ScheduleRecipientsField({
       <FormModal
         isOpen={adding}
         onClose={() => setAdding(false)}
-        title="Recipients of the Scheduled Report"
+        title={tr("Recipients of the Scheduled Report")}
         confirmText={`Save (${selection.length})`}
         size="2xl"
         className="max-w-5xl"

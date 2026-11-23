@@ -8,6 +8,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useToast } from "@/components/ui/toast";
 import { useDebounce } from "@/hooks";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 export type SortDirection = "asc" | "desc";
 
@@ -119,7 +120,7 @@ export function WizardPickerTable<T>({
   return (
     <div className="space-y-3">
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Search</label>
+        <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search")}</label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -132,10 +133,10 @@ export function WizardPickerTable<T>({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Badge color="emerald" size="sm">{selectedIds.size} selected</Badge>
+        <Badge color="emerald" size="sm">{selectedIds.size} {tr("selected")}</Badge>
         {selectedIds.size > 0 && (
           <button type="button" className="rounded text-xs font-medium text-rose-600 transition-colors hover:text-rose-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30" onClick={onClear}>
-            Clear all
+            {tr("Clear all")}
           </button>
         )}
         {selectedIds.size === 0 && requiredHint && <span className="text-xs text-red-500">{requiredHint}</span>}

@@ -19,6 +19,7 @@ import {
   type UpdateSection,
   type UserOption,
 } from "./legacyImportModel";
+import { tr, trFormat } from "@/i18n";
 
 export interface RevisionSectionCardProps {
   section: RevisionSection;
@@ -83,15 +84,15 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
               <ChevronDown className="h-4 w-4 text-slate-500" />
             </motion.span>
             <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
-              Revision {section.revisionNumber || index + 1}
+              {tr("Revision")} {section.revisionNumber || index + 1}
             </span>
             {isLast ? (
               <Badge color="emerald" size="xs">
-                Becomes Effective
+                {tr("Becomes Effective")}
               </Badge>
             ) : (
               <Badge color="amber" size="xs">
-                Becomes Obsoleted
+                {tr("Becomes Obsoleted")}
               </Badge>
             )}
           </button>
@@ -107,7 +108,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
               className="overflow-hidden"
             >
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <Field label="Revision Number" required>
+                <Field label={tr("Revision Number")} required>
                   <input
                     className={cn(
                       FIELD_INPUT,
@@ -129,12 +130,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                   {showValidation &&
                     !section.revisionNumber.trim() && (
                       <p className="text-xs text-red-600 mt-1">
-                        Revision Number is required.
+                        {tr("Revision Number is required.")}
                       </p>
                     )}
                 </Field>
                 <Field
-                  label="Effective Date"
+                  label={tr("Effective Date")}
                   required
                 >
                   <DateTimePicker
@@ -142,11 +143,11 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     onChange={(v) =>
                       updateSection(section.key, "effectiveDate", v)
                     }
-                    placeholder="Select date"
+                    placeholder={tr("Select date")}
                   />
                   {showValidation && !section.effectiveDate && (
                     <p className="text-xs text-red-600 mt-1">
-                      Effective Date is required.
+                      {tr("Effective Date is required.")}
                     </p>
                   )}
                   {sectionDateErrors.effective && (
@@ -156,7 +157,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                   )}
                 </Field>
                 <Field
-                  label="Author"
+                  label={tr("Author")}
                   required
                 >
                   <Select
@@ -167,16 +168,16 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     options={userOptions}
                     isLoading={loadingUsers}
                     onSearch={searchUsers}
-                    placeholder="Select author..."
+                    placeholder={tr("Select author...")}
                   />
                   {showValidation && !section.authorId && (
                     <p className="text-xs text-red-600 mt-1">
-                      Author is required.
+                      {tr("Author is required.")}
                     </p>
                   )}
                 </Field>
                 <Field
-                  label="Authored Date"
+                  label={tr("Authored Date")}
                   required
                 >
                   <DateTimePicker
@@ -188,12 +189,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                         v,
                       )
                     }
-                    placeholder="Select date"
+                    placeholder={tr("Select date")}
                   />
                   {showValidation &&
                     !section.legacyHistoricalAuthoredDate && (
                       <p className="text-xs text-red-600 mt-1">
-                        Authored Date is required.
+                        {tr("Authored Date is required.")}
                       </p>
                     )}
                   {sectionDateErrors.authored && (
@@ -202,7 +203,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     </p>
                   )}
                 </Field>
-                <Field label="Historical Reviewer(s)" required>
+                <Field label={tr("Historical Reviewer(s)")} required>
                   <MultiSelect
                     value={section.legacyHistoricalReviewerIds}
                     onChange={(values) =>
@@ -215,17 +216,17 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     options={userOptions}
                     isLoading={loadingUsers}
                     onSearch={searchUsers}
-                    placeholder="Select reviewer(s)..."
+                    placeholder={tr("Select reviewer(s)...")}
                   />
                   {showValidation &&
                     section.legacyHistoricalReviewerIds.length ===
                       0 && (
                       <p className="text-xs text-red-600 mt-1">
-                        Historical Reviewer(s) is required.
+                        {tr("Historical Reviewer(s) is required.")}
                       </p>
                     )}
                 </Field>
-                <Field label="Historical Review Date" required>
+                <Field label={tr("Historical Review Date")} required>
                   <DateTimePicker
                     value={section.legacyHistoricalReviewDate}
                     onChange={(v) =>
@@ -235,12 +236,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                         v,
                       )
                     }
-                    placeholder="Select date"
+                    placeholder={tr("Select date")}
                   />
                   {showValidation &&
                     !section.legacyHistoricalReviewDate && (
                       <p className="text-xs text-red-600 mt-1">
-                        Historical Review Date is required.
+                        {tr("Historical Review Date is required.")}
                       </p>
                     )}
                   {sectionDateErrors.review && (
@@ -249,7 +250,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     </p>
                   )}
                 </Field>
-                <Field label="Historical Approver" required>
+                <Field label={tr("Historical Approver")} required>
                   <Select
                     value={section.legacyHistoricalApproverId}
                     onChange={(v) =>
@@ -262,16 +263,16 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                     options={userOptions}
                     isLoading={loadingUsers}
                     onSearch={searchUsers}
-                    placeholder="Select approver..."
+                    placeholder={tr("Select approver...")}
                   />
                   {showValidation &&
                     !section.legacyHistoricalApproverId && (
                       <p className="text-xs text-red-600 mt-1">
-                        Historical Approver is required.
+                        {tr("Historical Approver is required.")}
                       </p>
                     )}
                 </Field>
-                <Field label="Historical Approval Date" required>
+                <Field label={tr("Historical Approval Date")} required>
                   <DateTimePicker
                     value={section.legacyHistoricalApprovalDate}
                     onChange={(v) =>
@@ -281,12 +282,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                         v,
                       )
                     }
-                    placeholder="Select date"
+                    placeholder={tr("Select date")}
                   />
                   {showValidation &&
                     !section.legacyHistoricalApprovalDate && (
                       <p className="text-xs text-red-600 mt-1">
-                        Historical Approval Date is required.
+                        {tr("Historical Approval Date is required.")}
                       </p>
                     )}
                   {sectionDateErrors.approval && (
@@ -298,7 +299,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                 {index === 0 && sectionCount > 1 && (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5">
                     <p className="text-xs text-slate-600">
-                      Applies this Author / Historical Reviewer(s) / Historical Approver to the other {sectionCount - 1} revision(s) below. Every revision stays individually editable afterward.
+                      {trFormat("Applies this Author / Historical Reviewer(s) / Historical Approver to the other {count} revisions below. Every revision stays individually editable afterward.", { count: sectionCount - 1 })}
                     </p>
                     <Button
                       type="button"
@@ -312,21 +313,21 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                         !section.legacyHistoricalApproverId
                       }
                     >
-                      Apply to all revisions
+                      {tr("Apply to all revisions")}
                     </Button>
                   </div>
                 )}
                 {trainingRequired && (
                   <Field
-                    label="Training Number (if any)"
-                    hint="The number written on the paper training record of this revision, if there is one. It is kept as typed so the paper record can be found from the system later."
+                    label={tr("Training Number (if any)")}
+                    hint={tr("The number written on the paper training record of this revision, if there is one. It is kept as typed so the paper record can be found from the system later.")}
                   >
                     <input
                       type="text"
                       maxLength={40}
                       className={FIELD_INPUT}
                       value={section.trainingNumber}
-                      placeholder="e.g. TRN/QA/19-012"
+                      placeholder={tr("e.g. TRN/QA/19-012")}
                       onChange={(e) =>
                         updateSection(section.key, "trainingNumber", e.target.value)
                       }
@@ -335,9 +336,9 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                 )}
                 {trainingRequired && (
                   <Field
-                    label="Historical Training Completion Date"
+                    label={tr("Historical Training Completion Date")}
                     required
-                    hint="When employees completed training for this revision. Must be on or before this revision's Effective Date. Feeds the same Training tracking field a normal revision uses."
+                    hint={tr("When employees completed training for this revision. Must be on or before this revision's Effective Date. Feeds the same Training tracking field a normal revision uses.")}
                   >
                     <DateTimePicker
                       value={section.trainingCompletionDate}
@@ -348,13 +349,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                           v,
                         )
                       }
-                      placeholder="Select date"
+                      placeholder={tr("Select date")}
                     />
                     {showValidation &&
                       !section.trainingCompletionDate && (
                         <p className="text-xs text-red-600 mt-1">
-                          Historical Training Completion Date is
-                          required.
+                          {tr("Historical Training Completion Date is required.")}
                         </p>
                       )}
                     {sectionDateErrors.training && (
@@ -381,8 +381,8 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                 )}
                 <div className="md:col-span-2">
                   <Field
-                    label="Change Description"
-                    hint="What changed in this revision, if known."
+                    label={tr("Change Description")}
+                    hint={tr("What changed in this revision, if known.")}
                   >
                     <textarea
                       rows={2}
@@ -400,7 +400,7 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                 </div>
                 <div className="md:col-span-2">
                   <Field
-                    label="Source File"
+                    label={tr("Source File")}
                     required={isLast || form.isTemplate}
                     hint={
                       section.fileError
@@ -438,17 +438,17 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                       (isLast || form.isTemplate) && (
                         <p className="text-xs text-red-600 mt-1">
                           {form.isTemplate
-                            ? "A DOCX file is required for every revision of a template."
-                            : "Source file is required for the most recent revision."}
+                            ? tr("A DOCX file is required for every revision of a template.")
+                            : tr("Source file is required for the most recent revision.")}
                         </p>
                       )}
                   </Field>
                   {!section.file && !isLast && !form.isTemplate && (
                     <div className="mt-2">
                       <Field
-                        label="No File Justification"
+                        label={tr("No File Justification")}
                         required
-                        hint="Required when no source file is attached (e.g. the original scan could not be located)."
+                        hint={tr("Required when no source file is attached (e.g. the original scan could not be located).")}
                       >
                         <input
                           className={FIELD_INPUT}
@@ -460,12 +460,12 @@ export const RevisionSectionCard: React.FC<RevisionSectionCardProps> = ({
                               e.target.value,
                             )
                           }
-                          placeholder="Original scan not located in the paper archive"
+                          placeholder={tr("Original scan not located in the paper archive")}
                         />
                         {showValidation &&
                           !section.noFileJustification.trim() && (
                             <p className="text-xs text-red-600 mt-1">
-                              No File Justification is required.
+                              {tr("No File Justification is required.")}
                             </p>
                           )}
                       </Field>

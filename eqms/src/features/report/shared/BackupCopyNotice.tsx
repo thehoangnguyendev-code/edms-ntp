@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { reportsApi, type BackupCopyStatus } from "@/services/api/reports";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 /**
  * Says how current the Backup and Restore Runs report is: the application keeps a copy of the summary of the runs and refreshes it every few minutes
@@ -22,7 +23,7 @@ export function BackupCopyNotice() {
   }, []);
   if (!status) return null;
   if (!status.enabled) {
-    return <WarningBanner variant="warning" description="The copy of the backup runs is switched off, so this report has no data until the read-only login of the copy is set (scripts/backup/report-reader-role.sh)." />;
+    return <WarningBanner variant="warning" description={tr("The copy of the backup runs is switched off, so this report has no data until the read-only login of the copy is set (scripts/backup/report-reader-role.sh).")} />;
   }
   if (status.stale) {
     return (
@@ -32,5 +33,5 @@ export function BackupCopyNotice() {
       />
     );
   }
-  return <p className="text-xs text-slate-500">Runs copied from the backup system; last refreshed {displayDateTime(status.lastSuccessAt)}.</p>;
+    return <p className="text-xs text-slate-500">{tr("Runs copied from the backup system; last refreshed")} {displayDateTime(status.lastSuccessAt)}.</p>;
 }

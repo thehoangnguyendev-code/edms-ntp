@@ -5,6 +5,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { Button } from "@/components/ui/button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { knowledgeApi, type SharingLinkTarget } from "@/services/api/knowledge";
+import { tr } from "@/i18n";
 
 const errorMessage = (error: unknown) =>
   (error as { response?: { data?: { error?: { message?: string }; message?: string } } })?.response?.data?.error?.message
@@ -68,24 +69,24 @@ export const KnowledgeLinkPage: React.FC = () => {
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
               <Link2Off className="h-5 w-5" />
             </div>
-            <h1 className="text-base font-semibold text-slate-900">This link cannot be opened</h1>
+            <h1 className="text-base font-semibold text-slate-900">{tr("This link cannot be opened")}</h1>
             <p className="mt-1.5 text-sm text-slate-600">{error}</p>
-            <p className="mt-1 text-xs text-slate-500">Ask the person who sent it for a new link.</p>
-            <Button className="mt-4" onClick={() => navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true })}>Go to the Knowledge Base</Button>
+            <p className="mt-1 text-xs text-slate-500">{tr("Ask the person who sent it for a new link.")}</p>
+            <Button className="mt-4" onClick={() => navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true })}>{tr("Go to the Knowledge Base")}</Button>
             <button
               type="button"
               onClick={() => navigate(ROUTES.DASHBOARD, { replace: true })}
               className="mt-3 block w-full text-xs font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
             >
-              Go to the Dashboard
+              {tr("Go to the Dashboard")}
             </button>
           </>
         )}
         {folder && (
           <>
-            <h1 className="text-base font-semibold text-slate-900">You can now open {folder.label}</h1>
-            <p className="mt-1.5 text-sm text-slate-600">Find it in the Knowledge Base.</p>
-            <Button className="mt-4" onClick={() => navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true })}>Go to the Knowledge Base</Button>
+            <h1 className="text-base font-semibold text-slate-900">{tr("You can now open")} {folder.label}</h1>
+            <p className="mt-1.5 text-sm text-slate-600">{tr("Find it in the Knowledge Base.")}</p>
+            <Button className="mt-4" onClick={() => navigate(ROUTES.DOCUMENTS.KNOWLEDGE_EXPLORER, { replace: true })}>{tr("Go to the Knowledge Base")}</Button>
           </>
         )}
       </div>

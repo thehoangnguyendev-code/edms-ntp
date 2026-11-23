@@ -11,6 +11,7 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { getFileIconSrc } from "@/utils/fileIcons";
 import { Input } from "../../shared/TrainingFields";
 import { TrainingFileDropzone } from "../../shared/TrainingFileDropzone";
+import { tr } from "@/i18n";
 
 export type TrainingMaterialsLayout = "TABLE" | "TILES";
 
@@ -91,8 +92,8 @@ export function TrainingMaterialsBoard(props: Props) {
     <div className="space-y-3">
       <TabNav
         tabs={[
-          { id: "file", label: "Upload file", icon: CloudUpload },
-          { id: "link", label: "Link (for example YouTube)", icon: Link2 },
+          { id: "file", label: tr("Upload file"), icon: CloudUpload },
+          { id: "link", label: tr("Link (for example YouTube)"), icon: Link2 },
         ]}
         activeTab={form.mode}
         onChange={(id) => setForm({ ...form, mode: id as "file" | "link" })}
@@ -103,27 +104,27 @@ export function TrainingMaterialsBoard(props: Props) {
         <div className="md:col-span-2">
           {form.mode === "file" ? (
             <TrainingFileDropzone
-              label="File"
+              label={tr("File")}
               required
               accept={ACCEPT}
               maxMb={form.file?.name.toLowerCase().endsWith(".mp4") ? 100 : 20}
-              hint="PDF, picture, Office file (max 20 MB) or MP4 video (max 100 MB)"
+              hint={tr("PDF, picture, Office file (max 20 MB) or MP4 video (max 100 MB)")}
               file={sending?.file ?? form.file}
               uploading={sending ? { percent: sending.percent } : undefined}
               onChange={(f) => setForm({ ...form, file: f })}
             />
           ) : (
             <div className="space-y-1">
-              <FormField label="Address" required>
+              <FormField label={tr("Address")} required>
                 <Input value={form.url} placeholder="https://www.youtube.com/watch?v=…" onChange={(e) => setForm({ ...form, url: e.target.value })} />
               </FormField>
-              <p className="text-xs text-amber-700">A link is not stored or fingerprinted. The page it points to can change after the content is approved.</p>
+              <p className="text-xs text-amber-700">{tr("A link is not stored or fingerprinted. The page it points to can change after the content is approved.")}</p>
             </div>
           )}
         </div>
         <div className="md:col-span-2">
-          <FormField label="Title">
-            <Input value={form.title} maxLength={255} placeholder="Shown in the list of materials" onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <FormField label={tr("Title")}>
+            <Input value={form.title} maxLength={255} placeholder={tr("Shown in the list of materials")} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </FormField>
         </div>
       </div>
@@ -169,8 +170,8 @@ export function TrainingMaterialsBoard(props: Props) {
   const openItem = items.find((m) => m.id === menu.openId);
   const typeBadges = (m: MaterialItem) => (
     <div className="flex flex-wrap items-center gap-1.5">
-      {m.linkUrl && <Badge color="amber" size="sm">Link, not a controlled file</Badge>}
-      {m.staged && <Badge color="emerald" size="sm">Not saved yet</Badge>}
+      {m.linkUrl && <Badge color="amber" size="sm">{tr("Link, not a controlled file")}</Badge>}
+      {m.staged && <Badge color="emerald" size="sm">{tr("Not saved yet")}</Badge>}
     </div>
   );
   const subline = (m: MaterialItem): ReactNode =>
@@ -180,7 +181,7 @@ export function TrainingMaterialsBoard(props: Props) {
       `${m.fileName ?? "file"}${m.sizeBytes ? ` · ${size(m.sizeBytes)}` : ""}`
     );
   const removedNote = (m: MaterialItem) =>
-    m.removedAt ? <div className="text-xs text-red-700">Removed {m.removedAt}: {m.removeReason}</div> : null;
+    m.removedAt ? <div className="text-xs text-red-700">{tr("Removed")} {m.removedAt}: {m.removeReason}</div> : null;
   const fingerprint = (m: MaterialItem) =>
     m.sha256 ? (
       <div className="font-mono text-xs text-slate-500" title={m.sha256}>SHA-256 {m.sha256.slice(0, 12)}…{m.sha256.slice(-6)}</div>
@@ -201,7 +202,7 @@ export function TrainingMaterialsBoard(props: Props) {
     },
     {
       id: "file",
-      header: "File or link",
+      header: tr("File or link"),
       cell: (m) => (
         <div className="max-w-80 space-y-1 whitespace-normal">
           <div className="text-slate-700">{subline(m)}</div>
@@ -210,7 +211,7 @@ export function TrainingMaterialsBoard(props: Props) {
         </div>
       ),
     },
-    { id: "by", header: "Uploaded by", cell: (m) => <div className="max-w-60 whitespace-normal">{added(m)}</div> },
+    { id: "by", header: tr("Uploaded by"), cell: (m) => <div className="max-w-60 whitespace-normal">{added(m)}</div> },
   ];
   const tableLayout: DataTableColumnLayout<MaterialItem> = { columns, pinnedIds: ["rowNo"] };
   const tableAction: DataTableAction<MaterialItem> = { cell: (m) => menuButton(m) };
@@ -218,10 +219,10 @@ export function TrainingMaterialsBoard(props: Props) {
   const empty = <div className="p-4 text-sm text-slate-500">{emptyText}</div>;
   const head = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-sm font-semibold text-slate-800">{items.length} material{items.length === 1 ? "" : "s"}</h3>
+      <h3 className="text-sm font-semibold text-slate-800">{items.length} {tr("material")}{items.length === 1 ? "" : "s"}</h3>
       {layout === "TABLE" && canAdd && (
         <Button size="sm" variant="outline-emerald" onClick={() => setDialog(true)}>
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />Add material
+          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />{tr("Add material")}
         </Button>
       )}
     </div>
@@ -238,13 +239,13 @@ export function TrainingMaterialsBoard(props: Props) {
       {layout === "TILES" && canAdd && (
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Add material</h3>
-            <p className="mt-0.5 text-xs text-slate-500">Drop a file or paste a link. Files are fingerprinted when they are saved.</p>
+            <h3 className="text-base font-semibold text-slate-900">{tr("Add material")}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{tr("Drop a file or paste a link. Files are fingerprinted when they are saved.")}</p>
           </div>
           {fields}
           <div>
             <Button size="sm" variant="outline-emerald" loading={busy || !!sending} disabled={!ready} onClick={() => void add()}>
-              {form.mode === "link" ? "Add link" : "Add material"}
+              {form.mode === "link" ? "Add link" : tr("Add material")}
             </Button>
           </div>
         </div>
@@ -326,8 +327,8 @@ export function TrainingMaterialsBoard(props: Props) {
       <FormModal
         isOpen={dialog}
         onClose={() => setDialog(false)}
-        title="Add Material"
-        confirmText="Add material"
+        title={tr("Add Material")}
+        confirmText={tr("Add material")}
         isLoading={busy || !!sending}
         confirmDisabled={!ready}
         size="md"

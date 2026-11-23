@@ -1,5 +1,6 @@
 import React from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { tr } from "@/i18n";
 
 export interface ParticipantSignatureRecord {
   label: string;
@@ -17,7 +18,7 @@ export const ParticipantSignatureFields: React.FC<ParticipantSignatureFieldsProp
   if (records.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-        No reviewer or approver has been assigned yet.
+        {tr("No reviewer or approver has been assigned yet.")}
       </div>
     );
   }
@@ -42,7 +43,7 @@ export const ParticipantSignatureFields: React.FC<ParticipantSignatureFieldsProp
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                Signed On (Date - Time)
+                {tr("Signed On (Date - Time)")}
               </label>
               <input
                 type="text"

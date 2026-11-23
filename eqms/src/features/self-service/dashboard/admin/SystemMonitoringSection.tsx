@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr, trFormat } from "@/i18n";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import {
   dashboardApi,
@@ -68,9 +68,9 @@ const RuntimeCard: React.FC<{
     ? share(data.runtime.heapUsedBytes, data.runtime.heapMaxBytes)
     : 0;
   return (
-    <Card aria-label="System runtime" className={className}>
+    <Card aria-label={tr("System runtime")} className={className}>
       <CardHeader
-        title="System runtime"
+        title={tr("System runtime")}
         subtitle={
           data
             ? `Checked at ${formatChecked(data.generatedAt)}`
@@ -79,7 +79,7 @@ const RuntimeCard: React.FC<{
       />
       {error ? (
         <PanelError
-          message="System runtime could not be loaded."
+          message={tr("System runtime could not be loaded.")}
           onRetry={onRetry}
         />
       ) : !data ? (
@@ -90,10 +90,9 @@ const RuntimeCard: React.FC<{
         <div className="px-4 pb-4 pt-2">
           <div className="mb-3">
             <div className="mb-1.5 flex items-center justify-between text-[13px]">
-              <span className="text-slate-500">Heap memory</span>
+              <span className="text-slate-500">{tr("Heap memory")}</span>
               <span className="font-medium tabular-nums text-slate-900">
-                {formatBytes(data.runtime.heapUsedBytes)} of{" "}
-                {formatBytes(data.runtime.heapMaxBytes)} · {heap}%
+                {trFormat("{used} of {total}", { used: formatBytes(data.runtime.heapUsedBytes), total: formatBytes(data.runtime.heapMaxBytes) })} · {heap}%
               </span>
             </div>
             <div
@@ -108,17 +107,16 @@ const RuntimeCard: React.FC<{
             </div>
           </div>
           <dl className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
-            <Fact label="Uptime">
+            <Fact label={tr("Uptime")}>
               {formatUptime(data.runtime.uptimeMillis)}
             </Fact>
-            <Fact label="Started">{data.runtime.startedAt}</Fact>
-            <Fact label="Application version">
+            <Fact label={tr("Started")}>{data.runtime.startedAt}</Fact>
+            <Fact label={tr("Application version")}>
               {data.runtime.applicationVersion}
             </Fact>
-            <Fact label="Processors">{data.runtime.availableProcessors}</Fact>
-            <Fact label="Database schema">
-              v{data.database.schemaMigrationVersion} ·{" "}
-              {data.database.appliedMigrations} migrations
+            <Fact label={tr("Processors")}>{data.runtime.availableProcessors}</Fact>
+            <Fact label={tr("Database schema")}>
+              {trFormat("v{version} · {count} migrations", { version: data.database.schemaMigrationVersion, count: data.database.appliedMigrations })}
             </Fact>
           </dl>
         </div>
@@ -148,7 +146,7 @@ const ComplianceCard: React.FC<{
   const rows: QueueRow[] = data
     ? [
         {
-          label: "Access reviews",
+          label: tr("Access reviews"),
           caption: "Campaigns in progress",
           count: data.compliance.openAccessReviews,
           to: hasPermission("security.access_review.view")
@@ -156,7 +154,7 @@ const ComplianceCard: React.FC<{
             : undefined,
         },
         {
-          label: "Audit trail reviews",
+          label: tr("Audit trail reviews"),
           caption: "Campaigns in progress",
           count: data.compliance.openAuditTrailReviews,
           to: hasPermission("audit.review.view")
@@ -164,21 +162,21 @@ const ComplianceCard: React.FC<{
             : undefined,
         },
         {
-          label: "Controlled copy batches",
+          label: tr("Controlled copy batches"),
           caption: "Open status discrepancies",
           count: data.compliance.openControlledCopyDiscrepancies,
         },
       ]
     : [];
   return (
-    <Card aria-label="Compliance queues">
+    <Card aria-label={tr("Compliance queues")}>
       <CardHeader
-        title="Compliance queues"
-        subtitle="Reviews and discrepancies that are still open"
+        title={tr("Compliance queues")}
+        subtitle={tr("Reviews and discrepancies that are still open")}
       />
       {error ? (
         <PanelError
-          message="Compliance queues could not be loaded."
+          message={tr("Compliance queues could not be loaded.")}
           onRetry={onRetry}
         />
       ) : !data ? (
@@ -283,16 +281,16 @@ export function useSystemMonitoringWidgets() {
   return [
     {
       id: "system-uptime",
-      label: "Server uptime",
+      label: tr("Server uptime"),
       width: "half" as const,
       content: (
         <>
           <KpiStrip
-            label="Server uptime"
+            label={tr("Server uptime")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Server uptime",
+                title: tr("Server uptime"),
                 accent: "#10b981",
                 value: data ? formatUptime(data.runtime.uptimeMillis) : dash,
                 chip: heap === undefined ? undefined : `${heap}% heap`,
@@ -307,7 +305,7 @@ export function useSystemMonitoringWidgets() {
           />
           {error && !data && (
             <PanelError
-              message="System monitoring could not be loaded."
+              message={tr("System monitoring could not be loaded.")}
               onRetry={reload}
             />
           )}
@@ -316,16 +314,16 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "database-connections",
-      label: "Database connections",
+      label: tr("Database connections"),
       width: "half" as const,
       content: (
         <>
           <KpiStrip
-            label="Database connections"
+            label={tr("Database connections")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Database connections",
+                title: tr("Database connections"),
                 accent: "#059669",
                 value: pool,
                 chip: data
@@ -341,7 +339,7 @@ export function useSystemMonitoringWidgets() {
           />
           {error && !data && (
             <PanelError
-              message="Database connections could not be loaded."
+              message={tr("Database connections could not be loaded.")}
               onRetry={reload}
             />
           )}
@@ -350,16 +348,16 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "active-sessions",
-      label: "Active sessions",
+      label: tr("Active sessions"),
       width: "half" as const,
       content: (
         <>
           <KpiStrip
-            label="Active sessions"
+            label={tr("Active sessions")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Active sessions",
+                title: tr("Active sessions"),
                 accent: "#34d399",
                 value: data ? data.security.activeSessions : dash,
                 footValue: data ? data.security.lockedAccounts : dash,
@@ -369,7 +367,7 @@ export function useSystemMonitoringWidgets() {
           />
           {error && !data && (
             <PanelError
-              message="Active sessions could not be loaded."
+              message={tr("Active sessions could not be loaded.")}
               onRetry={reload}
             />
           )}
@@ -378,16 +376,16 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "failed-logins",
-      label: "Failed logins (24 h)",
+      label: tr("Failed logins (24 h)"),
       width: "half" as const,
       content: (
         <>
           <KpiStrip
-            label="Failed logins (24 h)"
+            label={tr("Failed logins (24 h)")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Failed logins (24 h)",
+                title: tr("Failed logins (24 h)"),
                 accent: "#6ee7b7",
                 value: data ? data.security.failedLogins24h : dash,
                 footValue: data ? data.security.electronicSignatures30d : dash,
@@ -397,7 +395,7 @@ export function useSystemMonitoringWidgets() {
           />
           {error && !data && (
             <PanelError
-              message="Failed logins (24 h) could not be loaded."
+              message={tr("Failed logins (24 h) could not be loaded.")}
               onRetry={reload}
             />
           )}
@@ -406,11 +404,11 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "users-by-status",
-      label: "Users by status",
+      label: tr("Users by status"),
       width: "half" as const,
       content: (
         <BreakdownPanel
-          title="Users by status"
+          title={tr("Users by status")}
           idleSubtitle="All user accounts, per status"
           subtitle={(total) => `${total.toLocaleString()} user accounts`}
           resource={users}
@@ -420,7 +418,7 @@ export function useSystemMonitoringWidgets() {
           emptyLabel={
             totalUsers === 0 && data ? "There are no user accounts" : "No data"
           }
-          errorMessage="Users by status could not be loaded."
+          errorMessage={tr("Users by status could not be loaded.")}
           idPrefix="users-status"
           defaultView="bar"
           colorFor={userStatusColor}
@@ -429,7 +427,7 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "compliance-queues",
-      label: "Compliance queues",
+      label: tr("Compliance queues"),
       width: "half" as const,
       content: (
         <ComplianceCard
@@ -442,7 +440,7 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "system-runtime",
-      label: "System runtime",
+      label: tr("System runtime"),
       width: "half" as const,
       content: (
         <RuntimeCard
@@ -455,15 +453,15 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "locked-accounts",
-      label: "Locked accounts",
+      label: tr("Locked accounts"),
       width: "half" as const,
       content: (
         <KpiStrip
-          label="Locked accounts"
+          label={tr("Locked accounts")}
           className="!grid-cols-1"
           cells={[
             {
-              title: "Locked accounts",
+              title: tr("Locked accounts"),
               accent: "#f59e0b",
               value: data ? data.security.lockedAccounts : dash,
               footValue: data ? data.security.activeSessions : dash,
@@ -475,15 +473,15 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "electronic-signatures",
-      label: "E-signatures (30 days)",
+      label: tr("E-signatures (30 days)"),
       width: "half" as const,
       content: (
         <KpiStrip
-          label="E-signatures (30 days)"
+          label={tr("E-signatures (30 days)")}
           className="!grid-cols-1"
           cells={[
             {
-              title: "E-signatures (30 days)",
+              title: tr("E-signatures (30 days)"),
               accent: "#059669",
               value: data ? data.security.electronicSignatures30d : dash,
               footValue: data ? formatChecked(data.generatedAt) : dash,
@@ -495,17 +493,17 @@ export function useSystemMonitoringWidgets() {
     },
     {
       id: "open-access-reviews",
-      label: "Open access reviews",
+      label: tr("Open access reviews"),
       width: "half" as const,
       defaultVisible: false, // library only
       content: (
         <>
           <KpiStrip
-            label="Open access reviews"
+            label={tr("Open access reviews")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Open access reviews",
+                title: tr("Open access reviews"),
                 accent: "#10b981",
                 value: data ? data.compliance.openAccessReviews : dash,
                 footValue: data ? data.compliance.openAuditTrailReviews : dash,
@@ -513,23 +511,23 @@ export function useSystemMonitoringWidgets() {
               },
             ]}
           />
-          {error && !data && <PanelError message="Open access reviews could not be loaded." onRetry={reload} />}
+          {error && !data && <PanelError message={tr("Open access reviews could not be loaded.")} onRetry={reload} />}
         </>
       ),
     },
     {
       id: "open-audit-trail-reviews",
-      label: "Open audit trail reviews",
+      label: tr("Open audit trail reviews"),
       width: "half" as const,
       defaultVisible: false, // library only
       content: (
         <>
           <KpiStrip
-            label="Open audit trail reviews"
+            label={tr("Open audit trail reviews")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Open audit trail reviews",
+                title: tr("Open audit trail reviews"),
                 accent: "#059669",
                 value: data ? data.compliance.openAuditTrailReviews : dash,
                 footValue: data ? data.compliance.openAccessReviews : dash,
@@ -537,23 +535,23 @@ export function useSystemMonitoringWidgets() {
               },
             ]}
           />
-          {error && !data && <PanelError message="Open audit trail reviews could not be loaded." onRetry={reload} />}
+          {error && !data && <PanelError message={tr("Open audit trail reviews could not be loaded.")} onRetry={reload} />}
         </>
       ),
     },
     {
       id: "open-controlled-copy-discrepancies",
-      label: "Open controlled copy discrepancies",
+      label: tr("Open controlled copy discrepancies"),
       width: "half" as const,
       defaultVisible: false, // library only
       content: (
         <>
           <KpiStrip
-            label="Open controlled copy discrepancies"
+            label={tr("Open controlled copy discrepancies")}
             className="!grid-cols-1"
             cells={[
               {
-                title: "Open controlled copy discrepancies",
+                title: tr("Open controlled copy discrepancies"),
                 accent: "#f59e0b",
                 value: data ? data.compliance.openControlledCopyDiscrepancies : dash,
                 footValue: data ? data.compliance.openAccessReviews : dash,
@@ -561,7 +559,7 @@ export function useSystemMonitoringWidgets() {
               },
             ]}
           />
-          {error && !data && <PanelError message="Open controlled copy discrepancies could not be loaded." onRetry={reload} />}
+          {error && !data && <PanelError message={tr("Open controlled copy discrepancies could not be loaded.")} onRetry={reload} />}
         </>
       ),
     },
@@ -573,7 +571,7 @@ export const SystemMonitoringSection: React.FC = () => {
   const widgets = useSystemMonitoringWidgets();
   return (
     <section
-      aria-label="System monitoring"
+      aria-label={tr("System monitoring")}
       className="grid grid-cols-1 gap-4 lg:grid-cols-2"
     >
       {widgets.map((widget) => (

@@ -57,6 +57,7 @@ import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { startControlledCopyJobStatusPolling } from "../jobStatusPolling";
 import { buildControlledCopyRouteState } from "../controlledCopyNavigation";
 import type { ControlledCopyRouteState } from "../controlledCopyNavigation";
+import { tr } from "@/i18n";
 
 // Tab Type
 type TabType = "document" | "file" | "distribution" | "signatures" | "audit" | "evidence" | "records";
@@ -189,7 +190,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     } catch (error) {
       showToast({
         type: "error",
-        title: "Notice failed",
+        title: tr("Notice failed"),
         message: getApiErrorMessage(error, "Unable to generate the notice."),
       });
     } finally {
@@ -420,8 +421,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           console.error("Failed to load recall result", error);
           showToast({
             type: "success",
-            title: "Controlled Copy Recalled",
-            message: "The recall batch has finished processing.",
+            title: tr("Controlled Copy Recalled"),
+            message: tr("The recall batch has finished processing."),
             duration: 4000,
           });
         }
@@ -450,7 +451,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setRecallResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copy recalls.",
@@ -504,8 +505,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           console.error("Failed to load cancel result", error);
           showToast({
             type: "success",
-            title: "Controlled Copy Cancelled",
-            message: "The cancel batch has finished processing.",
+            title: tr("Controlled Copy Cancelled"),
+            message: tr("The cancel batch has finished processing."),
             duration: 4000,
           });
         }
@@ -534,7 +535,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setCancelResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copy cancellations.",
@@ -600,7 +601,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             showToast({
               type: hasErrors ? "error" : "success",
               title: hasErrors ? "Distribution completed with errors" : "Controlled Copy Distributed",
-              message: "The distribution batch has finished processing.",
+              message: tr("The distribution batch has finished processing."),
               duration: 4000,
             });
           }
@@ -610,8 +611,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
 
       showToast({
         type: "success",
-        title: "Controlled Copy Distributed",
-        message: "The controlled copy has been successfully distributed and sent to its recipient.",
+        title: tr("Controlled Copy Distributed"),
+        message: tr("The controlled copy has been successfully distributed and sent to its recipient."),
         duration: 3500,
       });
     }, hasErrors ? 1800 : 600);
@@ -639,7 +640,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setDistributeResultModal((prev) => (prev ? { ...prev, isRetrying: false } : prev));
       showToast({
         type: "error",
-        title: "Retry failed",
+        title: tr("Retry failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to retry the failed controlled copies.",
@@ -713,8 +714,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         if (!mounted) return;
         showToast({
           type: "error",
-          title: "Unable to load controlled copy",
-          message: "Controlled copy detail could not be loaded from the server.",
+          title: tr("Unable to load controlled copy"),
+          message: tr("Controlled copy detail could not be loaded from the server."),
           duration: 3500,
         });
       } finally {
@@ -732,15 +733,15 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
 
   // Tabs configuration
   const tabs = [
-    { id: "document" as TabType, label: "Document Information" },
+    { id: "document" as TabType, label: tr("Document Information") },
     ...(!isBatchParent && viewDocumentDecision?.allowed ? [{ id: "file" as TabType, label: "Document" }] : []),
-    { id: "distribution" as TabType, label: "Distribution Information" },
+    { id: "distribution" as TabType, label: tr("Distribution Information") },
     ...(evidenceRows.length > 0 || Boolean(controlledCopy.destructionType)
       ? [{ id: "evidence" as TabType, label: "Evidence" }]
       : []),
     ...(hasScanRecord ? [{ id: "records" as TabType, label: "Records" }] : []),
-    { id: "signatures" as TabType, label: "Signatures" },
-    { id: "audit" as TabType, label: "Audit Trail" },
+    { id: "signatures" as TabType, label: tr("Signatures") },
+    { id: "audit" as TabType, label: tr("Audit Trail") },
   ];
 
 
@@ -850,7 +851,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       }
       showToast({
         type: "error",
-        title: "Distribution failed",
+        title: tr("Distribution failed"),
         message: (error as any)?.response?.data?.message
           ?? (error as any)?.response?.data?.error?.message
           ?? "Unable to distribute the controlled copy.",
@@ -923,7 +924,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       }
       showToast({
         type: "error",
-        title: "Cancellation failed",
+        title: tr("Cancellation failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to cancel the controlled copy.",
@@ -958,8 +959,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         await refreshDetailRelatedData("Controlled Copy", controlledCopy.id, []);
         showToast({
           type: "success",
-          title: "Controlled Copy Recalled",
-          message: "The executed record has been filed and the controlled copy closed.",
+          title: tr("Controlled Copy Recalled"),
+          message: tr("The executed record has been filed and the controlled copy closed."),
           duration: 3500,
         });
         setIsRecallESignModalOpen(false);
@@ -1009,8 +1010,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       } else {
         showToast({
           type: "success",
-          title: "Controlled Copy Recalled",
-          message: "The controlled copy has been successfully recalled.",
+          title: tr("Controlled Copy Recalled"),
+          message: tr("The controlled copy has been successfully recalled."),
           duration: 3500,
         });
       }
@@ -1026,7 +1027,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       }
       showToast({
         type: "error",
-        title: "Recall failed",
+        title: tr("Recall failed"),
         message: (error as any)?.response?.data?.error?.message
           ?? (error as any)?.response?.data?.message
           ?? "Unable to recall the controlled copy.",
@@ -1070,7 +1071,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       }) as ControlledCopy;
       showToast({
         type: "success",
-        title: "Replacement Copy Reissued",
+        title: tr("Replacement Copy Reissued"),
         message: `New controlled copy ${created?.controlledCopyNumber || ""} created (Ready for Distribution) for the same recipient.`,
         duration: 4500,
       });
@@ -1085,7 +1086,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
       showToast({
         type: "error",
-        title: "Reissue failed",
+        title: tr("Reissue failed"),
         message: backendMessage || "Unable to reissue a replacement controlled copy.",
         duration: 3500,
       });
@@ -1106,7 +1107,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       {/* Header */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title={isBatchParent ? "Controlled Copy Batch Details" : "Controlled Copy Details"}
+          title={isBatchParent ? "Controlled Copy Batch Details" : tr("Controlled Copy Details")}
           breadcrumbItems={controlledCopyDetail(navigate, location.state?.from)}
           actions={
             <>
@@ -1119,7 +1120,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                 size="sm"
                 className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
               >
-                Back
+                {tr("Back")}
               </Button>
               {isBatchParent && !isCapabilityLoading && cancelDecision?.allowed && (
                 <Button
@@ -1128,9 +1129,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
                   disabled={isCapabilityLoading}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  Cancel Batch Distribution
+                  {tr("Cancel Batch Distribution")}
                 </Button>
               )}
               {!isBatchParent && !isCapabilityLoading && cancelDecision?.allowed && (
@@ -1140,9 +1141,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
                   disabled={isCapabilityLoading}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  Cancel Request
+                  {tr("Cancel Request")}
                 </Button>
               )}
               {!isCapabilityLoading && distributeDecision?.allowed && (
@@ -1152,9 +1153,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
                   disabled={isCapabilityLoading || distributeProgress !== null}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  {isBatchParent ? "Distribute Batch" : "Distribute"}
+                  {isBatchParent ? "Distribute Batch" : tr("Distribute")}
                 </Button>
               )}
               {!isCapabilityLoading && recallDecision?.allowed && (
@@ -1164,7 +1165,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
                   disabled={isCapabilityLoading}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
                   {isBatchParent ? "Recall Batch Immediately" : "Recall Immediately"}
                 </Button>
@@ -1187,9 +1188,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
                   disabled={isCapabilityLoading}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  Report Lost/Damaged
+                  {tr("Report Lost/Damaged")}
                 </Button>
               )}
               {!isBatchParent && !isCapabilityLoading && reissueDecision?.allowed && (
@@ -1199,9 +1200,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   size="sm"
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
                   disabled={isCapabilityLoading}
-                  title={isCapabilityLoading ? "Capability information is still loading." : ""}
+                  title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  Reissue Copy
+                  {tr("Reissue Copy")}
                 </Button>
               )}
             </>
@@ -1254,7 +1255,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                 entityId={controlledCopy.distributionBatchId || controlledCopy.id}
                 entityType="Controlled Copy Distribution Batch"
                 includeChildren
-                emptyMessage="No audit records available for this batch."
+                emptyMessage={tr("No audit records available for this batch.")}
               />
             ) : (
               <AuditTrailTab
@@ -1288,7 +1289,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           size="sm"
           className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
         >
-          Back
+          {tr("Back")}
         </Button>
         {isBatchParent && !isCapabilityLoading && cancelDecision?.allowed && (
           <Button
@@ -1297,9 +1298,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            Cancel Batch Distribution
+            {tr("Cancel Batch Distribution")}
           </Button>
         )}
                 {!isBatchParent && !isCapabilityLoading && cancelDecision?.allowed && (
@@ -1309,9 +1310,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation"
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            Cancel Request
+            {tr("Cancel Request")}
           </Button>
         )}
         {!isCapabilityLoading && distributeDecision?.allowed && (
@@ -1321,9 +1322,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
             disabled={isCapabilityLoading || distributeProgress !== null}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            {isBatchParent ? "Distribute Batch" : "Distribute"}
+            {isBatchParent ? "Distribute Batch" : tr("Distribute")}
           </Button>
         )}
         {!isCapabilityLoading && recallDecision?.allowed && (
@@ -1333,7 +1334,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
             {isBatchParent ? "Recall Batch Immediately" : "Recall Immediately"}
           </Button>
@@ -1345,9 +1346,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            Report Lost/Damaged
+            {tr("Report Lost/Damaged")}
           </Button>
         )}
         {!isBatchParent && !isCapabilityLoading && reissueDecision?.allowed && (
@@ -1357,9 +1358,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             size="sm"
             className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
             disabled={isCapabilityLoading}
-            title={isCapabilityLoading ? "Capability information is still loading." : ""}
+            title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            Reissue Copy
+            {tr("Reissue Copy")}
           </Button>
         )}
       </div>
@@ -1372,8 +1373,8 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
           setIsPlaceholderFieldsModalOpen(false);
           setIsDistributeModalOpen(true);
         }}
-        title="Additional Details"
-        description="These values are filled into the corresponding {{placeholder}} on the controlled copy's cover/header/footer."
+        title={tr("Additional Details")}
+        description={tr("These values are filled into the corresponding {{placeholder}} on the controlled copy's cover/header/footer.")}
         confirmText="Continue"
       >
         <div className="space-y-3">

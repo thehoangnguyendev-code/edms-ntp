@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button/Button";
 import { cn } from "@/components/ui/utils";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { tr } from "@/i18n";
 
 /** What the server said about the number being typed. A warning is valid but worth a second look. */
 export interface ManualNumberCheck {
@@ -185,7 +186,7 @@ export const ManualNumberField: React.FC<ManualNumberFieldProps> = ({
           <input type="text" value={savedNumber ?? ""} readOnly className={cn(BOX, "border-slate-200 bg-slate-50 text-slate-700")} />
           {changeState?.editable && applyChange && (
             <Button type="button" size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={startEditing}>
-              Change
+              {tr("Change")}
             </Button>
           )}
         </div>
@@ -206,20 +207,20 @@ export const ManualNumberField: React.FC<ManualNumberFieldProps> = ({
             className={cn(BOX, borderClass)}
           />
           {blockedReason && <p className="text-xs text-slate-500">{blockedReason}</p>}
-          {!blockedReason && !typed.trim() && formatHint && <p className="text-xs text-slate-500">Format: {formatHint}</p>}
+                {!blockedReason && !typed.trim() && formatHint && <p className="text-xs text-slate-500">{tr("Format:")} {formatHint}</p>}
           {!blockedReason && !typed.trim() && suggestion && (
             <button
               type="button"
               className="self-start text-xs font-medium text-emerald-700 underline underline-offset-2"
               onClick={() => setTyped(suggestion)}
             >
-              Use {suggestion}
+              {tr("Use")} {suggestion}
             </button>
           )}
-          {!blockedReason && typed.trim() && checking && <p className="text-xs text-slate-500">Checking...</p>}
+          {!blockedReason && typed.trim() && checking && <p className="text-xs text-slate-500">{tr("Checking...")}</p>}
           {!blockedReason && typed.trim() && !checking && result && (
             <p className={cn("text-xs", messageClass)}>
-              {result.message ?? (result.valid ? "This number is free to use." : "This number cannot be used.")}
+              {result.message ?? (result.valid ? tr("This number is free to use.") : tr("This number cannot be used."))}
             </p>
           )}
         </>
@@ -230,14 +231,14 @@ export const ManualNumberField: React.FC<ManualNumberFieldProps> = ({
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason for the change (recorded in the Audit Trail)"
+            placeholder={tr("Reason for the change (recorded in the Audit Trail)")}
             rows={2}
             className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
           />
           {saveError && <p className="text-xs text-red-600">{saveError}</p>}
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="outline" onClick={cancelEditing} disabled={saving}>
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button type="button" size="sm" variant="outline-emerald" onClick={saveChange} disabled={!canSaveChange || saving}>
               {saving ? "Saving..." : "Save number"}

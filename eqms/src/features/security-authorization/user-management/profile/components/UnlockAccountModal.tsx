@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { useSecurityESign } from "@/features/security-authorization/shared/useSecurityESign";
 import type { User } from "../../types";
+import { tr, trFormat } from "@/i18n";
 
 interface UnlockAccountModalProps {
     isOpen: boolean;
@@ -76,14 +77,14 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
             showToast({
                 type: "success",
                 title: "Copied!",
-                message: "Password copied to clipboard",
+                message: tr("Password copied to clipboard"),
             });
         } catch (err) {
             console.error('Failed to copy password:', err);
             showToast({
                 type: "error",
-                title: "Copy Failed",
-                message: "Failed to copy password",
+                title: tr("Copy Failed"),
+                message: tr("Failed to copy password"),
             });
         }
     };
@@ -122,8 +123,8 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
             setResultModal({
                 isOpen: true,
                 type: "error",
-                title: "Unlock Failed",
-                message: "User ID is missing. Please reopen the modal and try again.",
+                title: tr("Unlock Failed"),
+                message: tr("User ID is missing. Please reopen the modal and try again."),
             });
             return;
         }
@@ -144,7 +145,7 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
             setResultModal({
                 isOpen: true,
                 type: "error",
-                title: "Unlock Failed",
+                title: tr("Unlock Failed"),
                 message: extractApiMessage(error),
             });
         } finally {
@@ -158,7 +159,7 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
                 isOpen={isOpen}
                 onClose={onClose}
                 onConfirm={generatedPassword ? onClose : handleConfirmUnlock}
-                title="Unlock Account"
+                title={tr("Unlock Account")}
                 description={generatedPassword
                     ? `Account unlocked for ${userName}. Copy the temporary password now; it will not be displayed again.`
                     : `${userName} is currently locked out after too many failed login attempts. Unlocking will reset the failed-attempt counter and issue a new temporary password.`}
@@ -173,14 +174,14 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
                         variant="warning"
                         description={generatedPassword
                             ? `Store this temporary password securely. An email with the login link, username and this password has also been sent to ${userEmail || "the user"}. They must change it on next login.`
-                            : "This action requires an electronic signature. It resets the failed-login counter, immediately allows login again, and issues a new temporary password (the current one is invalidated)."}
+                            : tr("This action requires an electronic signature. It resets the failed-login counter, immediately allows login again, and issues a new temporary password (the current one is invalidated).")}
                     />
 
                     {generatedPassword ? (
                         <>
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                                    Temporary Password
+                                    {tr("Temporary Password")}
                                 </label>
                                 <div className="flex items-center gap-2">
                                     <input
@@ -195,7 +196,7 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
                                         variant="outline"
                                         size="icon-sm"
                                         className="flex h-10 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all duration-200 hover:bg-slate-50"
-                                        title="Copy Password"
+                                        title={tr("Copy Password")}
                                     >
                                         <Copy className="h-4 w-4" />
                                     </Button>
@@ -203,13 +204,13 @@ export const UnlockAccountModal: React.FC<UnlockAccountModalProps> = ({
                             </div>
                             <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                                 <Mail className="h-5 w-5 shrink-0" />
-                                <span>Notification email with the login link sent to {userEmail || "the user"}.</span>
+                                <span>{trFormat("Notification email with the login link sent to {email}.", { email: userEmail || tr("the user") })}</span>
                             </div>
                         </>
                     ) : (
                         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                             <LockOpen className="h-5 w-5 shrink-0 text-emerald-600" />
-                            <span>The temporary password is generated securely by the server after e-signature confirmation.</span>
+                            <span>{tr("The temporary password is generated securely by the server after e-signature confirmation.")}</span>
                         </div>
                     )}
                 </div>

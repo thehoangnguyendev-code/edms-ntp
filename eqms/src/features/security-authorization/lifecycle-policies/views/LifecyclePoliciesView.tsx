@@ -12,14 +12,15 @@ import { StateCapabilitiesView } from "./StateCapabilitiesView";
 import { WorkflowRolesView, type WorkflowRolesViewHandle } from "./WorkflowRolesView";
 import { ActionStatusMatrix } from "../components/ActionStatusMatrix";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { tr } from "@/i18n";
 
 type TabId = "matrix" | "transitions" | "capabilities" | "roles";
 
 const TAB_LABELS: Record<TabId, string> = {
-  matrix: "Action Matrix",
-  transitions: "Transition Policies",
-  capabilities: "State Capabilities",
-  roles: "Workflow Roles",
+  matrix: tr("Action Matrix"),
+  transitions: tr("Transition Policies"),
+  capabilities: tr("State Capabilities"),
+  roles: tr("Workflow Roles"),
 };
 
 const TABS: TabItem[] = [
@@ -56,7 +57,7 @@ export const LifecyclePoliciesView: React.FC = () => {
     canManage ? (
       <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => rolesViewRef.current?.openNew()}>
         <Plus className="h-4 w-4" />
-        New Custom Role
+        {tr("New Custom Role")}
       </Button>
     ) : undefined
   ) : activeTab === "capabilities" ? (
@@ -67,23 +68,23 @@ export const LifecyclePoliciesView: React.FC = () => {
       onClick={() => navigate(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies/new`)}
     >
       <Plus className="h-4 w-4" />
-      New State Policy
+      {tr("New State Policy")}
     </Button>
     ) : undefined
   ) : activeTab === "transitions" ? (
     <>
       <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(ROUTES.SECURITY.POLICY_RESOLVER)}>
         <Shield className="h-4 w-4" />
-        Engine Diagnostics
+        {tr("Engine Diagnostics")}
       </Button>
       <Button variant="outline" size="sm" className="whitespace-nowrap gap-2" onClick={() => transitionViewRef.current?.refresh()}>
         <RefreshCw className="h-4 w-4" />
-        Refresh
+        {tr("Refresh")}
       </Button>
       {canManage && (
         <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/new`)}>
           <Plus className="h-4 w-4" />
-          New Policy
+          {tr("New Policy")}
         </Button>
       )}
     </>
@@ -92,7 +93,7 @@ export const LifecyclePoliciesView: React.FC = () => {
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Workflow Authorization"
+        title={tr("Workflow Authorization")}
         breadcrumbItems={breadcrumbItems}
         actions={pageActions}
       />
@@ -105,10 +106,10 @@ export const LifecyclePoliciesView: React.FC = () => {
                 variant="info"
                 description={
                   activeTab === "roles"
-                    ? "A workflow role is a job a person can be given on a record, such as Reviewer or Approver. An Access Profile lists the roles its holders have, and the policies in the other tabs use them to decide who may act."
+                    ? tr("A workflow role is a job a person can be given on a record, such as Reviewer or Approver. An Access Profile lists the roles its holders have, and the policies in the other tabs use them to decide who may act.")
                     : activeTab === "transitions"
-                    ? "Advanced: this is the full list of rules behind the Action Matrix, one row per rule. Open it to change a rule or add an exception. To just see who may do what, use the Action Matrix tab."
-                    : "Advanced: these rules decide what each status allows (for example whether a record can be edited). Change them only when the lifecycle itself changes. To see who may do what, use the Action Matrix tab."
+                    ? tr("Advanced: this is the full list of rules behind the Action Matrix, one row per rule. Open it to change a rule or add an exception. To just see who may do what, use the Action Matrix tab.")
+                    : tr("Advanced: these rules decide what each status allows (for example whether a record can be edited). Change them only when the lifecycle itself changes. To see who may do what, use the Action Matrix tab.")
                 }
               />
             </div>

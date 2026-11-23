@@ -1,9 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 
-const api = vi.hoisted(() => ({ suspensions: vi.fn(), resume: vi.fn(), retention: vi.fn() }));
+const api = vi.hoisted(() => ({ suspensions: vi.fn(), retention: vi.fn() }));
 const page = (data: unknown[]) => ({ data, pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 }, retentionYears: 10 });
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingFollowUpApi: api }));
 const toast = vi.hoisted(() => ({ showToast: () => undefined }));
@@ -14,7 +14,7 @@ import { ComplianceSuspensionsTab } from "../ComplianceSuspensionsTab";
 import { ComplianceRetentionTab } from "../ComplianceRetentionTab";
 
 const department: ReportSelectFilter = { id: "department", label: "Department", value: "", options: [{ label: "Select Department", value: "" }], onChange: () => undefined };
-const open = { id: "s1", personUserId: "p1", fullName: "Anne Tran", employeeCode: "E-001", position: "Operator", activityId: "a1", trainingNumber: "TRN/QA/26-001", topicText: "Gowning", percent: 55, status: "OPEN", raisedAt: "2026-10-20T08:00:00Z", canResume: true };
+const open = { id: "s1", personUserId: "p1", fullName: "Anne Tran", employeeCode: "E-001", position: "Operator", activityId: "a1", trainingNumber: "TRN/QA/26-001", topicText: "Gowning", percent: 55, status: "OPEN", raisedAt: "2026-10-20T08:00:00Z" };
 
 beforeEach(() => {
   // The real table observes its header and the browser object is not in the test environment.
@@ -33,25 +33,13 @@ describe("ComplianceSuspensionsTab", () => {
     expect(api.suspensions).toHaveBeenCalledWith(expect.objectContaining({ status: "OPEN" }));
   });
 
-  it("offers Resume Work to the head of the unit and needs a reason before the signature", async () => {
+  it("has no Resume Work: the flag ends only when the retraining is passed", async () => {
     api.suspensions.mockResolvedValue(page([open]));
     render(<MemoryRouter><ComplianceSuspensionsTab departmentId="" departmentFilter={department} /></MemoryRouter>);
 
     await screen.findByText("Anne Tran");
-    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
-    fireEvent.click(await screen.findByText("Resume Work"));
-
-    expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getAllByRole("textbox").at(-1) as HTMLElement, { target: { value: "Retrained on the job" } });
-    await waitFor(() => expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false));
-  });
-
-  it("has no Resume Work for a row the person may not resume", async () => {
-    api.suspensions.mockResolvedValue(page([{ ...open, canResume: false }]));
-    render(<MemoryRouter><ComplianceSuspensionsTab departmentId="" departmentFilter={department} /></MemoryRouter>);
-
-    await screen.findByText("Anne Tran");
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+    expect(screen.queryByText("Resume Work")).toBeNull();
   });
 });
 

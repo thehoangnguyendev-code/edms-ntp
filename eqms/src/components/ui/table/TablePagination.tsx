@@ -4,7 +4,7 @@ import { Select } from '../select/Select';
 import { cn } from '../utils';
 import { useFitLevel } from '../useFitLevel';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useLanguage } from '@/i18n';
+import { tr, useLanguage } from '@/i18n';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 export interface TablePaginationProps {
@@ -123,7 +123,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
         {showItemCount && (
           <div className="text-xs md:text-sm text-slate-600">
             <span className="font-medium text-slate-900">{startItem}</span> -{' '}
-            <span className="font-medium text-slate-900">{endItem}</span> of{' '}
+            <span className="font-medium text-slate-900">{endItem}</span> {tr("of")}{' '}
             <span className="font-medium text-slate-900">{totalItems}</span>
             {level < 3 && <span> {t('common.results', 'results')}</span>}
           </div>

@@ -131,7 +131,7 @@ public class TrainingReminderScheduler {
         for (Map<String, Object> row : jdbc.queryForList("""
             select a.id, a.training_number, a.due_date, a.created_by, count(*) as people
               from training_activities a join training_participants p on p.activity_id = a.id join app_users u on u.id = p.person_user_id and u.status = 'Active'
-             where a.parent_activity_id is null and a.status in ('IN_PROGRESS','PENDING_QA_CONFIRMATION','COMPLETED') and a.due_date is not null and a.due_date + (?::int) <= ?
+             where a.parent_activity_id is null and a.status = 'COMPLETED' and a.due_date is not null and a.due_date + (?::int) <= ?
                and a.created_by is not null and p.state = 'ABSENT'
                and not exists (select 1 from training_activities c where c.parent_activity_id = a.id and c.status <> 'CANCELLED'
                                 and (exists (select 1 from training_participants x where x.activity_id = c.id and x.person_user_id = p.person_user_id)

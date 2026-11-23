@@ -10,6 +10,7 @@ import { statusLabel } from "../types";
 import { BackupExportButton } from "./BackupExportButton";
 import { ServerListPanel } from "./ServerListPanel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type SortKey = "status" | "requestedBy" | "requestedAt";
 
@@ -81,9 +82,9 @@ export function BackupRehearsalList({ backupNumber, reloadKey }: { backupNumber:
     { id: "status", header: "Result", label: "Result", sort: sortFor("status"), cell: (row) => <Badge color={row.status === "PASSED" ? "emerald" : row.status === "FAILED" ? "red" : "amber"}>{statusLabel(row.status)}</Badge> },
     { id: "checks", header: "Checks", label: "Checks", cell: (row) => (row.checkCount > 0 ? `${row.checkCount - row.failedCount} of ${row.checkCount} passed` : "—") },
     { id: "error", header: "Problem", label: "Problem", cell: (row) => (row.errorCode ? <span className="font-mono text-xs">{row.errorCode}</span> : "—") },
-    { id: "by", header: "Requested by", label: "Requested by", sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },
+    { id: "by", header: tr("Requested by"), label: tr("Requested by"), sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },
     { id: "at", header: "Requested", label: "Requested", sort: sortFor("requestedAt"), cell: (row) => formatDateTime(row.requestedAt) },
-    { id: "took", header: "Restore time", label: "Restore time", cell: (row) => (row.restoreSeconds == null ? "—" : `${row.restoreSeconds} s`) },
+    { id: "took", header: tr("Restore time"), label: tr("Restore time"), cell: (row) => (row.restoreSeconds == null ? "—" : `${row.restoreSeconds} s`) },
   ];
 
   return (
@@ -96,12 +97,12 @@ export function BackupRehearsalList({ backupNumber, reloadKey }: { backupNumber:
       loading={loading}
       hasLoaded={hasLoaded}
       error={error}
-      emptyTitle="No test restores"
-      emptyDescription="A test restore puts the backup into a scratch database, runs the checks and drops the database; production is not changed."
+      emptyTitle={tr("No test restores")}
+      emptyDescription={tr("A test restore puts the backup into a scratch database, runs the checks and drops the database; production is not changed.")}
       search={search}
       onSearch={setSearch}
       searchLabel="Search test restores"
-      searchPlaceholder="Test, result, problem or person…"
+      searchPlaceholder={tr("Test, result, problem or person…")}
       filters={[{ id: "status", label: "Result", value: status, options: STATUS_OPTIONS, defaultValue: "", placeholder: "All", onChange: setStatus }]}
       onClear={() => {
         setSearch("");

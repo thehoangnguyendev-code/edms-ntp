@@ -4,6 +4,7 @@ import { MultiSelect } from "@/components/ui/select/MultiSelect";
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { trainingActivitiesApi } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /** A person as a job assignment writes them: the name and the position (Position of the user), for example "Doan Thu Ha (Head of QC)". */
 export const personTitle = (p: { fullName: string; position?: string | null }) => (p.position ? `${p.fullName} (${p.position})` : p.fullName);
@@ -69,7 +70,7 @@ export function PersonTitlePicker({ value, onChange, multiple = false, disabled 
         options={withCurrent(chosen)}
         enableSearch
         onSearch={search}
-        placeholder="Search by name"
+        placeholder={tr("Search by name")}
         maxVisibleTags={2}
         onChange={(values) => onChange(values.map(String).join("; "))}
       />
@@ -80,7 +81,7 @@ export function PersonTitlePicker({ value, onChange, multiple = false, disabled 
       value={value}
       disabled={disabled}
       aria-label={label}
-      placeholder="Search by name"
+      placeholder={tr("Search by name")}
       options={withCurrent(chosen)}
       onSearch={search}
       onChange={(v) => onChange(String(v))}

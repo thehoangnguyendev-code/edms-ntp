@@ -4,6 +4,7 @@ import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast";
 import { settingsApi } from "@/services/api/settings";
+import { tr } from "@/i18n";
 
 interface ResetMfaModalProps {
   isOpen: boolean;
@@ -43,19 +44,19 @@ export const ResetMfaModal: React.FC<ResetMfaModalProps> = ({ isOpen, onClose, u
         isOpen={isOpen}
         onClose={close}
         onConfirm={() => setESignOpen(true)}
-        title="Reset MFA"
-        description={<>Remove the multi-factor authentication of <span className="font-semibold text-slate-700">{userName}</span> because they lost their authenticator device.</>}
+        title={tr("Reset MFA")}
+        description={<>{tr("Remove the multi-factor authentication of")} <span className="font-semibold text-slate-700">{userName}</span> {tr("because they lost their authenticator device.")}</>}
         confirmText="Continue"
         size="md"
       >
         <div className="space-y-4">
           <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-            <li>Their authenticator and trusted devices are switched off.</li>
-            <li>They are signed out on every device.</li>
-            <li>They are told by e-mail and set up multi-factor authentication again at the next sign-in.</li>
+            <li>{tr("Their authenticator and trusted devices are switched off.")}</li>
+            <li>{tr("They are signed out on every device.")}</li>
+            <li>{tr("They are told by e-mail and set up multi-factor authentication again at the next sign-in.")}</li>
           </ul>
           <WarningBanner variant="warning">
-            Check who is asking before you continue. You give the reason and sign on the next step; the reset is recorded in the Audit Trail with your signature.
+            {tr("Check who is asking before you continue. You give the reason and sign on the next step; the reset is recorded in the Audit Trail with your signature.")}
           </WarningBanner>
         </div>
       </FormModal>

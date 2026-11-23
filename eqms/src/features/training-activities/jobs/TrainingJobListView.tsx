@@ -46,6 +46,7 @@ import {
   useDateRange,
   useDepartmentOptions,
 } from "../shared/useListFilters";
+import { tr } from "@/i18n";
 
 /** The one item of the Action menu: what is waiting on this job assignment. Every other status just opens it. */
 export const JOB_STATUS_LABEL: Record<string, string> = {
@@ -68,8 +69,8 @@ export const JOB_STATUS_COLOR: Record<
 
 /** Job assignments (APD.0024): the position a person is given, after the training the matrix requires for it. */
 const TABS: TabItem[] = [
-  { id: "assignments", label: "Job Assignments" },
-  { id: "roles", label: "Work Positions Held" },
+  { id: "assignments", label: tr("Job Assignments") },
+  { id: "roles", label: tr("Work Positions Held") },
 ];
 
 export function TrainingJobListView() {
@@ -161,7 +162,7 @@ export function TrainingJobListView() {
     },
     {
       id: "employeeCode",
-      header: "Employee ID",
+      header: tr("Employee ID"),
       sort: sorted("employeeCode"),
       cell: (r) => r.employeeCode ?? "—",
     },
@@ -181,7 +182,7 @@ export function TrainingJobListView() {
     },
     {
       id: "position",
-      header: "Work Position",
+      header: tr("Work Position"),
       sort: sorted("position"),
       cell: (r) => <WorkPositionsPreview assignmentId={r.id} personName={r.fullName} positions={r.positions} totalCount={r.positionsCount} fallback={r.positionName} />,
     },
@@ -215,13 +216,13 @@ export function TrainingJobListView() {
     },
     {
       id: "effective",
-      header: "Effective Date",
+      header: tr("Effective Date"),
       sort: sorted("effective"),
       cell: (r) => day(r.effectiveAt),
     },
     {
       id: "createdAt",
-      header: "Created On",
+      header: tr("Created On"),
       sort: sorted("createdAt"),
       cell: (r) => day(r.createdAt),
     },
@@ -234,7 +235,7 @@ export function TrainingJobListView() {
     ...(r.actions.view
       ? [
           {
-            label: "View Details",
+            label: tr("View Details"),
             icon: <IconInfoCircle className="h-4 w-4" />,
             onClick: () => openJob(r.id),
           },
@@ -243,7 +244,7 @@ export function TrainingJobListView() {
     ...(r.actions.continueDraft
       ? [
           {
-            label: "Continue Draft",
+            label: tr("Continue Draft"),
             icon: <IconPencilMinus className="h-4 w-4" />,
             onClick: () => openJob(r.id),
           },
@@ -252,7 +253,7 @@ export function TrainingJobListView() {
     ...(r.actions.review
       ? [
           {
-            label: "Review and Accept",
+            label: tr("Review and Accept"),
             icon: <IconChecks className="h-4 w-4" />,
             onClick: () => openJob(r.id),
           },
@@ -307,7 +308,7 @@ export function TrainingJobListView() {
     },
     {
       id: "position",
-      label: "Work Position",
+      label: tr("Work Position"),
       value: positionFilter,
       options: [
         { label: "All", value: "" },
@@ -329,7 +330,7 @@ export function TrainingJobListView() {
           canManage && tab === "assignments" ? (
             <Button size="sm" onClick={() => navigate("/training-management/job-assignments/new")}>
               <IconPlus className="mr-2 h-4 w-4" />
-              New Job Assignment
+              {tr("New Job Assignment")}
             </Button>
           ) : undefined
         }
@@ -347,7 +348,7 @@ export function TrainingJobListView() {
       )}
       <ReportListToolbar
         framed={false}
-        searchPlaceholder="Search employee or work position…"
+        searchPlaceholder={tr("Search employee or work position…")}
         search={table.searchQuery}
         onSearch={(v) => {
           table.setSearchQuery(v);
@@ -388,8 +389,8 @@ export function TrainingJobListView() {
           action={rowMenu.action}
           emptyState={
             <TableEmptyState
-              title="No Job Assignments"
-              description="Assignments of Work Positions to people appear here."
+              title={tr("No Job Assignments")}
+              description={tr("Assignments of Work Positions to people appear here.")}
             />
           }
           pagination={

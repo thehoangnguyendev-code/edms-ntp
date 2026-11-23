@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useRef } from 'react';
 import { RATE_LIMITED_EVENT } from '@/services/api/client';
 import { useToast } from '@/components/ui/toast/Toast';
@@ -23,7 +24,7 @@ export const RateLimitNoticeListener = () => {
 
       showToast({
         type: 'error',
-        title: 'Too many requests',
+        title: tr('Too many requests'),
         message: `You've made too many requests in a short time. ${waitMessage}`,
         duration: 5000,
       });

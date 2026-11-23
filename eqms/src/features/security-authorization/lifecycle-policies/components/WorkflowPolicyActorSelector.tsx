@@ -3,6 +3,7 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { cn } from "@/components/ui/utils";
 import type { ActorCodeOption, WorkflowActionPolicyActorRequest, WorkflowActorType, WorkflowActorTypeOption } from "../types";
+import { tr } from "@/i18n";
 function resolveRequiresCode(actorType: WorkflowActorType, options: WorkflowActorTypeOption[]): boolean {
   const opt = options.find((t) => t.value === actorType);
   return Boolean(opt?.requiresActorCode);
@@ -58,13 +59,13 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
     <div className="flex flex-col gap-2">
       {actors.length === 0 && (
         <p className="text-xs text-slate-400 italic py-2">
-          No actors defined. At least one actor is required.
+          {tr("No actors defined. At least one actor is required.")}
         </p>
       )}
 
       {allowedActorTypes.length === 0 && !disabled && (
         <p className="text-xs text-amber-600 italic py-2">
-          Select an action first to see allowed actor types.
+          {tr("Select an action first to see allowed actor types.")}
         </p>
       )}
 
@@ -94,11 +95,11 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
               )}
               <div className={cn("min-w-0 flex-1", needsCode ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "")}>
                 <Select
-                  label="Actor Type"
+                  label={tr("Actor Type")}
                   value={actor.actorType}
                   onChange={(v) => updateActorType(index, v as WorkflowActorType)}
                   options={rowOptions}
-                  placeholder="Select actor type"
+                  placeholder={tr("Select actor type")}
                   disabled={disabled || isInvalid}
                 />
                 {needsCode && (() => {
@@ -107,7 +108,7 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                   return (
                     <div className="flex flex-col">
                       <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                        Actor Code <span className="text-red-500">*</span>
+                        {tr("Actor Code")} <span className="text-red-500">*</span>
                       </label>
                       {codeOptions.length > 0 ? (
                         <Select
@@ -121,7 +122,7 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                               : []),
                             ...codeOptions.map((o) => ({ label: o.label, value: o.value })),
                           ]}
-                          placeholder="Select..."
+                          placeholder={tr("Select...")}
                           enableSearch
                           disabled={disabled}
                         />
@@ -130,7 +131,7 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                           type="text"
                           value={actor.actorCode ?? ""}
                           onChange={(e) => updateActorCode(index, e.target.value)}
-                          placeholder="Enter actor code"
+                          placeholder={tr("Enter actor code")}
                           disabled={disabled}
                           className={cn(
                             "h-9 w-full border rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white disabled:bg-slate-50 disabled:opacity-60",
@@ -139,14 +140,14 @@ export const WorkflowPolicyActorSelector: React.FC<WorkflowPolicyActorSelectorPr
                         />
                       )}
                       {!actor.actorCode && !disabled && (
-                        <p className="text-2xs text-amber-600 mt-0.5">Actor code is required for this actor type.</p>
+                        <p className="text-2xs text-amber-600 mt-0.5">{tr("Actor code is required for this actor type.")}</p>
                       )}
                     </div>
                   );
                 })()}
                 {isInvalid && (
                   <p className="text-2xs text-red-600 mt-1">
-                    This actor type is not allowed for the selected action.
+                    {tr("This actor type is not allowed for the selected action.")}
                   </p>
                 )}
               </div>

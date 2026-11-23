@@ -3,6 +3,7 @@ import { ImageOff, Check, Camera, CameraOff } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { IconFileBroken } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 interface DestructionTypeSelectionModalProps {
   isOpen: boolean;
@@ -87,14 +88,14 @@ export const DestructionTypeSelectionModal: React.FC<
     allowedTypes.includes("Damaged")
       ? {
           type: "Damaged" as const,
-          description: "The controlled copy is damaged and needs to be destroyed.",
+          description: tr("The controlled copy is damaged and needs to be destroyed."),
           evidenceRequired: true,
         }
       : null,
     allowedTypes.includes("Lost")
       ? {
           type: "Lost" as const,
-          description: "The controlled copy cannot be located and is considered lost.",
+          description: tr("The controlled copy cannot be located and is considered lost."),
           evidenceRequired: false,
         }
       : null,
@@ -115,14 +116,14 @@ export const DestructionTypeSelectionModal: React.FC<
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleConfirm}
-      title="Select Report Type"
-      description="Please select the appropriate report type for this controlled copy:"
+      title={tr("Select Report Type")}
+      description={tr("Please select the appropriate report type for this controlled copy:")}
       confirmText="Continue"
       cancelText="Cancel"
       size="lg"
       showCancel={true}
     >
-      <div role="radiogroup" aria-label="Report type" className="space-y-3">
+      <div role="radiogroup" aria-label={tr("Report type")} className="space-y-3">
         {visibleOptions.map((option) => (
           <ReportTypeOption
             key={option.type}

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useCallback, useState } from "react";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { useToast } from "@/components/ui/toast/Toast";
@@ -49,7 +50,7 @@ export function useProductionRestoreRun(onSettled: () => void) {
     setPending(undefined);
     if (!action) return;
     if (!data.signatureToken) {
-      showToast({ type: "error", title: "The signature could not be confirmed", message: "Try again." });
+      showToast({ type: "error", title: tr("The signature could not be confirmed"), message: "Try again." });
       return;
     }
     try {
@@ -60,7 +61,7 @@ export function useProductionRestoreRun(onSettled: () => void) {
       showToast({ type: "info", title: label, message: "Accepted. It is running; this can take a while." });
       void follow(jobId, label);
     } catch (e) {
-      showToast({ type: "error", title: "The request was refused", message: getApiErrorMessage(e, "Nothing was changed.") });
+      showToast({ type: "error", title: tr("The request was refused"), message: getApiErrorMessage(e, "Nothing was changed.") });
     }
   };
 

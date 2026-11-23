@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Kbd } from "@/components/ui/kbd";
 import { Bell, BellOff, Copy, ExternalLink, FolderOpen, Info, Share2, Sparkles, Star, ThumbsUp } from "lucide-react";
 import { useBranding } from "@/components/branding/BrandLogo";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui/utils";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -202,7 +202,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
       .catch((error) => {
         if (!alive) return;
         setOverviewStatus("error");
-        showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to load the Knowledge Base.") });
+        showToast({ type: "error", title: tr("Failed to load"), message: errorMessage(error, "Unable to load the Knowledge Base.") });
       });
     return () => { alive = false; };
   }, [hierarchyId, overviewVersion, showToast]);
@@ -217,7 +217,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
       .catch((error) => {
         if (!alive) return;
         setBrowseStatus("error");
-        showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to open this folder.") });
+        showToast({ type: "error", title: tr("Failed to load"), message: errorMessage(error, "Unable to open this folder.") });
       });
     return () => { alive = false; };
   }, [nav, activeHierarchyId, browseVersion, page, pageSize, sort, sortDir, showToast]);
@@ -628,7 +628,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
       >
         <aside className="hidden min-h-0 border-r border-slate-200 md:block">{renderSidebar(sidebarCollapsed)}</aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col" aria-label="Knowledge Base explorer">
+        <section className="flex min-h-0 min-w-0 flex-col" aria-label={tr("Knowledge Base explorer")}>
           <ExplorerToolbar
             crumbs={crumbs}
             canBack={history.index > 0}
@@ -741,7 +741,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
         </section>
 
         {isWide && (
-          <aside className="min-h-0 overflow-hidden border-l border-slate-200 bg-white" aria-label="Details">
+          <aside className="min-h-0 overflow-hidden border-l border-slate-200 bg-white" aria-label={tr("Details")}>
             <ExplorerInspector
               target={inspectorTarget}
               canFeature={canFeature}
@@ -769,7 +769,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
               exit={{ x: "-100%" }}
               transition={{ duration: reduceMotion ? 0 : 0.26, ease: [0.2, 0.8, 0.2, 1] }}
               role="dialog"
-              aria-label="Navigation"
+              aria-label={tr("Navigation")}
             >
               {renderSidebar(false)}
             </motion.aside>

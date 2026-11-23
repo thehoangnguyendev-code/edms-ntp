@@ -20,7 +20,7 @@ class TrainingParticipantQueryTest {
     TrainingActivityService service;
 
     @BeforeEach void setup() {
-        service = spy(new TrainingActivityService(jdbc, access, store, null, null, null, null, null, null, null, null, null, com.eqms.service.authorization.TestGuards.allowingTraining()));
+        service = spy(new TrainingActivityService(jdbc, access, store, null, null, null, null, null, null, null, null, null, com.eqms.service.authorization.TestGuards.allowingTraining(), null));
         when(store.activity(id)).thenReturn(Optional.of(Map.of("organizer_department_id", department)));
     }
 
@@ -83,4 +83,37 @@ class TrainingParticipantQueryTest {
         assertThat(sql.getAllValues().get(0)).contains("order by lower(p.department) desc nulls last, lower(p.full_name), p.id");
         assertThat(sql.getAllValues().get(1)).contains("order by lower(p.full_name), p.id").doesNotContain("drop table");
     }
+
+    // ---- a supplementary training is offered only when somebody who was absent or failed still needs one (owner decision 2026-11-23)
+    private boolean needsSupplementary(List<Map<String, Object>> absentOrFailed, int alreadyArranged) throws Exception {
+        when(jdbc.queryForList(contains("p.state = 'ABSENT' or p.result = 'FAILED'"), any(Object[].class))).thenReturn(absentOrFailed);
+        when(jdbc.queryForObject(contains("parent_activity_id"), eq(Integer.class), any(Object[].class))).thenReturn(alreadyArranged);
+        var method = TrainingActivityService.class.getDeclaredMethod("needsSupplementary", UUID.class);
+        method.setAccessible(true);
+        return (boolean) method.invoke(service, id);
+    }
+
+    private Map<String, Object> absentOrFailed(String accountStatus) {
+        var row = new HashMap<String, Object>();
+        row.put("person_user_id", UUID.randomUUID());
+        row.put("account_status", accountStatus);
+        return row;
+    }
+
+    @Test void nobodyAbsentOrFailedMeansNothingToOrganize() throws Exception {
+        assertThat(needsSupplementary(List.of(), 0)).isFalse();
+    }
+
+    @Test void aPersonWhoFailedAndHasNoSupplementaryYetNeedsOne() throws Exception {
+        assertThat(needsSupplementary(List.of(absentOrFailed("Active")), 0)).isTrue();
+    }
+
+    @Test void aPersonAlreadyListedInASupplementaryTrainingNeedsNoSecondOne() throws Exception {
+        assertThat(needsSupplementary(List.of(absentOrFailed("Active")), 1)).isFalse();
+    }
+
+    @Test void aPersonWhoseAccountIsNotActiveCannotBeTrainedSoNothingIsOffered() throws Exception {
+        assertThat(needsSupplementary(List.of(absentOrFailed("Terminated")), 0)).isFalse();
+    }
 }
+

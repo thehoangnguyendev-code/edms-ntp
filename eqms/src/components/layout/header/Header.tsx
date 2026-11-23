@@ -8,7 +8,7 @@ import { cn } from '../../ui/utils';
 import { Breadcrumb } from '../../ui/breadcrumb/Breadcrumb';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { GlobalSearchButton } from '@/features/global-search/GlobalSearchButton';
-import { useLanguage } from '@/i18n';
+import { useLanguage, tr } from "@/i18n";
 import { MaintenanceCountdownChip } from '@/features/maintenance/MaintenanceCountdownChip';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { useBreadcrumb } from '@/contexts/BreadcrumbContext';
@@ -168,7 +168,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
               onClick={onToggleSidebar}
               className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 relative overflow-hidden transition-colors"
               title={isMobileMenuOpen ? "Close Menu" : (isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")}
-              aria-label={isMobileMenuOpen ? "Close navigation menu" : (isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")}
+              aria-label={isMobileMenuOpen ? "Close navigation menu" : (isSidebarCollapsed ? "Expand sidebar" : tr("Collapse sidebar"))}
             >
               {/* Mobile: Menu Icon - Show when mobile menu is closed */}
               <Menu className={cn(

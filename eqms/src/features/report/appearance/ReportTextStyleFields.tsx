@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button/Button";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { cn } from "@/components/ui/utils";
 import type { ReportFontFamily, ReportTextStyle } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 export const REPORT_FONTS: { value: ReportFontFamily; label: string }[] = [
   { value: "NOTO_SANS", label: "Noto Sans" },
@@ -20,7 +21,7 @@ const TRANSFORMS = [
   { value: NO_TRANSFORM, label: "None" },
   { value: "UPPERCASE", label: "Uppercase" },
   { value: "LOWERCASE", label: "Lowercase" },
-  { value: "CAPITALIZE", label: "Capitalize each word" },
+  { value: "CAPITALIZE", label: tr("Capitalize each word") },
 ];
 
 /** The bundled Noto, Roboto Mono and Oswald files are bold; Times New Roman (Tinos) is regular. A text with no bold setting looks like that, so the button shows it. */
@@ -166,26 +167,26 @@ export function ReportTextStyleFields({
         </ButtonGroup>
         {withAlign && <AlignGroup label={label} value={style.align} onChange={(next) => set({ align: next })} />}
         <Button size="xs" variant="outline" disabled={disabled || (isPlain(value) && sizeValue == null)} onClick={() => (onClear ? onClear() : onChange(null))} className="ml-auto">
-          Clear style
+          {tr("Clear style")}
         </Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Select
-          label="Font family"
+          label={tr("Font family")}
           value={style.font ?? SAME_FONT}
           enableSearch={false}
           disabled={disabled}
-          options={[{ value: SAME_FONT, label: "Report font" }, ...REPORT_FONTS]}
+          options={[{ value: SAME_FONT, label: tr("Report font") }, ...REPORT_FONTS]}
           onChange={(font) => set({ font: font === SAME_FONT ? null : (font as ReportFontFamily) })}
         />
-        <FormField label="Font size (pt)">
+        <FormField label={tr("Font size (pt)")}>
           <SizeInput label={`${label} font size`} min={min} max={max} placeholder={defaultSize ? String(defaultSize) : undefined} value={sizeValue} disabled={disabled} onCommit={commitSize} />
         </FormField>
-        <FormField label="Text color">
+        <FormField label={tr("Text color")}>
           <ColorPickerInput value={style.color ?? "#000000"} disabled={disabled} onChange={(color) => set({ color })} />
         </FormField>
         <Select
-          label="Text transform"
+          label={tr("Text transform")}
           value={style.transform ?? NO_TRANSFORM}
           enableSearch={false}
           disabled={disabled}

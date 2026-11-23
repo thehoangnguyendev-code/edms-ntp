@@ -9,6 +9,7 @@ import { trainingAssessmentsApi, trainingError, type AssessmentKind, type Traini
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { when } from "../../shared/trainingLabels";
 import { ASSESSMENT_KIND_LABEL } from "../../assessments/TrainingAssessmentListView";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * The test or the checklist of the session (APD.0009) taken from the library of Training Assessments. The activity keeps a frozen copy of the approved version it chooses, so a later version
@@ -44,7 +45,7 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
       setChoosing(false);
       setPicked("");
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -53,11 +54,11 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
   return (
     <>
       <TabBlock
-        title="Assessment from the library"
+        title={tr("Assessment from the library")}
         action={editable ? (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline-emerald" onClick={() => setChoosing(true)}>{chosen ? "Change Assessment" : "Choose Assessment"}</Button>
-            {chosen && <Button size="sm" variant="outline" loading={busy} onClick={() => void run(() => trainingAssessmentsApi.unchoose(activity.id), "Assessment taken off")}>Remove</Button>}
+            {chosen && <Button size="sm" variant="outline" loading={busy} onClick={() => void run(() => trainingAssessmentsApi.unchoose(activity.id), "Assessment taken off")}>{tr("Remove")}</Button>}
           </div>
         ) : undefined}
       >
@@ -68,29 +69,29 @@ export function TrainingAssessmentChoiceBlock({ activity, editable, onChanged }:
               <Badge color="emerald">{chosen.code} {chosen.revision}</Badge>
               <Badge color="slate">{ASSESSMENT_KIND_LABEL[chosen.kind] ?? chosen.kind}</Badge>
             </div>
-            <div className="text-slate-600">{chosen.itemCount} {chosen.kind === "CHECKLIST" ? "line(s), no score" : `question(s), total ${chosen.maxScore} point(s)`}. Chosen by {chosen.chosenByName ?? "—"}{chosen.chosenAt ? `, ${when(chosen.chosenAt)}` : ""}.</div>
-            <div className="text-xs text-slate-500">Its content was written into the form APD.0009 as the exam file and the answer key below (training topic from this activity). You can open them in the editor and change them; a later version of the assessment in the library does not change them. Remove takes both files off.</div>
+            <div className="text-slate-600">{chosen.kind === "CHECKLIST" ? trFormat("{count} line(s), no score. Chosen by {name}{when}.", { count: chosen.itemCount, name: chosen.chosenByName ?? "—", when: chosen.chosenAt ? `, ${when(chosen.chosenAt)}` : "" }) : trFormat("{count} question(s), total {score} point(s). Chosen by {name}{when}.", { count: chosen.itemCount, score: chosen.maxScore, name: chosen.chosenByName ?? "—", when: chosen.chosenAt ? `, ${when(chosen.chosenAt)}` : "" })}</div>
+            <div className="text-xs text-slate-500">{tr("Its content was written into the form APD.0009 as the exam file and the answer key below (training topic from this activity). You can open them in the editor and change them; a later version of the assessment in the library does not change them. Remove takes both files off.")}</div>
           </div>
         ) : (
-          <p className="p-4 text-sm text-slate-500">Optional. Choose an effective test or checklist from the library to fill the form APD.0009 for this activity, or open the form below and write the test yourself.</p>
+          <p className="p-4 text-sm text-slate-500">{tr("Optional. Choose an effective test or checklist from the library to fill the form APD.0009 for this activity, or open the form below and write the test yourself.")}</p>
         )}
       </TabBlock>
       <FormModal
         isOpen={choosing}
         onClose={() => setChoosing(false)}
         onConfirm={() => void run(() => trainingAssessmentsApi.choose(activity.id, picked), "Assessment chosen")}
-        title="Choose an Assessment"
-        description="Only effective assessments are listed. Its content is written into the enabled form APD.0009 as the exam file and the answer key of this activity; the title of the assessment is not written in the form."
+        title={tr("Choose an Assessment")}
+        description={tr("Only effective assessments are listed. Its content is written into the enabled form APD.0009 as the exam file and the answer key of this activity; the title of the assessment is not written in the form.")}
         confirmText="Choose"
         isLoading={busy}
         confirmDisabled={!picked}
         size="md"
       >
-        <FormField label="Assessment" required>
-          <Select value={picked} onChange={setPicked} options={options.map((o) => ({ value: o.id, label: `${o.name} (${o.code} ${o.revisionNumber})` }))} onSearch={search} placeholder="Search by assessment name or number" />
+        <FormField label={tr("Assessment")} required>
+          <Select value={picked} onChange={setPicked} options={options.map((o) => ({ value: o.id, label: `${o.name} (${o.code} ${o.revisionNumber})` }))} onSearch={search} placeholder={tr("Search by assessment name or number")} />
         </FormField>
-        {pick && <p className="mt-3 text-xs text-slate-600">{ASSESSMENT_KIND_LABEL[pick.kind]} · {pick.itemCount} item(s){pick.kind === "CHECKLIST" ? "" : ` · total ${pick.maxScore} point(s)`}</p>}
-        {choosing && options.length === 0 && <p className="mt-3 text-sm text-amber-700">No effective assessment of the right type was found. It is written and approved in Training Programme, Training Assessments.</p>}
+            {pick && <p className="mt-3 text-xs text-slate-600">{ASSESSMENT_KIND_LABEL[pick.kind]} · {trFormat("{count} items", { count: pick.itemCount })}{pick.kind === "CHECKLIST" ? "" : trFormat(" · total {score} points", { score: pick.maxScore })}</p>}
+        {choosing && options.length === 0 && <p className="mt-3 text-sm text-amber-700">{tr("No effective assessment of the right type was found. It is written and approved in Training Programme, Training Assessments.")}</p>}
       </FormModal>
     </>
   );

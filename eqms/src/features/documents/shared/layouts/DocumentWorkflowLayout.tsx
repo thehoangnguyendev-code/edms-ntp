@@ -7,6 +7,7 @@ import { TabNav } from "@/components/ui/tabs/TabNav";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import type { WorkflowProgress } from "@/types/document";
 import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/WorkflowProgressStepper";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType =
@@ -52,15 +53,15 @@ interface DocumentWorkflowLayoutProps {
 
 // --- Default Tabs ---
 export const DEFAULT_WORKFLOW_TABS: TabItem[] = [
-    { id: "general", label: "General Information" },
-    { id: "workingNotes", label: "Working Notes" },
-    { id: "documentInfo", label: "Information from Document" },
-    { id: "training", label: "Training Information" },
+    { id: "general", label: tr("General Information") },
+    { id: "workingNotes", label: tr("Working Notes") },
+    { id: "documentInfo", label: tr("Information from Document") },
+    { id: "training", label: tr("Training Information") },
     { id: "reviewers", label: "Reviewers" },
     { id: "approvers", label: "Approvers" },
-    { id: "signatures", label: "Signatures" },
+    { id: "signatures", label: tr("Signatures") },
     { id: "document", label: "Document" },
-    { id: "audit", label: "Audit Trail" },
+    { id: "audit", label: tr("Audit Trail") },
 ];
 
 // --- Main Component ---
@@ -91,7 +92,7 @@ export const DocumentWorkflowLayout: React.FC<DocumentWorkflowLayoutProps> = ({
                             variant="outline-emerald"
                             className="whitespace-nowrap"
                         >
-                            Back
+                            {tr("Back")}
                         </Button>
                         {headerActions}
                     </>

@@ -25,14 +25,15 @@ import { BACKUP_STATUS_COLOR, CONTENT_COLOR, VERIFICATION_COLOR, statusLabel, ty
 import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { displayDate } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "trigger" | "duration" | "sizeBytes" | "createdBy" | "verification" | "verifiedAt";
 
 const ALL = "ALL";
 const option = (value: string) => ({ label: statusLabel(value), value });
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...["COMPLETED", "RUNNING", "FAILED"].map(option)];
-const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
-const TRIGGER_OPTIONS = [{ label: "All", value: ALL }, { label: "Scheduled", value: "SCHEDULED" }, { label: "Manual", value: "MANUAL" }, { label: "Pre-change", value: "PRE_CHANGE" }];
+const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { label: tr("Pre-change"), value: "PRE_CHANGE" }];
+const TRIGGER_OPTIONS = [{ label: "All", value: ALL }, { label: "Scheduled", value: "SCHEDULED" }, { label: "Manual", value: "MANUAL" }, { label: tr("Pre-change"), value: "PRE_CHANGE" }];
 const CONTENT_OPTIONS = [{ label: "All", value: ALL }, { label: "Database", value: "DATABASE" }, { label: "Files", value: "OBJECT_STORE" }];
 /** Short names for the parts a backup holds, shown in the table only. */
 const CONTENT_SHORT: Record<string, string> = { CONFIGURATION: "Settings", DATABASE: "Database", OBJECT_STORE: "Files", FILE_STORAGE: "Files" };
@@ -153,11 +154,11 @@ export const BackupsView: React.FC = () => {
     try {
       const { jobId } = await backupRestoreApi.create(input);
       setCreating(false);
-      showToast({ type: "info", title: "Backup requested", message: "The agent is taking the backup." });
+      showToast({ type: "info", title: tr("Backup requested"), message: "The agent is taking the backup." });
       reload();
       void follow(jobId, "Backup");
     } catch (e) {
-      showToast({ type: "error", title: "Unable to start the backup", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("Unable to start the backup"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setStarting(false);
     }
@@ -170,8 +171,8 @@ export const BackupsView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_b, i) => (page - 1) * pageSize + i + 1 },
     {
       id: "id",
-      header: "Backup Number",
-      label: "Backup Number",
+      header: tr("Backup Number"),
+      label: tr("Backup Number"),
       sort: sortFor("backupNumber"),
       cell: (b) => (
         <button type="button" className="text-left font-medium text-emerald-600 hover:underline" onClick={() => open(b.id)}>
@@ -197,8 +198,8 @@ export const BackupsView: React.FC = () => {
     { id: "schema", header: "Schema", label: "Schema", cell: (b) => (b.schemaVersion ? `V${b.schemaVersion}` : "—") },
     { id: "size", header: "Size", label: "Size", sort: sortFor("sizeBytes"), cell: (b) => formatBytes(b.sizeBytes) },
     { id: "verify", header: "Integrity", label: "Integrity", sort: sortFor("verification"), cell: (b) => <Badge color={VERIFICATION_COLOR[b.verification]}>{statusLabel(b.verification)}</Badge> },
-    { id: "checked", header: "Last Checked", label: "Last Checked", sort: sortFor("verifiedAt"), cell: (b) => (b.verifiedAt ? formatDateTime(b.verifiedAt) : "—") },
-    { id: "by", header: "Requested by", label: "Requested by", sort: sortFor("createdBy"), cell: (b) => b.createdBy },
+    { id: "checked", header: tr("Last Checked"), label: tr("Last Checked"), sort: sortFor("verifiedAt"), cell: (b) => (b.verifiedAt ? formatDateTime(b.verifiedAt) : "—") },
+    { id: "by", header: tr("Requested by"), label: tr("Requested by"), sort: sortFor("createdBy"), cell: (b) => b.createdBy },
     { id: "reason", header: "Reason", label: "Reason", cell: (b) => <span className="line-clamp-2 break-words">{b.reason || "—"}</span> },
     {
       id: "retention",
@@ -207,7 +208,7 @@ export const BackupsView: React.FC = () => {
       cell: (b) => (
         <span className="inline-flex items-center gap-1.5">
           {b.retention === "PERMANENT" ? "Permanently" : b.retentionUntil ? displayDate(b.retentionUntil) : "—"}
-          {b.legalHold && <Badge color="amber">Hold</Badge>}
+          {b.legalHold && <Badge color="amber">{tr("Hold")}</Badge>}
         </span>
       ),
     },
@@ -218,7 +219,7 @@ export const BackupsView: React.FC = () => {
       <button
         type="button"
         ref={menu.getRef(b.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(b.id, event)}
       >
@@ -229,7 +230,7 @@ export const BackupsView: React.FC = () => {
 
   return (
     <BackupRestorePage
-      title="Backup History"
+      title={tr("Backup History")}
       group="Backup"
       preview={false}
       actions={
@@ -254,12 +255,12 @@ export const BackupsView: React.FC = () => {
           />
           <Button size="sm" className="gap-2 whitespace-nowrap" onClick={() => setCreating(true)} disabled={!canRun}>
             <Plus className="h-4 w-4" />
-            Create Backup
+            {tr("Create Backup")}
           </Button>
         </>
       }
     >
-      {working > 0 && <WarningBanner variant="info" description="The agent is working on a request. This list refreshes when it finishes." />}
+      {working > 0 && <WarningBanner variant="info" description={tr("The agent is working on a request. This list refreshes when it finishes.")} />}
       <ServerListPanel
         tableKey="backup-restore.history"
         columns={columns}
@@ -269,12 +270,12 @@ export const BackupsView: React.FC = () => {
         loading={loading}
         hasLoaded={hasLoaded}
         error={error}
-        emptyTitle="No Backups Found"
-        emptyDescription="No backup matches. Try changing your search or filters."
+        emptyTitle={tr("No Backups Found")}
+        emptyDescription={tr("No backup matches. Try changing your search or filters.")}
         search={search}
         onSearch={setSearch}
         searchLabel="Search backups"
-        searchPlaceholder="Backup Number, person or reason…"
+        searchPlaceholder={tr("Backup Number, person or reason…")}
         filters={[
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
           { id: "type", label: "Type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
@@ -284,7 +285,7 @@ export const BackupsView: React.FC = () => {
         ]}
         dates={[
           { id: "started", label: "Started", from: startedFrom, to: startedTo, onFromChange: setStartedFrom, onToChange: setStartedTo },
-          { id: "checked", label: "Last Checked", from: checkedFrom, to: checkedTo, onFromChange: setCheckedFrom, onToChange: setCheckedTo },
+          { id: "checked", label: tr("Last Checked"), from: checkedFrom, to: checkedTo, onFromChange: setCheckedFrom, onToChange: setCheckedTo },
         ]}
         onClear={clearFilters}
         page={page}
@@ -299,13 +300,13 @@ export const BackupsView: React.FC = () => {
         {actionRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(actionRow.id); menu.close(); }}>
-              View Detail
+              {tr("View Detail")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={<IconChecks className="h-4 w-4" />} disabled={actionRow.status !== "COMPLETED" || !canVerify} onClick={() => { setVerifyTarget(actionRow.id); menu.close(); }}>
-              Verify Integrity
+              {tr("Verify Integrity")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={<IconRestore className="h-4 w-4" />} disabled={actionRow.status !== "COMPLETED" || actionRow.verification !== "VERIFIED"} onClick={() => { requestRestore(actionRow.id); menu.close(); }}>
-              Restore
+              {tr("Restore")}
             </DropdownMenuItem>
           </div>
         )}

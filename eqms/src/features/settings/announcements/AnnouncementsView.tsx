@@ -53,6 +53,7 @@ import {
 import type { Announcement, AnnouncementState } from "./types";
 import { displayDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const STATE_BADGE: Record<
   AnnouncementState,
@@ -61,7 +62,7 @@ const STATE_BADGE: Record<
   ACTIVE: { color: "emerald", label: "Active" },
   SCHEDULED: { color: "blue", label: "Scheduled" },
   EXPIRED: { color: "slate", label: "Expired" },
-  DISABLED: { color: "amber", label: "Switched off" },
+  DISABLED: { color: "amber", label: tr("Switched off") },
 };
 const SEVERITY_BADGE = {
   INFO: "blue",
@@ -235,7 +236,7 @@ export const AnnouncementsView: React.FC = () => {
         (e as { response?: { status?: number } })?.response?.status === 409;
       showToast({
         type: "error",
-        title: "Unable to change",
+        title: tr("Unable to change"),
         message: conflict
           ? "Someone else changed this announcement. The list was reloaded."
           : getApiErrorMessage(e, "The change could not be saved."),
@@ -253,7 +254,7 @@ export const AnnouncementsView: React.FC = () => {
       await announcementApi.remove(deleting.id);
       showToast({
         type: "success",
-        title: "Announcement deleted",
+        title: tr("Announcement deleted"),
         message: deleting.title,
       });
       setDeleting(undefined);
@@ -261,7 +262,7 @@ export const AnnouncementsView: React.FC = () => {
     } catch (e) {
       showToast({
         type: "error",
-        title: "Unable to delete",
+        title: tr("Unable to delete"),
         message: getApiErrorMessage(
           e,
           "The announcement could not be deleted.",
@@ -287,15 +288,15 @@ export const AnnouncementsView: React.FC = () => {
     },
     {
       id: "announcementNumber",
-      header: "Announcement Number",
-      label: "Announcement Number",
+      header: tr("Announcement Number"),
+      label: tr("Announcement Number"),
       sort: sort("announcementNumber"),
       cell: (row) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{row.announcementNumber ?? "—"}</span>,
     },
     {
       id: "title",
-      header: "Announcement",
-      label: "Announcement",
+      header: tr("Announcement"),
+      label: tr("Announcement"),
       sort: sort("title"),
       cell: (row) => (
         <div className="max-w-96 whitespace-normal">
@@ -366,15 +367,15 @@ export const AnnouncementsView: React.FC = () => {
     },
     {
       id: "updatedBy",
-      header: "Updated by",
-      label: "Updated by",
+      header: tr("Updated by"),
+      label: tr("Updated by"),
       sort: sort("updatedBy"),
       cell: (row) => row.updatedBy ?? row.createdBy ?? "—",
     },
     {
       id: "createdBy",
-      header: "Created by",
-      label: "Created by",
+      header: tr("Created by"),
+      label: tr("Created by"),
       sort: sort("createdBy"),
       cell: (row) => row.createdBy ?? "—",
     },
@@ -386,7 +387,7 @@ export const AnnouncementsView: React.FC = () => {
           <button
             type="button"
             ref={menu.getRef(row.id)}
-            aria-label="More actions"
+            aria-label={tr("More actions")}
             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
             onClick={(event) => menu.toggle(row.id, event)}
           >
@@ -404,8 +405,8 @@ export const AnnouncementsView: React.FC = () => {
 
   const searchInput = (
     <FilterSearchInput
-      aria-label="Search announcements"
-      placeholder="Title, message or person…"
+      aria-label={tr("Search announcements")}
+      placeholder={tr("Title, message or person…")}
       value={searchQuery}
       onChange={setSearchQuery}
     />
@@ -416,7 +417,7 @@ export const AnnouncementsView: React.FC = () => {
       {isInitialLoading && <FullPageLoading text="Loading announcements..." />}
 
       <PageHeader
-        title="System Announcements"
+        title={tr("System Announcements")}
         breadcrumbItems={systemAnnouncements(navigate)}
         actions={
           canManage ? (
@@ -426,7 +427,7 @@ export const AnnouncementsView: React.FC = () => {
               onClick={() => navigate(ROUTES.SETTINGS.ANNOUNCEMENTS_NEW)}
             >
               <Plus className="h-4 w-4" />
-              New Announcement
+              {tr("New Announcement")}
             </Button>
           ) : undefined
         }
@@ -437,7 +438,7 @@ export const AnnouncementsView: React.FC = () => {
           <div className="flex w-full flex-col">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
               <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -446,7 +447,7 @@ export const AnnouncementsView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search announcements..."
+                    placeholder={tr("Search announcements...")}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -455,7 +456,7 @@ export const AnnouncementsView: React.FC = () => {
                     <button
                       onClick={() => setSearchQuery("")}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
-                      aria-label="Clear search"
+                      aria-label={tr("Clear search")}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -467,7 +468,7 @@ export const AnnouncementsView: React.FC = () => {
                   className="h-10 gap-2 whitespace-nowrap"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -516,7 +517,7 @@ export const AnnouncementsView: React.FC = () => {
               <div className="hidden items-end gap-4 pb-4 md:grid md:grid-cols-2 md:pb-5 lg:grid-cols-3">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                    Search
+                    {tr("Search")}
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
@@ -524,42 +525,42 @@ export const AnnouncementsView: React.FC = () => {
                       type="text"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Title, message or person…"
+                      placeholder={tr("Title, message or person…")}
                       className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
                 <Select
-                  label="Status"
+                  label={tr("Status")}
                   value={stateFilter}
                   onChange={(value) => setStateFilter(value as StateFilter)}
                   options={STATE_FILTER_OPTIONS}
-                  placeholder="All"
+                  placeholder={tr("All")}
                 />
                 <Select
-                  label="Severity"
+                  label={tr("Severity")}
                   value={severityFilter}
                   onChange={(value) =>
                     setSeverityFilter(value as SeverityFilter)
                   }
                   options={SEVERITY_FILTER_OPTIONS}
-                  placeholder="All"
+                  placeholder={tr("All")}
                 />
                 <DateRangePicker
-                  label="Starts"
+                  label={tr("Starts")}
                   startDate={startsFrom}
                   endDate={startsTo}
                   onStartDateChange={setStartsFrom}
                   onEndDateChange={setStartsTo}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
                 <DateRangePicker
-                  label="Ends"
+                  label={tr("Ends")}
                   startDate={endsFrom}
                   endDate={endsTo}
                   onStartDateChange={setEndsFrom}
                   onEndDateChange={setEndsTo}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
                 <div className="filter-actions flex items-end gap-2">
                   <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
@@ -575,7 +576,7 @@ export const AnnouncementsView: React.FC = () => {
               onApply={() => setIsFilterDrawerOpen(false)}
             >
               <FilterAccordionItem
-                label="Status"
+                label={tr("Status")}
                 isExpanded={expandedSections.has("state")}
                 onToggle={() => toggleSection("state")}
               >
@@ -591,7 +592,7 @@ export const AnnouncementsView: React.FC = () => {
                 </div>
               </FilterAccordionItem>
               <FilterAccordionItem
-                label="Severity"
+                label={tr("Severity")}
                 isExpanded={expandedSections.has("severity")}
                 onToggle={() => toggleSection("severity")}
               >
@@ -607,34 +608,34 @@ export const AnnouncementsView: React.FC = () => {
                 </div>
               </FilterAccordionItem>
               <FilterAccordionItem
-                label="Starts"
+                label={tr("Starts")}
                 isExpanded={expandedSections.has("starts")}
                 onToggle={() => toggleSection("starts")}
               >
                 <div className="pb-4 pt-2">
                   <DateRangePicker
-                    label="Starts"
+                    label={tr("Starts")}
                     startDate={startsFrom}
                     endDate={startsTo}
                     onStartDateChange={setStartsFrom}
                     onEndDateChange={setStartsTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
               <FilterAccordionItem
-                label="Ends"
+                label={tr("Ends")}
                 isExpanded={expandedSections.has("ends")}
                 onToggle={() => toggleSection("ends")}
               >
                 <div className="pb-4 pt-2">
                   <DateRangePicker
-                    label="Ends"
+                    label={tr("Ends")}
                     startDate={endsFrom}
                     endDate={endsTo}
                     onStartDateChange={setEndsFrom}
                     onEndDateChange={setEndsTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
@@ -659,7 +660,7 @@ export const AnnouncementsView: React.FC = () => {
                   <TableEmptyState
                     title={
                       error
-                        ? "Unable to load announcements"
+                        ? tr("Unable to load announcements")
                         : "No Announcements Found"
                     }
                     description={
@@ -705,7 +706,7 @@ export const AnnouncementsView: React.FC = () => {
                 menu.close();
               }}
             >
-              Edit Announcement
+              {tr("Edit Announcement")}
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={<IconPower className="h-4 w-4" />}
@@ -724,7 +725,7 @@ export const AnnouncementsView: React.FC = () => {
                 menu.close();
               }}
             >
-              Delete
+              {tr("Delete")}
             </DropdownMenuItem>
           </div>
         )}
@@ -733,7 +734,7 @@ export const AnnouncementsView: React.FC = () => {
       <FormModal
         isOpen={!!deleting}
         onClose={() => setDeleting(undefined)}
-        title="Delete Announcement"
+        title={tr("Delete Announcement")}
         description={`Delete “${deleting?.title ?? ""}”? Users will no longer see it. The deletion is recorded in the audit trail.`}
         confirmText="Delete"
         confirmVariant="destructive"

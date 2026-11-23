@@ -23,6 +23,7 @@ import { ImpactPositionsTable } from "./ImpactPositionsTable";
 import { departmentOptions, useOwnDepartment } from "../shared/useOwnDepartment";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { STATUS_COLOR, STATUS_LABEL, statusChange, trainingBreadcrumbs, TRAINING_PAGES, when } from "../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 const IMPACT_LABEL: Record<string, string> = { PENDING: "Pending Impact Assessment", MATRIX_UPDATE_PENDING: "Pending Matrix Update", DONE: "Done" };
 const IMPACT_COLOR: Record<string, "red" | "amber" | "emerald"> = { PENDING: "red", MATRIX_UPDATE_PENDING: "amber", DONE: "emerald" };
@@ -73,40 +74,40 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
       setOutcome(""); setPositionIds([]); setReason("");
       setAssessing({ row, context });
     } catch (e) {
-      showToast({ type: "error", title: "The assessment could not be opened", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The assessment could not be opened"), message: trainingError(e) });
     }
   };
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
     ...(r.canAssess ? [{ label: r.impactStatus === "PENDING" ? "Assess Impact" : "Assess Again", icon: <IconCircleOpenArrowRight className="h-4 w-4" />, onClick: () => void open(r) }] : []),
-    { label: "View Training Activity", icon: <IconPhotoSensor className="h-4 w-4" />, onClick: () => navigate(`/training-management/activities/${r.id}`) },
+    { label: tr("View Training Activity"), icon: <IconPhotoSensor className="h-4 w-4" />, onClick: () => navigate(`/training-management/activities/${r.id}`) },
   ]);
 
   const columns: DataTableColumn<TrainingImpactRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "documentNumber", header: "Document Number", sort: sorted("documentNumber"), cell: (r) => (r.documentId && r.documentNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.DETAIL(r.documentId))}>{r.documentNumber}</button> : <span className="font-medium text-slate-900">{r.documentNumber ?? "—"}</span>) },
-    { id: "documentName", header: "Document Name", sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName ?? "—"}</div> },
-    { id: "revision", header: "Revision Number", sort: sorted("revisionNumber"), cell: (r) => (r.revisionId && r.revisionNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId!))}>{r.revisionNumber}</button> : r.revisionNumber ?? "—") },
-    { id: "training", header: "Training Number", sort: sorted("trainingNumber"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>{r.trainingNumber}</button> },
-    { id: "activity", header: "Training Status", sort: sorted("activityStatus"), cell: (r) => <Badge color={STATUS_COLOR[r.activityStatus] ?? "slate"}>{STATUS_LABEL[r.activityStatus] ?? r.activityStatus}</Badge> },
-    { id: "impact", header: "Impact on the Matrix", sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
+    { id: "documentNumber", header: tr("Document Number"), sort: sorted("documentNumber"), cell: (r) => (r.documentId && r.documentNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.DETAIL(r.documentId))}>{r.documentNumber}</button> : <span className="font-medium text-slate-900">{r.documentNumber ?? "—"}</span>) },
+    { id: "documentName", header: tr("Document Name"), sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName ?? "—"}</div> },
+    { id: "revision", header: tr("Revision Number"), sort: sorted("revisionNumber"), cell: (r) => (r.revisionId && r.revisionNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId!))}>{r.revisionNumber}</button> : r.revisionNumber ?? "—") },
+    { id: "training", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>{r.trainingNumber}</button> },
+    { id: "activity", header: tr("Training Status"), sort: sorted("activityStatus"), cell: (r) => <Badge color={STATUS_COLOR[r.activityStatus] ?? "slate"}>{STATUS_LABEL[r.activityStatus] ?? r.activityStatus}</Badge> },
+    { id: "impact", header: tr("Impact on the Matrix"), sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
     { id: "outcome", header: "Assessment", cell: (r) => (r.outcome ? <div className="max-w-72 whitespace-normal">{OUTCOME_LABEL[r.outcome]}<div className="text-xs text-slate-500">{r.assessedByName} · {when(r.assessedAt)}</div></div> : "—") },
   ];
   const { layout, control } = useCustomColumnLayout("training.document.impact.assessment", columns, rowMenu.action);
   const filters: ReportSelectFilter[] = [
     { id: "department", label: "Department", value: departmentId, options: departmentOptions(departments, ownDepartmentId), onChange: (v) => { setDepartmentId(v); table.setCurrentPage(1); } },
-    { id: "activityStatus", label: "Training Status", value: activityStatus, options: [{ label: "All statuses", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setActivityStatus(v); table.setCurrentPage(1); } },
-    { id: "status", label: "Impact", value: status, options: [{ label: "All", value: "" }, { label: "Not done yet", value: "OPEN" }, ...Object.entries(IMPACT_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
+    { id: "activityStatus", label: tr("Training Status"), value: activityStatus, options: [{ label: tr("All statuses"), value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setActivityStatus(v); table.setCurrentPage(1); } },
+    { id: "status", label: "Impact", value: status, options: [{ label: "All", value: "" }, { label: tr("Not done yet"), value: "OPEN" }, ...Object.entries(IMPACT_LABEL).map(([value, label]) => ({ label, value }))], onChange: (v) => { setStatus(v); table.setCurrentPage(1); } },
   ];
 
   const submit = async (token: string) => {
     if (!assessing) return;
     try {
       await trainingFollowUpApi.assess(assessing.row.id, { outcome, reason: reason.trim(), positionIds, signatureToken: token });
-      showToast({ type: "success", title: "Impact assessed", message: assessing.row.documentNumber ?? "" });
+      showToast({ type: "success", title: tr("Impact assessed"), message: assessing.row.documentNumber ?? "" });
       setSigning(false);
       setAssessing(undefined);
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     }
   };
   const needsPositions = outcome === "MATRIX_UPDATE_NEEDED";
@@ -118,7 +119,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
       <PageHeader title={TRAINING_PAGES.documentImpactAssessment.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentImpactAssessment")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search document or training number…"
+        searchPlaceholder={tr("Search document or training number…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(departmentId || activityStatus || status !== "OPEN" || table.searchQuery)}
@@ -128,7 +129,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
         <DataTable
           rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout} action={rowMenu.action}
-          emptyState={<TableEmptyState title="Nothing waits for an assessment" description="Every new or revised document of the department has been assessed." />}
+          emptyState={<TableEmptyState title={tr("Nothing waits for an assessment")} description={tr("Every new or revised document of the department has been assessed.")} />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
         />
       </ReportListToolbar>
@@ -145,9 +146,9 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
                 ? ctx.inEffectiveMatrix
                   ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : "no Work Position"}.`
                   : `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) does not have this document.`
-                : "The department has no effective matrix yet."}
+                : tr("The department has no effective matrix yet.")}
             </p>
-            <RadioGroup label="Result of the assessment" required name="impact-outcome" value={outcome} onChange={(v) => setOutcome(String(v))}
+            <RadioGroup label={tr("Result of the assessment")} required name="impact-outcome" value={outcome} onChange={(v) => setOutcome(String(v))}
               options={[
                 { label: OUTCOME_LABEL.MATRIX_UPDATE_NEEDED, value: "MATRIX_UPDATE_NEEDED" },
                 { label: OUTCOME_LABEL.MATRIX_ALREADY_COVERS, value: "MATRIX_ALREADY_COVERS", disabled: !ctx.inEffectiveMatrix, description: ctx.inEffectiveMatrix ? undefined : "Available only when the effective matrix already has this document." },
@@ -155,12 +156,12 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
               ]} />
             {needsPositions && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-slate-700 sm:text-sm">Work Positions that must be trained on the document <span className="text-red-500">*</span></p>
+                <p className="text-xs font-medium text-slate-700 sm:text-sm">{tr("Work Positions that must be trained on the document")} <span className="text-red-500">*</span></p>
                 <ImpactPositionsTable activityId={ctx.activityId} selected={positionIds} onChange={setPositionIds} />
-                <p className="text-xs text-slate-500">The matrix itself is then updated on the Training Matrix screen. This line stays "Pending Matrix Update" until an effective matrix has the document.</p>
+                <p className="text-xs text-slate-500">{tr("The matrix itself is then updated on the Training Matrix screen. This line stays \"Pending Matrix Update\" until an effective matrix has the document.")}</p>
               </div>
             )}
-            <FormField label="Reason" required><Textarea rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+            <FormField label={tr("Reason")} required><Textarea rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
           </div>
         )}
       </FormModal>

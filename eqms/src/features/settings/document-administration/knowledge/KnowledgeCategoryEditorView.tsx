@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeFieldOption, type KnowledgeHierarchy } from "@/services/api/knowledge";
+import { tr } from "@/i18n";
 
 const inputClass = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
@@ -77,7 +78,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
     setLoading(true);
     knowledgeApi.getHierarchy(id)
       .then(apply)
-      .catch((error) => showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to load the hierarchy.") }))
+      .catch((error) => showToast({ type: "error", title: tr("Failed to load"), message: errorMessage(error, "Unable to load the hierarchy.") }))
       .finally(() => setLoading(false));
   }, [id, apply, showToast]);
 
@@ -121,7 +122,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
     // A field cannot be both the Knowledge Base and one of its levels.
     if (levels.some((l) => l.fieldCode === value)) {
       setLevels((current) => current.filter((l) => l.fieldCode !== value));
-      showToast({ type: "info", title: "Level removed", message: `"${labelOf(value) ?? value}" is now the Knowledge Base, so it was removed from the levels.` });
+      showToast({ type: "info", title: tr("Level removed"), message: `"${labelOf(value) ?? value}" is now the Knowledge Base, so it was removed from the levels.` });
     }
   };
 
@@ -153,7 +154,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
 
   const save = async () => {
     if (!name.trim() || !determinator) {
-      showToast({ type: "error", title: "Missing information", message: "Name and Knowledge Base Field Determinator are required." });
+      showToast({ type: "error", title: tr("Missing information"), message: "Name and Knowledge Base Field Determinator are required." });
       return;
     }
     setSaving(true);
@@ -161,14 +162,14 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
       const payload = { name: name.trim(), description: description.trim() || undefined, determinatorField: determinator, active };
       if (isNew) {
         const created = await knowledgeApi.createHierarchy(payload);
-        showToast({ type: "success", title: "Hierarchy created", message: "Add levels to build the category tree." });
+        showToast({ type: "success", title: tr("Hierarchy created"), message: "Add levels to build the category tree." });
         navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES_EDIT(created.id), { replace: true });
       } else {
         apply(await knowledgeApi.updateHierarchy(id!, { ...payload, levels: levels.map((l) => ({ id: l.id, fieldCode: l.fieldCode })) }));
         showToast({ type: "success", title: "Saved", message: "The hierarchy was updated." });
       }
     } catch (error) {
-      showToast({ type: "error", title: "Save failed", message: errorMessage(error, "Unable to save the hierarchy.") });
+      showToast({ type: "error", title: tr("Save failed"), message: errorMessage(error, "Unable to save the hierarchy.") });
     } finally {
       setSaving(false);
     }
@@ -178,9 +179,9 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
     if (!hierarchy) return;
     try {
       apply(await knowledgeApi.setDefault(hierarchy.id));
-      showToast({ type: "success", title: "Default changed", message: `"${hierarchy.name}" now drives the Knowledge portal.` });
+      showToast({ type: "success", title: tr("Default changed"), message: `"${hierarchy.name}" now drives the Knowledge portal.` });
     } catch (error) {
-      showToast({ type: "error", title: "Could not change the default", message: errorMessage(error, "Unable to change the default hierarchy.") });
+      showToast({ type: "error", title: tr("Could not change the default"), message: errorMessage(error, "Unable to change the default hierarchy.") });
     }
   };
 
@@ -192,17 +193,17 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title={isNew ? "New Knowledge Categories Hierarchy" : "Edit Knowledge Categories Hierarchy"}
+        title={isNew ? tr("New Knowledge Categories Hierarchy") : tr("Edit Knowledge Categories Hierarchy")}
         breadcrumbItems={isNew ? knowledgeCategoryCreate(go) : knowledgeCategoryEdit(go, hierarchy?.name)}
         actions={
           <>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES)}>
-              Back
+              {tr("Back")}
             </Button>
             {canManage && !isNew && hierarchy && !hierarchy.isDefault && (
               <Button size="sm" variant="outline-emerald" className="whitespace-nowrap gap-2" disabled={!hierarchy.active || dirty} onClick={() => void makeDefault()}>
                 <Star className="h-4 w-4" />
-                Set as Default
+                {tr("Set as Default")}
               </Button>
             )}
             {canManage && (
@@ -215,36 +216,36 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
       />
 
       <FormSection
-        title="General"
+        title={tr("General")}
         icon={<Info className="h-4 w-4" />}
-        headerRight={hierarchy?.isDefault ? <Badge size="sm" color="blue">Default</Badge> : undefined}
+        headerRight={hierarchy?.isDefault ? <Badge size="sm" color="blue">{tr("Default")}</Badge> : undefined}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Name <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{tr("Name")} <span className="text-red-500">*</span></label>
               <input className={inputClass} value={name} maxLength={200} disabled={!canManage} onChange={(e) => setName(e.target.value)} />
             </div>
             <Select
-              label={<>Knowledge Base Field Determinator <span className="text-red-500">*</span></>}
+              label={<>{tr("Knowledge Base Field Determinator")} <span className="text-red-500">*</span></>}
               value={determinator}
               onChange={(value) => changeDeterminator(String(value))}
               options={determinatorOptions}
               disabled={!canManage}
-              placeholder="Select a field..."
+              placeholder={tr("Select a field...")}
             />
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
             />
-            <p className="text-xs text-slate-500 mt-1.5">The determinator field decides which Knowledge Base a document belongs to (for example, each Business Unit is one Knowledge Base). Only fields with one low-cardinality value per document can be a determinator.</p>
+            <p className="text-xs text-slate-500 mt-1.5">{tr("The determinator field decides which Knowledge Base a document belongs to (for example, each Business Unit is one Knowledge Base). Only fields with one low-cardinality value per document can be a determinator.")}</p>
           </div>
           <div>
-            <Checkbox id="knowledge-hierarchy-active" label="Active" checked={active} onChange={setActive} disabled={!canManage || Boolean(hierarchy?.isDefault)} />
-            {hierarchy?.isDefault && <p className="text-xs text-slate-500 mt-1.5">The default hierarchy must stay active. Make another hierarchy the default first.</p>}
+            <Checkbox id="knowledge-hierarchy-active" label={tr("Active")} checked={active} onChange={setActive} disabled={!canManage || Boolean(hierarchy?.isDefault)} />
+            {hierarchy?.isDefault && <p className="text-xs text-slate-500 mt-1.5">{tr("The default hierarchy must stay active. Make another hierarchy the default first.")}</p>}
           </div>
         </div>
       </FormSection>
@@ -252,14 +253,14 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
       {/* Levels only exist once the hierarchy has been saved */}
       {!isNew && (
         <FormSection
-          title="Knowledge Category Levels"
+          title={tr("Knowledge Category Levels")}
           icon={<Layers className="h-4 w-4" />}
-          description="Add levels in the order they should appear. Use the arrows to reorder."
+          description={tr("Add levels in the order they should appear. Use the arrows to reorder.")}
           contentClassName="p-4 md:p-5"
           headerRight={canManage ? (
             <Button type="button" variant="default" size="sm" onClick={openNewComponent} className="gap-1.5 whitespace-nowrap shrink-0">
               <Plus className="h-3.5 w-3.5" />
-              New Component
+              {tr("New Component")}
             </Button>
           ) : undefined}
         >
@@ -276,15 +277,15 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
                   </div>
                   {canManage && (
                     <div className="flex flex-shrink-0 items-center gap-1">
-                      <button type="button" aria-label="Move up" onClick={() => moveLevel(index, -1)} disabled={index === 0}
+                      <button type="button" aria-label={tr("Move up")} onClick={() => moveLevel(index, -1)} disabled={index === 0}
                         className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
                         <ArrowUp className="h-3.5 w-3.5 text-slate-500" />
                       </button>
-                      <button type="button" aria-label="Move down" onClick={() => moveLevel(index, 1)} disabled={index === levels.length - 1}
+                      <button type="button" aria-label={tr("Move down")} onClick={() => moveLevel(index, 1)} disabled={index === levels.length - 1}
                         className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
                         <ArrowDown className="h-3.5 w-3.5 text-slate-500" />
                       </button>
-                      <button type="button" aria-label="Remove level" onClick={() => removeLevel(index)}
+                      <button type="button" aria-label={tr("Remove level")} onClick={() => removeLevel(index)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-red-50">
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </button>
@@ -300,18 +301,18 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
               value={levels.map((l) => l.fieldCode)}
               onChange={pickLevels}
               options={levelOptions}
-              placeholder="Select components to add..."
-              searchPlaceholder="Search components..."
+              placeholder={tr("Select components to add...")}
+              searchPlaceholder={tr("Search components...")}
             />
           )}
 
           {levels.length === 0 && !canManage && (
-            <p className="text-sm text-slate-500">No levels: documents are listed directly under each Knowledge Base.</p>
+            <p className="text-sm text-slate-500">{tr("No levels: documents are listed directly under each Knowledge Base.")}</p>
           )}
 
           {previewPath && (
             <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-sm font-semibold text-emerald-900">Preview</p>
+              <p className="text-sm font-semibold text-emerald-900">{tr("Preview")}</p>
               <p className="mt-0.5 text-sm text-emerald-800 break-words">{previewPath}</p>
             </div>
           )}

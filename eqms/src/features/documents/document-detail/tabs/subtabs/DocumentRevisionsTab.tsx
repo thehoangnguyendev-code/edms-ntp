@@ -17,6 +17,7 @@ import {
 } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface DocumentRevisionsTabProps {
     revisions?: Revision[];
@@ -169,7 +170,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by revision number, name, or author..."
+                        placeholder={tr("Search by revision number, name, or author...")}
                         value={searchQuery}
                         onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -187,7 +188,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                         <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                             <TableMarkup.Row>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                    No.
+                                    {tr("No.")}
                                 </TableMarkup.HeaderCell>
                                 {th("Revision Number", "revisionNumber")}
                                 {th("Created", "created", "hidden md:table-cell")}
@@ -199,7 +200,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                         <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                             {loading && !hasLoadedOnce ? (
                                 <TableMarkup.Row>
-                                    <TableMarkup.Cell colSpan={6} className="py-12 text-center text-sm text-slate-500">Loading...</TableMarkup.Cell>
+                                    <TableMarkup.Cell colSpan={6} className="py-12 text-center text-sm text-slate-500">{tr("Loading...")}</TableMarkup.Cell>
                                 </TableMarkup.Row>
                             ) : error ? (
                                 <TableMarkup.Row>
@@ -246,7 +247,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                             <p className="text-sm font-medium text-slate-500">
                                                 {debouncedSearch
                                                     ? "No records matching your search"
-                                                    : "No records to display"}
+                                                    : tr("No records to display")}
                                             </p>
                                         </div>
                                     </TableMarkup.Cell>

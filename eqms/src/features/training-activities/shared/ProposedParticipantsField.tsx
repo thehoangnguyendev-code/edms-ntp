@@ -21,6 +21,7 @@ import {
 } from "@/services/api/trainingActivities";
 import { ProposedParticipantsPicker } from "./ProposedParticipantsPicker";
 import { TrainingPersonName } from "./TrainingPersonName";
+import { tr } from "@/i18n";
 
 export type ProposedPerson = TrainingProposal["people"][number];
 type Person = ProposedPerson;
@@ -175,7 +176,7 @@ export function ProposedParticipantsField({
     },
     {
       id: "code",
-      header: "Employee ID",
+      header: tr("Employee ID"),
       cell: (p) => (
         <span className="font-semibold text-emerald-600">
           {p.employeeCode ?? "\u2014"}
@@ -204,7 +205,7 @@ export function ProposedParticipantsField({
           <button
             type="button"
             ref={menu.getRef(p.personId)}
-            aria-label="More actions"
+            aria-label={tr("More actions")}
             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
             onClick={(event) => menu.toggle(p.personId, event)}
           >
@@ -257,8 +258,7 @@ export function ProposedParticipantsField({
       )}
       {!local && documentId && proposal && !proposal.available && (
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-          There is no training activity for this document yet. Set the training
-          period and save the document.
+          {tr("There is no training activity for this document yet. Set the training period and save the document.")}
         </p>
       )}
       {(local || proposal?.available) && (
@@ -288,8 +288,8 @@ export function ProposedParticipantsField({
               description={
                 labels?.emptyDescription ??
                 (editable
-                  ? "Use Add Participants to propose the people to be trained."
-                  : "Nobody has been proposed.")
+                  ? tr("Use Add Participants to propose the people to be trained.")
+                  : tr("Nobody has been proposed."))
               }
             />
           }
@@ -312,7 +312,7 @@ export function ProposedParticipantsField({
                 );
               }}
             >
-              Remove
+              {tr("Remove")}
             </DropdownMenuItem>
           </div>
         )}

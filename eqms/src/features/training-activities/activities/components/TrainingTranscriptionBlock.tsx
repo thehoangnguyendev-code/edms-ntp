@@ -16,13 +16,14 @@ import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { day, statusChange } from "../../shared/trainingLabels";
 import { LedgerAction, LedgerEmpty, LedgerList, LedgerNote, LedgerRow, LedgerToolbar } from "./workspace/ledger";
 import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
+import { tr } from "@/i18n";
 
 const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "n", header: "No.", cell: (_l, i) => i + 1 },
   { id: "name", header: "Full name", cell: (l) => l.fullName },
-  { id: "state", header: "Attendance", cell: (l) => (l.state === "ATTENDED" ? "Attended" : "Absent") },
+  { id: "state", header: tr("Attendance"), cell: (l) => (l.state === "ATTENDED" ? "Attended" : "Absent") },
   { id: "score", header: "Score", cell: (l) => (l.scoreObtained != null ? `${l.scoreObtained} / ${l.scoreMax}` : "—") },
-  { id: "why", header: "Reason / remarks", cell: (l) => <div className="max-w-64 whitespace-normal">{l.absenceReason ?? l.remarks ?? "—"}</div> },
+  { id: "why", header: tr("Reason / remarks"), cell: (l) => <div className="max-w-64 whitespace-normal">{l.absenceReason ?? l.remarks ?? "—"}</div> },
 ];
 
 const STATUS_LABEL = { ENTERED: "Waiting to be checked", VERIFIED: "Verified", REJECTED: "Rejected" } as const;
@@ -73,7 +74,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
   useEntityChanged(["TRAINING"], load);
 
 
-  const fail = (e: unknown) => showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+  const fail = (e: unknown) => showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
   const done = (title: string) => { showToast({ type: "success", title, message: activity.trainingNumber }); load(); onChanged(); };
 
   const sessions = activity.sessions.filter((s) => sessionStarted(s) && (s.deliveryMode ?? "ELECTRONIC") !== "ELECTRONIC");
@@ -96,16 +97,16 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     { id: "lines", header: "Lines", cell: (t) => t.lines.length },
     { id: "scan", header: "Scan", cell: (t) => <div className="max-w-48 truncate" title={t.evidenceName}>{t.evidenceName}</div> },
     { id: "by", header: "Typed by", cell: (t) => <div><div>{t.enteredByName}</div><div className="text-xs text-slate-500">{day(t.enteredAt)}</div></div> },
-    { id: "checked", header: "Checked by", cell: (t) => (t.verifiedByName ? <div><div>{t.verifiedByName}</div><div className="text-xs text-slate-500">{day(t.verifiedAt)}</div></div> : "—") },
+    { id: "checked", header: tr("Checked by"), cell: (t) => (t.verifiedByName ? <div><div>{t.verifiedByName}</div><div className="text-xs text-slate-500">{day(t.verifiedAt)}</div></div> : "—") },
     { id: "note", header: "Note", cell: (t) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{t.rejectReason ?? t.lateReason ?? "—"}</div> },
     {
       id: "actions",
       header: "Action",
       cell: (t) => (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setViewing(t)}>Lines</Button>
-          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setSigning(t)}>Verify</Button>}
-          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setRejecting(t)}>Reject</Button>}
+          <Button size="sm" onClick={() => setViewing(t)}>{tr("Lines")}</Button>
+          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setSigning(t)}>{tr("Verify")}</Button>}
+          {t.status === "ENTERED" && canVerify && t.enteredBy !== userId && <Button size="sm" onClick={() => setRejecting(t)}>{tr("Reject")}</Button>}
         </div>
       ),
     },
@@ -113,7 +114,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
 
   const typeButtons = canEnter && sessions.length > 0 ? sessions.map((s) => (
     <Button key={s.id} size="sm" variant="outline-emerald" disabled={queryState !== "ready" || waiting(s.id) || open(s.id).length === 0} onClick={() => setEntering(s)}>
-      Type results of session {s.sessionNo}{queryState === "loading" ? " (loading)" : waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
+      {tr("Type results of session")} {s.sessionNo}{queryState === "loading" ? " (loading)" : waiting(s.id) ? " (waiting to be checked)" : open(s.id).length === 0 ? " (nobody left)" : ""}
     </Button>
   )) : null;
   if (hidden) return null;
@@ -121,12 +122,12 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
     <>
       {bare ? (
         <div className="space-y-3">
-          <LedgerNote>Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.{typeButtons ? " Use the button of the session." : ""}</LedgerNote>
+            <LedgerNote>{tr("Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.")}{typeButtons ? ` ${tr("Use the button of the session.")}` : ""}</LedgerNote>
           {typeButtons && <LedgerToolbar>{typeButtons}</LedgerToolbar>}
-          {queryState === "error" && <p role="alert" className="text-sm text-red-700">Unable to load transcription status. Try again.</p>}
+          {queryState === "error" && <p role="alert" className="text-sm text-red-700">{tr("Unable to load transcription status. Try again.")}</p>}
           <div className="md:hidden">
             {items.length === 0 ? (
-              queryState === "error" ? null : <LedgerEmpty>Nothing typed from paper yet.</LedgerEmpty>
+              queryState === "error" ? null : <LedgerEmpty>{tr("Nothing typed from paper yet.")}</LedgerEmpty>
             ) : (
               <LedgerList>
                 {items.map((t) => {
@@ -138,8 +139,8 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
                       meta={[`Typed by ${t.enteredByName}, ${day(t.enteredAt)}`, t.verifiedByName ? `Checked by ${t.verifiedByName}, ${day(t.verifiedAt)}` : undefined, t.rejectReason ?? t.lateReason].filter(Boolean).join(" · ")}
                       state={STATUS_LABEL[t.status]}
                       tone={t.status === "REJECTED" ? "red" : t.status === "ENTERED" ? "blue" : "mute"}
-                      actions={<><LedgerAction onClick={() => setViewing(t)}>Lines</LedgerAction>{canCheck && <LedgerAction danger onClick={() => setRejecting(t)}>Reject</LedgerAction>}</>}
-                      primary={canCheck ? <Button size="sm" onClick={() => setSigning(t)}>Verify</Button> : undefined}
+                      actions={<><LedgerAction onClick={() => setViewing(t)}>{tr("Lines")}</LedgerAction>{canCheck && <LedgerAction danger onClick={() => setRejecting(t)}>{tr("Reject")}</LedgerAction>}</>}
+                      primary={canCheck ? <Button size="sm" onClick={() => setSigning(t)}>{tr("Verify")}</Button> : undefined}
                     />
                   );
                 })}
@@ -161,7 +162,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
                     return <RowActionsMenu id={t.id} label={`More actions for the results of session ${t.sessionNo}`} actions={actions} />;
                   },
                 }}
-                emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>}
+                emptyState={<p className="p-4 text-sm text-slate-500">{tr("Nothing typed from paper yet.")}</p>}
                 pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined}
               />
             </TabBlock>
@@ -169,13 +170,13 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
         </div>
       ) : (
       <TabBlock
-        title="Results from paper"
+        title={tr("Results from paper")}
         count={total}
-        hint="Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded."
+        hint={tr("Type what the signed paper says, with the scan attached. A different person then checks the lines against the scan and signs; only then are attendance and scores recorded.")}
       >
-        {queryState === "error" && <p role="alert" className="px-4 text-sm text-red-700">Unable to load transcription status. Try again.</p>}
+        {queryState === "error" && <p role="alert" className="px-4 text-sm text-red-700">{tr("Unable to load transcription status. Try again.")}</p>}
         {typeButtons && <div className="flex flex-wrap gap-2 p-4">{typeButtons}</div>}
-        <DataTable rows={items} getRowKey={(t) => t.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">Nothing typed from paper yet.</p>}
+        <DataTable rows={items} getRowKey={(t) => t.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">{tr("Nothing typed from paper yet.")}</p>}
           pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />
       </TabBlock>
       )}
@@ -237,8 +238,8 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
 function RejectDialog({ busy, onClose, onSave }: { busy: boolean; onClose: () => void; onSave: (reason: string) => void }) {
   const [reason, setReason] = useState("");
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim())} title="Reject the Transcription" description="The lines do not match the scan. The person who typed them types again; this one stays on record." confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
-      <FormField label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+    <FormModal isOpen onClose={onClose} onConfirm={() => onSave(reason.trim())} title={tr("Reject the Transcription")} description={tr("The lines do not match the scan. The person who typed them types again; this one stays on record.")} confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
+      <FormField label={tr("Reason")} required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
     </FormModal>
   );
 }
@@ -276,19 +277,19 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
         }),
       })}
       title={`Type the Results of Session ${session.sessionNo}`}
-      description="Copy what the signed paper says. The scan is required, and a different person checks it before anything is recorded."
+      description={tr("Copy what the signed paper says. The scan is required, and a different person checks it before anything is recorded.")}
       confirmText="Submit for checking"
       isLoading={busy}
       confirmDisabled={!valid}
       size="xl"
     >
       <div className="space-y-4">
-        <FormField label="Scan of the paper" required>
+        <FormField label={tr("Scan of the paper")} required>
           {evidence.length === 0
-            ? <p className="text-sm text-amber-700">No scan yet. Upload the signed sheet under Training Materials, paper evidence, kind Attendance sheet or Assessment.</p>
-            : <Select value={evidenceId} options={evidence.map((e) => ({ value: e.id, label: `${e.originalName} (${day(e.uploadedAt)})` }))} placeholder="Choose the scan" onChange={setEvidenceId} />}
+            ? <p className="text-sm text-amber-700">{tr("No scan yet. Upload the signed sheet under Training Materials, paper evidence, kind Attendance sheet or Assessment.")}</p>
+            : <Select value={evidenceId} options={evidence.map((e) => ({ value: e.id, label: `${e.originalName} (${day(e.uploadedAt)})` }))} placeholder={tr("Choose the scan")} onChange={setEvidenceId} />}
         </FormField>
-        <FormField label="Reason for typing late (needed when more than one day has passed)">
+        <FormField label={tr("Reason for typing late (needed when more than one day has passed)")}>
           <Input value={late} onChange={(e) => setLate(e.target.value)} />
         </FormField>
         <div className="space-y-2">
@@ -299,14 +300,14 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
                 <div className="md:col-span-3"><div className="text-xs text-slate-500">{i + 1}</div><div className="text-sm font-medium text-slate-900">{p.name}</div></div>
                 <div className="md:col-span-3"><Select value={r.state} options={[{ value: "ATTENDED", label: "Attended" }, { value: "ABSENT", label: "Absent" }]} aria-label={`Attendance of ${p.name}`} onChange={(v) => set(p.id, { state: v })} /></div>
                 {r.state === "ABSENT"
-                  ? <div className="md:col-span-6"><Input placeholder="Reason for the absence" aria-label={`Reason of ${p.name}`} value={r.reason} onChange={(e) => set(p.id, { reason: e.target.value })} /></div>
+                  ? <div className="md:col-span-6"><Input placeholder={tr("Reason for the absence")} aria-label={`Reason of ${p.name}`} value={r.reason} onChange={(e) => set(p.id, { reason: e.target.value })} /></div>
                   : scored && p.noAssessment
-                    ? <div className="text-sm text-slate-500 md:col-span-6">Takes no assessment</div>
+                    ? <div className="text-sm text-slate-500 md:col-span-6">{tr("Takes no assessment")}</div>
                     : scored && (
                     <div className="flex items-center gap-2 md:col-span-6">
-                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder="Score" aria-label={`Score of ${p.name}`} value={r.got} onChange={(e) => set(p.id, { got: e.target.value })} />
+                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Score")} aria-label={`Score of ${p.name}`} value={r.got} onChange={(e) => set(p.id, { got: e.target.value })} />
                       <span className="text-slate-400">/</span>
-                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder="Maximum" aria-label={`Maximum score for ${p.name}`} value={r.max} onChange={(e) => set(p.id, { max: e.target.value })} />
+                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Maximum")} aria-label={`Maximum score for ${p.name}`} value={r.max} onChange={(e) => set(p.id, { max: e.target.value })} />
                     </div>
                   )}
               </div>

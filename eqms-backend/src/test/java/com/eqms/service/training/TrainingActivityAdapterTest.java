@@ -46,6 +46,7 @@ class TrainingActivityAdapterTest {
     private static final UUID ME = UUID.randomUUID();
     private static final UUID OTHER = UUID.randomUUID();
     private static final String MIGRATION = "src/main/resources/db/migration/V811__training_activity_in_workflow_authorization.sql";
+    private static final String RETIRED_SUPPLEMENTARY = "src/main/resources/db/migration/V842__retire_training_supplementary_before_completed.sql";
 
     /** The scenario of the cell being checked. */
     private static final class Scenario {
@@ -140,7 +141,7 @@ class TrainingActivityAdapterTest {
             "NOTIFY", Set.of("PLANNED"),
             "CANCEL", Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION"),
             "REOPEN_CONTENT", Set.of("PLANNED", "NOTIFIED"),
-            "SUPPLEMENTARY", Set.of("IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED"));
+            "SUPPLEMENTARY", Set.of("COMPLETED"));
     private static final List<String> ACTIONS = List.of("UPDATE", "ADD_SESSION", "ADD_PARTICIPANTS", "CONFIRM_LIST", "NOTIFY", "CANCEL", "REOPEN_CONTENT", "SUPPLEMENTARY",
             "CONTENT_REVIEW", "CONTENT_APPROVE", "SEND_ATTENDANCE_LIST", "FINISH", "CONFIRM_COMPLETION", "RETURN_FOR_CORRECTION");
 
@@ -197,7 +198,11 @@ class TrainingActivityAdapterTest {
     void theMigrationAndTheRegistryHaveTheSamePolicies() throws Exception {
         String sql = java.nio.file.Files.readString(java.nio.file.Path.of(MIGRATION)).replaceAll("\\s+", " ");
         var defaults = WorkflowActionDefaultPolicyRegistry.allTraining().stream().filter(d -> d.workflowKey().equals("TRAINING_ACTIVITY")).toList();
-        assertThat(defaults).hasSize(26);
+        // 26 rows were seeded by V811; V842 retired the two SUPPLEMENTARY rows that start from IN_PROGRESS and PENDING_QA_CONFIRMATION (only a Completed activity gets a supplementary training), so the registry has 24
+        assertThat(defaults).hasSize(24);
+        assertThat(defaults.stream().filter(d -> d.policy().actionCode().equals("SUPPLEMENTARY")).map(d -> d.policy().fromStatus())).containsExactly("COMPLETED");
+        String retired = java.nio.file.Files.readString(java.nio.file.Path.of(RETIRED_SUPPLEMENTARY)).replaceAll("\s+", " ");
+        assertThat(retired).contains("action_code = 'SUPPLEMENTARY'").contains("from_status IN ('IN_PROGRESS', 'PENDING_QA_CONFIRMATION')").doesNotContain("'COMPLETED'");
         for (var d : defaults) {
             String row = "('TRAINING_ACTIVITY', 'TRAINING_ACTIVITY', '" + d.policy().actionCode() + "', '" + d.policy().fromStatus() + "', '" + d.policy().requiredPermissionCode() + "', '"
                     + d.policy().description().replace("'", "''") + "')";

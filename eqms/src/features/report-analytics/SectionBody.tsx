@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button/Button";
 import type { SectionState } from "./useSection";
+import { tr } from "@/i18n";
 
 /** What a section shows while it loads, when it fails, and when the person may not see it; the content is drawn only from data the server returned. */
 export function SectionBody<T>({
@@ -17,16 +18,16 @@ export function SectionBody<T>({
   if (state.status === "loading") {
     return (
       <p role="status" className="px-4 py-6 text-sm text-slate-500">
-        Loading…
+        {tr("Loading…")}
       </p>
     );
   }
   if (state.status === "error") {
     return (
       <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-5 text-sm text-red-700">
-        <span>This section could not be loaded. The figures are not shown rather than shown wrong.</span>
+        <span>{tr("This section could not be loaded. The figures are not shown rather than shown wrong.")}</span>
         <Button size="sm" variant="outline" onClick={reload}>
-          Retry
+          {tr("Retry")}
         </Button>
       </div>
     );

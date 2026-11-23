@@ -5,6 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch/Switch";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
+import { tr } from "@/i18n";
 
 /** Field names are shared by the issued-copy marking and the per-status marking, so one editor serves both. */
 export interface WatermarkValue {
@@ -36,8 +37,8 @@ const FIELD_INPUT =
   "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500";
 
 const PAGE_OPTIONS = [
-  { label: "Every page", value: "ALL" },
-  { label: "First page only", value: "FIRST" },
+  { label: tr("Every page"), value: "ALL" },
+  { label: tr("First page only"), value: "FIRST" },
 ];
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
@@ -165,7 +166,7 @@ export const WatermarkFields: React.FC<{
 }> = ({ value, onChange, disabled, textHint, opacityRange, layerOptions }) => (
   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <div className="sm:col-span-2">
-      <Field label="Text" hint={textHint}>
+      <Field label={tr("Text")} hint={textHint}>
         <input
           className={FIELD_INPUT}
           value={value.watermarkText}
@@ -175,11 +176,11 @@ export const WatermarkFields: React.FC<{
         />
       </Field>
     </div>
-    <Field label="Color">
+    <Field label={tr("Color")}>
       <ColorPickerInput value={value.watermarkColor} onChange={(v) => onChange("watermarkColor", v)} disabled={disabled} />
     </Field>
     <Select
-      label="Layer"
+      label={tr("Layer")}
       value={value.watermarkLayer}
       onChange={(v) => onChange("watermarkLayer", String(v))}
       options={layerOptions}
@@ -187,7 +188,7 @@ export const WatermarkFields: React.FC<{
       disabled={disabled}
     />
     <Select
-      label="Font"
+      label={tr("Font")}
       value={value.watermarkFontFamily}
       onChange={(v) => onChange("watermarkFontFamily", String(v))}
       options={FONT_OPTIONS}
@@ -195,7 +196,7 @@ export const WatermarkFields: React.FC<{
       disabled={disabled}
     />
     <NumberField
-      label="Opacity (%)"
+      label={tr("Opacity (%)")}
       hint={`${opacityRange[0]} to ${opacityRange[1]}`}
       value={value.watermarkOpacityPercent}
       min={opacityRange[0]}
@@ -205,7 +206,7 @@ export const WatermarkFields: React.FC<{
     />
     {value.watermarkPages !== undefined && (
       <Select
-        label="Pages"
+        label={tr("Pages")}
         value={value.watermarkPages}
         onChange={(v) => onChange("watermarkPages", String(v))}
         options={PAGE_OPTIONS}
@@ -223,7 +224,7 @@ export const StampFields: React.FC<{
 }> = ({ value, onChange, disabled }) => (
   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <div className="sm:col-span-2">
-      <Field label="Text" hint="Letters, digits and . , : ; / ( ) -">
+      <Field label={tr("Text")} hint={tr("Letters, digits and . , : ; / ( ) -")}>
         <input
           className={FIELD_INPUT}
           value={value.stampText}
@@ -233,11 +234,11 @@ export const StampFields: React.FC<{
         />
       </Field>
     </div>
-    <Field label="Color">
+    <Field label={tr("Color")}>
       <ColorPickerInput value={value.stampColor} onChange={(v) => onChange("stampColor", v)} disabled={disabled} />
     </Field>
     <Select
-      label="Font"
+      label={tr("Font")}
       value={value.stampFontFamily}
       onChange={(v) => onChange("stampFontFamily", String(v))}
       options={FONT_OPTIONS}
@@ -245,8 +246,8 @@ export const StampFields: React.FC<{
       disabled={disabled}
     />
     <NumberField
-      label="Opacity (%)"
-      hint="30 to 100"
+      label={tr("Opacity (%)")}
+      hint={tr("30 to 100")}
       value={value.stampOpacityPercent}
       min={30}
       max={100}
@@ -255,7 +256,7 @@ export const StampFields: React.FC<{
     />
     {value.stampPages !== undefined && (
       <Select
-        label="Pages"
+        label={tr("Pages")}
         value={value.stampPages}
         onChange={(v) => onChange("stampPages", String(v))}
         options={PAGE_OPTIONS}
@@ -269,8 +270,8 @@ export const StampFields: React.FC<{
 const QR_POSITION_OPTIONS = [
   { label: "Top left", value: "TOP_LEFT" },
   { label: "Top right", value: "TOP_RIGHT" },
-  { label: "Bottom left", value: "BOTTOM_LEFT" },
-  { label: "Bottom right", value: "BOTTOM_RIGHT" },
+  { label: tr("Bottom left"), value: "BOTTOM_LEFT" },
+  { label: tr("Bottom right"), value: "BOTTOM_RIGHT" },
 ];
 
 export interface QrCodeValue {
@@ -290,7 +291,7 @@ export const QrCodeFields: React.FC<{
   <div className="space-y-3">
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Select
-        label="Corner"
+        label={tr("Corner")}
         value={value.qrCodePosition}
         onChange={(v) => onChange("qrCodePosition", String(v))}
         options={QR_POSITION_OPTIONS}
@@ -298,8 +299,8 @@ export const QrCodeFields: React.FC<{
         disabled={disabled}
       />
       <NumberField
-        label="Size (mm)"
-        hint="15 to 40"
+        label={tr("Size (mm)")}
+        hint={tr("15 to 40")}
         value={value.qrCodeSizeMm}
         min={15}
         max={40}
@@ -307,7 +308,7 @@ export const QrCodeFields: React.FC<{
         onChange={(v) => onChange("qrCodeSizeMm", v)}
       />
       <Select
-        label="Pages"
+        label={tr("Pages")}
         value={value.qrCodePages}
         onChange={(v) => onChange("qrCodePages", String(v))}
         options={PAGE_OPTIONS}
@@ -317,13 +318,13 @@ export const QrCodeFields: React.FC<{
     </div>
     <p className="text-2xs text-slate-500">
       {positioned
-        ? "Placed by hand on the preview. Choosing a corner puts it back there."
-        : "Drag the code on the preview to place it anywhere on the page; drag a corner handle to resize it."}
+        ? tr("Placed by hand on the preview. Choosing a corner puts it back there.")
+        : tr("Drag the code on the preview to place it anywhere on the page; drag a corner handle to resize it.")}
     </p>
     <p className="text-2xs text-slate-500">
       {value.qrCodePages === "FIRST"
-        ? "First page only: a whole copy can be matched from its first page, but loose pages scanned together cannot be sorted back into their copies."
-        : "Every page: each page carries its own code with its page number, so pages of many copies scanned as one file are sorted back into their copies and into order."}
+        ? tr("First page only: a whole copy can be matched from its first page, but loose pages scanned together cannot be sorted back into their copies.")
+        : tr("Every page: each page carries its own code with its page number, so pages of many copies scanned as one file are sorted back into their copies and into order.")}
     </p>
   </div>
 );
@@ -334,7 +335,7 @@ export const ShowToggles: React.FC<{
   disabled?: boolean;
 }> = ({ items, disabled }) => (
   <div>
-    <p className="mb-1 text-xs font-medium text-slate-500 uppercase tracking-wider">Also show</p>
+    <p className="mb-1 text-xs font-medium text-slate-500 uppercase tracking-wider">{tr("Also show")}</p>
     <div className="grid grid-cols-1 gap-x-6 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0">
       {items.map((item) => (
         <div key={item.label} className="flex items-center justify-between gap-3 py-2 sm:border-b sm:border-slate-100">

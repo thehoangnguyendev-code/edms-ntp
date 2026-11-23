@@ -23,6 +23,7 @@ import {
 } from './globalSearchModel';
 import { useGlobalSearch } from './useGlobalSearch';
 import { useQuickPlaces } from './useQuickPlaces';
+import { tr, trFormat } from "@/i18n";
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -259,7 +260,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Search"
+        aria-label={tr("Search")}
         className="relative flex max-h-[76vh] w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-[0_24px_64px_-12px_rgba(15,23,42,0.45),0_6px_16px_-4px_rgba(15,23,42,0.15)] will-change-transform"
       >
         <div className="relative flex shrink-0 items-center gap-3 border-b border-slate-200 px-4">
@@ -268,8 +269,8 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search documents, users, trainings, pages…"
-            aria-label="Search"
+            placeholder={tr("Search documents, users, trainings, pages…")}
+            aria-label={tr("Search")}
             role="combobox"
             aria-expanded={rows.length > 0}
             aria-controls={listId}
@@ -281,7 +282,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
             className="h-14 min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
           />
           {query && (
-            <button type="button" onClick={() => { setQuery(''); inputRef.current?.focus(); }} className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600" aria-label="Clear search">
+            <button type="button" onClick={() => { setQuery(''); inputRef.current?.focus(); }} className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600" aria-label={tr("Clear search")}>
               <X className="h-4 w-4" />
             </button>
           )}
@@ -289,7 +290,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
           {loading && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 animate-pulse bg-emerald-500" />}
         </div>
 
-        <div ref={listRef} id={listId} role="listbox" aria-label="Results" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
+        <div ref={listRef} id={listId} role="listbox" aria-label={tr("Results")} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
           <div ref={innerRef} className="relative">
             <div ref={highlightRef} aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 rounded-xl bg-slate-100 opacity-0" />
             {sections.map((section) => (
@@ -298,7 +299,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
                   <span>{section.label}</span>
                   {section.key === 'recent' && (
                     <button type="button" onClick={() => { clearRecentSearches(user?.id); setRecent([]); }} className="font-medium normal-case tracking-normal text-slate-500 hover:text-emerald-700 hover:underline">
-                      Clear
+                      {tr("Clear")}
                     </button>
                   )}
                 </div>
@@ -339,22 +340,22 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
             ))}
 
             {unavailable.map((group) => (
-              <p key={group.key} className="relative px-3 py-2 text-xs text-amber-700">{group.label} could not be searched just now. Try again.</p>
+              <p key={group.key} className="relative px-3 py-2 text-xs text-amber-700">{group.label} {tr("could not be searched just now. Try again.")}</p>
             ))}
 
             {failed && !loading && rows.length === 0 && (
-              <p className="px-3 py-8 text-center text-sm text-slate-500">The search is not available right now. Try again in a moment.</p>
+              <p className="px-3 py-8 text-center text-sm text-slate-500">{tr("The search is not available right now. Try again in a moment.")}</p>
             )}
             {emptyAnswer && !failed && (
               <div className="px-3 py-10 text-center">
-                <p className="text-sm font-medium text-slate-700">No results for “{query.trim()}”</p>
-                <p className="mt-1 text-xs text-slate-500">Check the spelling, or try a number, a name or part of a title.</p>
+                <p className="text-sm font-medium text-slate-700">{trFormat("No results for “{query}”", { query: query.trim() })}</p>
+                <p className="mt-1 text-xs text-slate-500">{tr("Check the spelling, or try a number, a name or part of a title.")}</p>
               </div>
             )}
             {!searching && rows.length === 0 && (
               <div className="px-3 py-10 text-center">
-                <p className="text-sm font-medium text-slate-700">Search everything you can open</p>
-                <p className="mt-1 text-xs text-slate-500">Type at least {MIN_GLOBAL_SEARCH_LENGTH} characters: a document number, a name, a training number or a page.</p>
+                <p className="text-sm font-medium text-slate-700">{tr("Search everything you can open")}</p>
+                <p className="mt-1 text-xs text-slate-500">{trFormat("Type at least {count} characters: a document number, a name, a training number or a page.", { count: MIN_GLOBAL_SEARCH_LENGTH })}</p>
               </div>
             )}
             {searching && loading && rows.length === 0 && !failed && (
@@ -366,9 +367,9 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
         </div>
 
         <div className="hidden shrink-0 items-center gap-4 border-t border-slate-100 bg-slate-50/70 px-4 py-2 text-2xs text-slate-500 md:flex">
-          <span className="inline-flex items-center gap-1.5"><span className="inline-flex gap-0.5"><Kbd keys={['up']} size="sm" className="bg-slate-200/70" /><Kbd keys={['down']} size="sm" className="bg-slate-200/70" /></span>to move</span>
-          <span className="inline-flex items-center gap-1.5"><Kbd keys={['enter']} size="sm" className="bg-slate-200/70" />to open</span>
-          <span className="inline-flex items-center gap-1.5"><Kbd keys={['escape']} size="sm" className="bg-slate-200/70" />to close</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-flex gap-0.5"><Kbd keys={['up']} size="sm" className="bg-slate-200/70" /><Kbd keys={['down']} size="sm" className="bg-slate-200/70" /></span>{tr("to move")}</span>
+          <span className="inline-flex items-center gap-1.5"><Kbd keys={['enter']} size="sm" className="bg-slate-200/70" />{tr("to open")}</span>
+          <span className="inline-flex items-center gap-1.5"><Kbd keys={['escape']} size="sm" className="bg-slate-200/70" />{tr("to close")}</span>
         </div>
       </div>
     </div>,

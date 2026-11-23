@@ -15,6 +15,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { ManualCopyPanel } from "./ManualCopyPanel";
 import { MEDIUM_LABEL } from "./policyLabels";
+import { tr, trFormat } from "@/i18n";
 
 const STEP_LABEL: Record<string, string> = {
   write: "Wrote a test file",
@@ -25,8 +26,8 @@ const STEP_LABEL: Record<string, string> = {
 
 const TABS: TabItem[] = [
   { id: "targets", label: "Targets" },
-  { id: "manual-copy", label: "Manual Copy" },
-  { id: "encryption", label: "Encryption" },
+  { id: "manual-copy", label: tr("Manual Copy") },
+  { id: "encryption", label: tr("Encryption") },
 ];
 
 /** The result of a test run from this page: passed, or failed at the first step that did not work. */
@@ -34,8 +35,8 @@ const TestResult: React.FC<{ result: TargetTestResult }> = ({ result }) => {
   const failed = result.steps.find((step) => !step.ok);
   return (
     <span className="inline-flex flex-col gap-0.5">
-      <Badge color={result.ok ? "emerald" : "red"}>{result.ok ? "Passed" : "Failed"}</Badge>
-      {failed && <span className="text-2xs text-slate-500">Failed at: {STEP_LABEL[failed.name] ?? failed.name}</span>}
+      <Badge color={result.ok ? "emerald" : "red"}>{result.ok ? tr("Passed") : tr("Failed")}</Badge>
+      {failed && <span className="text-2xs text-slate-500">{trFormat("Failed at: {step}", { step: STEP_LABEL[failed.name] ?? failed.name })}</span>}
     </span>
   );
 };
@@ -95,7 +96,7 @@ export const BackupStorageView: React.FC = () => {
 
   const targetsTab = (
     <Part>
-      {targetsError && <WarningBanner variant="error" title="The backup targets could not be read" description={targetsError} />}
+      {targetsError && <WarningBanner variant="error" title={tr("The backup targets could not be read")} description={targetsError} />}
       {targets === undefined ? (
         <SectionLoading minHeight="80px" />
       ) : (
@@ -106,11 +107,11 @@ export const BackupStorageView: React.FC = () => {
             { id: "code", header: "Target", cell: (row) => <span className="font-medium">{row.code}</span> },
             { id: "kind", header: "Kind", cell: (row) => (row.kind === "S3" ? MEDIUM_LABEL.OBJECT_STORAGE : "Folder") },
             { id: "location", header: "Location", cell: (row) => <span className="break-all font-mono text-xs">{row.location}</span> },
-            { id: "immutable", header: "Cannot be deleted", cell: (row) => (row.immutable ? <Badge color="emerald">Yes</Badge> : "No") },
+            { id: "immutable", header: tr("Cannot be deleted"), cell: (row) => (row.immutable ? <Badge color="emerald">{tr("Yes")}</Badge> : "No") },
             {
               id: "test",
               header: "Last test",
-              cell: (row) => (results[row.code] ? <TestResult result={results[row.code]} /> : <span className="text-slate-400">Not tested on this page</span>),
+              cell: (row) => (results[row.code] ? <TestResult result={results[row.code]} /> : <span className="text-slate-400">{tr("Not tested on this page")}</span>),
             },
           ]}
           action={
@@ -132,18 +133,18 @@ export const BackupStorageView: React.FC = () => {
   const encryptionTab = (
     <>
       <Part>
-        {encryptionError && <WarningBanner variant="error" title="The encryption details could not be read" description={encryptionError} />}
+        {encryptionError && <WarningBanner variant="error" title={tr("The encryption details could not be read")} description={encryptionError} />}
         {encryption === undefined && !encryptionError ? (
           <SectionLoading minHeight="80px" />
         ) : (
           encryption && (
             <div className="space-y-3">
-              {!encryption.available && <WarningBanner variant="error" title="No encryption key is available" description={`Backups cannot be written. ${encryption.problem ?? ""}`} />}
-              <Fact label="Are backups encrypted?">Yes, {encryption.scheme} with {encryption.cipher}.</Fact>
-              <Fact label="Are backups signed?">Yes, with {encryption.signingAlgorithm}.</Fact>
-              <Fact label="Can this system read backups?">
+              {!encryption.available && <WarningBanner variant="error" title={tr("No encryption key is available")} description={trFormat("Backups cannot be written. {problem}", { problem: encryption.problem ?? "" })} />}
+              <Fact label={tr("Are backups encrypted?")}>{trFormat("Yes, {scheme} with {cipher}.", { scheme: encryption.scheme, cipher: encryption.cipher })}</Fact>
+              <Fact label={tr("Are backups signed?")}>{trFormat("Yes, with {algorithm}.", { algorithm: encryption.signingAlgorithm })}</Fact>
+              <Fact label={tr("Can this system read backups?")}>
                 {encryption.agentCanDecrypt ? (
-                  <Badge color="red">Yes</Badge>
+                  <Badge color="red">{tr("Yes")}</Badge>
                 ) : (
                   "No. The Backup Agent holds only the public key. The private key is used only by the restore worker, and only for an approved restore."
                 )}
@@ -156,14 +157,14 @@ export const BackupStorageView: React.FC = () => {
       {encryption && (
         <details className="group">
           <summary className="cursor-pointer select-none text-sm font-medium text-slate-700 hover:text-emerald-700">
-            Technical details <span className="text-xs font-normal text-slate-500">· key identifiers, for an auditor or a support engineer</span>
+              {tr("Technical details")} <span className="text-xs font-normal text-slate-500">· {tr("key identifiers, for an auditor or a support engineer")}</span>
           </summary>
           <div className="mt-3 space-y-3">
-            <Fact label="Recipient key">{encryption.recipientKeyId ? <span className="font-mono text-xs">{encryption.recipientKeyId}</span> : "—"}</Fact>
-            <Fact label="Recipient fingerprint">
+            <Fact label={tr("Recipient key")}>{encryption.recipientKeyId ? <span className="font-mono text-xs">{encryption.recipientKeyId}</span> : "—"}</Fact>
+            <Fact label={tr("Recipient fingerprint")}>
               {encryption.fingerprint ? <span className="break-all font-mono text-xs font-normal text-slate-500">{encryption.fingerprint}</span> : "—"}
             </Fact>
-            <Fact label="Signing key">
+            <Fact label={tr("Signing key")}>
               <span className="font-mono text-xs">{encryption.signingKeyId}</span>
             </Fact>
           </div>
@@ -175,7 +176,7 @@ export const BackupStorageView: React.FC = () => {
   const content = active === "encryption" ? encryptionTab : active === "manual-copy" ? <ManualCopyPanel /> : targetsTab;
 
   return (
-    <BackupAdminLivePage title="Backup Storage & Encryption">
+    <BackupAdminLivePage title={tr("Backup Storage & Encryption")}>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-storage-tab" ariaLabel="Backup storage" />
         <div className="p-4 md:p-5 space-y-6">{content}</div>

@@ -14,6 +14,7 @@ import { authTokenStore } from "@/services/authTokenStore";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
+import { tr } from "@/i18n";
 
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
 const SESSION_UNLOCKED_EVENT = "eqms:session-unlocked";
@@ -323,19 +324,19 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
             className="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5"
           >
             <div className="flex flex-col items-center border-b border-slate-100 p-5 text-center">
-              <h2 className="text-md md:text-lg font-semibold text-slate-900">Session Expired</h2>
+              <h2 className="text-md md:text-lg font-semibold text-slate-900">{tr("Session Expired")}</h2>
               <p className="mt-1 text-xs md:text-sm text-slate-500">
-                Required to provide Auth information
+                {tr("Required to provide Auth information")}
               </p>
             </div>
 
             <form onSubmit={challenge ? handleVerifyCode : handleSubmit} className="p-4 md:p-5 pt-6">
               <div className="mb-6 rounded-lg bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-800">
-                  Locked user: <span className="font-bold">{user?.fullName || user?.username || username || "Unknown"}</span>
+                  {tr("Locked user:")} <span className="font-bold">{user?.fullName || user?.username || username || tr("Unknown")}</span>
                 </p>
                 <p className="text-xs text-emerald-700 mt-1">
-                  Configured system timeout: <span className="font-semibold">{timeoutLabel}</span>
+                  {tr("Configured system timeout:")} <span className="font-semibold">{timeoutLabel}</span>
                 </p>
               </div>
 
@@ -349,7 +350,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                 <div className="space-y-4" data-testid="reauth-code-step">
                   {!method ? (
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-700">Choose how to receive your verification code</p>
+                      <p className="text-sm font-medium text-slate-700">{tr("Choose how to receive your verification code")}</p>
                       {challenge.availableMethods.map((option) => (
                         <Button key={option} type="button" variant="outline" className="w-full justify-start" onClick={() => chooseMethod(option, challenge.mfaToken)}>
                           {option === "app" ? "Authenticator app" : `Email code${challenge.maskedEmail ? ` to ${challenge.maskedEmail}` : ""}`}
@@ -359,7 +360,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                   ) : (
                     <div>
                       <label htmlFor="reauth-code" className="mb-2 block text-sm font-medium text-slate-700 capitalize">
-                        Verification code
+                        {tr("Verification code")}
                       </label>
                       <input
                         id="reauth-code"
@@ -377,7 +378,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                       />
                       <p className="mt-2 text-xs text-slate-500">
                         {method === "app"
-                          ? "Enter the 6-digit code from your authenticator app."
+                          ? tr("Enter the 6-digit code from your authenticator app.")
                           : emailSent
                             ? `A code was sent${challenge.maskedEmail ? ` to ${challenge.maskedEmail}` : ""}. It is valid for a few minutes.`
                             : "Sending the code…"}
@@ -390,7 +391,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                         )}
                         {challenge.availableMethods.length > 1 && (
                           <button type="button" className="font-medium text-emerald-700" onClick={() => { setMethod(null); setCode(""); setError(""); }}>
-                            Use another method
+                            {tr("Use another method")}
                           </button>
                         )}
                       </div>
@@ -399,21 +400,21 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
 
                   <div className="flex gap-3 pt-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={handleLogout} disabled={isLoading || isLoggingOut}>
-                      Sign Out
+                      {tr("Sign Out")}
                     </Button>
                     <Button type="submit" variant="default" className="flex-1" disabled={isLoading || !method || code.length !== OTP_LENGTH}>
                       {isLoading ? <ButtonLoading text="Verifying..." light /> : "Unlock"}
                     </Button>
                   </div>
                   <button type="button" className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-700" onClick={backToPassword} disabled={isLoading}>
-                    Back to password
+                    {tr("Back to password")}
                   </button>
                 </div>
               ) : (
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700 capitalize">
-                    Password
+                    {tr("Password")}
                   </label>
                   <div className="relative">
                     <input
@@ -426,12 +427,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                       onKeyDown={handleCapsLockCheck}
                       onKeyUp={handleCapsLockCheck}
                       className="auth-input w-full rounded-xl border border-slate-300 px-3 py-3 pr-20 text-base outline-none md:text-sm transition-all focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-                      placeholder="Enter your password"
+                      placeholder={tr("Enter your password")}
                       autoFocus
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-1">
                       {isCapsLockOn && (
-                        <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                        <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title={tr("Caps Lock is ON")}>
                           <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" aria-hidden="true" />
                         </div>
                       )}
@@ -456,7 +457,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                     onClick={handleLogout}
                     disabled={isLoading || isLoggingOut}
                   >
-                    Sign Out
+                    {tr("Sign Out")}
                   </Button>
                   <Button
                     type="submit"

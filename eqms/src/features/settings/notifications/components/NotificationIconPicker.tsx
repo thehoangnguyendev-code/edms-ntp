@@ -14,6 +14,7 @@ import {
   type IconLibrary,
 } from '@/features/notifications/notificationIcons';
 import { TablePagination } from '@/components/ui/table/TablePagination';
+import { tr, trFormat } from "@/i18n";
 
 const LIBRARIES: TabItem[] = [
   { id: 'lucide', label: 'Lucide' },
@@ -60,34 +61,34 @@ export const NotificationIconPicker: React.FC<{
           {/* the search first, with the library; the icons under it */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
-              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} ariaLabel="Search icons" placeholder="Search an icon by name, for example bell, shield, clock…" />
+              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} ariaLabel="Search icons" placeholder={tr("Search an icon by name, for example bell, shield, clock…")} />
             </div>
             <div className="sm:w-56 sm:shrink-0">
               <TabNav tabs={LIBRARIES} activeTab={library} onChange={(id) => { setLibrary(id as IconLibrary); setPage(1); }} variant="pill" ariaLabel="Icon library" layoutId="notification-icon-library" />
             </div>
           </div>
-          <p className="-mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500" role="status" aria-label="State of the icon sets">
+          <p className="-mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500" role="status" aria-label={tr("State of the icon sets")}>
             {sets.state === 'unavailable' ? (
-              <span className="text-amber-700">The newest icons could not be loaded: the icons built into the application are shown.</span>
+              <span className="text-amber-700">{tr("The newest icons could not be loaded: the icons built into the application are shown.")}</span>
             ) : sets.state === 'current' ? (
               <span>
-                Up to date with the newest Lucide and Tabler{sets.checkedAt ? ` (checked ${formatDateTime(sets.checkedAt.toISOString())})` : ''}
+                {tr("Up to date with the newest Lucide and Tabler")}{sets.checkedAt ? trFormat(" (checked {date})", { date: formatDateTime(sets.checkedAt.toISOString()) }) : ''}
                 {sets.added.lucide + sets.added.tabler > 0 ? `: ${sets.added.lucide + sets.added.tabler} icons newer than the application` : ''}.
               </span>
             ) : (
-              <span>Checking for the newest icons…</span>
+              <span>{tr("Checking for the newest icons…")}</span>
             )}
             <button type="button" className="font-medium text-emerald-700 hover:underline disabled:opacity-50" disabled={sets.state === 'checking'} onClick={sets.refresh}>
-              Check now
+              {tr("Check now")}
             </button>
           </p>
           {!libraries ? (
-            <p className="py-6 text-sm text-slate-500">Loading the icons…</p>
+            <p className="py-6 text-sm text-slate-500">{tr("Loading the icons…")}</p>
           ) : names.length === 0 ? (
-            <p className="py-6 text-sm text-slate-500">No icon matches “{search.trim()}”.</p>
+              <p className="py-6 text-sm text-slate-500">{trFormat("No icon matches “{query}”.", { query: search.trim() })}</p>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="grid grid-cols-5 gap-2 p-3 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12" role="listbox" aria-label="Icons">
+              <div className="grid grid-cols-5 gap-2 p-3 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12" role="listbox" aria-label={tr("Icons")}>
                 {names.slice((current - 1) * perPage, current * perPage).map((name) => {
                   const key = iconKey(library, name);
                   const selected = icon === key;
@@ -123,7 +124,7 @@ export const NotificationIconPicker: React.FC<{
 
       {/* the way back to the default; the icon chosen is the one marked in the grid and drawn in the preview */}
       <Button size="sm" variant="outline-emerald" className="h-9" disabled={disabled || !icon} onClick={() => onChange(null)}>
-        Use default
+        {tr("Use default")}
       </Button>
     </div>
   );

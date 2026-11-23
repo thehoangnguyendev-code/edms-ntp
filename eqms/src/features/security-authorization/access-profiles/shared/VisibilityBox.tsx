@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { ChevronDown, Eye } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
+import { tr } from "@/i18n";
 
 /**
  * The frame of a record-visibility picker, shown at the top of the permissions of its module (Document Control, Training Management, Reports): a title, the
@@ -59,7 +60,7 @@ export const VisibilityBox: React.FC<{
             onClick={() => setOpen((value) => !value)}
             className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
           >
-            Details
+            {tr("Details")}
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
           </button>
         )}

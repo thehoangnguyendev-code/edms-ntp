@@ -5,6 +5,7 @@ import { AuthVideoBackground } from '@/components/branding/AuthVideoBackground';
 import { useBranding } from '@/components/branding/BrandLogo';
 import { DEFAULT_FOOTER_LEFT } from '@/services/api/branding';
 import { LoginSplitLayout } from './LoginSplitLayout';
+import { AuthLanguageSwitch } from './AuthLanguageSwitch';
 
 interface AuthLayoutProps {
   left: React.ReactNode;
@@ -46,6 +47,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ left, right: _right }) =
   return (
     <div className={AUTH_UI.pageWrapper} role="main" data-auth-layout>
       <AuthVideoBackground />
+      <AuthLanguageSwitch className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6" />
       {/* The default is the light grey of the main layout (bg-gray-100/50): the page itself (AUTH_UI.pageWrapper). A background chosen in Configuration replaces it. */}
       {/* Option 2: Aurora Ribbon (commented for later use) */}
       {/*

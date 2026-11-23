@@ -8,6 +8,7 @@ import { TrainingActivityFilesTab } from "../TrainingActivityFilesTab";
 import { TrainingExamBlock } from "../TrainingExamBlock";
 import { TrainingPrintedPacks } from "../TrainingPaperBlock";
 import { TrainingTranscriptionBlock } from "../TrainingTranscriptionBlock";
+import { tr, trFormat } from "@/i18n";
 
 type Key = "test" | "materials" | "packs" | "typed" | "scans";
 const ORDER: Key[] = ["test", "materials", "packs", "typed", "scans"];
@@ -73,7 +74,7 @@ export function WorkspaceAssessmentStep({ activityId, scoped, people, caps, mode
   const pane = (key: Key) => active !== key;
 
   return (
-    <section aria-label="Assessment" className="space-y-4">
+    <section aria-label={tr("Assessment")} className="space-y-4">
       {tabs.length > 0 && (
         <>
           <TabNav
@@ -93,7 +94,7 @@ export function WorkspaceAssessmentStep({ activityId, scoped, people, caps, mode
           >
             <span className="min-w-0">
               <span className="block text-base font-semibold text-slate-900">{current ? LABEL[current.key] : ""} <span className="font-normal text-slate-500">{current?.count}</span></span>
-              <span className="block text-[13px] text-slate-500">Section {Math.max(1, tabs.findIndex((t) => t.key === active) + 1)} of {tabs.length}{othersWaiting > 0 ? ` · ${othersWaiting} other${othersWaiting === 1 ? "" : "s"} need${othersWaiting === 1 ? "s" : ""} you` : ""}</span>
+                    <span className="block text-[13px] text-slate-500">{trFormat("Section {current} of {total}", { current: Math.max(1, tabs.findIndex((t) => t.key === active) + 1), total: tabs.length })}{othersWaiting > 0 ? trFormat(" · {count} others need you", { count: othersWaiting }) : ""}</span>
             </span>
             <ChevronsUpDown className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
           </button>
@@ -114,7 +115,7 @@ export function WorkspaceAssessmentStep({ activityId, scoped, people, caps, mode
       </div>
 
       {switching && (
-        <Drawer title="Assessment" onClose={() => setSwitching(false)} onExited={() => setSwitching(false)}>
+        <Drawer title={tr("Assessment")} onClose={() => setSwitching(false)} onExited={() => setSwitching(false)}>
           <ul className="-mx-4 divide-y divide-slate-100">
             {tabs.map((t, i) => (
               <li key={t.key}>

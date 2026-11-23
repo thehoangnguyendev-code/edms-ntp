@@ -21,6 +21,7 @@ import { emailTemplateApi } from "@/services/api/emailTemplates";
 import { MODULE_OPTIONS, PRIORITY_COLOR, moduleLabel, priorityLabel } from "./labels";
 import { useServerList } from "./useServerList";
 import { useRowMenu } from "./components/useRowMenu";
+import { tr } from "@/i18n";
 
 const ALL = "All";
 type Direction = "asc" | "desc";
@@ -28,9 +29,9 @@ type Sort = "name" | "channel" | "category" | "status" | "updatedAt";
 type TabId = "all" | "in-app" | "email";
 
 const TABS: (TabItem & { id: TabId })[] = [
-  { id: "all", label: "All Notifications" },
-  { id: "in-app", label: "In-app Notification" },
-  { id: "email", label: "Email Notification" },
+  { id: "all", label: tr("All Notifications") },
+  { id: "in-app", label: tr("In-app Notification") },
+  { id: "email", label: tr("Email Notification") },
 ];
 
 /** The channel a tab is limited to; the first tab shows both. */
@@ -61,8 +62,8 @@ const PRIORITY_OPTIONS = [
 
 const USAGE_OPTIONS = [
   { label: "All", value: ALL },
-  { label: "Sent at least once", value: "SENT" },
-  { label: "Never sent", value: "NEVER_SENT" },
+  { label: tr("Sent at least once"), value: "SENT" },
+  { label: tr("Never sent"), value: "NEVER_SENT" },
 ];
 
 const STATUS_COLOR: Record<string, "emerald" | "slate" | "gray"> = { ACTIVE: "emerald", DRAFT: "slate", INACTIVE: "gray" };
@@ -76,7 +77,7 @@ const NO = TABLE_STYLES.headerCell35;
 function useOpenMenu(rows: readonly NotificationAdministrationRow[], canManage: boolean, open: (row: NotificationAdministrationRow) => void) {
   return useRowMenu(rows, (row) => `${row.channel}:${row.id}`, (row) => [
     {
-      label: canManage ? (row.type ? "Edit Email Message" : row.channel === "EMAIL" ? "Edit Email Notification" : "Edit In-App Notification") : "View Details",
+      label: canManage ? (row.type ? tr("Edit Email Message") : row.channel === "EMAIL" ? tr("Edit Email Notification") : tr("Edit In-App Notification")) : tr("View Details"),
       icon: canManage ? <IconPencilMinus className="h-4 w-4" /> : <IconInfoCircle className="h-4 w-4" />,
       onClick: () => open(row),
     },
@@ -145,8 +146,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "name",
-      header: "Notification",
-      label: "Notification",
+      header: tr("Notification"),
+      label: tr("Notification"),
       sort: list.sortFor("name"),
       cell: (row) => (
         <div className="max-w-[22rem]">
@@ -180,8 +181,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "category",
-      header: "Module / Type",
-      label: "Module / Type",
+      header: tr("Module / Type"),
+      label: tr("Module / Type"),
       sort: list.sortFor("category"),
       cell: (row) => (row.module ? moduleLabel(row.module) : row.type ? typeLabel(row.type) : "—"),
     },
@@ -196,7 +197,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
               {priorityLabel(row.priority)}
             </Badge>
           ) : null}
-          <span className="text-xs text-slate-600">{row.sent ? `Sent ${row.sent} time(s)` : "Never sent"}</span>
+          <span className="text-xs text-slate-600">{row.sent ? `Sent ${row.sent} time(s)` : tr("Never sent")}</span>
         </div>
       ),
     },
@@ -213,8 +214,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "updated",
-      header: "Last Updated",
-      label: "Last Updated",
+      header: tr("Last Updated"),
+      label: tr("Last Updated"),
       sort: list.sortFor("updatedAt"),
       cell: (row) => <span className="whitespace-nowrap text-slate-600">{row.updatedAt ? formatDateTime(row.updatedAt) : "—"}</span>,
     },
@@ -257,17 +258,17 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
         loading={list.loading}
         hasLoaded={list.hasLoaded}
         error={list.error}
-        emptyTitle="No Notifications"
-        emptyDescription="No notification matches this filter."
+        emptyTitle={tr("No Notifications")}
+        emptyDescription={tr("No notification matches this filter.")}
         search={list.search}
         onSearch={list.setSearch}
         searchLabel="Search notifications"
-        searchPlaceholder="Name, code or description…"
+        searchPlaceholder={tr("Name, code or description…")}
         filters={filters}
         dates={[
           {
             id: "updated",
-            label: "Updated Date Range",
+            label: tr("Updated Date Range"),
             from: list.filters.updatedFrom,
             to: list.filters.updatedTo,
             onFromChange: list.setFilter("updatedFrom"),
@@ -304,18 +305,18 @@ export const NotificationsView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Notifications Administration"
+        title={tr("Notifications Administration")}
         breadcrumbItems={notificationsBreadcrumb(navigate)}
         actions={
           tab === "email" ? (
             <Button size="sm" variant="default" onClick={() => navigate(ROUTES.SETTINGS.NOTIFICATIONS_EMAIL_DESIGN)}>
               <Palette className="mr-1.5 h-4 w-4" />
-              Email Design
+              {tr("Email Design")}
             </Button>
           ) : tab === "in-app" ? (
             <Button size="sm" variant="default" onClick={() => navigate(ROUTES.SETTINGS.NOTIFICATIONS_IN_APP_DESIGN)}>
               <Palette className="mr-1.5 h-4 w-4" />
-              In-App Notification Design
+              {tr("In-App Notification Design")}
             </Button>
           ) : undefined
         }

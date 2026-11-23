@@ -8,6 +8,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { cn } from "@/components/ui/utils";
 import { educationApi } from "@/services/api";
 import type { EducationItem } from "../../types";
+import { tr } from "@/i18n";
 
 interface EducationAddModalProps {
   isOpen: boolean;
@@ -115,15 +116,15 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={handleSave}
-      title={editing ? "Edit Education" : "Add Education"}
-      confirmText={editing ? "Save" : "Add Education"}
+      title={editing ? tr("Edit Education") : tr("Add Education")}
+      confirmText={editing ? "Save" : tr("Add Education")}
       size="lg"
     >
       <div className="space-y-4">
         {/* Degree — active degree levels from Education Settings; no education-admin permission required. */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Degree <span className="text-red-500">*</span>
+            {tr("Degree")} <span className="text-red-500">*</span>
           </label>
           <Select
             label=""
@@ -133,7 +134,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
               clearError("degree");
             }}
             options={optionIncludingCurrentValue(degreeOptions, degree)}
-            placeholder="Select degree"
+            placeholder={tr("Select degree")}
             enableSearch
             isLoading={isLoadingLookups}
             loadingText="Loading degree levels..."
@@ -145,12 +146,12 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
         {/* Field of Study */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Field of Study / Major <span className="text-red-500">*</span>
+            {tr("Field of Study / Major")} <span className="text-red-500">*</span>
           </label>
           <input
             value={fieldOfStudy}
             onChange={(e) => setFieldOfStudy(e.target.value)}
-            placeholder="e.g. Computer Science"
+            placeholder={tr("e.g. Computer Science")}
             className={cn(
               "w-full h-9 px-3 text-sm border rounded-lg focus:outline-none focus:ring-1 transition-colors placeholder:text-slate-400",
               errors.fieldOfStudy
@@ -164,7 +165,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
         {/* Institution — active schools from Education Settings; no education-admin permission required. */}
         <div>
           <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-            Institution / University / College <span className="text-red-500">*</span>
+            {tr("Institution / University / College")} <span className="text-red-500">*</span>
           </label>
           <Select
             label=""
@@ -174,7 +175,7 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
               clearError("institution");
             }}
             options={optionIncludingCurrentValue(schoolOptions, institution)}
-            placeholder="Select institution"
+            placeholder={tr("Select institution")}
             enableSearch
             isLoading={isLoadingLookups}
             loadingText="Loading institutions..."
@@ -187,10 +188,10 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Select
-              label="Graduation Year"
+              label={tr("Graduation Year")}
               value={graduationYear}
               onChange={setGraduationYear}
-              placeholder="Select year"
+              placeholder={tr("Select year")}
               enableSearch={true}
               options={Array.from({ length: new Date().getFullYear() - 1970 + 11 }, (_, i) => {
                 const year = (new Date().getFullYear() + 10 - i).toString();
@@ -200,13 +201,13 @@ export const EducationAddModal: React.FC<EducationAddModalProps> = ({ isOpen, on
           </div>
           <div>
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-              GPA / Grade
+              {tr("GPA / Grade")}
             </label>
             <div className="relative">
               <input
                 value={gpa}
                 onChange={(e) => setGpa(e.target.value)}
-                placeholder="e.g. 3.8"
+                placeholder={tr("e.g. 3.8")}
                 className="w-full h-9 pl-3 pr-12 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium pointer-events-none">

@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider/Slider';
 import { Button } from '@/components/ui/button/Button';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { ColorPickerInput } from '@/components/ui/color-picker/ColorPickerInput';
+import { tr } from "@/i18n";
 
 /** The turn the watermark has always had; the range is what the server accepts. */
 /** The watermark is drawn in Helvetica Bold on every line, in the PDF and in the OnlyOffice viewer; the sample uses the same face (Arial and Liberation Sans have the same letter widths). */
@@ -44,12 +45,12 @@ interface WatermarkTraceabilityEditorProps {
 export const WatermarkTraceabilityEditor: React.FC<WatermarkTraceabilityEditorProps> = ({ idPrefix, enabled, onEnabledChange, fields, onChange, description, textHint, sampleNote }) => (
     <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 xl:col-span-2">
       <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-800">Watermark and Traceability</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{tr("Watermark and Traceability")}</h3>
         <p className="mt-0.5 text-xs text-slate-500">{description}</p>
       </div>
       <Checkbox
         id={idPrefix}
-        label="Enable watermarking"
+        label={tr("Enable watermarking")}
         checked={enabled}
         onChange={onEnabledChange}
       />
@@ -82,13 +83,13 @@ export const WatermarkTraceabilityEditor: React.FC<WatermarkTraceabilityEditorPr
           <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Watermark text</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Watermark text")}</label>
                 <input
                   value={pdf?.watermarkText ?? 'FOR PREVIEW ONLY'}
                   onChange={(event) => onChange({ watermarkText: event.target.value.slice(0, 120) })}
                   maxLength={120}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-500"
-                  placeholder="FOR PREVIEW ONLY"
+                  placeholder={tr("FOR PREVIEW ONLY")}
                 />
                 <p className="mt-1 text-xs text-slate-500">{textHint}</p>
               </div>
@@ -96,7 +97,7 @@ export const WatermarkTraceabilityEditor: React.FC<WatermarkTraceabilityEditorPr
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Select
-                    label="Strength"
+                    label={tr("Strength")}
                     value={strength}
                     onChange={(value) => onChange({ watermarkStrength: value as 'light' | 'standard' | 'strong' })}
                     enableSearch={false}
@@ -108,43 +109,43 @@ export const WatermarkTraceabilityEditor: React.FC<WatermarkTraceabilityEditorPr
                   />
                 </div>
                 <div>
-                  <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Colour</p>
+                  <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Colour")}</p>
                   <ColorPickerInput value={colour} onChange={(value) => onChange({ watermarkColor: value })} />
                 </div>
               </div>
 
               <div>
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-slate-700 sm:text-sm">Angle</p>
+                  <p className="text-xs font-medium text-slate-700 sm:text-sm">{tr("Angle")}</p>
                   <div className="flex items-center gap-2">
                     <span className="min-w-[3.5ch] text-right text-xs font-semibold tabular-nums text-slate-700 sm:text-sm" aria-live="polite" data-testid="watermark-angle-value">{angle}°</span>
                     {angle !== DEFAULT_WATERMARK_ANGLE && (
                       <Button type="button" size="xs" variant="ghost" onClick={() => onChange({ watermarkAngle: DEFAULT_WATERMARK_ANGLE })}>
-                        Reset
+                        {tr("Reset")}
                       </Button>
                     )}
                   </div>
                 </div>
-                <Slider label="Watermark angle" min={MIN_WATERMARK_ANGLE} max={MAX_WATERMARK_ANGLE} value={angle} onChange={(value) => onChange({ watermarkAngle: value })} />
+                <Slider label={tr("Watermark angle")} min={MIN_WATERMARK_ANGLE} max={MAX_WATERMARK_ANGLE} value={angle} onChange={(value) => onChange({ watermarkAngle: value })} />
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Shown on each page of the preview</p>
+                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Shown on each page of the preview")}</p>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <Checkbox id={`${idPrefix}-employee`} label="Viewer employee ID" checked={pdf?.watermarkShowEmployeeCode ?? false} onChange={(checked) => onChange({ watermarkShowEmployeeCode: checked })} />
-                  <Checkbox id={`${idPrefix}-viewer`} label="Viewer Employee Name" checked={pdf?.watermarkShowViewerName ?? false} onChange={(checked) => onChange({ watermarkShowViewerName: checked })} />
-                  <Checkbox id={`${idPrefix}-opened-at`} label="Time the preview was opened" checked={pdf?.watermarkShowOpenedAt ?? false} onChange={(checked) => onChange({ watermarkShowOpenedAt: checked })} />
+                  <Checkbox id={`${idPrefix}-employee`} label={tr("Viewer employee ID")} checked={pdf?.watermarkShowEmployeeCode ?? false} onChange={(checked) => onChange({ watermarkShowEmployeeCode: checked })} />
+                  <Checkbox id={`${idPrefix}-viewer`} label={tr("Viewer Employee Name")} checked={pdf?.watermarkShowViewerName ?? false} onChange={(checked) => onChange({ watermarkShowViewerName: checked })} />
+                  <Checkbox id={`${idPrefix}-opened-at`} label={tr("Time the preview was opened")} checked={pdf?.watermarkShowOpenedAt ?? false} onChange={(checked) => onChange({ watermarkShowOpenedAt: checked })} />
                 </div>
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Layout</p>
-                <Checkbox id={`${idPrefix}-tiled`} label="Repeat the watermark as a grid" checked={tiled} onChange={(checked) => onChange({ watermarkTiled: checked })} />
+                <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Layout")}</p>
+                <Checkbox id={`${idPrefix}-tiled`} label={tr("Repeat the watermark as a grid")} checked={tiled} onChange={(checked) => onChange({ watermarkTiled: checked })} />
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Sample</p>
+              <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Sample")}</p>
               <div className="relative grid h-[260px] place-items-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white">
                 {tiled ? (
                   <div className="pointer-events-none absolute inset-0 overflow-hidden">

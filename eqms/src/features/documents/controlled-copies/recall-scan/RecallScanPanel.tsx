@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { formatBytes } from "./recallFormat";
+import { tr, trFormat } from "@/i18n";
 
 export type RecallQueueState = "waiting" | "active" | "done" | "failed";
 export interface RecallQueuedFile {
@@ -132,15 +133,15 @@ export const RecallScanPanel: React.FC<{
     gsap.from(panelRef.current, { opacity: 0, x: 16, duration: 0.5, ease: "power2.out", clearProps: "opacity,transform" });
   }, { scope: panelRef, dependencies: [] });
   return (
-    <section ref={panelRef} data-recall-part="panel" className={cn("rounded-xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5", className)} role="status" aria-label="Reading the scans">
-      <div className="sr-only" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent} aria-label="Upload progress" />
+    <section ref={panelRef} data-recall-part="panel" className={cn("rounded-xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5", className)} role="status" aria-label={tr("Reading the scans")}>
+      <div className="sr-only" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent} aria-label={tr("Upload progress")} />
       <Sheet key={progress.index} percent={done ? 100 : progress.filePercent} done={done} />
 
       <div className="mt-4 flex items-center justify-between gap-3 text-xs text-emerald-800">
         <span className="flex min-w-0 items-center gap-2">
           {!done && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
           <span className="truncate">
-            File {progress.index} of {progress.count} · {progress.fileName}
+                  {trFormat("File {index} of {count} · {name}", { index: progress.index, count: progress.count, name: progress.fileName })}
           </span>
         </span>
         <span className="shrink-0 font-semibold tabular-nums">{progress.percent}%</span>
@@ -150,17 +151,17 @@ export const RecallScanPanel: React.FC<{
       </p>
 
       {queue.length > 1 && (
-        <ul className="mt-3 max-h-40 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200 bg-white" aria-label="Files in this upload">
+        <ul className="mt-3 max-h-40 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200 bg-white" aria-label={tr("Files in this upload")}>
           {queue.map((file, position) => (
             <li key={`${file.name}-${position}`} className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700">
               {file.state === "done" ? (
-                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label="Uploaded" />
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label={tr("Uploaded")} />
               ) : file.state === "active" ? (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-600" aria-label="Uploading" />
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-600" aria-label={tr("Uploading")} />
               ) : file.state === "failed" ? (
-                <X className="h-3.5 w-3.5 shrink-0 text-red-600" aria-label="Failed" />
+                <X className="h-3.5 w-3.5 shrink-0 text-red-600" aria-label={tr("Failed")} />
               ) : (
-                <Circle className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-label="Waiting" />
+                <Circle className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-label={tr("Waiting")} />
               )}
               <span className="min-w-0 flex-1 truncate">{file.name}</span>
               <span className="shrink-0 text-slate-400">{formatBytes(file.size)}</span>
@@ -172,7 +173,7 @@ export const RecallScanPanel: React.FC<{
       {queue.length > 1 && progress.percent < 100 && (
         <div className="mt-3 flex justify-end">
           <Button size="sm" variant="outline" onClick={onStop}>
-            Stop After This File
+            {tr("Stop After This File")}
           </Button>
         </div>
       )}

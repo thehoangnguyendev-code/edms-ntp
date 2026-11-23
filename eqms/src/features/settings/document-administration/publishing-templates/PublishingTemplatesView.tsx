@@ -31,6 +31,7 @@ import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/compone
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type SortConfig = {
   key: string;
@@ -47,17 +48,17 @@ const STATUS_OPTIONS = [
 
 const PUBLISHING_MODE_OPTIONS = [
   { label: "All", value: "All" },
-  { label: "Cover only", value: "COVER_ONLY" },
-  { label: "Cover + Header/Footer", value: "COVER_HEADER_FOOTER" },
-  { label: "Header/Footer only", value: "HEADER_FOOTER_ONLY" },
+  { label: tr("Cover only"), value: "COVER_ONLY" },
+  { label: tr("Cover + Header/Footer"), value: "COVER_HEADER_FOOTER" },
+  { label: tr("Header/Footer only"), value: "HEADER_FOOTER_ONLY" },
 ];
 
 const tableColumns = [
-  { id: "templateName", label: "Template Name", sortable: true, className: "min-w-[240px]" },
-  { id: "publishingMode", label: "Publishing Mode", sortable: true, className: "min-w-[190px]" },
+  { id: "templateName", label: tr("Template Name"), sortable: true, className: "min-w-[240px]" },
+  { id: "publishingMode", label: tr("Publishing Mode"), sortable: true, className: "min-w-[190px]" },
   { id: "status", label: "Status", sortable: true, className: "min-w-[130px]" },
-  { id: "components", label: "Configured Files", sortable: false, className: "min-w-[220px]" },
-  { id: "createdBy", label: "Created By", sortable: true, className: "min-w-[160px]" },
+  { id: "components", label: tr("Configured Files"), sortable: false, className: "min-w-[220px]" },
+  { id: "createdBy", label: tr("Created By"), sortable: true, className: "min-w-[160px]" },
   { id: "updatedAt", label: "Updated", sortable: true, className: "min-w-[180px]" },
   { id: "action", label: "Action", sortable: false, className: "w-20 text-center" },
 ];
@@ -170,7 +171,7 @@ export const PublishingTemplatesView: React.FC = () => {
       setTotalItems(0);
       setTotalPages(1);
       const message = extractApiMessage(error, "Unable to load publishing templates from server.");
-      showToast({ type: "error", title: "Load failed", message });
+      showToast({ type: "error", title: tr("Load failed"), message });
     } finally {
       if (requestId === requestSeqRef.current) {
         setIsLoading(false);
@@ -191,10 +192,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.duplicateTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Duplicated", message: "Publishing template duplicated." });
+      showToast({ type: "success", title: tr("Duplicated"), message: "Publishing template duplicated." });
     } catch (error) {
       console.error("Failed to duplicate publishing template", error);
-      showToast({ type: "error", title: "Duplicate failed", message: getApiErrorMessage(error, "Unable to duplicate publishing template.") });
+      showToast({ type: "error", title: tr("Duplicate failed"), message: getApiErrorMessage(error, "Unable to duplicate publishing template.") });
     } finally {
       setIsSaving(false);
     }
@@ -205,10 +206,10 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.toggleStatus(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Status updated", message: "Publishing template status updated. Any number of templates can be Active at once." });
+      showToast({ type: "success", title: tr("Status updated"), message: "Publishing template status updated. Any number of templates can be Active at once." });
     } catch (error) {
       console.error("Failed to toggle publishing template status", error);
-      showToast({ type: "error", title: "Update failed", message: getApiErrorMessage(error, "Unable to update publishing template status.") });
+      showToast({ type: "error", title: tr("Update failed"), message: getApiErrorMessage(error, "Unable to update publishing template status.") });
     } finally {
       setIsSaving(false);
     }
@@ -222,7 +223,7 @@ export const PublishingTemplatesView: React.FC = () => {
       showToast({ type: "success", title: "Deleted", message: "Publishing template deleted." });
     } catch (error) {
       console.error("Failed to delete publishing template", error);
-      showToast({ type: "error", title: "Delete failed", message: getApiErrorMessage(error, "Unable to delete publishing template.") });
+      showToast({ type: "error", title: tr("Delete failed"), message: getApiErrorMessage(error, "Unable to delete publishing template.") });
     } finally {
       setIsSaving(false);
       setDeleteTarget(null);
@@ -265,27 +266,27 @@ export const PublishingTemplatesView: React.FC = () => {
   type Row = (typeof templates)[number];
   const publishingTemplatesColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell40, cell: (item, index) => startIndex + index + 1 },
-    { id: "templateName", header: "Template Name", label: "Template Name", sort: { direction: sortConfig.key === "templateName" ? sortConfig.direction : undefined, onSort: () => handleSort("templateName") }, cell: (item) => (<><button type="button" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || ""))} className="font-medium text-emerald-700 hover:underline">{item.templateName || "-"}</button>{item.description && (<p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{item.description}</p>)}</>) },
-    { id: "publishingMode", header: "Publishing Mode", label: "Publishing Mode", sort: { direction: sortConfig.key === "publishingMode" ? sortConfig.direction : undefined, onSort: () => handleSort("publishingMode") }, cellClassName: "text-slate-700", cell: (item) => formatPublishingMode(item.publishingMode) },
+    { id: "templateName", header: tr("Template Name"), label: tr("Template Name"), sort: { direction: sortConfig.key === "templateName" ? sortConfig.direction : undefined, onSort: () => handleSort("templateName") }, cell: (item) => (<><button type="button" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || ""))} className="font-medium text-emerald-700 hover:underline">{item.templateName || "-"}</button>{item.description && (<p className="mt-0.5 max-w-[320px] truncate text-2xs text-slate-500">{item.description}</p>)}</>) },
+    { id: "publishingMode", header: tr("Publishing Mode"), label: tr("Publishing Mode"), sort: { direction: sortConfig.key === "publishingMode" ? sortConfig.direction : undefined, onSort: () => handleSort("publishingMode") }, cellClassName: "text-slate-700", cell: (item) => formatPublishingMode(item.publishingMode) },
     { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (item) => (<Badge color={getStatusColor(item.status)} size="sm">{formatStatus(item.status)}</Badge>) },
-    { id: "components", header: "Configured Files", label: "Configured Files", cell: (item) => (<><span className="font-medium text-slate-900">{configuredFileCount(item)}</span><span className="ml-1 text-slate-500">files</span></>) },
-    { id: "createdBy", header: "Created By", label: "Created By", sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700", cell: (item) => item.createdBy || "-" },
+    { id: "components", header: tr("Configured Files"), label: tr("Configured Files"), cell: (item) => (<><span className="font-medium text-slate-900">{configuredFileCount(item)}</span><span className="ml-1 text-slate-500">{tr("files")}</span></>) },
+    { id: "createdBy", header: tr("Created By"), label: tr("Created By"), sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700", cell: (item) => item.createdBy || "-" },
     { id: "updatedAt", header: "Updated", label: "Updated", sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (item) => item.updatedAt ? formatDateTimeLong(item.updatedAt) : "-" },
   ];
   const publishingTemplatesAction: DataTableAction<Row> = {
     header: "Action",
     cell: (item) => (<>
   {canManageTemplates && (
-    <button ref={getRef(item.id || "")} onClick={(event) => toggle(item.id || "", event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100" aria-label="More actions">
+    <button ref={getRef(item.id || "")} onClick={(event) => toggle(item.id || "", event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100" aria-label={tr("More actions")}>
       <MoreVertical className="h-4 w-4 text-slate-600" />
     </button>
   )}
   <PortalDropdownMenu isOpen={openId === item.id} onClose={close} position={position}>
     <div className="py-1">
-      <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || "")); close(); }}>Edit Template</DropdownMenuItem>
-      <DropdownMenuItem icon={<Copy className="h-4 w-4" />} onClick={() => { void handleDuplicate(item.id || ""); close(); }}>Duplicate</DropdownMenuItem>
-      <DropdownMenuItem icon={String(item.status || "").toUpperCase() === "ACTIVE" ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>{String(item.status || "").toUpperCase() === "ACTIVE" ? "Deactivate" : "Activate"}</DropdownMenuItem>
-      <DropdownMenuItem icon={<Trash2 className="h-4 w-4" />} onClick={() => { setDeleteTarget(item); close(); }}>Delete</DropdownMenuItem>
+      <DropdownMenuItem icon={<IconPencilMinus className="h-4 w-4" />} onClick={() => { navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(item.id || "")); close(); }}>{tr("Edit Template")}</DropdownMenuItem>
+      <DropdownMenuItem icon={<Copy className="h-4 w-4" />} onClick={() => { void handleDuplicate(item.id || ""); close(); }}>{tr("Duplicate")}</DropdownMenuItem>
+      <DropdownMenuItem icon={String(item.status || "").toUpperCase() === "ACTIVE" ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />} onClick={() => { void handleToggle(item.id || ""); close(); }}>{String(item.status || "").toUpperCase() === "ACTIVE" ? tr("Deactivate") : "Activate"}</DropdownMenuItem>
+      <DropdownMenuItem icon={<Trash2 className="h-4 w-4" />} onClick={() => { setDeleteTarget(item); close(); }}>{tr("Delete")}</DropdownMenuItem>
     </div>
   </PortalDropdownMenu>
 </>),
@@ -302,20 +303,20 @@ export const PublishingTemplatesView: React.FC = () => {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && void handleDelete(deleteTarget.id || "")}
-        title="Delete Publishing Template"
+        title={tr("Delete Publishing Template")}
         description={`Are you sure you want to delete "${deleteTarget?.templateName || "this template"}"? This action cannot be undone.`}
         confirmText="Delete"
         type="warning"
       />
 
       <PageHeader
-        title="Publishing Templates"
+        title={tr("Publishing Templates")}
         breadcrumbItems={publishingTemplatesBreadcrumbs()}
         actions={
           canManageTemplates ? (
             <Button size="sm" onClick={() => navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_NEW)} className="gap-2 whitespace-nowrap">
               <Plus className="h-4 w-4" />
-              New Publishing Template
+              {tr("New Publishing Template")}
             </Button>
           ) : undefined
         }
@@ -326,7 +327,7 @@ export const PublishingTemplatesView: React.FC = () => {
           <div className="compact-filter-section mb-4">
             {/* Mobile: search + filter button */}
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-0">
-              <label className="text-xs font-medium text-slate-700 block sm:text-sm capitalize">Search</label>
+              <label className="text-xs font-medium text-slate-700 block sm:text-sm capitalize">{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -336,7 +337,7 @@ export const PublishingTemplatesView: React.FC = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }}
-                    placeholder="Search name, description, type..."
+                    placeholder={tr("Search name, description, type...")}
                     className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   />
                   {searchQuery && (
@@ -344,7 +345,7 @@ export const PublishingTemplatesView: React.FC = () => {
                       type="button"
                       onClick={() => { setSearchQuery(""); setCurrentPage(1); }}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
-                      aria-label="Clear search"
+                      aria-label={tr("Clear search")}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -356,24 +357,24 @@ export const PublishingTemplatesView: React.FC = () => {
                   className="whitespace-nowrap gap-2 h-10"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
 
             {/* Desktop: full filter grid */}
             {compactDesktopFilters && <DesktopSelectFilters
-              search={<input aria-label="Search publishing templates" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search name, description, type..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+              search={<input aria-label={tr("Search publishing templates")} value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder={tr("Search name, description, type...")} className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
               filters={[
                 { id: 'status', label: 'Status', value: statusFilter, defaultValue: 'All', options: STATUS_OPTIONS, onChange: setStatusFilter },
-                { id: 'mode', label: 'Publishing Mode', value: publishingModeFilter, defaultValue: 'All', options: PUBLISHING_MODE_OPTIONS, onChange: setPublishingModeFilter },
-                { id: 'creator', label: 'Created By', value: createdByFilter, defaultValue: '', options: createdByFilter ? [{ label: createdByFilter, value: createdByFilter }] : [], onChange: setCreatedByFilter,
+                { id: 'mode', label: tr('Publishing Mode'), value: publishingModeFilter, defaultValue: 'All', options: PUBLISHING_MODE_OPTIONS, onChange: setPublishingModeFilter },
+                { id: 'creator', label: tr('Created By'), value: createdByFilter, defaultValue: '', options: createdByFilter ? [{ label: createdByFilter, value: createdByFilter }] : [], onChange: setCreatedByFilter,
                   onSearch: async query => (await metadataApi.getUsersLookup({ search: query })).map(u => ({ label: u.fullName, value: u.fullName })) },
               ]} onApplied={() => setCurrentPage(1)} />}
             <div className={cn("hidden md:grid grid-cols-1 gap-4 items-end md:grid-cols-2 xl:grid-cols-3", compactDesktopFilters && "md:!hidden")}>
               {/* Search */}
               <div className="w-full">
-                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">Search</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                     <Search className="h-4 w-4 text-slate-400" />
@@ -382,7 +383,7 @@ export const PublishingTemplatesView: React.FC = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }}
-                    placeholder="Search name, description, type..."
+                    placeholder={tr("Search name, description, type...")}
                     className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   />
                   {searchQuery && (
@@ -390,7 +391,7 @@ export const PublishingTemplatesView: React.FC = () => {
                       type="button"
                       onClick={() => { setSearchQuery(""); setCurrentPage(1); }}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
-                      aria-label="Clear search"
+                      aria-label={tr("Clear search")}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -401,7 +402,7 @@ export const PublishingTemplatesView: React.FC = () => {
               {/* Status */}
               <div className="w-full">
                 <Select
-                  label="Status"
+                  label={tr("Status")}
                   value={statusFilter}
                   onChange={(value) => { setStatusFilter(String(value)); setCurrentPage(1); }}
                   options={STATUS_OPTIONS}
@@ -411,7 +412,7 @@ export const PublishingTemplatesView: React.FC = () => {
               {/* Publishing Mode */}
               <div className="w-full">
                 <Select
-                  label="Publishing Mode"
+                  label={tr("Publishing Mode")}
                   value={publishingModeFilter}
                   onChange={(value) => { setPublishingModeFilter(String(value)); setCurrentPage(1); }}
                   options={PUBLISHING_MODE_OPTIONS}
@@ -421,11 +422,11 @@ export const PublishingTemplatesView: React.FC = () => {
               {/* Created By */}
               <div className="w-full">
                 <Select
-                  label="Created By"
+                  label={tr("Created By")}
                   value={createdByFilter}
                   onChange={(value) => { setCreatedByFilter(String(value)); setCurrentPage(1); }}
                   options={createdByFilter ? [{ label: createdByFilter, value: createdByFilter }] : []}
-                  placeholder="Search by creator..."
+                  placeholder={tr("Search by creator...")}
                   onSearch={async (query) => {
                     const users = await metadataApi.getUsersLookup({ search: query });
                     return users.map((u): SelectOption => ({ label: u.fullName, value: u.fullName }));
@@ -450,7 +451,7 @@ export const PublishingTemplatesView: React.FC = () => {
               onApply={() => setIsFilterDrawerOpen(false)}
             >
               <FilterAccordionItem
-                label="Status"
+                label={tr("Status")}
                 isExpanded={expandedSections.has("status")}
                 onToggle={() => toggleSection("status")}
               >
@@ -474,7 +475,7 @@ export const PublishingTemplatesView: React.FC = () => {
               </FilterAccordionItem>
 
               <FilterAccordionItem
-                label="Publishing Mode"
+                label={tr("Publishing Mode")}
                 isExpanded={expandedSections.has("publishingMode")}
                 onToggle={() => toggleSection("publishingMode")}
               >
@@ -515,7 +516,7 @@ export const PublishingTemplatesView: React.FC = () => {
             action={publishingTemplatesAction}
             emptyState={
               <TableEmptyState
-  title="No Publishing Templates Found" description="No templates match the current filters. Adjust filters or create a new publishing template." />
+  title={tr("No Publishing Templates Found")} description={tr("No templates match the current filters. Adjust filters or create a new publishing template.")} />
             }
             pagination={
               totalItems > 0 ? (

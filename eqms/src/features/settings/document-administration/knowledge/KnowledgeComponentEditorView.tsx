@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTES } from "@/app/routes.constants";
 import { knowledgeApi, type KnowledgeComponent, type KnowledgeSourceOption } from "@/services/api/knowledge";
+import { tr, trFormat } from "@/i18n";
 
 const inputClass = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50";
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
@@ -64,7 +65,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
     if (!id) return;
     setLoading(true);
     knowledgeApi.getComponent(id).then(apply)
-      .catch((error) => showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to load the component.") }))
+      .catch((error) => showToast({ type: "error", title: tr("Failed to load"), message: errorMessage(error, "Unable to load the component.") }))
       .finally(() => setLoading(false));
   }, [id, apply, showToast]);
 
@@ -89,7 +90,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
       const payload = { name: name.trim(), description: description.trim() || undefined, active };
       if (isNew) {
         const created = await knowledgeApi.createComponent({ ...payload, sourceField });
-        showToast({ type: "success", title: "Component created", message: `"${created.name}" is now available for hierarchies.` });
+        showToast({ type: "success", title: tr("Component created"), message: `"${created.name}" is now available for hierarchies.` });
         if (navState?.returnTo) {
           navigate(navState.returnTo, { state: { draft: navState.draft, newComponent: { sourceField: created.sourceField, name: created.name } } });
         } else {
@@ -97,10 +98,10 @@ export const KnowledgeComponentEditorView: React.FC = () => {
         }
       } else {
         apply(await knowledgeApi.updateComponent(id!, payload));
-        showToast({ type: "success", title: "Saved", message: "The component was updated." });
+        showToast({ type: "success", title: "Saved", message: tr("The component was updated.") });
       }
     } catch (error) {
-      showToast({ type: "error", title: "Save failed", message: errorMessage(error, "Unable to save the component.") });
+      showToast({ type: "error", title: tr("Save failed"), message: errorMessage(error, "Unable to save the component.") });
     } finally {
       setSaving(false);
     }
@@ -111,11 +112,11 @@ export const KnowledgeComponentEditorView: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title={isNew ? "New Knowledge Category Component" : "Edit Knowledge Category Component"}
+        title={isNew ? tr("New Knowledge Category Component") : tr("Edit Knowledge Category Component")}
         breadcrumbItems={isNew ? knowledgeComponentCreate(go) : knowledgeComponentEdit(go, component?.name)}
         actions={
           <>
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>Back</Button>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={goBack}>{tr("Back")}</Button>
             {canManage && (
               <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" disabled={!canSave} onClick={() => void save()}>
                 {saving ? "Saving..." : "Save"}
@@ -126,19 +127,19 @@ export const KnowledgeComponentEditorView: React.FC = () => {
       />
 
       <FormSection
-        title="General"
+        title={tr("General")}
         icon={<Info className="h-4 w-4" />}
-        headerRight={component?.systemDefined ? <Badge size="sm" color="blue">System</Badge> : undefined}
+        headerRight={component?.systemDefined ? <Badge size="sm" color="blue">{tr("System")}</Badge> : undefined}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Name <span className="text-red-500">*</span></label>
+              <label className={labelClass}>{tr("Name")} <span className="text-red-500">*</span></label>
               <input className={inputClass} value={name} maxLength={200} disabled={!canManage} onChange={(e) => setName(e.target.value)} />
             </div>
             {isNew ? (
               <Select
-                label={<>Source Field <span className="text-red-500">*</span></>}
+                label={<>{tr("Source Field")} <span className="text-red-500">*</span></>}
                 value={sourceField}
                 onChange={(value) => {
                   const next = String(value);
@@ -149,18 +150,18 @@ export const KnowledgeComponentEditorView: React.FC = () => {
                 }}
                 options={sources.map((s) => ({ label: s.label, value: s.value }))}
                 disabled={!canManage}
-                placeholder={sources.length === 0 ? "Every source field already has a component" : "Select a source field..."}
+                placeholder={sources.length === 0 ? tr("Every source field already has a component") : tr("Select a source field...")}
               />
             ) : (
               <div>
-                <label className={labelClass}>Source Field</label>
+                <label className={labelClass}>{tr("Source Field")}</label>
                 <input className={CONTROL_STATE_CLASSES.readonlyField} value={component?.sourceLabel ?? ""} disabled readOnly />
-                <p className="text-xs text-slate-500 mt-1.5">The source field of a component cannot be changed.</p>
+                <p className="text-xs text-slate-500 mt-1.5">{tr("The source field of a component cannot be changed.")}</p>
               </div>
             )}
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
@@ -174,9 +175,9 @@ export const KnowledgeComponentEditorView: React.FC = () => {
             )}
           </div>
           <div>
-            <Checkbox id="knowledge-component-active" label="Active" checked={active} onChange={setActive} disabled={!canManage} />
+            <Checkbox id="knowledge-component-active" label={tr("Active")} checked={active} onChange={setActive} disabled={!canManage} />
             {!isNew && component && component.usedByHierarchies > 0 && (
-              <p className="text-xs text-slate-500 mt-1.5">Used by {component.usedByHierarchies} hierarchy(ies): it cannot be deactivated or deleted until it is removed from them.</p>
+              <p className="text-xs text-slate-500 mt-1.5">{trFormat("Used by {count} hierarchies: it cannot be deactivated or deleted until it is removed from them.", { count: component.usedByHierarchies })}</p>
             )}
           </div>
         </div>

@@ -92,6 +92,7 @@ import {
   isChangedByOthers,
 } from "./changedByOthers";
 import { IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 /** The two parts of the screen: what the notification says (and how it looks), and to whom it is sent. The placeholders belong to the first. */
 const TABS: TabItem[] = [
@@ -124,11 +125,11 @@ const EMPTY: Form = {
 };
 
 const FIELD_LABEL: Record<Field, string> = {
-  title: "In-app title",
-  summary: "In-app message",
+  title: tr("In-app title"),
+  summary: tr("In-app message"),
   subject: "Email subject",
   body: "Email message",
-  label: "Button label",
+  label: tr("Button label"),
 };
 
 const formOf = (templates: NotificationTemplateVersion[]): Form => {
@@ -284,8 +285,8 @@ export const NotificationEventView: React.FC<{
   const dirty = dirtyInApp || dirtyEmail || dirtyAppearance || dirtyDelivery;
   const { go, modal: leaveModal } = useLeaveGuard(
     dirty,
-    isEmail ? "Edit Email Notification" : "Edit In-App Notification",
-    "another page",
+    isEmail ? tr("Edit Email Notification") : tr("Edit In-App Notification"),
+    tr("another page"),
   );
 
   const insert = (token: string) => {
@@ -360,7 +361,7 @@ export const NotificationEventView: React.FC<{
     const issue = problems();
     if (issue) {
       if (dirtyDelivery && deliveryProblem(delivery)) setTab("delivery");
-      showToast({ type: "error", title: "Cannot save", message: issue });
+      showToast({ type: "error", title: tr("Cannot save"), message: issue });
       return;
     }
     setSaving(true);
@@ -404,7 +405,7 @@ export const NotificationEventView: React.FC<{
       showToast({
         type: "success",
         title: "Saved",
-        message: "The change is published and recorded in the Audit Trail.",
+        message: tr("The change is published and recorded in the Audit Trail."),
       });
       await load();
     } catch (e) {
@@ -444,14 +445,14 @@ export const NotificationEventView: React.FC<{
       await notificationPolicyApi.testSend(eventCode, testTo.trim());
       showToast({
         type: "success",
-        title: "Test email sent",
+        title: tr("Test email sent"),
         message: `The published email was sent to ${testTo.trim()}.`,
       });
       setTesting(false);
     } catch (e) {
       showToast({
         type: "error",
-        title: "Test email not sent",
+        title: tr("Test email not sent"),
         message: getApiErrorMessage(e, "The test email could not be sent."),
       });
     } finally {
@@ -465,8 +466,8 @@ export const NotificationEventView: React.FC<{
         <PageHeader
           title={
             isEmail
-              ? "Email Notification Details"
-              : "In-App Notification Details"
+              ? tr("Email Notification Details")
+              : tr("In-App Notification Details")
           }
           breadcrumbItems={breadcrumb(navigate, true, channel)}
           actions={
@@ -479,13 +480,13 @@ export const NotificationEventView: React.FC<{
                 )
               }
             >
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <WarningBanner
           variant="error"
-          title="Unable to open this notification."
+          title={tr("Unable to open this notification.")}
           description={error}
         />
       </div>
@@ -496,7 +497,7 @@ export const NotificationEventView: React.FC<{
     return (
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Email Notification Details"
+          title={tr("Email Notification Details")}
           breadcrumbItems={breadcrumb(navigate, true, channel)}
           actions={
             <Button
@@ -506,14 +507,14 @@ export const NotificationEventView: React.FC<{
                 navigate(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`)
               }
             >
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <WarningBanner
           variant="error"
-          title="This notification has no email."
-          description="It can only be sent in the application."
+          title={tr("This notification has no email.")}
+          description={tr("It can only be sent in the application.")}
         />
       </div>
     );
@@ -559,16 +560,16 @@ export const NotificationEventView: React.FC<{
         className="whitespace-nowrap"
         onClick={() => go(backPath)}
       >
-        Back
+        {tr("Back")}
       </Button>
       {!isEmail ? (
         <Button
           size="sm"
           variant="outline-emerald"
           onClick={showToastSample}
-          title="Show the toast of this notification with the wording and icon being edited"
+          title={tr("Show the toast of this notification with the wording and icon being edited")}
         >
-          Test Notification
+          {tr("Test Notification")}
         </Button>
       ) : null}
       {canManage && hasEmail ? (
@@ -579,11 +580,11 @@ export const NotificationEventView: React.FC<{
           onClick={() => setTesting(true)}
           title={
             emailHasWording
-              ? "Send the published email to an address"
-              : "Write and publish the email first"
+              ? tr("Send the published email to an address")
+              : tr("Write and publish the email first")
           }
         >
-          Send Test
+          {tr("Send Test")}
         </Button>
       ) : null}
       {otherChannel ? (
@@ -593,11 +594,11 @@ export const NotificationEventView: React.FC<{
           onClick={goToOther}
           title={
             isEmail
-              ? "Open the in-app notification of this event"
-              : "Open the email of this event"
+              ? tr("Open the in-app notification of this event")
+              : tr("Open the email of this event")
           }
         >
-          {isEmail ? "In-app Notification" : "Email Notification"}
+          {isEmail ? tr("In-app Notification") : tr("Email Notification")}
         </Button>
       ) : null}
 
@@ -613,7 +614,7 @@ export const NotificationEventView: React.FC<{
               setDelivery(savedDelivery);
             }}
           >
-            Discard Changes
+            {tr("Discard Changes")}
           </Button>
           <Button
             size="sm"
@@ -653,7 +654,7 @@ export const NotificationEventView: React.FC<{
               variant="outline-emerald"
               onClick={() => void load()}
             >
-              Reload
+              {tr("Reload")}
             </Button>
           </div>
         </WarningBanner>
@@ -674,7 +675,7 @@ export const NotificationEventView: React.FC<{
               <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-4 md:gap-5">
                   <FormSection
-                    title="Notification Information"
+                    title={tr("Notification Information")}
                     icon={<IconInfoCircle className="h-4 w-4" />}
                     headerRight={
                       <Badge color={PRIORITY_COLOR[detail.priority] ?? "slate"} size="sm">
@@ -683,24 +684,24 @@ export const NotificationEventView: React.FC<{
                     }
                   >
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <FormField label="Event">
+                      <FormField label={tr("Event")}>
                         <ReadOnlyField value={detail.name} />
                       </FormField>
-                      <FormField label="Event Code">
+                      <FormField label={tr("Event Code")}>
                         <ReadOnlyField value={detail.eventCode} />
                       </FormField>
-                      <FormField label="Module">
+                      <FormField label={tr("Module")}>
                         <ReadOnlyField value={moduleLabel(detail.module)} />
                       </FormField>
-                      <FormField label="Status">
+                      <FormField label={tr("Status")}>
                         <ReadOnlyField value={channelStatus} />
                       </FormField>
-                      <FormField label="Last Updated">
+                      <FormField label={tr("Last Updated")}>
                         <ReadOnlyField
                           value={formatDateTime(detail.updatedAt)}
                         />
                       </FormField>
-                      <FormField label="Priority">
+                      <FormField label={tr("Priority")}>
                         {readOnly ? (
                           <ReadOnlyField value={priorityLabel(detail.priority)} />
                         ) : (
@@ -708,13 +709,13 @@ export const NotificationEventView: React.FC<{
                             value={delivery.priority}
                             onChange={(priority: string) => setDelivery({ ...delivery, priority })}
                             options={[...PRIORITY_CHOICES, ...(defaultPriority === "CRITICAL" ? (["CRITICAL"] as const) : [])].map((value) => ({ value, label: priorityLabel(value) }))}
-                            aria-label="Priority"
+                            aria-label={tr("Priority")}
                           />
                         )}
                       </FormField>
                       {detail.description ? (
                         <FormField
-                          label="Description"
+                          label={tr("Description")}
                           className="md:col-span-2"
                         >
                           <ReadOnlyField
@@ -726,11 +727,11 @@ export const NotificationEventView: React.FC<{
                     </div>
                     {!readOnly ? (
                       <p className="mt-3 text-xs text-slate-500">
-                        Priority: how important this notification is. People see it on the Notifications page and can filter by it.
+                        {tr("Priority: how important this notification is. People see it on the Notifications page and can filter by it.")}
                         {delivery.priority === defaultPriority
                           ? ` It is the default (${priorityLabel(defaultPriority)}).`
                           : ` The default is ${priorityLabel(defaultPriority)}; choose it to go back.`}{" "}
-                        A change applies to notifications sent from now on.
+                        {tr("A change applies to notifications sent from now on.")}
                       </p>
                     ) : null}
                   </FormSection>
@@ -739,7 +740,7 @@ export const NotificationEventView: React.FC<{
                     <>
                       <FormSection
                         className="flex-1"
-                        title="In-App Wording"
+                        title={tr("In-App Wording")}
                         icon={<IconPencilMinus className="h-4 w-4" />}
                       >
                         <div className="space-y-4">
@@ -785,7 +786,7 @@ export const NotificationEventView: React.FC<{
                   {hasEmail ? (
                     <FormSection
                       className="flex-1"
-                      title="Email Wording"
+                      title={tr("Email Wording")}
                       icon={<Mail className="h-4 w-4" />}
                     >
                       <div className="space-y-4">
@@ -817,13 +818,13 @@ export const NotificationEventView: React.FC<{
                               bodyPristine.current = false;
                               setActive("body");
                             }}
-                            placeholder="Write the message of the email…"
+                            placeholder={tr("Write the message of the email…")}
                           />
                         </FormField>
                         <FormField
                           label={FIELD_LABEL.label}
                           htmlFor="wf-label"
-                          hint="The button opens the same page as the in-app notification."
+                          hint={tr("The button opens the same page as the in-app notification.")}
                         >
                           <TokenTextField
                             id="wf-label"
@@ -832,7 +833,7 @@ export const NotificationEventView: React.FC<{
                             value={form.label}
                             onChange={set("label")}
                             maxLength={80}
-                            placeholder="Open in EQMS"
+                            placeholder={tr("Open in EQMS")}
                             disabled={readOnly}
                             onFocus={() => setActive("label")}
                           />
@@ -845,7 +846,7 @@ export const NotificationEventView: React.FC<{
                 <div className="flex min-w-0 flex-col gap-4 md:gap-5">
                   <FormSection
                     className={isEmail ? "flex-1" : undefined}
-                    title="Preview"
+                    title={tr("Preview")}
                     icon={<Eye className="h-4 w-4" />}
                     headerRight={
                       isEmail ? (
@@ -854,7 +855,7 @@ export const NotificationEventView: React.FC<{
                     }
                   >
                     <div
-                      aria-label="Preview"
+                      aria-label={tr("Preview")}
                       className="space-y-4 rounded-xl bg-slate-100 p-3 sm:p-4"
                     >
                       {!isEmail ? (
@@ -876,7 +877,7 @@ export const NotificationEventView: React.FC<{
                               {fill(form.summary, samples) || "Message"}
                             </p>
                             <p className="mt-1 text-xs text-slate-400">
-                              2 minutes ago
+                              {tr("2 minutes ago")}
                             </p>
                           </div>
                           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
@@ -886,7 +887,7 @@ export const NotificationEventView: React.FC<{
                         <div className="space-y-2">
                           <p className="min-w-0 truncate text-xs text-slate-600">
                             <span className="font-semibold">
-                              Email subject:
+                              {tr("Email subject:")}
                             </span>{" "}
                             {previewSubject || "…"}
                           </p>
@@ -902,7 +903,7 @@ export const NotificationEventView: React.FC<{
                   {!isEmail ? (
                     <FormSection
                       className="flex-1"
-                      title="Notification Icon"
+                      title={tr("Notification Icon")}
                       icon={<Palette className="h-4 w-4" />}
                     >
                       <NotificationIconPicker
@@ -926,8 +927,8 @@ export const NotificationEventView: React.FC<{
               disabled={readOnly}
               intro={
                 isEmail
-                  ? "Whether the email is sent, to whom, and when. Every change is recorded in the Audit Trail."
-                  : "Whether the notification is shown, to whom, and when it escalates. Every change is recorded in the Audit Trail."
+                  ? tr("Whether the email is sent, to whom, and when. Every change is recorded in the Audit Trail.")
+                  : tr("Whether the notification is shown, to whom, and when it escalates. Every change is recorded in the Audit Trail.")
               }
             />
           )}
@@ -946,7 +947,7 @@ export const NotificationEventView: React.FC<{
             tabs={[
               {
                 id: "placeholders",
-                label: "Placeholders",
+                label: tr("Placeholders"),
                 count: variables.length + others.length,
               },
             ]}
@@ -974,8 +975,8 @@ export const NotificationEventView: React.FC<{
         isOpen={testing}
         onClose={() => setTesting(false)}
         onConfirm={() => void sendTest()}
-        title="Send a test email"
-        description="The published email is sent with example values, so you can see it in a real inbox. Nothing is recorded as a notification."
+        title={tr("Send a test email")}
+        description={tr("The published email is sent with example values, so you can see it in a real inbox. Nothing is recorded as a notification.")}
         confirmText="Send test"
         isLoading={sendingTest}
         confirmDisabled={
@@ -983,7 +984,7 @@ export const NotificationEventView: React.FC<{
         }
         size="md"
       >
-        <FormField label="Send to" htmlFor="test-to">
+        <FormField label={tr("Send to")} htmlFor="test-to">
           <Input
             id="test-to"
             type="email"

@@ -13,6 +13,7 @@ import { LocalizationTab } from "./components/LocalizationTab";
 import { NotificationSettingsTab } from "./components/NotificationSettingsTab";
 import { SecuritySettingsTab } from "./components/SecuritySettingsTab";
 import { PreferenceTabId } from "./types";
+import { tr } from "@/i18n";
 
 export const PreferencesView: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -47,7 +48,7 @@ export const PreferencesView: React.FC = () => {
     }, [searchParams]);
 
     const TABS: TabItem[] = [
-        { id: 'localization', label: 'Localization', icon: Globe },
+        { id: 'localization', label: tr('Localization'), icon: Globe },
         { id: 'notifications', label: 'Notifications', icon: BellRing },
         { id: 'security', label: 'Security', icon: ShieldCheck },
     ];
@@ -90,7 +91,7 @@ export const PreferencesView: React.FC = () => {
         <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
             {/* Header */}
             <PageHeader
-                title="Preferences"
+                title={tr("Preferences")}
                 breadcrumbItems={breadcrumbs.preferences(go, TABS.find(t => t.id === activeTab)?.label)}
                 actions={
                     <>
@@ -106,7 +107,7 @@ export const PreferencesView: React.FC = () => {
                                 setResetVersion((value) => value + 1);
                             }}
                         >
-                            Reset to Default
+                            {tr("Reset to Default")}
                         </Button>
                         <Button
                             variant="outline-emerald"
@@ -115,7 +116,7 @@ export const PreferencesView: React.FC = () => {
                             disabled={isSaving || !isDirty}
                             className="min-w-[120px]"
                         >
-                            Save
+                            {tr("Save")}
                         </Button>
                     </>
                 }

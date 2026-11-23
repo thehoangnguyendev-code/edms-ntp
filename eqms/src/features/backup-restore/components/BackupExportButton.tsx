@@ -5,6 +5,7 @@ import { TableExportModal } from "@/components/ui/modal/TableExportModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { downloadTableExport, type TableExportDataset, type TableExportOptions } from "@/services/api/tableExport";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { tr } from "@/i18n";
 
 const TITLES = { backups: "Backups", "backup-rehearsals": "Restore Rehearsals", "production-restores": "Production Restores" } as const;
 
@@ -19,14 +20,14 @@ export function BackupExportButton({ dataset, params, className, totalRecords }:
     try {
       await downloadTableExport(dataset, params, options);
     } catch (error) {
-      showToast({ type: "error", title: "Unable to export", message: getApiErrorMessage(error, "The export could not be made.") });
+      showToast({ type: "error", title: tr("Unable to export"), message: getApiErrorMessage(error, "The export could not be made.") });
     }
   };
   return (
     <>
       <Button variant="outline" size="sm" className={className ?? "whitespace-nowrap gap-2"} onClick={() => setOpen(true)}>
         <Download className="h-4 w-4" />
-        Export
+        {tr("Export")}
       </Button>
       <TableExportModal isOpen={open} onClose={() => setOpen(false)} dataset={dataset} title={TITLES[dataset]} totalRecords={totalRecords} onExport={run} />
     </>

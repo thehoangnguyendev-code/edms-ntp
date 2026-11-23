@@ -15,6 +15,7 @@ import { formatDateTime } from "@/utils/format";
 import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { USER_MANAGEMENT_ROUTES } from "../../constants";
 import type { TimeLimitedUserGrant } from "../../types";
+import { tr } from "@/i18n";
 
 const WINDOW_STATE: Record<
   string,
@@ -87,7 +88,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
           variant="outline"
           onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}
         >
-          Back to Time-Limited Users
+          {tr("Back to Time-Limited Users")}
         </Button>
       </div>
     );
@@ -103,7 +104,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
   return (
     <div className="flex h-full flex-col gap-6">
       <PageHeader
-        title="Time-Limited User Details"
+        title={tr("Time-Limited User Details")}
         breadcrumbItems={timeLimitedUserDetail(navigate)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -113,7 +114,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
               className="whitespace-nowrap"
               onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}
             >
-              Back
+              {tr("Back")}
             </Button>
             {canEdit && (
               <Button
@@ -124,7 +125,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
                   navigate(ROUTES.SECURITY.TIME_LIMITED_USERS_EDIT(grant.id))
                 }
               >
-                Edit
+                {tr("Edit")}
               </Button>
             )}
           </div>
@@ -133,19 +134,19 @@ export const TimeLimitedUserDetailView: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <FormSection
-          title="User Information"
-          description="Identity information for the account receiving time-limited access."
+          title={tr("User Information")}
+          description={tr("Identity information for the account receiving time-limited access.")}
           icon={<UserRound className="h-4 w-4" />}
           className="h-full"
           contentClassName="p-4 md:p-5"
         >
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-            <DetailField label="Full Name">
+            <DetailField label={tr("Full Name")}>
               <span className="font-medium text-slate-900">{grant.fullName}</span>
             </DetailField>
-            <DetailField label="Username">{grant.username}</DetailField>
-            <DetailField label="Email">{grant.email}</DetailField>
-            <DetailField label="Employee ID">
+            <DetailField label={tr("Username")}>{grant.username}</DetailField>
+            <DetailField label={tr("Email")}>{grant.email}</DetailField>
+            <DetailField label={tr("Employee ID")}>
               {grant.employeeCode || "—"}
             </DetailField>
           </div>
@@ -155,25 +156,25 @@ export const TimeLimitedUserDetailView: React.FC = () => {
             variant="outline-emerald"
             onClick={() => navigate(USER_MANAGEMENT_ROUTES.PROFILE(grant.userId))}
           >
-            View User Profile
+            {tr("View User Profile")}
           </Button>
         </FormSection>
 
         <FormSection
-          title="Access Window"
-          description="The current period in which this user can sign in."
+          title={tr("Access Window")}
+          description={tr("The current period in which this user can sign in.")}
           icon={<CalendarClock className="h-4 w-4" />}
           className="h-full"
           contentClassName="p-4 md:p-5"
         >
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-            <DetailField label="Start Date & Time">
+            <DetailField label={tr("Start Date & Time")}>
               {formatDateTime(grant.startAt)}
             </DetailField>
-            <DetailField label="End Date & Time">
+            <DetailField label={tr("End Date & Time")}>
               {formatDateTime(grant.endAt)}
             </DetailField>
-            <DetailField label="Grant Status">
+            <DetailField label={tr("Grant Status")}>
               <Badge
                 size="sm"
                 color={
@@ -187,12 +188,12 @@ export const TimeLimitedUserDetailView: React.FC = () => {
                 {grant.status}
               </Badge>
             </DetailField>
-            <DetailField label="Access State">
+            <DetailField label={tr("Access State")}>
               <Badge size="sm" color={state.color}>
                 {state.label}
               </Badge>
             </DetailField>
-            <DetailField label="Notify on Expiry">
+            <DetailField label={tr("Notify on Expiry")}>
               <Badge
                 size="sm"
                 color={flagColor(grant.notifyEmailOnExpiry)}
@@ -204,7 +205,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
           {grant.reason && (
             <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-medium text-slate-700 sm:text-sm">
-                Reason / Comment
+                {tr("Reason / Comment")}
               </p>
               <p className="mt-1 text-xs text-slate-700 sm:text-sm">{grant.reason}</p>
             </div>
@@ -213,21 +214,21 @@ export const TimeLimitedUserDetailView: React.FC = () => {
       </div>
 
       <FormSection
-        title="Record History"
-        description="Creation, notification and cancellation history for this grant."
+        title={tr("Record History")}
+        description={tr("Creation, notification and cancellation history for this grant.")}
         icon={<ShieldCheck className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-          <DetailField label="Created">
+          <DetailField label={tr("Created")}>
             {formatDateTime(grant.createdAt)}
             {grant.createdByName ? ` by ${grant.createdByName}` : ""}
           </DetailField>
-          <DetailField label="Expiry Notification">
+          <DetailField label={tr("Expiry Notification")}>
             {grant.notifiedAt ? formatDateTime(grant.notifiedAt) : "Not sent"}
           </DetailField>
           {grant.cancelledAt && (
-            <DetailField label="Cancelled">
+            <DetailField label={tr("Cancelled")}>
               {formatDateTime(grant.cancelledAt)}
               {grant.cancelledByName ? ` by ${grant.cancelledByName}` : ""}
               {grant.cancelReason ? ` — ${grant.cancelReason}` : ""}

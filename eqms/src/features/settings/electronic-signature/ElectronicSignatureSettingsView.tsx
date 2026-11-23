@@ -15,6 +15,7 @@ import {
 } from "@/services/api/electronicSignatureSettings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { SignatureMeaningsTable } from "./SignatureMeaningsTable";
+import { tr } from "@/i18n";
 
 const defaultSettings: ElectronicSignatureSettings = {
   signatureTimestampFormat: "dd/MM/uuuu HH:mm",
@@ -64,7 +65,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         // 429 already surfaces its own clear notice via RateLimitNoticeListener.
         if (active && error?.response?.status !== 429)
           showToast({
-            message: "Unable to load E-Sign Config from server.",
+            message: tr("Unable to load E-Sign Config from server."),
             type: "error",
           });
       })
@@ -102,8 +103,8 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
       setSettings(normalized);
       setSavedSettings(normalized);
       showToast({
-        title: "Settings Saved",
-        message: "Electronic signature settings saved successfully.",
+        title: tr("Settings Saved"),
+        message: tr("Electronic signature settings saved successfully."),
         type: "success",
       });
     } catch (err: unknown) {
@@ -113,7 +114,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
         (err instanceof Error ? err.message : null) ||
         "Failed to save settings. Please try again.";
       showToast({
-        title: "Save Failed",
+        title: tr("Save Failed"),
         message: msg,
         type: "error",
       });
@@ -129,7 +130,7 @@ export const ElectronicSignatureSettingsView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title="E-Sign Config"
+        title={tr("E-Sign Config")}
         breadcrumbItems={breadcrumbItems}
         actions={
           canManageConfiguration ? (

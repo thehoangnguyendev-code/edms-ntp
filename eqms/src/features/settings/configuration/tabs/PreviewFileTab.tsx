@@ -10,6 +10,7 @@ import { DocumentConfig, PdfPreviewConfig, OnlyOfficeStorageConfig, OnlyOfficeVi
 import { ConfigTabs, HISTORY_TAB } from './ConfigTabs';
 import { ConfigHistory } from './ConfigHistory';
 import type { PreviewTabId } from './pageTabs';
+import { tr } from "@/i18n";
 
 interface PreviewFileTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
@@ -25,24 +26,24 @@ interface PreviewFileTabProps {
 }
 
 const TABS = [
-  { id: 'onlyoffice-preview', label: 'OnlyOffice Preview', icon: () => <img src={onlyOfficeLogo} alt="" className="h-4 w-4 object-contain" /> },
-  { id: 'pdf-preview', label: 'PDF Preview', icon: () => <img src={EmbedPDF} alt="" className="h-4 w-4 object-contain" /> },
+  { id: 'onlyoffice-preview', label: tr('OnlyOffice Preview'), icon: () => <img src={onlyOfficeLogo} alt="" className="h-4 w-4 object-contain" /> },
+  { id: 'pdf-preview', label: tr('PDF Preview'), icon: () => <img src={EmbedPDF} alt="" className="h-4 w-4 object-contain" /> },
   HISTORY_TAB,
 ] as const;
 
 /** Community Edition options supported by OnlyOffice Document Server. */
 const VIEWER_OPTIONS: Array<{ key: 'showPluginsTab' | 'showRightMenu' | 'showFileName'; label: string; hint: string; defaultValue: boolean }> = [
-  { key: 'showPluginsTab', label: 'Enable plugins', hint: 'Allow OnlyOffice plugins in the viewer.', defaultValue: false },
-  { key: 'showRightMenu', label: 'Open right menu by default', hint: 'OnlyOffice may restore a viewer preference saved in that browser.', defaultValue: false },
-  { key: 'showFileName', label: 'Show document name in header', hint: 'Hiding it uses OnlyOffice compact header layout.', defaultValue: true },
+  { key: 'showPluginsTab', label: tr('Enable plugins'), hint: tr('Allow OnlyOffice plugins in the viewer.'), defaultValue: false },
+  { key: 'showRightMenu', label: tr('Open right menu by default'), hint: tr('OnlyOffice may restore a viewer preference saved in that browser.'), defaultValue: false },
+  { key: 'showFileName', label: tr('Show document name in header'), hint: tr('Hiding it uses OnlyOffice compact header layout.'), defaultValue: true },
 ];
 
 export { DEFAULT_WATERMARK_ANGLE, MIN_WATERMARK_ANGLE, MAX_WATERMARK_ANGLE } from './WatermarkTraceabilityEditor';
 
 type StageMode = 'REVIEW' | 'COMMENT_ONLY';
 const STAGE_MODE_OPTIONS = [
-  { label: 'Review Mode', value: 'REVIEW' },
-  { label: 'Comment Only', value: 'COMMENT_ONLY' },
+  { label: tr('Review Mode'), value: 'REVIEW' },
+  { label: tr('Comment Only'), value: 'COMMENT_ONLY' },
 ];
 const STAGE_MODE_HINT: Record<StageMode, string> = {
   REVIEW: 'Review Mode: the person suggests changes. Track changes is on, and they cannot type outside a tracked change.',
@@ -53,33 +54,33 @@ type PdfToggleOption = { key: keyof PdfPreviewConfig; label: string; hint: strin
 
 const PDF_TOGGLE_GROUPS: Array<{ title: string; description: string; options: PdfToggleOption[] }> = [
   {
-    title: 'Viewing and Navigation',
-    description: 'Controls used to move around and inspect the current PDF.',
+    title: tr('Viewing and Navigation'),
+    description: tr('Controls used to move around and inspect the current PDF.'),
     options: [
-      { key: 'showThumbnailSidebar', label: 'Thumbnails and outline', hint: 'Show the side panel for page thumbnails and document outline.', defaultValue: true },
-      { key: 'showSearch', label: 'Find in document', hint: 'Show the search control for text in the current PDF.', defaultValue: true },
-      { key: 'showPageNavigation', label: 'Previous / next page', hint: 'Show page navigation controls in the viewer toolbar.', defaultValue: true },
-      { key: 'showZoomControls', label: 'Zoom menu and controls', hint: 'Show zoom percentage, fit page, fit width, marquee zoom, and zoom buttons.', defaultValue: true },
-      { key: 'showFullScreen', label: 'Full-screen viewer', hint: 'Allow the viewer to enter browser full-screen mode.', defaultValue: true },
+      { key: 'showThumbnailSidebar', label: tr('Thumbnails and outline'), hint: tr('Show the side panel for page thumbnails and document outline.'), defaultValue: true },
+      { key: 'showSearch', label: tr('Find in document'), hint: tr('Show the search control for text in the current PDF.'), defaultValue: true },
+      { key: 'showPageNavigation', label: tr('Previous / next page'), hint: tr('Show page navigation controls in the viewer toolbar.'), defaultValue: true },
+      { key: 'showZoomControls', label: tr('Zoom menu and controls'), hint: tr('Show zoom percentage, fit page, fit width, marquee zoom, and zoom buttons.'), defaultValue: true },
+      { key: 'showFullScreen', label: tr('Full-screen viewer'), hint: tr('Allow the viewer to enter browser full-screen mode.'), defaultValue: true },
     ],
   },
   {
-    title: 'Document Menu',
-    description: 'Commands available from the menu at the top left of the viewer.',
+    title: tr('Document Menu'),
+    description: tr('Commands available from the menu at the top left of the viewer.'),
     options: [
-      { key: 'showOpenDocumentAction', label: 'Open document', hint: 'Allow a user to select a local PDF in the Document menu.', defaultValue: true },
-      { key: 'showCloseDocumentAction', label: 'Close document', hint: 'Show the Close command for the current preview.', defaultValue: true },
-      { key: 'showSecurityAction', label: 'Security information', hint: 'Show the PDF permission details dialog.', defaultValue: true },
-      { key: 'showScreenshotAction', label: 'Screenshot', hint: 'Allow temporary screenshot capture; captured content is not saved to EQMS.', defaultValue: true },
+      { key: 'showOpenDocumentAction', label: tr('Open document'), hint: tr('Allow a user to select a local PDF in the Document menu.'), defaultValue: true },
+      { key: 'showCloseDocumentAction', label: tr('Close document'), hint: tr('Show the Close command for the current preview.'), defaultValue: true },
+      { key: 'showSecurityAction', label: tr('Security information'), hint: tr('Show the PDF permission details dialog.'), defaultValue: true },
+      { key: 'showScreenshotAction', label: tr('Screenshot'), hint: tr('Allow temporary screenshot capture; captured content is not saved to EQMS.'), defaultValue: true },
     ],
   },
   {
-    title: 'Session Tools',
-    description: 'Temporary browser-only tools; none can change the stored PDF.',
+    title: tr('Session Tools'),
+    description: tr('Temporary browser-only tools; none can change the stored PDF.'),
     options: [
-      { key: 'allowAnnotations', label: 'Allow annotations and comments', hint: 'Allow temporary highlighting, drawing, and comments. Disabled by default; EQMS never saves these changes to the stored PDF.', defaultValue: false },
-      { key: 'showInsertTools', label: 'Insert tab', hint: 'Allow temporary stamps, images, and signatures only when annotations are enabled. Exported PDFs may include session marks.', defaultValue: false },
-      { key: 'allowTextSelection', label: 'Select and copy text', hint: 'Allow text selection and copying only when export and print are permitted.', defaultValue: false },
+      { key: 'allowAnnotations', label: tr('Allow annotations and comments'), hint: tr('Allow temporary highlighting, drawing, and comments. Disabled by default; EQMS never saves these changes to the stored PDF.'), defaultValue: false },
+      { key: 'showInsertTools', label: tr('Insert tab'), hint: tr('Allow temporary stamps, images, and signatures only when annotations are enabled. Exported PDFs may include session marks.'), defaultValue: false },
+      { key: 'allowTextSelection', label: tr('Select and copy text'), hint: tr('Allow text selection and copying only when export and print are permitted.'), defaultValue: false },
     ],
   },
 ];
@@ -137,14 +138,14 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
     {activeTab === 'onlyoffice-preview' && (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">Viewer</h3>
-        <p className="mt-0.5 text-xs text-slate-500">What the read-only OnlyOffice viewer shows around the document.</p>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Viewer")}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{tr("What the read-only OnlyOffice viewer shows around the document.")}</p>
         <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           {VIEWER_OPTIONS.map((option) => (
             <div key={option.key}>
               <Checkbox
                 id={`onlyoffice-viewer-${option.key}`}
-                label={option.label}
+                        label={tr(option.label)}
                 checked={onlyOfficeConfig.viewer?.[option.key] ?? option.defaultValue}
                 onChange={(checked) =>
                   onOnlyOfficeChange({
@@ -153,19 +154,19 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
                   })
                 }
               />
-              <p className="ml-7 text-xs text-slate-500">{option.hint}</p>
+                      <p className="ml-7 text-xs text-slate-500">{tr(option.hint)}</p>
             </div>
           ))}
         </div>
       </div>
 
       <div className="border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-semibold text-slate-900">Review and Approval Stages</h3>
-        <p className="mt-0.5 text-xs text-slate-500">How the assigned person opens the Word file in OnlyOffice. Drafts are edited by the author; every other stage is read-only.</p>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Review and Approval Stages")}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{tr("How the assigned person opens the Word file in OnlyOffice. Drafts are edited by the author; every other stage is read-only.")}</p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Select
-              label="Pending Review"
+              label={tr("Pending Review")}
               value={onlyOfficeConfig.viewer?.pendingReviewMode ?? 'REVIEW'}
               enableSearch={false}
               onChange={(value) => setViewer({ pendingReviewMode: value as StageMode })}
@@ -175,7 +176,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
           </div>
           <div>
             <Select
-              label="Pending Approval"
+              label={tr("Pending Approval")}
               value={onlyOfficeConfig.viewer?.pendingApprovalMode ?? 'COMMENT_ONLY'}
               enableSearch={false}
               onChange={(value) => setViewer({ pendingApprovalMode: value as StageMode })}
@@ -187,16 +188,16 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
       </div>
 
       <div className="border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-semibold text-slate-900">Copies out of the editor</h3>
-        <p className="mt-0.5 text-xs text-slate-500">For a person who edits, reviews or comments on a Word file in OnlyOffice. The read-only viewer never allows download or print.</p>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Copies out of the editor")}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{tr("For a person who edits, reviews or comments on a Word file in OnlyOffice. The read-only viewer never allows download or print.")}</p>
         <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           <div>
-            <Checkbox id="onlyoffice-editor-download" label="Allow download" checked={onlyOfficeConfig.viewer?.editorAllowDownload ?? true} onChange={(checked) => setViewer({ editorAllowDownload: checked })} />
-            <p className="ml-7 text-xs text-slate-500">Off hides the Download button and the Download As entries of the File menu.</p>
+            <Checkbox id="onlyoffice-editor-download" label={tr("Allow download")} checked={onlyOfficeConfig.viewer?.editorAllowDownload ?? true} onChange={(checked) => setViewer({ editorAllowDownload: checked })} />
+            <p className="ml-7 text-xs text-slate-500">{tr("Off hides the Download button and the Download As entries of the File menu.")}</p>
           </div>
           <div>
-            <Checkbox id="onlyoffice-editor-print" label="Allow print" checked={onlyOfficeConfig.viewer?.editorAllowPrint ?? true} onChange={(checked) => setViewer({ editorAllowPrint: checked })} />
-            <p className="ml-7 text-xs text-slate-500">Off hides the Print button and menu entry, and Ctrl+P does nothing.</p>
+            <Checkbox id="onlyoffice-editor-print" label={tr("Allow print")} checked={onlyOfficeConfig.viewer?.editorAllowPrint ?? true} onChange={(checked) => setViewer({ editorAllowPrint: checked })} />
+            <p className="ml-7 text-xs text-slate-500">{tr("Off hides the Print button and menu entry, and Ctrl+P does nothing.")}</p>
           </div>
         </div>
       </div>
@@ -208,8 +209,8 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
           onEnabledChange={(checked) => setViewer({ watermarkEnabled: checked })}
           fields={onlyOfficeConfig.viewer}
           onChange={setViewer}
-          description="Drawn by OnlyOffice on every page while a Word file is shown in View Mode (the Document tab and the training files)."
-          textHint="Made by the server each time the file is opened, from the signed-in user and the server clock. The stored file is never modified, and the editors do not save it."
+          description={tr("Drawn by OnlyOffice on every page while a Word file is shown in View Mode (the Document tab and the training files).")}
+          textHint={tr("Made by the server each time the file is opened, from the signed-in user and the server clock. The stored file is never modified, and the editors do not save it.")}
           sampleNote="Example values. The viewer is filled in when the file is opened."
         />
       </div>
@@ -225,54 +226,54 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
           onEnabledChange={(checked) => onDocumentsChange({ ...documentsConfig, enableWatermark: checked })}
           fields={documentsConfig.pdfPreview}
           onChange={setPdf}
-          description="Information rendered only into the generated preview response."
-          textHint="Shown as an overlay on every page of the preview only. The stored PDF is never modified."
+          description={tr("Information rendered only into the generated preview response.")}
+          textHint={tr("Shown as an overlay on every page of the preview only. The stored PDF is never modified.")}
           sampleNote="Example values. The viewer is filled in at preview time."
         />
 
         <section className="rounded-xl border border-slate-200 p-4">
           <div className="mb-3">
-            <h3 className="text-sm font-semibold text-slate-800">Access and Output</h3>
-            <p className="mt-0.5 text-xs text-slate-500">Controls that determine whether a viewer may take content outside the preview.</p>
+            <h3 className="text-sm font-semibold text-slate-800">{tr("Access and Output")}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{tr("Controls that determine whether a viewer may take content outside the preview.")}</p>
           </div>
           <Checkbox
             id="pdf-preview-allow-download"
-            label="Allow download and print"
+            label={tr("Allow download and print")}
             checked={!!documentsConfig.allowDownload}
             onChange={(checked) => onDocumentsChange({ ...documentsConfig, allowDownload: checked })}
           />
-          <FieldHint indent className="mt-0.5">When off, the PDF viewer hides export and print.</FieldHint>
+          <FieldHint indent className="mt-0.5">{tr("When off, the PDF viewer hides export and print.")}</FieldHint>
         </section>
 
         <section className="rounded-xl border border-slate-200 p-4">
           <div className="mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Viewing and Navigation</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Default view and toolbar controls for reading a PDF.</p>
+              <h3 className="text-sm font-semibold text-slate-800">{tr("Viewing and Navigation")}</h3>
+              <p className="mt-0.5 text-xs text-slate-500">{tr("Default view and toolbar controls for reading a PDF.")}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
             {PDF_TOGGLE_GROUPS[0].options.map((option) => (
               <div key={option.key}>
                 <Checkbox id={`pdf-preview-${option.key}`} label={option.label} checked={(documentsConfig.pdfPreview?.[option.key] as boolean | undefined) ?? option.defaultValue} onChange={(checked) => setPdf({ [option.key]: checked })} />
-                <p className="ml-7 text-xs text-slate-500">{option.hint}</p>
+                      <p className="ml-7 text-xs text-slate-500">{tr(option.hint)}</p>
               </div>
             ))}
           </div>
           <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-            <Select label="Initial zoom" value={documentsConfig.pdfPreview?.defaultZoom ?? 'page-fit'} onChange={(value) => setPdf({ defaultZoom: value as PdfPreviewConfig['defaultZoom'] })} enableSearch={false} options={[{ label: 'Fit page', value: 'page-fit' }, { label: 'Fit width', value: 'page-width' }, { label: 'Actual size (100%)', value: 'actual-size' }]} />
+            <Select label={tr("Initial zoom")} value={documentsConfig.pdfPreview?.defaultZoom ?? 'page-fit'} onChange={(value) => setPdf({ defaultZoom: value as PdfPreviewConfig['defaultZoom'] })} enableSearch={false} options={[{ label: 'Fit page', value: 'page-fit' }, { label: 'Fit width', value: 'page-width' }, { label: tr('Actual size (100%)'), value: 'actual-size' }]} />
           </div>
         </section>
 
         {PDF_TOGGLE_GROUPS.slice(1).map((group) => (
           <section key={group.title} className="rounded-xl border border-slate-200 p-4">
-            <h3 className="text-sm font-semibold text-slate-800">{group.title}</h3>
-            <p className="mt-0.5 text-xs text-slate-500">{group.description}</p>
+            <h3 className="text-sm font-semibold text-slate-800">{tr(group.title)}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{tr(group.description)}</p>
             <div className="mt-4 space-y-3">
               {group.options.map((option) => (
                 <div key={option.key}>
                   <Checkbox id={`pdf-preview-${option.key}`} label={option.label} checked={(documentsConfig.pdfPreview?.[option.key] as boolean | undefined) ?? option.defaultValue} onChange={(checked) => setPdf({ [option.key]: checked })} />
-                  <p className="ml-7 text-xs text-slate-500">{option.hint}</p>
+                      <p className="ml-7 text-xs text-slate-500">{tr(option.hint)}</p>
                 </div>
               ))}
             </div>

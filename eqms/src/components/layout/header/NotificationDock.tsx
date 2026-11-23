@@ -5,6 +5,7 @@ import { ROUTES } from '@/app/routes.constants';
 import { subscribeNotificationsChanged } from '@/features/notifications/events';
 import { useNotificationDock } from './NotificationDockContext';
 import { FEED_MAX_ITEMS, FEED_PAGE_SIZE, NotificationPanel, NotificationShowMore, countForTab, useNotificationFeed } from './NotificationsDropdown';
+import { tr } from "@/i18n";
 
 export const DOCK_WIDTH = 380;
 /** How many notifications the dock asks for first, and how many more each "Show more" adds. */
@@ -40,7 +41,7 @@ export const NotificationDock: React.FC = () => {
       {docked && (
         <motion.aside
           key="notification-dock"
-          aria-label="Pinned notifications"
+          aria-label={tr("Pinned notifications")}
           data-testid="notification-dock"
           initial={reduceMotion ? false : { width: 0, opacity: 0 }}
           animate={{ width: DOCK_WIDTH, opacity: 1 }}

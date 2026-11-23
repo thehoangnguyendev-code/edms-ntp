@@ -30,11 +30,14 @@ public class TrainingComplianceController {
     public ResponseEntity<?> summary(@RequestParam(required = false) UUID departmentId) { return ResponseEntity.ok(compliance.summary(users.requireCurrentUser(), departmentId)); }
 
     @GetMapping("/coverage")
-    public ResponseEntity<?> coverage(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean newOnly, @RequestParam(required = false) String search,
+    public ResponseEntity<?> coverage(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean newOnly, @RequestParam(required = false) String search, @RequestParam(required = false) UUID rowId,
                                       @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, newOnly, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(compliance.coverage(users.requireCurrentUser(), departmentId, status, newOnly, search, rowId, sortBy, sortDirection, page, limit));
     }
+
+    @GetMapping("/coverage/trainings")
+    public ResponseEntity<?> gapTrainings(@RequestParam(required = false) UUID departmentId) { return ResponseEntity.ok(compliance.gapTrainings(users.requireCurrentUser(), departmentId)); }
 
     /** The training activities that are planned for a training, to add people to one of them. */
     @GetMapping("/planned-trainings")
@@ -62,6 +65,20 @@ public class TrainingComplianceController {
     public ResponseEntity<byte[]> printCompletion(@RequestParam(required = false) UUID departmentId, @RequestParam UUID positionId, @RequestParam(required = false) String search,
                                                   @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean gapsOnly) {
         java.util.Map<String, Object> file = prints.completion(users.requireCurrentUser(), departmentId, positionId, search, status, gapsOnly);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
+    }
+
+    @GetMapping("/summary/print")
+    public ResponseEntity<byte[]> printSummary(@RequestParam(required = false) UUID departmentId) { return pdf(prints.summary(users.requireCurrentUser(), departmentId)); }
+
+    @GetMapping("/coverage/print")
+    public ResponseEntity<byte[]> printGaps(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "false") boolean newOnly,
+                                            @RequestParam(required = false) String search, @RequestParam(required = false) UUID rowId) {
+        return pdf(prints.gaps(users.requireCurrentUser(), departmentId, status, newOnly, search, rowId));
+    }
+
+    private static ResponseEntity<byte[]> pdf(java.util.Map<String, Object> file) {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) file.get("name")).build().toString()).body((byte[]) file.get("bytes"));
     }

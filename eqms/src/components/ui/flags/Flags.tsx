@@ -13,7 +13,7 @@ const base = "shrink-0 rounded-[3px] ring-1 ring-inset ring-black/10";
 
 /** The flag of Viet Nam: a red field with a five-pointed yellow star. */
 export const VietnamFlagIcon: React.FC<FlagProps> = ({ className }) => (
-  <svg viewBox="0 0 24 16" role="img" aria-hidden="true" focusable="false" className={cn(base, "!w-6", className)}>
+  <svg viewBox="0 0 24 16" role="img" aria-hidden="true" focusable="false" className={cn(base, "w-6", className)}>
     <rect width="24" height="16" fill="#DA251D" />
     <polygon points="12,3.2 14.82,11.89 7.44,6.51 16.56,6.51 9.18,11.89" fill="#FFFF00" />
   </svg>
@@ -21,7 +21,7 @@ export const VietnamFlagIcon: React.FC<FlagProps> = ({ className }) => (
 
 /** The flag of the United Kingdom (the Union Jack). */
 export const UnitedKingdomFlagIcon: React.FC<FlagProps> = ({ className }) => (
-  <svg viewBox="0 0 24 16" role="img" aria-hidden="true" focusable="false" className={cn(base, "!w-6", className)}>
+  <svg viewBox="0 0 24 16" role="img" aria-hidden="true" focusable="false" className={cn(base, "w-6", className)}>
     <rect width="24" height="16" fill="#012169" />
     <path d="M0 0L24 16M24 0L0 16" stroke="#FFFFFF" strokeWidth="3.2" />
     <path d="M0 0L24 16M24 0L0 16" stroke="#C8102E" strokeWidth="1.1" />

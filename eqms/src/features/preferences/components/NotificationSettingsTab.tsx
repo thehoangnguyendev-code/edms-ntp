@@ -6,6 +6,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { notificationApi } from '@/services/api/notifications';
 import { useToast } from '@/components/ui/toast';
+import { tr } from "@/i18n";
 
 interface NotificationSettingsTabProps {
   onRegisterSaveHandler?: (handler: (() => Promise<void>) | null) => void;
@@ -49,13 +50,13 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
 
   const toggleBrowserPush = async () => {
     if (!browserPushSupported) {
-      showToast({ type: 'error', title: 'Browser notifications unavailable', message: 'This browser does not support notification permissions.' });
+      showToast({ type: 'error', title: tr('Browser notifications unavailable'), message: 'This browser does not support notification permissions.' });
       return;
     }
     if (!channelPush) {
       const permission = await window.Notification.requestPermission();
       if (permission !== 'granted') {
-        showToast({ type: 'error', title: 'Permission not granted', message: 'Allow browser notifications to enable this channel.' });
+        showToast({ type: 'error', title: tr('Permission not granted'), message: 'Allow browser notifications to enable this channel.' });
         return;
       }
     }
@@ -99,10 +100,10 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
   return (
     <div className="p-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="space-y-4">
-        <FormSection title="Notification Channels" icon={<BellRing className="h-4 w-4" />}>
+        <FormSection title={tr("Notification Channels")} icon={<BellRing className="h-4 w-4" />}>
           <div className="space-y-1">
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-xs text-slate-600">
-              Every notification is always delivered to you in the application and by e-mail. It cannot be switched off.
+              {tr("Every notification is always delivered to you in the application and by e-mail. It cannot be switched off.")}
             </div>
 
             <div className="flex items-start gap-3 py-3">
@@ -111,8 +112,8 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
               </span>
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Email</p>
-                  <p className="text-xs text-slate-500">Sent to your account email:</p>
+                  <p className="text-sm font-medium text-slate-900">{tr("Email")}</p>
+                  <p className="text-xs text-slate-500">{tr("Sent to your account email:")}</p>
                 </div>
                 <Chip label={primaryEmail || 'No primary email'} muted />
               </div>
@@ -123,8 +124,8 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
                 <Bell className="h-4 w-4 text-slate-600" />
               </span>
               <div>
-                <p className="text-sm font-medium text-slate-900">In-App Notifications</p>
-                <p className="text-xs text-slate-500">Shown in the bell and on the Notifications page.</p>
+                <p className="text-sm font-medium text-slate-900">{tr("In-App Notifications")}</p>
+                <p className="text-xs text-slate-500">{tr("Shown in the bell and on the Notifications page.")}</p>
               </div>
             </div>
 
@@ -134,8 +135,8 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
                   <MonitorSmartphone className="h-4 w-4 text-slate-600" />
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Browser Push Notifications</p>
-                  <p className="text-xs text-slate-500">Also show a pop-up through your browser while EQMS is open.</p>
+                  <p className="text-sm font-medium text-slate-900">{tr("Browser Push Notifications")}</p>
+                  <p className="text-xs text-slate-500">{tr("Also show a pop-up through your browser while EQMS is open.")}</p>
                 </div>
               </div>
               <Switch checked={channelPush} onChange={() => void toggleBrowserPush()} disabled={isSaving || !browserPushSupported} />

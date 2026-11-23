@@ -12,7 +12,7 @@ import { FileIcon, useFolderColor, useFolderLabel } from "./ExplorerIcons";
 import { FOCUS_RING } from "./explorerStyles";
 import { pluralize, type ExplorerNav } from "./explorerModel";
 import { useMediaQuery } from "./useMediaQuery";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface ExplorerWidgetsProps {
   overview: KnowledgePortalOverview;
@@ -198,7 +198,7 @@ export const ExplorerWidgets: React.FC<ExplorerWidgetsProps> = ({ overview, onSe
                     type="button"
                     onClick={() => onToggleSubscribe(kb.key)}
                     aria-label={`Unsubscribe from ${kb.label}`}
-                    title="Unsubscribe"
+                    title={tr("Unsubscribe")}
                     className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700", FOCUS_RING)}
                   >
                     <BellOff className="h-3.5 w-3.5" />

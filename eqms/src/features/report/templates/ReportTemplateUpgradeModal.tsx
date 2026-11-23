@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { reportRevisionLabel } from "../shared/reportLabels";
 import { useEffect, useState } from "react";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
@@ -46,7 +47,7 @@ export function ReportTemplateUpgradeModal({
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Upgrade Report Template"
+      title={tr("Upgrade Report Template")}
       description={`Start revision ${reportRevisionLabel((template.effectiveRevision ?? 0) + 1, "DRAFT")} from ${reportRevisionLabel(template.effectiveRevision)}. ${reportRevisionLabel(template.effectiveRevision)} stays in use until the new revision is approved; then it becomes Obsoleted and can still be viewed.`}
       confirmText="Upgrade"
       confirmDisabled={!reason.trim() || busy}

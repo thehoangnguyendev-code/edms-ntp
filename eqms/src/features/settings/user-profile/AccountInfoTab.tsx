@@ -9,6 +9,7 @@ import { IconAddressBook, IconPencilMinus } from '@tabler/icons-react';
 import { AvatarCropModal } from './AvatarCropModal';
 import { Avatar } from '@/components/ui/avatar';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { tr } from "@/i18n";
 
 interface AccountInfoTabProps {
     formData: {
@@ -70,7 +71,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
             }
             // Validate file type
             if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
-                showToast({ type: 'error', title: 'Error', message: 'Only .png or .jpg files are accepted.' });
+                showToast({ type: 'error', title: tr('Error'), message: tr('Only .png or .jpg files are accepted.') });
                 return;
             }
 
@@ -116,7 +117,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                             onClick={handleAvatarClick}
                             type="button"
                             className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 h-9 w-9 sm:h-10 sm:w-10 lg:h-11 lg:w-11 rounded-full bg-white border-2 border-slate-200 shadow-md flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-500 transition-all duration-200 cursor-pointer"
-                            title="Change avatar"
+                            title={tr("Change avatar")}
                         >
                             <Camera className="h-4 w-4 sm:h-4.5 sm:w-4.5 lg:h-5 lg:w-5 text-slate-700" strokeWidth={2} />
                         </button>
@@ -132,10 +133,10 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                     {/* Upload Info */}
                     <div className="mt-3 sm:mt-4 text-center">
                         <p className="text-xs text-slate-500 leading-relaxed">
-                            Allowed: <span className="font-medium text-slate-700">.PNG, .JPG</span>
+                            {tr("Allowed:")} <span className="font-medium text-slate-700">.PNG, .JPG</span>
                         </p>
                         <p className="text-xs text-slate-500">
-                            Max size: <span className="font-medium text-slate-700">5MB</span>
+                            {tr("Max size:")} <span className="font-medium text-slate-700">5MB</span>
                         </p>
                     </div>
 
@@ -146,7 +147,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                             onClick={() => navigate('/profile/data-privacy')}
                             className="text-xs text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1"
                         >
-                            <span>Data Privacy Request</span>
+                            <span>{tr("Data Privacy Request")}</span>
                         </button>
                     </div>
                 </div>
@@ -156,57 +157,57 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
             <div className="lg:col-span-9">
                 <div className="space-y-6">
                     {/* Basic Information Section */}
-                    <FormSection title="Basic Information" icon={<UserIcon className="h-4 w-4" />}>
+                    <FormSection title={tr("Basic Information")} icon={<UserIcon className="h-4 w-4" />}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Full Name</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Full Name")}</label>
                                 <input type="text" value={formData.fullName} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Username</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Username")}</label>
                                 <input type="text" value={formData.username} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Employee ID</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Employee ID")}</label>
                                 <input type="text" value={formData.employeeCode} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Nationality</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Nationality")}</label>
                                 <input type="text" value={formData.nationality} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Position</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Position")}</label>
                                 <input type="text" value={formData.position} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Department</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Department")}</label>
                                 <input type="text" value={formData.department} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Business Unit</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Business Unit")}</label>
                                 <input type="text" value={formData.businessUnit} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Employment Type</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Employment Type")}</label>
                                 <input type="text" value={formData.employmentType} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Start Date</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Start Date")}</label>
                                 <input type="text" value={formData.startDate} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                             <div>
-                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Access Profiles</label>
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Access Profiles")}</label>
                                 <input type="text" value={formData.accessProfiles} readOnly className={CONTROL_STATE_CLASSES.readonlyFieldCompact} />
                             </div>
                         </div>
                     </FormSection>
 
                     {/* Contact Information Section */}
-                    <FormSection title="Contact Information" icon={<IconAddressBook className="h-4 w-4" />}>
+                    <FormSection title={tr("Contact Information")} icon={<IconAddressBook className="h-4 w-4" />}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                                    Email Address <span className="text-red-500">*</span>
+                                    {tr("Email Address")} <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
                                     <input
@@ -218,7 +219,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                             ? 'border-emerald-500 bg-white ring-1 ring-emerald-500 focus:ring-emerald-500 focus:border-emerald-500'
                                             : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
                                             }`}
-                                        placeholder="Enter email"
+                                        placeholder={tr("Enter email")}
                                     />
                                     <Button
                                         variant="ghost"
@@ -241,7 +242,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                                 </svg>
-                                                Verified
+                                                {tr("Verified")}
                                             </span>
                                         </>
                                     ) : (
@@ -250,7 +251,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                                 <svg className="h-3.5 w-3.5 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                                                 </svg>
-                                                Pending verification
+                                                {tr("Pending verification")}
                                             </span>
                                         </>
                                     )}
@@ -258,7 +259,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                             </div>
                             <div>
                                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                                    Phone Number <span className="text-red-500">*</span>
+                                    {tr("Phone Number")} <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
                                     <input
@@ -270,7 +271,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                             ? 'border-emerald-500 bg-white ring-1 ring-emerald-500 focus:ring-emerald-500 focus:border-emerald-500'
                                             : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
                                             }`}
-                                        placeholder="Enter phone number"
+                                        placeholder={tr("Enter phone number")}
                                     />
                                     <Button
                                         variant="ghost"
@@ -293,7 +294,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                                 </svg>
-                                                Verified
+                                                {tr("Verified")}
                                             </span>
                                         </>
                                     ) : (
@@ -302,7 +303,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
                                                 <svg className="h-3.5 w-3.5 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                                                 </svg>
-                                                Pending verification
+                                                {tr("Pending verification")}
                                             </span>
                                         </>
                                     )}

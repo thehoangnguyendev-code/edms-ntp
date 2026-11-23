@@ -15,6 +15,7 @@ import { ServerListPanel } from "../components/ServerListPanel";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, statusLabel, type BackupComponentKey } from "../types";
 import { formatDateTime } from "../format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type SortKey = "component" | "type" | "frequency" | "time" | "status";
 
@@ -22,14 +23,14 @@ const ALL = "ALL";
 const STATUS_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Active", value: "ACTIVE" },
-  { label: "Not scheduled", value: "NOT_SCHEDULED" },
+  { label: tr("Not scheduled"), value: "NOT_SCHEDULED" },
 ];
 
 const TYPE_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Full", value: "FULL" },
-  { label: "Incremental", value: "INCREMENTAL" },
-  { label: "Pre-change", value: "PRE_CHANGE" },
+  { label: tr("Incremental"), value: "INCREMENTAL" },
+  { label: tr("Pre-change"), value: "PRE_CHANGE" },
 ];
 const FREQUENCY_OPTIONS = [
   { label: "All", value: ALL },
@@ -136,7 +137,7 @@ export const BackupSchedulesView: React.FC = () => {
         </div>
       ),
     },
-    { id: "type", header: "Backup type", label: "Backup type", sort: sortFor("type"), cell: (row) => dash(row.type) },
+    { id: "type", header: tr("Backup type"), label: tr("Backup type"), sort: sortFor("type"), cell: (row) => dash(row.type) },
     { id: "frequency", header: "Frequency", label: "Frequency", sort: sortFor("frequency"), cell: (row) => dash(row.frequency) },
     { id: "time", header: "Starts at", label: "Starts at", sort: sortFor("time"), cell: (row) => row.time || "—" },
     {
@@ -144,31 +145,31 @@ export const BackupSchedulesView: React.FC = () => {
       header: "Status",
       label: "Status",
       sort: sortFor("status"),
-      cell: (row) => <Badge color={flagColor(row.status === "ACTIVE")}>{row.status === "ACTIVE" ? "Active" : "Not scheduled"}</Badge>,
+      cell: (row) => <Badge color={flagColor(row.status === "ACTIVE")}>{row.status === "ACTIVE" ? "Active" : tr("Not scheduled")}</Badge>,
     },
   ];
 
   const last = policy?.lastScheduledRun;
 
   return (
-    <BackupRestorePage title="Backup Schedules" group="Backup" preview={false}>
-      {policyError && <WarningBanner variant="error" title="Unable to read the backup schedule" description={policyError} />}
+    <BackupRestorePage title={tr("Backup Schedules")} group="Backup" preview={false}>
+      {policyError && <WarningBanner variant="error" title={tr("Unable to read the backup schedule")} description={policyError} />}
       {policy && (
-        <FormSection title="Schedule" icon={<IconCalendarTime className="h-4 w-4" />}>
+        <FormSection title={tr("Schedule")} icon={<IconCalendarTime className="h-4 w-4" />}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             <div className="space-y-3">
-              <Fact label="Policy">
-                Version {policy.version} ({statusLabel(policy.status)})
+              <Fact label={tr("Policy")}>
+                {tr("Version")} {policy.version} ({statusLabel(policy.status)})
               </Fact>
             </div>
             <div className="space-y-3">
-              <Fact label="Next scheduled backup">
-                {policy.nextDue ? formatDateTime(policy.nextDue) : "Not scheduled"}{" "}
+              <Fact label={tr("Next scheduled backup")}>
+                {policy.nextDue ? formatDateTime(policy.nextDue) : tr("Not scheduled")}{" "}
                 <span className="text-xs font-normal text-slate-500">({policy.zone})</span>
               </Fact>
             </div>
             <div className="space-y-3">
-              <Fact label="Last scheduled run">
+              <Fact label={tr("Last scheduled run")}>
                 {last ? (
                   <span className="inline-flex flex-wrap items-center gap-2">
                     {last.backupNumber}
@@ -191,15 +192,15 @@ export const BackupSchedulesView: React.FC = () => {
         loading={loading}
         hasLoaded={hasLoaded}
         error={error}
-        emptyTitle="No Schedule Found"
-        emptyDescription="No component matches. Try changing your search or filters."
+        emptyTitle={tr("No Schedule Found")}
+        emptyDescription={tr("No component matches. Try changing your search or filters.")}
         search={search}
         onSearch={setSearch}
         searchLabel="Search schedules"
-        searchPlaceholder="Component, type, frequency or time…"
+        searchPlaceholder={tr("Component, type, frequency or time…")}
         filters={[
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
-          { id: "type", label: "Backup type", value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
+          { id: "type", label: tr("Backup type"), value: type, options: TYPE_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setType },
           { id: "frequency", label: "Frequency", value: frequency, options: FREQUENCY_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setFrequency },
         ]}
         onClear={clearFilters}

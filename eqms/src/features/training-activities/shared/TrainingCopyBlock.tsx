@@ -11,6 +11,7 @@ import { trainingCopyApi, trainingError, type TrainingCopyLog, type TrainingCopy
 import { Input } from "./TrainingFields";
 import { TabBlock } from "./TrainingDetailLayout";
 import { day } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 /**
  * The log of the copies of a requirement or a job assignment (SOP.0003 5.3.2 and 5.3.10): which departments were sent a copy, by whom and when, and who received it.
@@ -32,7 +33,7 @@ export function TrainingCopyBlock({ type, objectId, title = "Copies Sent To Depa
       await trainingCopyApi.receive(row.id);
       load();
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -41,16 +42,16 @@ export function TrainingCopyBlock({ type, objectId, title = "Copies Sent To Depa
     { id: "no", header: "No.", locked: true, cell: (_r, i) => i + 1 },
     { id: "department", header: "Department", cell: (r) => r.departmentName },
     { id: "sent", header: "Sent", cell: (r) => <div><div>{r.sentByName}</div><div className="text-xs text-slate-500">{day(r.sentAt)}</div></div> },
-    { id: "received", header: "Received", cell: (r) => (r.receivedAt ? <div><div>{r.receivedByName}</div><div className="text-xs text-slate-500">{day(r.receivedAt)}</div></div> : <span className="text-amber-700">Not yet</span>) },
+    { id: "received", header: "Received", cell: (r) => (r.receivedAt ? <div><div>{r.receivedByName}</div><div className="text-xs text-slate-500">{day(r.receivedAt)}</div></div> : <span className="text-amber-700">{tr("Not yet")}</span>) },
     { id: "note", header: "Note", cell: (r) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{r.note ?? "—"}</div> },
-    { id: "action", header: "Action", cell: (r) => (r.canReceive ? <Button size="sm" disabled={busy} onClick={() => void receive(r)}>Confirm received</Button> : null) },
+    { id: "action", header: "Action", cell: (r) => (r.canReceive ? <Button size="sm" disabled={busy} onClick={() => void receive(r)}>{tr("Confirm received")}</Button> : null) },
   ];
   if (!log) return null;
   if (log.rows.length === 0 && !log.canSend) return null;
   return (
     <>
-      <TabBlock title={title} action={log.canSend ? <Button size="sm" variant="default" onClick={() => setSending(true)}>Send a Copy</Button> : undefined}>
-        <DataTable rows={log.rows} getRowKey={(r) => r.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">No copy sent yet.</p>} />
+      <TabBlock title={title} action={log.canSend ? <Button size="sm" variant="default" onClick={() => setSending(true)}>{tr("Send a Copy")}</Button> : undefined}>
+        <DataTable rows={log.rows} getRowKey={(r) => r.id} columns={columns} emptyState={<p className="p-4 text-sm text-slate-500">{tr("No copy sent yet.")}</p>} />
       </TabBlock>
       {sending && <SendDialog type={type} objectId={objectId} sentTo={log.rows.map((r) => r.departmentId)} onClose={() => setSending(false)} onSent={(next) => { setLog(next); setSending(false); }} />}
     </>
@@ -70,22 +71,22 @@ function SendDialog({ type, objectId, sentTo, onClose, onSent }: { type: Trainin
     try {
       onSent(await trainingCopyApi.send(type, objectId, [...chosen], note.trim() || undefined));
     } catch (e) {
-      showToast({ type: "error", title: "The copy was not sent", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The copy was not sent"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
   };
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title="Send a Copy" description="Record that a copy was sent to the departments concerned. Each department confirms when it receives it." confirmText="Record sending" isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title={tr("Send a Copy")} description={tr("Record that a copy was sent to the departments concerned. Each department confirms when it receives it.")} confirmText="Record sending" isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
       <div className="grid gap-4">
-        <FormField label="Departments" required>
+        <FormField label={tr("Departments")} required>
           <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
-            {departments.length === 0 ? <p className="text-sm text-slate-500">Every department already has a copy.</p> : departments.map((d) => (
+            {departments.length === 0 ? <p className="text-sm text-slate-500">{tr("Every department already has a copy.")}</p> : departments.map((d) => (
               <Checkbox key={d.id} checked={chosen.has(d.id)} onChange={() => toggle(d.id)} label={d.name} />
             ))}
           </div>
         </FormField>
-        <FormField label="Note"><Input maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
+        <FormField label={tr("Note")}><Input maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
       </div>
     </FormModal>
   );

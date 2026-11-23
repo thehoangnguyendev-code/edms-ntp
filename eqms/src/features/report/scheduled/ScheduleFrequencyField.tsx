@@ -15,13 +15,14 @@ import {
   type FrequencyKind,
   type FrequencySpec,
 } from "./scheduleFrequency";
+import { tr } from "@/i18n";
 
 const KINDS: Array<{ value: FrequencyKind; label: string }> = [
   { value: "HOURLY", label: "Hourly" },
   { value: "DAILY", label: "Daily" },
   { value: "WEEKLY", label: "Weekly" },
   { value: "MONTHLY", label: "Monthly" },
-  { value: "CUSTOM", label: "Custom cron" },
+  { value: "CUSTOM", label: tr("Custom cron") },
 ];
 const two = (n: number) => String(n).padStart(2, "0");
 
@@ -48,18 +49,18 @@ export function ScheduleFrequencyField({ cron, onChange }: { cron: string; onCha
   return (
     <div className="space-y-3 md:col-span-2">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-        <Select label="Frequency" value={spec.kind} options={KINDS} enableSearch={false} onChange={(value) => chooseKind(String(value) as FrequencyKind)} />
+        <Select label={tr("Frequency")} value={spec.kind} options={KINDS} enableSearch={false} onChange={(value) => chooseKind(String(value) as FrequencyKind)} />
         {spec.kind === "HOURLY" && (
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <Select
-              label="Every"
+              label={tr("Every")}
               value={String(spec.everyHours)}
               options={HOUR_STEPS.map((n) => ({ value: String(n), label: n === 1 ? "1 hour" : `${n} hours` }))}
               enableSearch={false}
               onChange={(value) => change({ everyHours: Number(value) })}
             />
             <Select
-              label="At minute"
+              label={tr("At minute")}
               value={String(spec.minute)}
               options={MINUTE_CHOICES.map((n) => ({ value: String(n), label: `:${two(n)}` }))}
               enableSearch={false}
@@ -67,24 +68,24 @@ export function ScheduleFrequencyField({ cron, onChange }: { cron: string; onCha
             />
           </div>
         )}
-        {(spec.kind === "DAILY" || spec.kind === "WEEKLY" || spec.kind === "MONTHLY") && <TimePicker label="Time" value={timeOf(spec)} onChange={timeChange} />}
+        {(spec.kind === "DAILY" || spec.kind === "WEEKLY" || spec.kind === "MONTHLY") && <TimePicker label={tr("Time")} value={timeOf(spec)} onChange={timeChange} />}
         {spec.kind === "MONTHLY" && (
           <Select
-            label="Day Of The Month"
+            label={tr("Day Of The Month")}
             value={String(spec.dayOfMonth)}
-            options={[...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: `Day ${i + 1}` })), { value: "L", label: "Last day of the month" }]}
+            options={[...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: `Day ${i + 1}` })), { value: "L", label: tr("Last day of the month") }]}
             onChange={(value) => change({ dayOfMonth: value === "L" ? "L" : Number(value) })}
           />
         )}
         {spec.kind === "CUSTOM" && (
-          <FormField label="Cron Expression" hint="For advanced schedules. Write six parts separated by spaces: second, minute, hour, day of the month, month, day of the week; * means every. Examples: 0 30 6 * * MON-FRI is 06:30 on weekdays; 0 0 */4 * * * is every 4 hours.">
+          <FormField label={tr("Cron Expression")} hint={tr("For advanced schedules. Write six parts separated by spaces: second, minute, hour, day of the month, month, day of the week; * means every. Examples: 0 30 6 * * MON-FRI is 06:30 on weekdays; 0 0 */4 * * * is every 4 hours.")}>
             <Input value={spec.custom} onChange={(event) => change({ custom: event.target.value })} />
           </FormField>
         )}
       </div>
       {spec.kind === "WEEKLY" && (
         <div>
-          <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Days Of The Week</p>
+          <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Days Of The Week")}</p>
           <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-slate-200 p-3">
             {WEEKDAYS.map((day) => {
               const on = spec.weekdays.includes(day);

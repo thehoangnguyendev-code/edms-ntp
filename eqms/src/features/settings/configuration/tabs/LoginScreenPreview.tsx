@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LoginCarouselConfig } from '@/services/api/branding';
 import { SPLIT_UI, SplitPanel } from '@/features/auth/components/LoginSplitLayout';
+import { tr } from "@/i18n";
 
 const SCREEN_WIDTH = 1280;
 const SCREEN_HEIGHT = 800;
@@ -39,7 +40,7 @@ export const LoginScreenPreview: React.FC<{ carousel?: LoginCarouselConfig | nul
       ref={frame}
       data-login-screen-preview
       role="img"
-      aria-label="Preview of the sign-in screen with the slides as they are now"
+      aria-label={tr("Preview of the sign-in screen with the slides as they are now")}
       className="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-[#eceef2] shadow-sm"
       style={{ height: SCREEN_HEIGHT * scale }}
     >
@@ -50,11 +51,11 @@ export const LoginScreenPreview: React.FC<{ carousel?: LoginCarouselConfig | nul
               <div className="relative flex flex-col px-[45px] py-[45px]">
                 {logo ? <img src={logo} alt="" className="h-10 w-auto self-start object-contain" /> : <div className="h-10 w-28 rounded-md bg-slate-100" />}
                 <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center">
-                  <p className={SPLIT_UI.title}>Welcome Back</p>
-                  <p className={SPLIT_UI.subtitle}>Enter your credentials to access your account.</p>
+                  <p className={SPLIT_UI.title}>{tr("Welcome Back")}</p>
+                  <p className={SPLIT_UI.subtitle}>{tr("Enter your credentials to access your account.")}</p>
                   <div className="mt-10 space-y-5">
-                    <div><p className={SPLIT_UI.label}>Email or Username</p><div className="h-[46px] rounded-[10px] border border-[#e4e4e7]" /></div>
-                    <div><p className={SPLIT_UI.label}>Password</p><div className="h-[46px] rounded-[10px] border border-[#e4e4e7]" /></div>
+                    <div><p className={SPLIT_UI.label}>{tr("Email or Username")}</p><div className="h-[46px] rounded-[10px] border border-[#e4e4e7]" /></div>
+                    <div><p className={SPLIT_UI.label}>{tr("Password")}</p><div className="h-[46px] rounded-[10px] border border-[#e4e4e7]" /></div>
                   </div>
                   <div className="mt-7 h-[46px] rounded-[10px] bg-emerald-900" />
                 </div>

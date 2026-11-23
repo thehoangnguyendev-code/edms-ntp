@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingPaperApi } from "@/services/api/trainingActivities";
 import { saveBlob } from "../../shared/trainingLabels";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 /**
  * The attendance list of the activity in the form APD.0117 (SOP.0003 5.3.4), filled in the Word template that Training Administration enabled. One button opens it in a window as the PDF is made
@@ -49,7 +50,7 @@ export function AttendanceListExport({ activityId, trainingNumber }: { activityI
     try {
       saveBlob(await trainingPaperApi.attendanceList(activityId, format), name(format));
     } catch (e) {
-      showToast({ type: "error", title: "The attendance list was not exported", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The attendance list was not exported"), message: trainingError(e) });
     } finally {
       setBusy("");
     }
@@ -66,25 +67,25 @@ export function AttendanceListExport({ activityId, trainingNumber }: { activityI
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline-emerald" onClick={() => setOpen(true)}>Training Attendance List</Button>
+        <Button size="sm" variant="outline-emerald" onClick={() => setOpen(true)}>{tr("Training Attendance List")}</Button>
       </div>
       {open && (
         <FormModal
           isOpen
           onClose={close}
           onConfirm={() => void download("pdf")}
-          title="Training Attendance List (APD.0117)"
+          title={tr("Training Attendance List (APD.0117)")}
           description={madeAt ? `${trainingNumber}. Made from what is recorded on ${madeAt}.` : trainingNumber}
-          confirmText="Download PDF"
+          confirmText={tr("Download PDF")}
           // Close is drawn with the other buttons below (not by the window) so that the two downloads stand next to each other: Refresh, Close, Download Word, Download PDF
           showCancel={false}
           isLoading={busy === "pdf"}
           confirmDisabled={!!busy || !url}
           footerExtra={(
             <>
-              <Button size="sm" variant="outline" loading={busy === "load"} disabled={!!busy && busy !== "load"} onClick={() => void load()}>Refresh</Button>
-              <Button size="sm" variant="outline" disabled={busy === "pdf"} onClick={close}>Close</Button>
-              <Button size="sm" variant="outline" loading={busy === "docx"} disabled={!!busy} onClick={() => void download("docx")}>Download Word</Button>
+              <Button size="sm" variant="outline" loading={busy === "load"} disabled={!!busy && busy !== "load"} onClick={() => void load()}>{tr("Refresh")}</Button>
+              <Button size="sm" variant="outline" disabled={busy === "pdf"} onClick={close}>{tr("Close")}</Button>
+              <Button size="sm" variant="outline" loading={busy === "docx"} disabled={!!busy} onClick={() => void download("docx")}>{tr("Download Word")}</Button>
             </>
           )}
           size="2xl"
@@ -94,7 +95,7 @@ export function AttendanceListExport({ activityId, trainingNumber }: { activityI
           {error ? (
             <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
           ) : busy === "load" && !url ? (
-            <p className="py-12 text-center text-sm text-slate-500">Making the attendance list...</p>
+            <p className="py-12 text-center text-sm text-slate-500">{tr("Making the attendance list...")}</p>
           ) : url ? (
             <DocumentPdfViewer key={url} fileUrl={url} height="68dvh" minHeight="420px" forceHideDownloadAndPrint allowContextMenu={false} />
           ) : null}

@@ -40,6 +40,7 @@ import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleLabel } from "./accessExplorerLabels";
 import { IconReportSearch } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
   Active: "emerald",
@@ -52,7 +53,7 @@ type TabId = "general" | "people" | "through";
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
   { id: "people", label: "People" },
-  { id: "through", label: "Granted Through" },
+  { id: "through", label: tr("Granted Through") },
 ];
 
 type ThroughRow = {
@@ -216,8 +217,8 @@ export const AccessExplorerDetailView: React.FC = () => {
     },
     {
       id: "profiles",
-      header: "Through Access Profile",
-      label: "Through Access Profile",
+      header: tr("Through Access Profile"),
+      label: tr("Through Access Profile"),
       cell: (h) => (
         <div className="flex flex-wrap gap-1">
           {h.viaProfiles.map((p) => (
@@ -230,21 +231,21 @@ export const AccessExplorerDetailView: React.FC = () => {
     },
     {
       id: "sets",
-      header: "Through Permission Set",
-      label: "Through Permission Set",
+      header: tr("Through Permission Set"),
+      label: tr("Through Permission Set"),
       cell: (h) => h.viaPermissionSets.join(", "),
     },
     {
       id: "timeLimited",
-      header: "Time-limited Until",
-      label: "Time-limited Until",
+      header: tr("Time-limited Until"),
+      label: tr("Time-limited Until"),
       cell: (h) =>
         h.timeLimitedUntil ? formatDateTime(h.timeLimitedUntil) : "—",
     },
     {
       id: "lastLogin",
-      header: "Last Sign-in",
-      label: "Last Sign-in",
+      header: tr("Last Sign-in"),
+      label: tr("Last Sign-in"),
       cell: (h) => (h.lastLoginAt ? formatDateTime(h.lastLoginAt) : "Never"),
     },
   ];
@@ -284,8 +285,8 @@ export const AccessExplorerDetailView: React.FC = () => {
     },
     {
       id: "set",
-      header: "Permission Set",
-      label: "Permission Set",
+      header: tr("Permission Set"),
+      label: tr("Permission Set"),
       cellClassName: "font-medium text-slate-900",
       cell: (row) => row.setName,
     },
@@ -301,14 +302,14 @@ export const AccessExplorerDetailView: React.FC = () => {
     },
     {
       id: "profile",
-      header: "Access Profile",
-      label: "Access Profile",
+      header: tr("Access Profile"),
+      label: tr("Access Profile"),
       cell: (row) =>
         row.profileName ? (
           <span className="font-medium text-emerald-700">{row.profileName}</span>
         ) : (
           <span className="text-slate-500">
-            Not used by any active access profile
+            {tr("Not used by any active access profile")}
           </span>
         ),
     },
@@ -327,12 +328,12 @@ export const AccessExplorerDetailView: React.FC = () => {
         {
           icon: <KeyRound className="h-4 w-4 text-emerald-600" />,
           value: result.permissionSets.length,
-          label: "Permission Sets",
+          label: tr("Permission Sets"),
         },
         {
           icon: <Waypoints className="h-4 w-4 text-emerald-600" />,
           value: profileCount,
-          label: "Access Profiles",
+          label: tr("Access Profiles"),
         },
         {
           icon: <Users className="h-4 w-4 text-emerald-600" />,
@@ -342,7 +343,7 @@ export const AccessExplorerDetailView: React.FC = () => {
         {
           icon: <UserCheck className="h-4 w-4 text-emerald-600" />,
           value: result.activeHolderCount,
-          label: "Active Accounts",
+          label: tr("Active Accounts"),
         },
       ]
     : [];
@@ -350,7 +351,7 @@ export const AccessExplorerDetailView: React.FC = () => {
   return (
     <div className="space-y-5 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Access Explorer Details"
+        title={tr("Access Explorer Details")}
         breadcrumbItems={accessExplorerDetail(navigate)}
         actions={
           <>
@@ -360,17 +361,17 @@ export const AccessExplorerDetailView: React.FC = () => {
               className="whitespace-nowrap gap-2"
               onClick={() => navigate(ROUTES.SECURITY.ACCESS_EXPLORER)}
             >
-              Back
+              {tr("Back")}
             </Button>
             <Button
               variant="default"
               size="sm"
               className="whitespace-nowrap gap-2"
               onClick={() => void openPermissionHoldersReport(navigate, showToast, code)}
-              title="Create a report of the type Permission Holders: the run is authorized, audited and kept like every other report"
+              title={tr("Create a report of the type Permission Holders: the run is authorized, audited and kept like every other report")}
             >
               <IconReportSearch className="h-4 w-4" />
-              Permission Holders Report
+              {tr("Permission Holders Report")}
             </Button>
           </>
         }
@@ -404,7 +405,7 @@ export const AccessExplorerDetailView: React.FC = () => {
                   )}
                   {result && result.holderCount === 0 && (
                     <Badge color="amber" size="sm">
-                      Held by nobody
+                      {tr("Held by nobody")}
                     </Badge>
                   )}
                 </div>
@@ -453,36 +454,36 @@ export const AccessExplorerDetailView: React.FC = () => {
               <div className="space-y-4">
                 <WarningBanner
                   variant="info"
-                  description="Read only. A person holds a permission through an Active access profile that holds an Active permission set that contains it: the same chain the system uses when they sign in. To keep or send this list, create a report of the type Permission Holders."
+                  description={tr("Read only. A person holds a permission through an Active access profile that holds an Active permission set that contains it: the same chain the system uses when they sign in. To keep or send this list, create a report of the type Permission Holders.")}
                 />
                 <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
-                  <Field label="Permission">
+                  <Field label={tr("Permission")}>
                     <ReadOnly strong>{permission.name}</ReadOnly>
                   </Field>
-                  <Field label="Code">
+                  <Field label={tr("Code")}>
                     <ReadOnly>
                       <span className="font-mono text-xs">{permission.code}</span>
                     </ReadOnly>
                   </Field>
-                  <Field label="Module">
+                  <Field label={tr("Module")}>
                     <ReadOnly>{moduleLabel(permission.moduleKey)}</ReadOnly>
                   </Field>
-                  <Field label="Category">
+                  <Field label={tr("Category")}>
                     <ReadOnly>{permission.category || "—"}</ReadOnly>
                   </Field>
-                  <Field label="Permission Sets">
+                  <Field label={tr("Permission Sets")}>
                     <ReadOnly>{result.permissionSets.length}</ReadOnly>
                   </Field>
-                  <Field label="Access Profiles">
+                  <Field label={tr("Access Profiles")}>
                     <ReadOnly>{profileCount}</ReadOnly>
                   </Field>
-                  <Field label="People">
+                  <Field label={tr("People")}>
                     <ReadOnly>{result.holderCount}</ReadOnly>
                   </Field>
-                  <Field label="Active Accounts">
+                  <Field label={tr("Active Accounts")}>
                     <ReadOnly>{result.activeHolderCount}</ReadOnly>
                   </Field>
-                  <Field label="Description" className="md:col-span-2">
+                  <Field label={tr("Description")} className="md:col-span-2">
                     <div className="min-h-[76px] w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
                       <p className="whitespace-pre-line text-sm text-slate-700">
                         {permission.description || "No description available."}
@@ -504,8 +505,8 @@ export const AccessExplorerDetailView: React.FC = () => {
                         setSearch(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search people, department, profile or set…"
-                      aria-label="Search people"
+                      placeholder={tr("Search people, department, profile or set…")}
+                      aria-label={tr("Search people")}
                       className="w-full pl-9 pr-8 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                     />
                     {search && (
@@ -516,7 +517,7 @@ export const AccessExplorerDetailView: React.FC = () => {
                           setPage(1);
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                        aria-label="Clear search"
+                        aria-label={tr("Clear search")}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -529,10 +530,10 @@ export const AccessExplorerDetailView: React.FC = () => {
                         setActiveOnly(v);
                         setPage(1);
                       }}
-                      aria-label="Only active accounts"
+                      aria-label={tr("Only active accounts")}
                     />
                     <span className="text-sm text-slate-700">
-                      Only active accounts
+                      {tr("Only active accounts")}
                     </span>
                   </span>
                 </div>
@@ -548,11 +549,11 @@ export const AccessExplorerDetailView: React.FC = () => {
                     columns={columns}
                     emptyState={
                       <TableEmptyState
-                        title="Nobody holds this permission"
+                        title={tr("Nobody holds this permission")}
                         description={
                           debounced || !activeOnly
-                            ? "No person matches. Try another search, or switch off 'Only active accounts' to include the others."
-                            : "No person with an Active account holds it. Switch off 'Only active accounts' to include the others."
+                            ? tr("No person matches. Try another search, or switch off 'Only active accounts' to include the others.")
+                            : tr("No person with an Active account holds it. Switch off 'Only active accounts' to include the others.")
                         }
                       />
                     }
@@ -591,8 +592,8 @@ export const AccessExplorerDetailView: React.FC = () => {
                 }}
                 emptyState={
                   <TableEmptyState
-                    title="Nobody holds this permission"
-                    description="No active permission set contains this permission."
+                    title={tr("Nobody holds this permission")}
+                    description={tr("No active permission set contains this permission.")}
                   />
                 }
               />

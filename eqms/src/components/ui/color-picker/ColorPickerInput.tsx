@@ -131,7 +131,7 @@ export const ColorPickerInput: React.FC<ColorPickerInputProps> = ({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <span className="text-xs font-medium text-slate-700 sm:text-sm">{label}</span>
+            <span className="text-xs font-medium text-slate-700 sm:text-sm">{tr(label)}</span>
       )}
       <button
         ref={triggerRef}

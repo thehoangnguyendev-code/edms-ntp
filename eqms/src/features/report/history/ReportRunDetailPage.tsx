@@ -38,6 +38,7 @@ import {
 } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
 import { displayDateTime, formatFileSize } from "@/utils/format";
+import { tr, trFormat } from "@/i18n";
 
 const APPROVAL_LABEL: Record<string, string> = {
   APPROVED: "Approved",
@@ -132,7 +133,7 @@ export function ReportRunDetailPage() {
     setSearchParams(next, { replace: true });
     const file = run.status === "COMPLETED" ? run.artifacts.find((artifact) => !artifact.purgedAt) : undefined;
     if (file) void download(file);
-    else showToast({ type: "error", title: "The file cannot be downloaded", message: run.status === "COMPLETED" ? "The file was removed after it expired." : "The report is not complete yet: " + runStatusLabel(run.status) + ". Download it from this page when it is ready." });
+    else showToast({ type: "error", title: tr("The file cannot be downloaded"), message: run.status === "COMPLETED" ? "The file was removed after it expired." : "The report is not complete yet: " + runStatusLabel(run.status) + ". Download it from this page when it is ready." });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, searchParams]);
 
@@ -160,7 +161,7 @@ export function ReportRunDetailPage() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The legal hold was not changed",
+        title: tr("The legal hold was not changed"),
         message: reportError(e),
       });
     } finally {
@@ -175,7 +176,7 @@ export function ReportRunDetailPage() {
   const sortSpec = Array.isArray(run?.sortSpec) ? run.sortSpec : [];
   const template = run?.templateAtRun;
   const artifactColumns: DataTableColumn<ReportArtifactSummary>[] = [
-    { id: "format", header: "Output Format", cell: (row) => row.format },
+    { id: "format", header: tr("Output Format"), cell: (row) => row.format },
     {
       id: "name",
       header: "File name",
@@ -219,7 +220,7 @@ export function ReportRunDetailPage() {
         <button
           type="button"
           ref={fileMenu.getRef(row.id)}
-          aria-label="More actions"
+          aria-label={tr("More actions")}
           className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
           onClick={(event) => fileMenu.toggle(row.id, event)}
         >
@@ -253,10 +254,10 @@ export function ReportRunDetailPage() {
   // The same tab layout as the Report Template Details and the Document details.
   const tabs = useMemo<TabItem[]>(
     () => [
-      { id: "general", label: "General Information" },
-      { id: "files", label: "Report Files", count: run?.artifacts.length },
-      { id: "audit", label: "Audit Trail" },
-      { id: "notices", label: "Notices Sent", count: run?.deliveries?.length },
+      { id: "general", label: tr("General Information") },
+      { id: "files", label: tr("Report Files"), count: run?.artifacts.length },
+      { id: "audit", label: tr("Audit Trail") },
+      { id: "notices", label: tr("Notices Sent"), count: run?.deliveries?.length },
     ],
     [run],
   );
@@ -277,7 +278,7 @@ export function ReportRunDetailPage() {
       <PageHeader
         title={title}
         breadcrumbItems={reportBreadcrumbs(navigate, title, false, {
-          label: "Report Run History",
+          label: tr("Report Run History"),
           onClick: () => navigate("/report/history"),
         })}
         actions={
@@ -287,14 +288,14 @@ export function ReportRunDetailPage() {
               variant="outline-emerald"
               onClick={() => navigate("/report/history")}
             >
-              Back
+              {tr("Back")}
             </Button>
             <Button
               size="sm"
               variant="outline-emerald"
               onClick={() => setRefresh((n) => n + 1)}
             >
-              Refresh
+              {tr("Refresh")}
             </Button>
             {run && ["FAILED", "RETRY_SCHEDULED"].includes(run.status) && (
               <Button
@@ -302,7 +303,7 @@ export function ReportRunDetailPage() {
                 variant="outline-emerald"
                 onClick={() => void retry()}
               >
-                Retry generation
+                {tr("Retry generation")}
               </Button>
             )}
           </>
@@ -332,29 +333,29 @@ export function ReportRunDetailPage() {
             <div className="space-y-4 p-4 md:p-5">
               {shownTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                  <ReadonlyField label="Run Number" value={run.runLabel || "—"} />
-                  <ReadonlyField label="Queued At" value={when(run.queuedAt)} />
-                  <ReadonlyField label="Started At" value={when(run.startedAt)} />
+                  <ReadonlyField label={tr("Run Number")} value={run.runLabel || "—"} />
+                  <ReadonlyField label={tr("Queued At")} value={when(run.queuedAt)} />
+                  <ReadonlyField label={tr("Started At")} value={when(run.startedAt)} />
                   <ReadonlyField
-                    label="Completed At"
+                    label={tr("Completed At")}
                     value={when(run.completedAt)}
                   />
-                  <ReadonlyField label="Data As Of" value={when(run.asOfAt)} />
+                  <ReadonlyField label={tr("Data As Of")} value={when(run.asOfAt)} />
                   <ReadonlyField
-                    label="Generated Report Name"
+                    label={tr("Generated Report Name")}
                     value={run.reportTitle ?? run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Run Status"
+                    label={tr("Run Status")}
                     value={runStatusLabel(run.status)}
                   />
-                  <ReadonlyField label="Run Progress" value={`${run.progress}%`} />
+                  <ReadonlyField label={tr("Run Progress")} value={`${run.progress}%`} />
                   <ReadonlyField
-                    label="Attempts"
+                    label={tr("Attempts")}
                     value={String(run.attemptCount)}
                   />
                   <ReadonlyField
-                    label="Request"
+                    label={tr("Request")}
                     value={
                       run.requestType === "SCHEDULED"
                         ? "Scheduled"
@@ -362,54 +363,54 @@ export function ReportRunDetailPage() {
                     }
                   />
                   <ReadonlyField
-                    label="Schedule"
+                    label={tr("Schedule")}
                     value={run.scheduleId ? (run.scheduleName ?? "—") : "—"}
                   />
                   <ReadonlyField
-                    label="Requested By"
+                    label={tr("Requested By")}
                     value={run.requesterName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Requested Output Format"
+                    label={tr("Requested Output Format")}
                     value={run.requestedFormat}
                   />
                   <ReadonlyField
-                    label="Run Type"
+                    label={tr("Run Type")}
                     value={run.fullRun ? "Full (no filter)" : "Filtered"}
                   />
                   <ReadonlyField
-                    label="Failure Reason"
+                    label={tr("Failure Reason")}
                     value={codeLabel(run.reasonCode)}
                   />
                   {run.signature && (
                     <>
-                      <ReadonlyField label="Signed By" value={run.signature.signedBy} />
-                      <ReadonlyField label="Signed On" value={when(run.signature.signedAt)} />
+                      <ReadonlyField label={tr("Signed By")} value={run.signature.signedBy} />
+                      <ReadonlyField label={tr("Signed On")} value={when(run.signature.signedAt)} />
                       <div className="md:col-span-2">
-                        <ReadonlyField label="Reason For Signing" value={run.signature.reason ?? "—"} />
+                        <ReadonlyField label={tr("Reason For Signing")} value={run.signature.reason ?? "—"} />
                       </div>
                     </>
                   )}
                   <div className="md:col-span-2">
                     <ReadonlyField
-                      label="Message"
+                      label={tr("Message")}
                       value={run.errorMessage ?? "—"}
                     />
                   </div>
                   <ReadonlyField
-                    label="Report Template Name"
+                    label={tr("Report Template Name")}
                     value={template?.displayName ?? run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Report Template Number"
+                    label={tr("Report Template Number")}
                     value={run.definitionCode}
                   />
                   <ReadonlyField
-                    label="Report Template Revision"
+                    label={tr("Report Template Revision")}
                     value={reportRevisionLabel(run.revision)}
                   />
                   <ReadonlyField
-                    label="Approval At Run Time"
+                    label={tr("Approval At Run Time")}
                     value={
                       template?.approvalStatus
                         ? (APPROVAL_LABEL[template.approvalStatus] ??
@@ -418,7 +419,7 @@ export function ReportRunDetailPage() {
                     }
                   />
                   <ReadonlyField
-                    label="Approved Version"
+                    label={tr("Approved Version")}
                     value={
                       template?.approvedVersion != null
                         ? `v${template.approvedVersion}`
@@ -426,30 +427,30 @@ export function ReportRunDetailPage() {
                     }
                   />
                   <ReadonlyField
-                    label="Approved On"
+                    label={tr("Approved On")}
                     value={when(template?.approvedAt)}
                   />
                   <div className="flex items-center gap-3">
                     <label className="text-xs font-medium text-slate-700 sm:text-sm">
-                      Used For GMP Decisions?
+                      {tr("Used For GMP Decisions?")}
                     </label>
                     <Checkbox
                       id="gmpUse"
                       checked={Boolean(template?.gmpUse)}
                       disabled
-                      aria-label="Used for GMP decisions"
+                      aria-label={tr("Used for GMP decisions")}
                     />
                   </div>
                   <ReadonlyField
-                    label="Name Rule"
+                    label={tr("Name Rule")}
                     value={
                       template?.nameFormatId
                         ? "Applied"
-                        : "No rule (typed name)"
+                        : tr("No rule (typed name)")
                     }
                   />
                   <ReadonlyField
-                    label="Sort"
+                    label={tr("Sort")}
                     value={
                       sortSpec.length
                         ? sortSpec
@@ -463,7 +464,7 @@ export function ReportRunDetailPage() {
                       htmlFor="report-run-fields"
                       className="text-xs font-medium text-slate-700 sm:text-sm"
                     >
-                      Fields
+                      {tr("Fields")}
                     </label>
                     <textarea
                       id="report-run-fields"
@@ -478,7 +479,7 @@ export function ReportRunDetailPage() {
                       htmlFor="report-run-filters"
                       className="text-xs font-medium text-slate-700 sm:text-sm"
                     >
-                      Filters And Parameters
+                      {tr("Filters And Parameters")}
                     </label>
                     <textarea
                       id="report-run-filters"
@@ -494,8 +495,7 @@ export function ReportRunDetailPage() {
                 <>
                   {run.artifacts.some((file) => file.format !== "PDF") && (
                     <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 md:text-sm">
-                      A CSV or XLSX file is a data copy for analysis. It can be edited after it is downloaded, so it is not the controlled report: the controlled report is the file stored here.
-                      To check that a file you hold is the one EQMS produced, use Verify File in the Action menu.
+                      {tr("A CSV or XLSX file is a data copy for analysis. It can be edited after it is downloaded, so it is not the controlled report: the controlled report is the file stored here. To check that a file you hold is the one EQMS produced, use Verify File in the Action menu.")}
                     </p>
                   )}
                   <DataTable
@@ -509,17 +509,17 @@ export function ReportRunDetailPage() {
                       <div className="py-1">
                         {run?.status === "COMPLETED" && !menuFile.purgedAt && (
                           <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(menuFile); fileMenu.close(); }}>
-                            Download
+                            {tr("Download")}
                           </DropdownMenuItem>
                         )}
                         {run?.status === "COMPLETED" && !menuFile.purgedAt && (
                           <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { setPreviewing(menuFile); fileMenu.close(); }}>
-                            Preview
+                            {tr("Preview")}
                           </DropdownMenuItem>
                         )}
                         {run?.status === "COMPLETED" && !menuFile.purgedAt && (
                           <DropdownMenuItem icon={<IconStackCheck  className="h-4 w-4" />} onClick={() => { setVerifying(menuFile); fileMenu.close(); }}>
-                            Verify File
+                            {tr("Verify File")}
                           </DropdownMenuItem>
                         )}
                         {canHold && !menuFile.purgedAt && (
@@ -548,7 +548,7 @@ export function ReportRunDetailPage() {
               {shownTab === "notices" &&
                 (run.deliveries == null ? (
                   <p className="text-sm text-slate-500">
-                    Shown to people who manage scheduled reports.
+                    {tr("Shown to people who manage scheduled reports.")}
                   </p>
                 ) : (
                   <DataTable
@@ -565,14 +565,14 @@ export function ReportRunDetailPage() {
               variant="outline-emerald"
               onClick={() => navigate("/report/history")}
             >
-              Back
+              {tr("Back")}
             </Button>
             <Button
               size="sm"
               variant="outline-emerald"
               onClick={() => setRefresh((n) => n + 1)}
             >
-              Refresh
+              {tr("Refresh")}
             </Button>
             {run.revision != null &&
               hasPermission("reports.definition.view") && (
@@ -585,7 +585,7 @@ export function ReportRunDetailPage() {
                     )
                   }
                 >
-                  View Template Revision
+                  {tr("View Template Revision")}
                 </Button>
               )}
             {["FAILED", "RETRY_SCHEDULED"].includes(run.status) && (
@@ -594,7 +594,7 @@ export function ReportRunDetailPage() {
                 variant="outline-emerald"
                 onClick={() => void retry()}
               >
-                Retry Generation
+                {tr("Retry Generation")}
               </Button>
             )}
           </div>
@@ -604,7 +604,7 @@ export function ReportRunDetailPage() {
       <FormModal
         isOpen={!!verifying}
         onClose={closeVerify}
-        title="Verify File"
+        title={tr("Verify File")}
         description={`Choose the copy of ${verifying?.generatedFilename ?? "the file"} that you hold. It is read here to calculate its SHA-256 and is not kept. The result is recorded in the Audit Trail.`}
         confirmText="Check File"
         confirmDisabled={!verifyFile}
@@ -612,9 +612,9 @@ export function ReportRunDetailPage() {
         onConfirm={() => void checkFile()}
       >
         <TrainingFileDropzone
-          label="File to check"
+          label={tr("File to check")}
           accept=".csv,.xlsx,.pdf"
-          hint="CSV, XLSX or PDF file (max 50 MB)"
+          hint={tr("CSV, XLSX or PDF file (max 50 MB)")}
           maxMb={50}
           required
           file={verifyFile}
@@ -630,13 +630,13 @@ export function ReportRunDetailPage() {
           <div role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm ${verifyResult.match ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
             <p className="font-medium">
               {verifyResult.match
-                ? "This file is exactly the file EQMS stored for this run."
-                : "This file is NOT the file EQMS stored for this run. It has been changed, or it is a different file."}
+                ? tr("This file is exactly the file EQMS stored for this run.")
+                : tr("This file is NOT the file EQMS stored for this run. It has been changed, or it is a different file.")}
             </p>
             <dl className="mt-2 space-y-1 break-all text-xs">
-              <div><dt className="inline font-medium">Stored SHA-256: </dt><dd className="inline">{verifyResult.storedSha256}</dd></div>
-              <div><dt className="inline font-medium">Your file SHA-256: </dt><dd className="inline">{verifyResult.uploadedSha256}</dd></div>
-              <div><dt className="inline font-medium">Size: </dt><dd className="inline">stored {formatFileSize(verifyResult.storedSize)}, your file {formatFileSize(verifyResult.uploadedSize)}</dd></div>
+              <div><dt className="inline font-medium">{tr("Stored SHA-256:")} </dt><dd className="inline">{verifyResult.storedSha256}</dd></div>
+              <div><dt className="inline font-medium">{tr("Your file SHA-256:")} </dt><dd className="inline">{verifyResult.uploadedSha256}</dd></div>
+              <div><dt className="inline font-medium">{tr("Size:")} </dt><dd className="inline">{trFormat("stored {stored}, your file {yours}", { stored: formatFileSize(verifyResult.storedSize), yours: formatFileSize(verifyResult.uploadedSize) })}</dd></div>
             </dl>
           </div>
         )}
@@ -647,8 +647,8 @@ export function ReportRunDetailPage() {
         title={hold?.legalHold ? "Place legal hold" : "Release legal hold"}
         description={
           hold?.legalHold
-            ? "The file is kept and cannot be removed while the hold is set. Say why."
-            : "Releasing a hold lets the file be removed. A person other than the one who placed the hold must release it, and the release is signed."
+            ? tr("The file is kept and cannot be removed while the hold is set. Say why.")
+            : tr("Releasing a hold lets the file be removed. A person other than the one who placed the hold must release it, and the release is signed.")
         }
         confirmText={hold?.legalHold ? "Place hold" : "Continue to Sign"}
         confirmDisabled={!hold || !hold.reason.trim() || busy}
@@ -658,7 +658,7 @@ export function ReportRunDetailPage() {
           else setHold({ ...hold, step: "sign" });
         }}
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea
             rows={3}
             maxLength={500}

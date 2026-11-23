@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { VisibilityBox, DetailList } from "./VisibilityBox";
 import { VisibilityOptions, type VisibilityOption } from "@/components/ui/radio/VisibilityOptions";
 import { classifyModuleVisibility, levelRank, levelCodesOf, type ModuleVisibilityDef } from "./moduleVisibility";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * Chooses the record visibility of a module with two levels (Training Management, Reports) on an Access Profile. The choice is written as permissions
@@ -59,11 +60,11 @@ export const ModuleVisibilityPicker: React.FC<{
           disabled={disabled}
         />
         {current === null && (
-          <p className="text-xs text-slate-500">This profile grants no access to these records yet. Choose a level to grant it.</p>
+          <p className="text-xs text-slate-500">{tr("This profile grants no access to these records yet. Choose a level to grant it.")}</p>
         )}
         {floor > 0 && grantedBy && (
           <p className="text-xs text-slate-500">
-            Part of this level is granted by the shared Permission Set {grantedBy}. To give the profile a lower level, take that set off the profile.
+            {trFormat("Part of this level is granted by the shared Permission Set {set}. To give the profile a lower level, take that set off the profile.", { set: grantedBy })}
           </p>
         )}
       </>

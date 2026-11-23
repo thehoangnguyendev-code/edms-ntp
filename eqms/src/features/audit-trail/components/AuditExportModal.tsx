@@ -8,6 +8,7 @@ import { formatDateTime } from "@/utils/format";
 import { cn } from "@/components/ui/utils";
 import type { AuditTrailRecord } from "../types";
 import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
+import { tr } from "@/i18n";
 
 interface AuditExportModalProps {
   isOpen: boolean;
@@ -24,9 +25,9 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
   const { showToast } = useToast();
 
   const exportOptions: { format: ExportFormat; label: string; desc: string; icon: React.ReactNode }[] = [
-    { format: "json", label: "Export as JSON", desc: "Structured data format", icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "pdf", label: "Export as PDF", desc: "Printable document format", icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "txt", label: "Export as TXT", desc: "Plain text format", icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "json", label: tr("Export as JSON"), desc: "Structured data format", icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "pdf", label: tr("Export as PDF"), desc: "Printable document format", icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "txt", label: tr("Export as TXT"), desc: "Plain text format", icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
   ];
 
   const doExport = async (format: ExportFormat) => {
@@ -55,7 +56,7 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
       } catch (error) {
         showToast({
           type: "error",
-          title: "Export failed",
+          title: tr("Export failed"),
           message: error instanceof Error ? error.message : "Could not export audit record as PDF.",
           duration: 3500,
         });
@@ -119,8 +120,8 @@ ${record.metadata && Object.keys(record.metadata).length ? `\nMetadata:\n${Objec
       <FormModal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Export Audit Record"
-        description={<>Select export format for audit record <span className="font-medium text-slate-700">{record.entityLabel || record.entityName || formatAuditActionLabel(record.action)}</span></>}
+        title={tr("Export Audit Record")}
+        description={<>{tr("Select export format for audit record")} <span className="font-medium text-slate-700">{record.entityLabel || record.entityName || formatAuditActionLabel(record.action)}</span></>}
         size="md"
         showCancel
         cancelText="Close"

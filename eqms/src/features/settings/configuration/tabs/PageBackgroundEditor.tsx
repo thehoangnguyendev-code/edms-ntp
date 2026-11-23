@@ -13,13 +13,14 @@ import {
   type PageBackground,
   type PageBackgroundMode,
 } from "@/config/page-background";
+import { tr, trFormat } from "@/i18n";
 
 const MODES: { label: string; value: PageBackgroundMode }[] = [
-  { label: "System default", value: "default" },
-  { label: "Solid color", value: "solid" },
-  { label: "Linear gradient", value: "linear" },
-  { label: "Radial gradient", value: "radial" },
-  { label: "Conic gradient", value: "conic" },
+  { label: tr("System default"), value: "default" },
+  { label: tr("Solid color"), value: "solid" },
+  { label: tr("Linear gradient"), value: "linear" },
+  { label: tr("Radial gradient"), value: "radial" },
+  { label: tr("Conic gradient"), value: "conic" },
 ];
 
 /** What "System default" is, for the sign-in page and for the main layout alike: Tailwind's bg-gray-100/50 (gray-100, half transparent). Keep it in step with AUTH_UI.pageWrapper and MainLayout. */
@@ -100,33 +101,33 @@ export function PageBackgroundEditor({
   };
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 p-4">
-      <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+      <h4 className="text-sm font-semibold text-slate-800">{tr(title)}</h4>
       <Select
-        label={`${title} background style`}
+        label={`${tr(title)} ${tr("background style")}`}
         value={draft.mode}
-        options={allowImage ? [...MODES, { label: 'Background image', value: 'image' }, { label: 'Background video', value: 'video' }] : MODES}
+        options={(allowImage ? [...MODES, { label: tr('Background image'), value: 'image' }, { label: tr('Background video'), value: 'video' }] : MODES).map((option) => ({ ...option, label: tr(option.label) }))}
         onChange={(mode) => patch({ mode: mode as PageBackgroundMode })}
       />
       {draft.mode !== "default" && (
         <>
           {draft.mode === 'video' && <div className="space-y-3">
-            <input ref={videoInput} aria-label="Authentication background video" type="file" accept=".mp4,.mov,.m4v,.3gp,.webm,.mkv,.avi,.wmv,.asf,.flv,.mpg,.mpeg,.ts,.mts,.ogv,.ogg,video/*" className="sr-only" onChange={(event) => { void uploadVideo(event.target.files?.[0]); event.target.value = ''; }} />
-            <Button variant="outline-emerald" size="sm" loading={processing} loadingText="Processing video..." onClick={() => videoInput.current?.click()}>{draft.videoId ? 'Replace Video' : 'Upload Video'}</Button>
-            <p className="text-xs text-slate-500">MP4, MOV, M4V, 3GP, WebM, MKV, AVI, WMV, FLV, MPG, TS or OGV; up to 30 MB and 15 seconds. Video is visible before sign-in.</p>
+            <input ref={videoInput} aria-label={tr("Authentication background video")} type="file" accept=".mp4,.mov,.m4v,.3gp,.webm,.mkv,.avi,.wmv,.asf,.flv,.mpg,.mpeg,.ts,.mts,.ogv,.ogg,video/*" className="sr-only" onChange={(event) => { void uploadVideo(event.target.files?.[0]); event.target.value = ''; }} />
+            <Button variant="outline-emerald" size="sm" loading={processing} loadingText={tr("Processing video...")} onClick={() => videoInput.current?.click()}>{draft.videoId ? tr('Replace Video') : tr('Upload Video')}</Button>
+            <p className="text-xs text-slate-500">{tr("MP4, MOV, M4V, 3GP, WebM, MKV, AVI, WMV, FLV, MPG, TS or OGV; up to 30 MB and 15 seconds. Video is visible before sign-in.")}</p>
             {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-            <Checkbox label="Repeat video" checked={draft.videoLoop ?? true} onChange={(videoLoop) => patch({ videoLoop })} />
-            <ColorPickerInput label="Overlay color" value={draft.overlayColor ?? '#000000'} onChange={(overlayColor) => patch({ overlayColor })} />
-            <div className="text-sm text-slate-700">Overlay opacity ({draft.overlayOpacity ?? 20}%)<Slider label="Overlay opacity" value={draft.overlayOpacity ?? 20} onChange={(overlayOpacity) => patch({ overlayOpacity })} /></div>
-            {videoPreview && <div className="relative h-32 overflow-hidden rounded-lg bg-slate-100"><video aria-label="Video preview" src={videoPreview} autoPlay muted playsInline loop={draft.videoLoop ?? true} className="h-full w-full object-cover" /><div className="pointer-events-none absolute inset-0" style={{ backgroundColor: draft.overlayColor ?? '#000000', opacity: (draft.overlayOpacity ?? 20) / 100 }} /></div>}
+            <Checkbox label={tr("Repeat video")} checked={draft.videoLoop ?? true} onChange={(videoLoop) => patch({ videoLoop })} />
+            <ColorPickerInput label={tr("Overlay color")} value={draft.overlayColor ?? '#000000'} onChange={(overlayColor) => patch({ overlayColor })} />
+                <div className="text-sm text-slate-700">{tr("Overlay opacity")} ({draft.overlayOpacity ?? 20}%)<Slider label={tr("Overlay opacity")} value={draft.overlayOpacity ?? 20} onChange={(overlayOpacity) => patch({ overlayOpacity })} /></div>
+            {videoPreview && <div className="relative h-32 overflow-hidden rounded-lg bg-slate-100"><video aria-label={tr("Video preview")} src={videoPreview} autoPlay muted playsInline loop={draft.videoLoop ?? true} className="h-full w-full object-cover" /><div className="pointer-events-none absolute inset-0" style={{ backgroundColor: draft.overlayColor ?? '#000000', opacity: (draft.overlayOpacity ?? 20) / 100 }} /></div>}
           </div>}
           {draft.mode === 'image' && <div className="space-y-3">
-            <input ref={fileInput} aria-label="Authentication background image" type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} />
-            <Button variant="outline-emerald" size="sm" onClick={() => fileInput.current?.click()}>{draft.image ? 'Replace Image' : 'Upload Image'}</Button>
-            <p className="text-xs text-slate-500">PNG, JPG or WebP, up to 1 MB. Image is visible on the sign-in page.</p>
+            <input ref={fileInput} aria-label={tr("Authentication background image")} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} />
+            <Button variant="outline-emerald" size="sm" onClick={() => fileInput.current?.click()}>{draft.image ? tr('Replace Image') : tr('Upload Image')}</Button>
+            <p className="text-xs text-slate-500">{tr("PNG, JPG or WebP, up to 1 MB. Image is visible on the sign-in page.")}</p>
             {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-            <Select label="Image display" value={draft.imageFit ?? 'cover'} options={[{label:'Fill',value:'cover'}, {label:'Fit',value:'contain'}, {label:'Tile',value:'repeat'}]} onChange={(imageFit) => patch({ imageFit: imageFit as 'cover' | 'contain' | 'repeat' })} />
-            <ColorPickerInput label="Overlay color" value={draft.overlayColor ?? '#000000'} onChange={(overlayColor) => patch({ overlayColor })} />
-            <div className="text-sm text-slate-700">Overlay opacity ({draft.overlayOpacity ?? 20}%)<Slider label="Overlay opacity" value={draft.overlayOpacity ?? 20} onChange={(overlayOpacity) => patch({ overlayOpacity })} /></div>
+            <Select label={tr("Image display")} value={draft.imageFit ?? 'cover'} options={[{label:tr('Fill'),value:'cover'}, {label:tr('Fit'),value:'contain'}, {label:tr('Tile'),value:'repeat'}]} onChange={(imageFit) => patch({ imageFit: imageFit as 'cover' | 'contain' | 'repeat' })} />
+            <ColorPickerInput label={tr("Overlay color")} value={draft.overlayColor ?? '#000000'} onChange={(overlayColor) => patch({ overlayColor })} />
+                <div className="text-sm text-slate-700">{tr("Overlay opacity")} ({draft.overlayOpacity ?? 20}%)<Slider label={tr("Overlay opacity")} value={draft.overlayOpacity ?? 20} onChange={(overlayOpacity) => patch({ overlayOpacity })} /></div>
           </div>}
           {draft.mode !== 'image' && draft.mode !== 'video' && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <AnimatePresence initial={false}>{(gradient ? draft.colors : draft.colors.slice(0, 1)).map(
@@ -134,7 +135,7 @@ export function PageBackgroundEditor({
                 <motion.div key={ids.current[index]} {...rowMotion} layout={!reduceMotion} className="flex min-w-0 items-end gap-2" draggable={gradient} onDragStart={() => setDragIndex(index)} onDragOver={(event) => { if (gradient) event.preventDefault(); }} onDrop={(event) => { event.preventDefault(); if (dragIndex !== null) reorder(dragIndex, index); setDragIndex(null); }} onDragEnd={() => setDragIndex(null)}>
                   <div className="min-w-0 flex-1">
                     <ColorPickerInput
-                      label={gradient ? `Color ${index + 1}` : "Color"}
+                      label={gradient ? trFormat("Color {number}", { number: index + 1 }) : tr("Color")}
                       value={color}
                       onChange={(next) =>
                         patch({
@@ -168,7 +169,7 @@ export function PageBackgroundEditor({
             )}</AnimatePresence>
           </div>}
           {gradient && <div className="space-y-3 sm:space-y-4"><AnimatePresence initial={false}>{draft.colors.map((color, index) => <motion.div key={ids.current[index]} {...rowMotion} layout={!reduceMotion} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 sm:flex-nowrap">
-            <span className="w-16 shrink-0">Color {index + 1}</span><Slider label={`Color ${index + 1} position`} min={index ? stops[index - 1] : 0} max={index < stops.length - 1 ? stops[index + 1] : 100} value={stops[index]} onChange={(value) => patch({ stops: stops.map((stop, i) => i === index ? value : stop) })} className="min-w-[5rem] flex-1" /><span className="w-10 text-right tabular-nums">{stops[index]}%</span>
+            <span className="w-16 shrink-0">{tr("Color")} {index + 1}</span><Slider label={`Color ${index + 1} position`} min={index ? stops[index - 1] : 0} max={index < stops.length - 1 ? stops[index + 1] : 100} value={stops[index]} onChange={(value) => patch({ stops: stops.map((stop, i) => i === index ? value : stop) })} className="min-w-[5rem] flex-1" /><span className="w-10 text-right tabular-nums">{stops[index]}%</span>
             <div className="ml-auto flex gap-1"><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} left`} aria-label={`Move color ${index + 1} left`} disabled={index === 0} onClick={() => reorder(index, index - 1)}><IconArrowLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} right`} aria-label={`Move color ${index + 1} right`} disabled={index === draft.colors.length - 1} onClick={() => reorder(index, index + 1)}><IconArrowRight className="h-4 w-4" /></Button></div>
           </motion.div>)}</AnimatePresence></div>}
           {gradient && draft.colors.length < 5 && (
@@ -180,13 +181,13 @@ export function PageBackgroundEditor({
               onClick={() => patch({ colors: [...draft.colors, "#FFFFFF"], stops: [...stops, 100] })}
             >
               <IconPlus className="h-4 w-4" aria-hidden="true" />
-              Add Color
+              {tr("Add Color")}
             </Button>
           )}
           {draft.mode === 'radial' && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{(['centerX', 'centerY'] as const).map((key) => <div key={key} className="text-sm text-slate-700">{key === 'centerX' ? 'Center horizontal' : 'Center vertical'} ({draft[key] ?? 50}%)<Slider label={key === 'centerX' ? 'Center horizontal' : 'Center vertical'} value={draft[key] ?? 50} onChange={(value) => patch({ [key]: value })} /></div>)}</div>}
           {(draft.mode === "linear" || draft.mode === "conic") && (
             <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-              Angle (0–360°)
+              {tr("Angle (0–360°)")}
               <input
                 type="number"
                 min={0}
@@ -221,8 +222,8 @@ export function PageBackgroundEditor({
           />
           <p className="text-xs text-slate-500">
             {allowImage
-              ? "The built-in Authentication background: light grey (bg-gray-100/50). Choose another style to replace it."
-              : "The built-in Main Layout background: light grey (bg-gray-100/50). Choose another style to replace it."}
+              ? tr("The built-in Authentication background: light grey (bg-gray-100/50). Choose another style to replace it.")
+              : tr("The built-in Main Layout background: light grey (bg-gray-100/50). Choose another style to replace it.")}
           </p>
         </div>
       )}

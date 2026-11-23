@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { useToast } from "@/components/ui/toast";
 import { IconRefresh } from "@tabler/icons-react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { tr } from "@/i18n";
 
 interface CredentialsModalProps {
   isOpen: boolean;
@@ -33,20 +34,20 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Login Credentials Generated"
+      title={tr("Login Credentials Generated")}
       confirmText="Done"
       showCancel={false}
       size="md"
     >
       <div className="space-y-4">
-        <WarningBanner variant="info" title="Important: Save these login credentials.">
-          These credentials can be used to sign in to the system. The password is temporary and must be changed on the user's first login.
+        <WarningBanner variant="info" title={tr("Important: Save these login credentials.")}>
+          {tr("These credentials can be used to sign in to the system. The password is temporary and must be changed on the user's first login.")}
         </WarningBanner>
 
         {/* Employee ID */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
-            Employee ID
+            {tr("Employee ID")}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -57,7 +58,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
             />
             <CopyButton
               text={employeeCode}
-              label="Employee ID"
+              label={tr("Employee ID")}
               showToast={showToast}
             />
           </div>
@@ -66,7 +67,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
         {/* Username */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
-            Username
+            {tr("Username")}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -77,7 +78,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
             />
             <CopyButton
               text={username}
-              label="Username"
+              label={tr("Username")}
               showToast={showToast}
             />
           </div>
@@ -86,7 +87,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
         {/* Password */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2 capitalize">
-            Temporary Password
+            {tr("Temporary Password")}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -98,19 +99,19 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
             <button
               onClick={onRegeneratePassword}
               disabled={isRegeneratingPassword}
-              title="Regenerate Password"
+              title={tr("Regenerate Password")}
               className="flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-emerald-300 hover:text-emerald-600 transition-all duration-200 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <IconRefresh className={cn("h-4 w-4", isRegeneratingPassword && "animate-spin")} />
             </button>
             <CopyButton
               text={password}
-              label="Password"
+              label={tr("Password")}
               showToast={showToast}
             />
           </div>
           <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">
-            Click refresh icon to generate a new temporary password
+            {tr("Click refresh icon to generate a new temporary password")}
           </p>
         </div>
 
@@ -147,7 +148,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
               console.error("Failed to copy credentials:", err);
               showToast({
                 type: "error",
-                title: "Copy Failed",
+                title: tr("Copy Failed"),
                 message: "Failed to copy credentials to clipboard",
               });
             }
@@ -155,7 +156,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
           className="w-full flex items-center justify-center gap-2 h-9 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium"
         >
           <Copy className="h-4 w-4" />
-          Copy All Credentials
+          {tr("Copy All Credentials")}
         </Button>
       </div>
     </FormModal>
@@ -203,7 +204,7 @@ const CopyButton: React.FC<{
       console.error("Failed to copy text:", err);
       showToast({
         type: "error",
-        title: "Copy Failed",
+        title: tr("Copy Failed"),
         message: `Failed to copy ${label.toLowerCase()}`,
       });
     }

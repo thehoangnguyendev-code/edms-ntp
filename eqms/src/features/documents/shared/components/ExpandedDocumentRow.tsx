@@ -12,6 +12,7 @@ import {
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { getStatusBadgeColor } from "@/utils/status";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 // What the expanded row shows is fetched on demand. To make the row open with its content already in it, the chevron asks for it
 // as soon as the pointer reaches it (see preloadExpandedDocumentDetails), and what was fetched is remembered for a short while.
@@ -244,36 +245,36 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                   {isLoadingDetails && (
                     <div className="flex items-center gap-2 text-slate-500 text-xs font-medium py-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
-                      Loading details...
+                      {tr("Loading details...")}
                     </div>
                   )}
 
                   {!isLoadingDetails && documentId && fetchedRevisions && fetchedRevisions.length > 0 && (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Revisions ({fetchedRevisions.length})
+                        {trFormat("Revisions ({count})", { count: fetchedRevisions.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
-                                No.
+                                {tr("No.")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Revision Number
+                                {tr("Revision Number")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Created
+                                {tr("Created")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Opened By
+                                {tr("Opened By")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Revision Name
+                                {tr("Revision Name")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Status
+                                {tr("Status")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -314,35 +315,35 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                   {!isLoadingDetails && revisionId && fetchedParentDocument && (
                     <div className="w-full">
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Document Master
+                        {tr("Document Master")}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table7}>
-                                No.
+                                {tr("No.")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Number
+                                {tr("Document Number")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Created
+                                {tr("Created")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Opened By
+                                {tr("Opened By")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Name
+                                {tr("Document Name")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Status
+                                {tr("Status")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Author
+                                {tr("Author")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Valid Until
+                                {tr("Valid Until")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -387,26 +388,26 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                   {!isLoadingDetails && normalizedRevision.relatedDocuments.length > 0 && (
                     <div>
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Related Documents ({normalizedRevision.relatedDocuments.length})
+                        {trFormat("Related Documents ({count})", { count: normalizedRevision.relatedDocuments.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Number
+                                {tr("Document Number")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Name
+                                {tr("Document Name")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Revision
+                                {tr("Revision")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Type
+                                {tr("Type")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Status
+                                {tr("Status")}
                               </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                           </TableMarkup.Head>
@@ -442,30 +443,30 @@ export const ExpandedDocumentRow: React.FC<ExpandedDocumentRowProps> = ({
                   {!isLoadingDetails && normalizedRevision.correlatedDocuments.length > 0 && (
                     <div>
                       <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                        Correlated Documents ({normalizedRevision.correlatedDocuments.length})
+                        {trFormat("Correlated Documents ({count})", { count: normalizedRevision.correlatedDocuments.length })}
                       </p>
                       <div className="rounded-lg border border-slate-200 overflow-hidden inline-block max-w-full">
                         <TableMarkup.Root className="text-xs table-auto w-auto">
                           <TableMarkup.Head>
                             <TableMarkup.Row className="bg-slate-100 border-b border-slate-200 uppercase">
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Number
+                                {tr("Document Number")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Document Name
+                                {tr("Document Name")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Revision
+                                {tr("Revision")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Type
+                                {tr("Type")}
                               </TableMarkup.HeaderCell>
                               <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                Status
+                                {tr("Status")}
                               </TableMarkup.HeaderCell>
                               {showCorrelationType && (
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.table9}>
-                                  Correlation Type
+                                  {tr("Correlation Type")}
                                 </TableMarkup.HeaderCell>
                               )}
                             </TableMarkup.Row>

@@ -41,7 +41,7 @@ export interface TrainingActivitySummary {
   createdByName?: string | null;
   revisionId?: string | null;
   /** What the person may do with the row, worked out by the server (one menu entry each). */
-  actions?: { edit: boolean; conduct: boolean; review: boolean; approve: boolean; confirm: boolean; completeTraining: boolean };
+  actions?: { edit: boolean; conduct: boolean; review: boolean; approve: boolean; confirm: boolean; supplementary?: boolean; completeTraining: boolean };
 }
 
 /** A session has no "held" state: it has started when it has the day it was conducted (its first action in the workspace). */
@@ -442,8 +442,13 @@ export const trainingMatrixApi = {
 
 export interface TrainingComplianceSummary {
   required: number; ok: number; missing: number; due: number; people: number; percentTrained: number | null; hasEffectiveMatrix: boolean;
+  /** The effective matrix the figures are measured against, and the moment the server counted them. */ matrixVersionNo?: number; matrixEffectiveAt?: string | null; generatedAt?: string;
+  /** The same figures for each Work Position of the matrix. */ positions?: TrainingComplianceSummaryPosition[];
   peopleWithoutPosition: number; overdueActivities: number; dueSoonActivities: number; linesBeyondSopWindow?: number; openReviews?: number; /** New employees, and those of them who still miss a training. */ newEmployees?: number; newEmployeesWithGaps?: number;
 }
+export interface TrainingComplianceSummaryPosition { id: string; name: string; people: number; required: number; ok: number; missing: number; due: number; percentTrained: number | null }
+export interface TrainingGapTraining { id: string; code?: string | null; title: string; people: number; missing: number; due: number }
+export interface TrainingGapTrainings { data: TrainingGapTraining[]; matrixVersionNo?: number; matrixEffectiveAt?: string | null; generatedAt?: string }
 export interface TrainingGap { pid: string; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName?: string | null; title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null; status: "MISSING" | "DUE" | "OK"; /** Started in the last days that Training Properties allows. */ isNew?: boolean; /** Holds no Work Position: only the rows for all employees apply. */ noRole?: boolean; allEmployees?: boolean; /** The Department that gives the training. */ unitName?: string | null; tname?: string | null; dnum?: string | null }
 /** A session of a planned training activity that covers a training. */
 export interface TrainingPlannedSession { activityId: string; trainingNumber: string; trainingTopics: string; kind: string; status: string; sessionId: string; sessionNo: number; scheduledOn?: string | null; canAdd: boolean; participants: number }
@@ -721,7 +726,7 @@ export const trainingCopyApi = {
 export interface TrainingSuspension {
   id: string; personUserId: string; fullName: string; employeeCode?: string | null; avatar?: string | null; position?: string | null; activityId: string; trainingNumber: string;
   topicText?: string | null; percent?: number | null; status: "OPEN" | "CLEARED"; raisedAt: string; clearedAt?: string | null; clearBasis?: "RETRAINED_PASSED" | "RESUMED_BY_HEAD" | null;
-  clearReason?: string | null; clearedByName?: string | null; clearTrainingNumber?: string | null; canResume: boolean;
+  clearReason?: string | null; clearedByName?: string | null; clearTrainingNumber?: string | null;
 }
 /** How long the records of a person who has left are kept (SOP.0003 5.3.10). */
 export interface TrainingRetentionRow {
@@ -740,7 +745,6 @@ export interface TrainingImpactContext {
 }
 export const trainingFollowUpApi = {
   suspensions: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingSuspension>>("/training/compliance/suspensions", { params })).data,
-  resume: async (id: string, reason: string, signatureToken: string) => (await apiClient.post(`/training/compliance/suspensions/${id}/resume`, { reason, signatureToken })).data,
   retention: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingRetentionRow> & { retentionYears: number }>("/training/compliance/retention", { params })).data,
   documentImpactAssessments: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingImpactRow>>("/training/document-impact-assessments", { params })).data,
   documentImpactAssessmentsSummary: async (departmentId?: string) => (await apiClient.get<{ pending: number; matrixUpdatePending: number }>("/training/document-impact-assessments/summary", { params: { departmentId } })).data,
@@ -757,11 +761,34 @@ export const trainingComplianceApi = {
   plannedTrainings: async (params: { topicName?: string; documentNumber?: string }) => (await apiClient.get<{ data: TrainingPlannedSession[] }>("/training/compliance/planned-trainings", { params })).data.data,
   summary: async (departmentId?: string) => (await apiClient.get<TrainingComplianceSummary>("/training/compliance/summary", { params: { departmentId } })).data,
   coverage: async (params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingGap>>("/training/compliance/coverage", { params })).data,
+  gapTrainings: async (departmentId?: string) => (await apiClient.get<TrainingGapTrainings>("/training/compliance/coverage/trainings", { params: { departmentId } })).data,
   positions: async (departmentId?: string) => (await apiClient.get<CompletionPosition[]>("/training/compliance/positions", { params: { departmentId } })).data,
   cellDetail: async (params: { departmentId?: string; personId: string; rowId: string }) => (await apiClient.get<CompletionCellDetail>("/training/compliance/matrix-completion/cell", { params })).data,
   printCompletion: async (params: Record<string, string | number | boolean | undefined>) => {
     try {
       return (await apiClient.get<Blob>("/training/compliance/matrix-completion/print", { params, responseType: "blob" })).data;
+    } catch (e) {
+      const response = (e as { response?: { data?: unknown } }).response;
+      if (response?.data instanceof Blob) {
+        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+      }
+      throw e;
+    }
+  },
+  printSummary: async (params: Record<string, string | number | boolean | undefined>) => {
+    try {
+      return (await apiClient.get<Blob>("/training/compliance/summary/print", { params, responseType: "blob" })).data;
+    } catch (e) {
+      const response = (e as { response?: { data?: unknown } }).response;
+      if (response?.data instanceof Blob) {
+        try { response.data = JSON.parse(await response.data.text()); } catch { /* keep the original error */ }
+      }
+      throw e;
+    }
+  },
+  printGaps: async (params: Record<string, string | number | boolean | undefined>) => {
+    try {
+      return (await apiClient.get<Blob>("/training/compliance/coverage/print", { params, responseType: "blob" })).data;
     } catch (e) {
       const response = (e as { response?: { data?: unknown } }).response;
       if (response?.data instanceof Blob) {
@@ -791,7 +818,7 @@ export interface CompletionSummary {
   people: number; ready: number; withGap: number;
   rows: Record<string, { counts: Partial<Record<CompletionState, number>>; open: { personId: string; fullName: string; employeeCode?: string | null; status: CompletionState }[]; moreOpen: number }>;
 }
-export interface MatrixCompletion { summary?: CompletionSummary; hasEffectiveMatrix: boolean; matrixVersionNo?: number; data: CompletionPerson[]; columns: CompletionColumn[]; pagination: PageInfo; columnPagination: PageInfo }
+export interface MatrixCompletion { summary?: CompletionSummary; hasEffectiveMatrix: boolean; matrixVersionNo?: number; matrixEffectiveAt?: string | null; generatedAt?: string; data: CompletionPerson[]; columns: CompletionColumn[]; pagination: PageInfo; columnPagination: PageInfo }
 
 export interface TrainingJobSummary { id: string; issueNo: number; caseType: "INITIAL" | "CHANGE" | "ADDITIONAL"; status: "DRAFT" | "PENDING_RECEIVER" | "EFFECTIVE" | "OBSOLETED" | "CANCELLED"; createdAt: string; effectiveAt?: string | null; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName: string; positions?: { id: string; name: string; carried: boolean }[]; positionsCount?: number; departmentName: string; actions: { view: boolean; continueDraft: boolean; review: boolean } }
 /** One line of part 4 of APD.0024: the Vietnamese text and the English one under it (italic on the form); a box holds several lines. */

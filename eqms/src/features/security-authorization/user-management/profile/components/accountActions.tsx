@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React from "react";
 import { KeyRound, LockOpen, PauseCircle, RotateCcw, SmartphoneNfc } from "lucide-react";
 import { IconUserX } from "@tabler/icons-react";
@@ -43,8 +44,8 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
   if (input.canUnlock && user.accountLocked) {
     actions.push({
       key: "unlock",
-      label: "Unlock Account",
-      description: "The account was locked after too many failed sign-ins. Unlock it now instead of waiting.",
+      label: tr("Unlock Account"),
+      description: tr("The account was locked after too many failed sign-ins. Unlock it now instead of waiting."),
       icon: <LockOpen className="h-4 w-4" />,
       onClick: () => input.onUnlock?.(),
     });
@@ -52,8 +53,8 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
   if (input.canResetPassword) {
     actions.push({
       key: "resetPassword",
-      label: "Reset Password",
-      description: "Issue a new temporary password. The user must change it at the next sign-in.",
+      label: tr("Reset Password"),
+      description: tr("Issue a new temporary password. The user must change it at the next sign-in."),
       icon: <KeyRound className="h-4 w-4" />,
       onClick: () => input.onResetPassword?.(),
     });
@@ -62,7 +63,7 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
     actions.push({
       key: "resetMfa",
       label: "Reset MFA",
-      description: "The user lost the device of their authenticator. They are signed out and set up multi-factor authentication again at the next sign-in. Needs your electronic signature and a reason.",
+      description: tr("The user lost the device of their authenticator. They are signed out and set up multi-factor authentication again at the next sign-in. Needs your electronic signature and a reason."),
       icon: <SmartphoneNfc className="h-4 w-4" />,
       onClick: () => input.onResetMfa?.(),
     });
@@ -71,7 +72,7 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
     actions.push({
       key: "suspend",
       label: "Suspend",
-      description: "Block sign-in until a date you choose. Needs your electronic signature and a reason.",
+      description: tr("Block sign-in until a date you choose. Needs your electronic signature and a reason."),
       icon: <PauseCircle className="h-4 w-4" />,
       onClick: () => input.onSuspend?.(),
     });
@@ -80,7 +81,7 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
     actions.push({
       key: "reinstate",
       label: "Reinstate",
-      description: "Set the account back to Active so the user regains full access.",
+      description: tr("Set the account back to Active so the user regains full access."),
       icon: <RotateCcw className="h-4 w-4" />,
       onClick: () => input.onReinstate?.(),
     });
@@ -89,7 +90,7 @@ export function buildAccountActions(input: AccountActionInput): AccountAction[] 
     actions.push({
       key: "terminate",
       label: "Terminate",
-      description: "Ends employment and closes the account. This cannot be undone. Needs your electronic signature.",
+      description: tr("Ends employment and closes the account. This cannot be undone. Needs your electronic signature."),
       icon: <IconUserX className="h-4 w-4" />,
       destructive: true,
       onClick: () => input.onTerminate?.(),

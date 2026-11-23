@@ -12,6 +12,7 @@ import { useAuthUi } from "./useAuthUi";
 import { AuthBackLink, AuthLayout, AuthTopBackButton } from "./components";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { OtpInput } from "@/components/ui/otp-input";
+import { tr, trFormat } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -221,7 +222,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
         isOpen={errorModalOpen}
         onClose={() => setErrorModalOpen(false)}
         type="error"
-        title="Verification Failed"
+        title={tr("Verification Failed")}
         description={error}
         confirmText="Close"
       />
@@ -230,7 +231,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
       <AuthLayout
         left={
           <div className={ui.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
+            <AuthTopBackButton onClick={onBackToLogin} label={tr("Back to Sign In")} disabled={isLoading} />
             <div className={ui.brand}>
               <div data-login-logo><BrandLogo className="h-8 w-auto object-contain sm:h-9" /></div>
             </div>
@@ -248,9 +249,9 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                   >
                     <div className={ui.headerArea}>
                       <div className={ui.headingBlock}>
-                        <h1 className={ui.pageTitle}>Verify Your Identity</h1>
+                        <h1 className={ui.pageTitle}>{tr("Verify Your Identity")}</h1>
                         <p className={ui.description}>
-                          Select a verification method for account <span className="font-semibold text-slate-700">{username}</span>.
+                          {tr("Select a verification method for account")} <span className="font-semibold text-slate-700">{username}</span>.
                         </p>
                       </div>
                     </div>
@@ -267,11 +268,11 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             <IconMailOpened size={26} stroke={1.5} className="h-[26px] w-[26px] sm:h-[30px] sm:w-[30px]" />
                           </span>
                           <div>
-                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">Email Authentication</p>
-                            <p className="text-xs text-slate-500">Receive the code at {email}</p>
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">{tr("Email Authentication")}</p>
+                            <p className="text-xs text-slate-500">{trFormat("Receive the code at {email}", { email })}</p>
                           </div>
                         </div>
-                        {!emailMethodEnabled && <span className="text-xs font-medium text-slate-400">Unavailable</span>}
+                        {!emailMethodEnabled && <span className="text-xs font-medium text-slate-400">{tr("Unavailable")}</span>}
                       </button>
 
                       <button
@@ -285,16 +286,16 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             <IconQrcode size={26} stroke={1.5} className="h-[26px] w-[26px] sm:h-[30px] sm:w-[30px]" />
                           </span>
                           <div>
-                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">Authenticator App</p>
-                            <p className="text-xs text-slate-500">Use code from your authenticator app</p>
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">{tr("Authenticator App")}</p>
+                            <p className="text-xs text-slate-500">{tr("Use code from your authenticator app")}</p>
                           </div>
                         </div>
-                        {!appMethodEnabled && <span className="text-xs font-medium text-slate-400">Unavailable</span>}
+                        {!appMethodEnabled && <span className="text-xs font-medium text-slate-400">{tr("Unavailable")}</span>}
                       </button>
                     </div>
 
                     <div className="hidden sm:block">
-                      <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" />
+                      <AuthBackLink onClick={onBackToLogin} label={tr("Back to Sign In")} />
                     </div>
                   </motion.div>
                 ) : (
@@ -309,14 +310,14 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                   >
                     <div className={cn(ui.headerArea, "mb-1 sm:mb-1")}>
                       <div className={ui.headingBlock}>
-                        <h1 className={ui.pageTitle}>Enter Verification Code</h1>
+                        <h1 className={ui.pageTitle}>{tr("Enter Verification Code")}</h1>
                         <p className={ui.description}>
                           {method === "email" ? (
                             <>
-                              Enter the 6-digit code sent to <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
+                              {tr("Enter the 6-digit code sent to")} <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
                             </>
                           ) : (
-                            <>Enter the 6-digit code from your authenticator app.</>
+                            <>{tr("Enter the 6-digit code from your authenticator app.")}</>
                           )}
                         </p>
                       </div>
@@ -338,7 +339,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                         status={isSuccess ? "success" : error ? "error" : "idle"}
                         disabled={isLoading}
                         autoFocus
-                        aria-label="Verification code"
+                        aria-label={tr("Verification code")}
                         slotClassName={`max-[399px]:size-10 ${ui.otpRing}`}
                       />
                     </div>
@@ -348,14 +349,14 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                       className={cn(ui.submitButton, "mt-4")}
                       disabled={isLoading || otp.length < OTP_LENGTH}
                     >
-                      Verify Account
+                      {tr("Verify Account")}
                     </Button>
 
                     <Checkbox
                       id="rememberDevice"
                       checked={rememberDevice}
                       onChange={setRememberDevice}
-                      label={rememberDeviceAllowed ? "Remember this device for 8 hours" : "Remember this device disabled by policy"}
+                      label={rememberDeviceAllowed ? tr("Remember this device for 8 hours") : tr("Remember this device disabled by policy")}
                       labelClassName="text-xs text-slate-600 sm:text-sm"
                       disabled={isLoading || !rememberDeviceAllowed}
                     />
@@ -376,7 +377,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             className={cn(isSendingEmail ? "animate-spin opacity-80" : "opacity-100")}
                             style={isSendingEmail ? { animationDuration: "1s" } : {}}
                           />
-                          {isSendingEmail ? "Sending code..." : canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
+                          {isSendingEmail ? "Sending code..." : canResend ? tr("Resend Code") : `Resend in ${resendTimer}s`}
                         </button>
                       )}
 
@@ -386,7 +387,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                           setOtp("");
                           setError("");
                         }}
-                        label="Change verification method"
+                        label={tr("Change verification method")}
                         disabled={isLoading}
                       />
                     </div>

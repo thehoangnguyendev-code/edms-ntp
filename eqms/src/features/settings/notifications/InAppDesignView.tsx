@@ -29,6 +29,7 @@ import {
   type ToastPlace,
 } from "@/services/api/inAppDesign";
 import { IconBrush } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 const COLOUR = /^#[0-9a-fA-F]{6}$/;
 /** The small heading of an area of the form, as the other configuration screens write it. */
@@ -45,11 +46,11 @@ const MAX_SECONDS = 60;
 const POSITION_OPTIONS: { label: string; value: ToastPlace }[] = [
   { label: "Top Right", value: "top-right" },
   { label: "Top Left", value: "top-left" },
-  { label: "Top Center", value: "top-center" },
+  { label: tr("Top Center"), value: "top-center" },
   { label: "Center", value: "center" },
-  { label: "Bottom Right", value: "bottom-right" },
-  { label: "Bottom Left", value: "bottom-left" },
-  { label: "Bottom Center", value: "bottom-center" },
+  { label: tr("Bottom Right"), value: "bottom-right" },
+  { label: tr("Bottom Left"), value: "bottom-left" },
+  { label: tr("Bottom Center"), value: "bottom-center" },
 ];
 
 const toInput = (d: InAppDesign): InAppDesignInput => ({
@@ -159,7 +160,7 @@ export const InAppDesignView: React.FC = () => {
     const time = secondsOk ? Number(seconds) : form.toastDurationSeconds;
     showToast({
       type: "info",
-      title: "Test notification",
+      title: tr("Test notification"),
       message: `This is how a system message looks: this colour, this place, ${time} seconds.`,
       color: form.toastColor,
       shadow: form.toastShadow,
@@ -172,7 +173,7 @@ export const InAppDesignView: React.FC = () => {
     return (
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="In-App Notification Design"
+          title={tr("In-App Notification Design")}
           breadcrumbItems={breadcrumb(navigate)}
           actions={
             <Button
@@ -180,13 +181,13 @@ export const InAppDesignView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => go(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
             >
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <WarningBanner
           variant="error"
-          title="Unable to open the in-app notification design."
+          title={tr("Unable to open the in-app notification design.")}
           description={error}
         />
       </div>
@@ -201,7 +202,7 @@ export const InAppDesignView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title="In-App Notification Design"
+        title={tr("In-App Notification Design")}
         breadcrumbItems={breadcrumb(navigate)}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -210,16 +211,16 @@ export const InAppDesignView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => go(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
             >
-              Back
+              {tr("Back")}
             </Button>
             <Button
               size="sm"
               variant="outline-emerald"
               onClick={testToast}
               disabled={!colourOk}
-              title="Show the toast with the colour, shadow, place and display time being edited"
+              title={tr("Show the toast with the colour, shadow, place and display time being edited")}
             >
-              Test Toast
+              {tr("Test Toast")}
             </Button>
             {canManage ? (
               <Button
@@ -248,7 +249,7 @@ export const InAppDesignView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => void load()}
             >
-              Reload
+              {tr("Reload")}
             </Button>
           </div>
         </WarningBanner>
@@ -257,31 +258,30 @@ export const InAppDesignView: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-2">
         <div className="min-w-0 self-start">
           <FormSection
-            title="In-App Notification Design"
+            title={tr("In-App Notification Design")}
             icon={<IconBrush className="h-4 w-4" />}
-            description="The toast: the message that pops up on screen. Applies to every signed-in user after Save."
+            description={tr("The toast: the message that pops up on screen. Applies to every signed-in user after Save.")}
           >
             <div className="space-y-5">
               <div>
-                <p className={AREA}>Look</p>
+                <p className={AREA}>{tr("Look")}</p>
                 <div className="space-y-4">
                   <div className="max-w-xs">
                     <ColorPickerInput
-                      label="Toast Colour"
+                      label={tr("Toast Colour")}
                       value={form.toastColor}
                       disabled={!canManage}
                       onChange={(value) => set("toastColor", value)}
                     />
                   </div>
                   <p className="-mt-2 text-xs text-slate-500">
-                    The border and the time bar of every system message,
-                    whatever its kind.
+                    {tr("The border and the time bar of every system message, whatever its kind.")}
                   </p>
                   <div>
                     <div className="flex items-center justify-between text-xs font-medium text-slate-700 sm:text-sm">
-                      <span>Contrast</span>
+                      <span>{tr("Contrast")}</span>
                       <span
-                        aria-label="Contrast of the toast colour"
+                        aria-label={tr("Contrast of the toast colour")}
                         className={
                           contrast >= MIN_CONTRAST
                             ? "text-emerald-700"
@@ -295,7 +295,7 @@ export const InAppDesignView: React.FC = () => {
                       </span>
                     </div>
                     <Slider
-                      label="Toast colour contrast"
+                      label={tr("Toast colour contrast")}
                       min={CONTRAST_SLIDER_MIN}
                       max={CONTRAST_SLIDER_MAX}
                       value={Math.min(
@@ -318,13 +318,12 @@ export const InAppDesignView: React.FC = () => {
                       }}
                     />
                     <p className="text-xs text-slate-500">
-                      Move it to make the colour lighter (left) or stronger
-                      (right); its hue stays the same.
+                      {tr("Move it to make the colour lighter (left) or stronger (right); its hue stays the same.")}
                     </p>
                   </div>
                   <div>
                     <div className="flex items-center justify-between text-xs font-medium text-slate-700 sm:text-sm">
-                      <span>Shadow</span>
+                      <span>{tr("Shadow")}</span>
                       <span>
                         {form.toastShadow === 0
                           ? "None"
@@ -332,7 +331,7 @@ export const InAppDesignView: React.FC = () => {
                       </span>
                     </div>
                     <Slider
-                      label="Toast shadow"
+                      label={tr("Toast shadow")}
                       min={0}
                       max={100}
                       value={form.toastShadow}
@@ -341,18 +340,18 @@ export const InAppDesignView: React.FC = () => {
                       }
                     />
                     <p className="text-xs text-slate-500">
-                      From no shadow (left) to a deep one (right).
+                      {tr("From no shadow (left) to a deep one (right).")}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="border-t border-slate-100 pt-4">
-                <p className={AREA}>Place and time</p>
+                <p className={AREA}>{tr("Place and time")}</p>
                 <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                   <div>
                     <Select
-                      label="Toast Position"
+                      label={tr("Toast Position")}
                       value={form.toastPosition}
                       disabled={!canManage}
                       enableSearch={false}
@@ -362,11 +361,11 @@ export const InAppDesignView: React.FC = () => {
                       options={POSITION_OPTIONS}
                     />
                     <p className="mt-1 text-xs text-slate-500">
-                      Where system messages pop up on screen.
+                      {tr("Where system messages pop up on screen.")}
                     </p>
                   </div>
                   <FormField
-                    label="Toast Display Time (Seconds)"
+                    label={tr("Toast Display Time (Seconds)")}
                     htmlFor="iad-seconds"
                     hint={`How long a system message stays on screen before it goes away (${MIN_SECONDS} to ${MAX_SECONDS}).`}
                     error={
@@ -382,7 +381,7 @@ export const InAppDesignView: React.FC = () => {
                       maxLength={2}
                       value={seconds}
                       disabled={!canManage}
-                      aria-label="Toast display time in seconds"
+                      aria-label={tr("Toast display time in seconds")}
                       onChange={(e) => changeSeconds(e.target.value)}
                     />
                   </FormField>
@@ -394,9 +393,9 @@ export const InAppDesignView: React.FC = () => {
 
         {/* on a wide screen the preview stays in view while the form scrolls */}
         <div className="min-w-0 self-start xl:sticky xl:top-4">
-          <FormSection title="Preview" icon={<Eye className="h-4 w-4" />}>
+          <FormSection title={tr("Preview")} icon={<Eye className="h-4 w-4" />}>
             <div
-              aria-label="Toast preview"
+              aria-label={tr("Toast preview")}
               className="rounded-xl bg-slate-100 px-4 pb-8 pt-6"
             >
               <div
@@ -415,10 +414,10 @@ export const InAppDesignView: React.FC = () => {
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900">
-                      Test notification
+                      {tr("Test notification")}
                     </p>
                     <p className="text-[13px] font-medium text-slate-600">
-                      This is how a system message looks.
+                      {tr("This is how a system message looks.")}
                     </p>
                   </div>
                 </div>
@@ -429,9 +428,7 @@ export const InAppDesignView: React.FC = () => {
               </div>
             </div>
             <p className="mt-3 text-xs text-slate-500">
-              Test Toast shows the real toast with this colour, shadow, place
-              and display time, saved or not. A toast that carries the colours
-              of a notification icon keeps its icon tile.
+              {tr("Test Toast shows the real toast with this colour, shadow, place and display time, saved or not. A toast that carries the colours of a notification icon keeps its icon tile.")}
             </p>
           </FormSection>
         </div>

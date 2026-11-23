@@ -5,12 +5,13 @@ import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { CompletionColumn, CompletionState, CompletionSummary } from "@/services/api/trainingActivities";
 import { STATE_STYLE } from "./CompletionHeatmap";
 import { Collapsible } from "@/components/ui/collapsible";
+import { tr, trFormat } from "@/i18n";
 
 /** The three groups of rows of APD.0011 (SOP.0003 5.3.1), in the order of the form. */
 const GROUPS: { id: CompletionColumn["group"]; title: string }[] = [
-  { id: "FACTORY_GENERAL", title: "General training of the whole factory" },
-  { id: "DEPARTMENT_GENERAL", title: "General training of the department" },
-  { id: "SOP", title: "SOP for each Work Position" },
+  { id: "FACTORY_GENERAL", title: tr("General training of the whole factory") },
+  { id: "DEPARTMENT_GENERAL", title: tr("General training of the department") },
+  { id: "SOP", title: tr("SOP for each Work Position") },
 ];
 /** Order of the segments of a bar: done first, then what is under way, then what is missing. */
 const BAR_ORDER: CompletionState[] = ["QUALIFIED", "IN_PROGRESS", "UPDATE_NEEDED", "DUE", "REQUIRED"];
@@ -31,7 +32,7 @@ function factsOf(column: CompletionColumn, summary: CompletionSummary | undefine
 function RowBar({ facts }: { facts: RowFacts }) {
   const barRef = useRef<HTMLDivElement>(null);
   useBarWipe(barRef, BAR_ORDER.map((s) => facts.counts[s] ?? 0).join(","));
-  if (facts.required === 0) return <span className="text-xs text-slate-400">Nobody has to be trained</span>;
+  if (facts.required === 0) return <span className="text-xs text-slate-400">{tr("Nobody has to be trained")}</span>;
   const pct = Math.round((facts.qualified / facts.required) * 100);
   const label = BAR_ORDER.filter((s) => facts.counts[s]).map((s) => `${STATE_STYLE[s].label}: ${facts.counts[s]}`).join(", ");
   return (
@@ -55,19 +56,19 @@ function PersonChip({ name, code, status }: { name: string; code?: string | null
 }
 
 function OpenPeople({ facts }: { facts: RowFacts }) {
-  if (facts.openTotal === 0) return <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">{STATE_STYLE.QUALIFIED.icon}Everyone is done</span>;
+  if (facts.openTotal === 0) return <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">{STATE_STYLE.QUALIFIED.icon}{tr("Everyone is done")}</span>;
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="People still to be trained">
+    <ul className="flex flex-wrap gap-1.5" aria-label={tr("People still to be trained")}>
       {facts.open.map((p) => <PersonChip key={p.personId} name={p.fullName} code={p.employeeCode} status={p.status as CompletionState} />)}
-      {facts.openTotal > facts.open.length && <li className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">and {facts.openTotal - facts.open.length} more</li>}
+          {facts.openTotal > facts.open.length && <li className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">{trFormat("and {count} more", { count: facts.openTotal - facts.open.length })}</li>}
     </ul>
   );
 }
 
 function Annual({ yes }: { yes: boolean }) {
   return yes
-    ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"><RefreshCw className="h-3 w-3" />Yes</span>
-    : <span className="text-xs font-semibold text-slate-400">No</span>;
+    ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"><RefreshCw className="h-3 w-3" />{tr("Yes")}</span>
+    : <span className="text-xs font-semibold text-slate-400">{tr("No")}</span>;
 }
 
 /**
@@ -85,12 +86,12 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
         <TableMarkup.Root className="w-full border-separate border-spacing-0 text-sm">
           <TableMarkup.Head>
             <TableMarkup.Row className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <TableMarkup.HeaderCell className="w-16 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">No</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">Code</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="whitespace-nowrap border-b border-slate-200 px-4 py-3">Subject / Title</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">Annual training</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="w-64 whitespace-nowrap border-b border-slate-200 px-4 py-3">Completion</TableMarkup.HeaderCell>
-              <TableMarkup.HeaderCell className="w-[26rem] whitespace-nowrap border-b border-slate-200 px-4 py-3">Still to be trained</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-16 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">{tr("No.")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3">{tr("Code")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="whitespace-nowrap border-b border-slate-200 px-4 py-3">{tr("Subject / Title")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-40 whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left">{tr("Annual training")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-64 whitespace-nowrap border-b border-slate-200 px-4 py-3">{tr("Completion")}</TableMarkup.HeaderCell>
+              <TableMarkup.HeaderCell className="w-[26rem] whitespace-nowrap border-b border-slate-200 px-4 py-3">{tr("Still to be trained")}</TableMarkup.HeaderCell>
               <TableMarkup.HeaderCell className="w-10 border-b border-slate-200" />
             </TableMarkup.Row>
           </TableMarkup.Head>
@@ -114,7 +115,7 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
                           <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5 text-center"><Annual yes={f.column.annual} /></TableMarkup.Cell>
                           <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5"><RowBar facts={f} /></TableMarkup.Cell>
                           <TableMarkup.Cell className="border-b border-slate-100 px-4 py-3.5">
-                            {expanded ? <span className="text-xs text-slate-500">{f.openTotal} people, listed below</span> : <OpenSummary facts={f} />}
+                            {expanded ? <span className="text-xs text-slate-500">{f.openTotal} {tr("people, listed below")}</span> : <OpenSummary facts={f} />}
                           </TableMarkup.Cell>
                           <TableMarkup.Cell className="border-b border-slate-100 pr-2 text-slate-400">
                             {canOpen && (
@@ -156,7 +157,7 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
                       {f.openTotal === 0 ? <OpenPeople facts={f} /> : (
                         <>
                           <button type="button" aria-expanded={expanded} onClick={() => setOpenRow(expanded ? undefined : id)} className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
-                            <span>{f.openTotal} still to be trained</span>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            <span>{f.openTotal} {tr("still to be trained")}</span>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </button>
                           <Collapsible open={expanded}><div className="mt-2"><OpenPeople facts={f} /></div></Collapsible>
                         </>
@@ -178,7 +179,7 @@ function OpenSummary({ facts }: { facts: RowFacts }) {
   if (facts.openTotal === 0) return <OpenPeople facts={facts} />;
   const shown = facts.open.slice(0, 2);
   return (
-    <ul className="flex flex-wrap items-center gap-1.5" aria-label="People still to be trained">
+    <ul className="flex flex-wrap items-center gap-1.5" aria-label={tr("People still to be trained")}>
       {shown.map((p) => <PersonChip key={p.personId} name={p.fullName} code={null} status={p.status as CompletionState} />)}
       {facts.openTotal > shown.length && <li className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">+{facts.openTotal - shown.length}</li>}
     </ul>
@@ -191,18 +192,17 @@ export function CompletionSummaryStrip({ summary, columns }: { summary?: Complet
   const facts = columns.map((c) => factsOf(c, summary));
   const rowsDone = facts.filter((f) => f.required > 0 && f.openTotal === 0).length;
   const tiles = [
-    { label: "People in the Work Position", value: summary.people, tone: "text-slate-900" },
-    { label: "Ready for a work assignment", value: `${summary.ready} / ${summary.people}`, tone: "text-emerald-700", hint: "Trained on every row of the matrix" },
-    { label: "People with a gap", value: summary.withGap, tone: summary.withGap > 0 ? "text-red-700" : "text-slate-900", hint: "Required, update needed or annual due" },
-    { label: "Rows everyone has finished", value: `${rowsDone} / ${facts.length}`, tone: "text-slate-900" },
+    { label: tr("People in the Work Position"), value: summary.people, tone: "text-slate-900", bar: "border-slate-300" },
+    { label: tr("Ready for a work assignment"), value: `${summary.ready} / ${summary.people}`, tone: "text-slate-900", bar: "border-emerald-600" },
+    { label: tr("People with a gap"), value: summary.withGap, tone: "text-slate-900", bar: summary.withGap > 0 ? "border-red-600" : "border-slate-300" },
+    { label: tr("Rows everyone has finished"), value: `${rowsDone} / ${facts.length}`, tone: "text-slate-900", bar: "border-slate-300" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Totals of the Work Position">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4" aria-label={tr("Totals of the Work Position")}>
       {tiles.map((t) => (
-        <div key={t.label} className="rounded-xl border border-slate-200 bg-white p-3.5">
-          <div className="text-xs font-medium text-slate-500">{t.label}</div>
-          <div className={`mt-0.5 text-2xl font-semibold leading-tight tabular-nums ${t.tone}`}>{t.value}</div>
-          {t.hint && <div className="mt-0.5 text-[11px] text-slate-400">{t.hint}</div>}
+        <div key={t.label} className={`border-l-[3px] pl-3 ${t.bar}`}>
+          <div className={`text-3xl font-semibold leading-none tabular-nums ${t.tone}`}>{t.value}</div>
+          <div className="mt-1 text-xs text-slate-500">{t.label}</div>
         </div>
       ))}
     </div>

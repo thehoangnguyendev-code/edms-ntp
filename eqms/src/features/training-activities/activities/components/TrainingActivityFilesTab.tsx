@@ -48,6 +48,7 @@ import { LedgerEmpty, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledg
 import { TrainingMaterialsReader } from "./TrainingMaterialsReader";
 import { TrainingMaterialsBoard, type MaterialItem, type TrainingMaterialsLayout } from "./TrainingMaterialsBoard";
 import { useBranding } from "@/components/branding/BrandLogo";
+import { tr } from "@/i18n";
 
 const KIND_LABEL: Record<string, string> = {
   ATTENDANCE_SHEET: "Attendance sheet",
@@ -186,7 +187,7 @@ export function TrainingActivityFilesTab({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The action was not done",
+        title: tr("The action was not done"),
         message: trainingError(e),
       });
       return false;
@@ -215,7 +216,7 @@ export function TrainingActivityFilesTab({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The file was not uploaded",
+        title: tr("The file was not uploaded"),
         message: trainingError(e),
       });
       return false;
@@ -229,7 +230,7 @@ export function TrainingActivityFilesTab({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The file could not be downloaded",
+        title: tr("The file could not be downloaded"),
         message: trainingError(e),
       });
     }
@@ -279,7 +280,7 @@ export function TrainingActivityFilesTab({
       cell: (e) => `${e.originalName} (${size(e.sizeBytes)})`,
     },
     { id: "form", header: "Form used", cell: (e) => e.formUsed ?? "—" },
-    { id: "copy", header: "Paper copy", cell: (e) => e.packCode ?? "—" },
+    { id: "copy", header: tr("Paper copy"), cell: (e) => e.packCode ?? "—" },
     {
       id: "person",
       header: "For",
@@ -287,19 +288,19 @@ export function TrainingActivityFilesTab({
     },
     {
       id: "by",
-      header: "Uploaded by",
+      header: tr("Uploaded by"),
       cell: (e) => `${e.uploadedByName} (${day(e.uploadedAt)})`,
     },
     {
       id: "received",
-      header: "Checked against the paper",
+      header: tr("Checked against the paper"),
       cell: (e) =>
         e.receivedAt ? (
           <Badge color="emerald">
             {e.receivedByName}, {when(e.receivedAt)}
           </Badge>
         ) : (
-          <Badge color="amber">Not yet</Badge>
+          <Badge color="amber">{tr("Not yet")}</Badge>
         ),
     },
     {
@@ -316,7 +317,7 @@ export function TrainingActivityFilesTab({
     <button
       type="button"
       ref={menu.getRef(id)}
-      aria-label="More actions"
+      aria-label={tr("More actions")}
       className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
       onClick={(event) => menu.toggle(id, event)}
     >
@@ -349,27 +350,27 @@ export function TrainingActivityFilesTab({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
           {!isKey && !current && templates.map((t) => (
             <Button key={t.id} size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "TEMPLATE", templateId: t.id })}>
-              Write it from {t.code} {t.versionLabel}
+                        {tr("Write it from")} {t.code} {t.versionLabel}
             </Button>
           ))}
           {!isKey && isDocx && (
             <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "EXISTING" })}>
-              Open to Edit
+              {tr("Open to Edit")}
             </Button>
           )}
           {isKey && isDocx && (
             <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXISTING" })}>
-              Open to Edit
+              {tr("Open to Edit")}
             </Button>
           )}
           {isKey && !current && examDocx && (
             <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXAM_COPY" })}>
-              Write it from the exam
+              {tr("Write it from the exam")}
             </Button>
           )}
           {!isKey && !current && templates.map((t) => (
             <button key={`d-${t.id}`} type="button" className="text-xs font-medium text-emerald-700 hover:underline" onClick={() => void download(() => trainingFormTemplatesApi.download(t.id), t.originalName)}>
-              Download the blank form
+              {tr("Download the blank form")}
             </button>
           ))}
         </div>
@@ -381,7 +382,7 @@ export function TrainingActivityFilesTab({
           label={zoneLabel}
           accept=".pdf,.docx"
           maxMb={20}
-          hint={isKey ? "Word or PDF, max 20 MB. Only organizers and reviewers see it." : "Word or PDF, max 20 MB. It is printed for the employees."}
+          hint={isKey ? tr("Word or PDF, max 20 MB. Only organizers and reviewers see it.") : tr("Word or PDF, max 20 MB. It is printed for the employees.")}
           file={active?.file ?? null}
           uploading={active ? { percent: active.percent } : undefined}
           disabled={busy || !!active}
@@ -464,14 +465,14 @@ export function TrainingActivityFilesTab({
       {part === "assessment" && (
         <>
           {external && mode !== "edit" && (
-            <p className="text-sm text-slate-600">An external training has no exam. Keep the certificate or the proof of attendance below.</p>
+            <p className="text-sm text-slate-600">{tr("An external training has no exam. Keep the certificate or the proof of attendance below.")}</p>
           )}
           {/* No test or checklist session and nothing uploaded: there is no form to show. The answer key is for a test. */}
           {!external && ((formKind !== "NONE" && formNeeded) || !!slotOf("EXAM")) && (
             <div hidden={reader && visible !== undefined && visible !== "materials"} className="space-y-3">
               {!reader && (
                 <h3 className="text-sm font-semibold text-slate-800">
-                  Assessment Materials
+                  {tr("Assessment Materials")}
                 </h3>
               )}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
@@ -484,10 +485,10 @@ export function TrainingActivityFilesTab({
           <div hidden={reader && visible !== undefined && visible !== "scans"} className={`space-y-4 ${reader && canAddEvidence ? "pt-4" : ""}`}>
             {!reader && <div id={reader ? "ws-assess-scans" : undefined} className="flex scroll-mt-24 items-center gap-2">
               <h3 className="text-sm font-semibold text-slate-800">
-                Scans and filled files
+                {tr("Scans and filled files")}
               </h3>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{files.evidence.length}</span>
-              <Popover title="Scans and filled files" content="A second person checks each scan against the paper." contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel="About Scans and filled files" />
+              <Popover title={tr("Scans and filled files")} content="A second person checks each scan against the paper." contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel="About Scans and filled files" />
             </div>}
             {canAddEvidence && !external && <TrainingScanBatchUpload activityId={activityId} onDone={load} />}
             {canAddEvidence && external && (
@@ -495,11 +496,11 @@ export function TrainingActivityFilesTab({
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <div className="md:col-span-2">
                     <TrainingFileDropzone
-                      label="Scan or filled file"
+                      label={tr("Scan or filled file")}
                       required
                       accept={ACCEPT}
                       maxMb={20}
-                      hint="PDF or Office file, max 20 MB."
+                      hint={tr("PDF or Office file, max 20 MB.")}
                       file={sending.evidence?.file ?? evidence.file}
                       uploading={
                         sending.evidence
@@ -509,7 +510,7 @@ export function TrainingActivityFilesTab({
                       onChange={(f) => setEvidence({ ...evidence, file: f })}
                     />
                   </div>
-                  <FormField label="Type" required>
+                  <FormField label={tr("Type")} required>
                     <Select
                       value={evidence.kind}
                       enableSearch={false}
@@ -519,14 +520,14 @@ export function TrainingActivityFilesTab({
                       )}
                     />
                   </FormField>
-                  <FormField label="For one person (optional)">
+                  <FormField label={tr("For one person (optional)")}>
                     <Select
                       value={evidence.participantId}
                       onChange={(v) =>
                         setEvidence({ ...evidence, participantId: v })
                       }
                       options={[
-                        { label: "The whole session", value: "" },
+                        { label: tr("The whole session"), value: "" },
                         ...participants.map((p) => ({
                           label: p.fullName,
                           value: p.id,
@@ -534,28 +535,28 @@ export function TrainingActivityFilesTab({
                       ]}
                     />
                   </FormField>
-                  <FormField label="Paper copy it is the scan of (optional)">
+                  <FormField label={tr("Paper copy it is the scan of (optional)")}>
                     <Select
                       value={evidence.packId}
                       onChange={(v) => setEvidence({ ...evidence, packId: v })}
                       options={[
-                        { label: "Not a numbered copy", value: "" },
+                        { label: tr("Not a numbered copy"), value: "" },
                         ...packs.map((p) => ({ label: `${p.packCode}${p.packKind === "EXAM" ? " (exam)" : ""}`, value: p.id })),
                       ]}
                     />
                   </FormField>
-                  <FormField label="Form and version used (optional)">
+                  <FormField label={tr("Form and version used (optional)")}>
                     <Input
                       value={evidence.formUsed}
                       maxLength={80}
-                      placeholder="For example APD.0009 2.0.0"
+                      placeholder={tr("For example APD.0009 2.0.0")}
                       onChange={(e) =>
                         setEvidence({ ...evidence, formUsed: e.target.value })
                       }
                     />
                   </FormField>
                   <div className="md:col-span-2">
-                    <FormField label="Remark">
+                    <FormField label={tr("Remark")}>
                       <Textarea
                         rows={2}
                         value={evidence.remark}
@@ -566,7 +567,7 @@ export function TrainingActivityFilesTab({
                     </FormField>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">A second person checks each scan against the paper.</p>
+                <p className="text-xs text-slate-500">{tr("A second person checks each scan against the paper.")}</p>
                 <div>
                   <Button
                     size="sm"
@@ -575,7 +576,7 @@ export function TrainingActivityFilesTab({
                     disabled={!evidence.file}
                     onClick={() => void addEvidence()}
                   >
-                    Upload
+                    {tr("Upload")}
                   </Button>
                 </div>
               </div>
@@ -583,7 +584,7 @@ export function TrainingActivityFilesTab({
             {reader ? (
               <>
                 {/* the upload area above says the same sentence, so it is not said twice */}
-                {!canAddEvidence && <LedgerNote>A second person checks each scan against the paper.</LedgerNote>}
+                {!canAddEvidence && <LedgerNote>{tr("A second person checks each scan against the paper.")}</LedgerNote>}
                 <div className="md:hidden">
                   {files.evidence.length === 0 ? (
                     <LedgerEmpty>{note ?? "No file yet."}</LedgerEmpty>
@@ -643,7 +644,7 @@ export function TrainingActivityFilesTab({
         <TrainingMaterialsReader
           items={files.materials.filter((m) => m.purpose === "CONTENT").map(toItem)}
           lockedNote={materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT") ? "Materials can be added or removed in the planning step, until the content is reviewed. You can still open them here." : undefined}
-          emptyText={note ?? (materialsNeeded ? "No material yet. A file (PDF, slides, video) or a link can be added in the planning step." : "No material is needed for this training.")}
+          emptyText={note ?? (materialsNeeded ? tr("No material yet. A file (PDF, slides, video) or a link can be added in the planning step.") : tr("No material is needed for this training."))}
           onPreview={(m) => preview(m.id, m.fileName)}
           onDownload={(m) => void download(() => trainingFilesApi.downloadMaterial(m.id), m.fileName ?? "file")}
         />
@@ -659,8 +660,8 @@ export function TrainingActivityFilesTab({
             emptyText={
               note ??
               (materialsNeeded
-                ? "No material yet. A file (PDF, slides, video) or a link can be added until the content is reviewed."
-                : "No material is needed for this training.")
+                ? tr("No material yet. A file (PDF, slides, video) or a link can be added until the content is reviewed.")
+                : tr("No material is needed for this training."))
             }
             busy={busy}
             sending={sending.material}
@@ -693,7 +694,7 @@ export function TrainingActivityFilesTab({
                 );
               }}
             >
-              Download
+              {tr("Download")}
             </DropdownMenuItem>
             {openEvidence.participantId && participants.find((p) => p.id === openEvidence.participantId)?.personUserId && (
               <DropdownMenuItem
@@ -704,7 +705,7 @@ export function TrainingActivityFilesTab({
                   if (person?.personUserId) setSpecimenOf({ personId: person.personUserId, name: person.fullName });
                 }}
               >
-                View Specimen Signature
+                {tr("View Specimen Signature")}
               </DropdownMenuItem>
             )}
             {canReceive && !openEvidence.receivedAt && (
@@ -718,7 +719,7 @@ export function TrainingActivityFilesTab({
                   );
                 }}
               >
-                I checked it against the paper
+                {tr("I checked it against the paper")}
               </DropdownMenuItem>
             )}
           </div>
@@ -729,8 +730,8 @@ export function TrainingActivityFilesTab({
       <FormModal
         isOpen={!!removing}
         onClose={() => setRemoving(undefined)}
-        title="Remove File"
-        description="The file stays on record, marked as removed with your reason."
+        title={tr("Remove File")}
+        description={tr("The file stays on record, marked as removed with your reason.")}
         confirmText="Remove"
         confirmVariant="destructive"
         isLoading={busy}
@@ -751,7 +752,7 @@ export function TrainingActivityFilesTab({
             setRemoving(undefined);
         }}
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea
             rows={3}
             value={removing?.reason ?? ""}

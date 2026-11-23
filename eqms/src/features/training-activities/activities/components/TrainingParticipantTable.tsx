@@ -7,6 +7,7 @@ import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import { useDebounce } from "@/hooks";
 import { trainingActivitiesApi, trainingError, type TrainingParticipant } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** The columns the person can sort by; the server turns the key into its own ORDER BY. */
 const SORTABLE = new Set(["code", "name", "department", "state", "result", "read", "sign", "participation"]);
@@ -54,12 +55,12 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   if (group !== "EMPLOYEES" && !search && (!loaded || (!loading && !error && total === 0))) return null;
   return <section>
     <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>
-    <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Search name or employee ID…" /></div>
+    <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder={tr("Search name or employee ID…")} /></div>
     {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
     {renderRow ? (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading && !loaded ? <SectionLoading minHeight="160px" /> : rows.length === 0 ? (
-          <TableEmptyState title="No Participants" description="No participant matches this session and search." />
+          <TableEmptyState title={tr("No Participants")} description={tr("No participant matches this session and search.")} />
         ) : (
           <ul className="divide-y divide-slate-100">{rows.map((p, i) => renderRow(p, (page - 1) * limit + i))}</ul>
         )}
@@ -69,7 +70,7 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
       columns={columns.map((column) => column.id === "rowNo" ? { ...column, cell: (_p: TrainingParticipant, i: number) => (page - 1) * limit + i + 1 }
         : SORTABLE.has(column.id) ? { ...column, sort: { direction: sort.key === column.id ? sort.direction : undefined, onSort: () => { setSort((s) => ({ key: column.id, direction: s.key === column.id && s.direction === "asc" ? "desc" : "asc" })); setPage(1); } } }
         : column)}
-      emptyState={<TableEmptyState title="No Participants" description="No participant matches this session and search." />}
+      emptyState={<TableEmptyState title={tr("No Participants")} description={tr("No participant matches this session and search.")} />}
       pagination={total > 0 ? <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} /> : undefined} />}
   </section>;
 }

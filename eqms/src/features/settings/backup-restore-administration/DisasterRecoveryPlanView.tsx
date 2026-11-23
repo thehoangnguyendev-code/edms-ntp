@@ -26,6 +26,7 @@ import {
 import { metadataApi, type MetadataUserLookup } from "@/services/api/metadata";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
+import { tr } from "@/i18n";
 
 type TargetEdit = { scenario: DrScenarioRecord; rpo: string; rto: string; reason: string; step: "form" | "sign" };
 type VerifyEdit = { item: DrKitItemRecord; date: string; note: string };
@@ -35,7 +36,7 @@ type CloseEdit = { declaration: DrDeclarationRecord; summary: string; step: "for
 
 const TABS: TabItem[] = [
   { id: "plan", label: "Plan" },
-  { id: "declarations", label: "Declarations" },
+  { id: "declarations", label: tr("Declarations") },
 ];
 
 const hours = (value: number | null) => (value === null ? "—" : `${value} h`);
@@ -81,7 +82,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       .then((list) => setPeople(list.filter((person) => !!person.username)))
       .catch((e) => {
         setPeople([]);
-        showToast({ type: "error", title: "The people could not be listed", message: getApiErrorMessage(e, "Try again.") });
+        showToast({ type: "error", title: tr("The people could not be listed"), message: getApiErrorMessage(e, "Try again.") });
       });
   };
 
@@ -120,7 +121,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
   const overdue = (kit ?? []).filter((item) => item.state === "OVERDUE");
   const readinessOf = (code: string) => readiness.find((r) => r.scenario === code);
 
-  const signatureMissing = () => showToast({ type: "error", title: "The signature could not be confirmed", message: "Try again." });
+  const signatureMissing = () => showToast({ type: "error", title: tr("The signature could not be confirmed"), message: "Try again." });
 
   const signedTarget = async (data: { signatureToken?: string }) => {
     const current = target;
@@ -130,10 +131,10 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     setBusy(true);
     try {
       await backupRestoreApi.changeDrTargets(current.scenario.code, Number(current.rpo), Number(current.rto), current.reason.trim(), data.signatureToken);
-      showToast({ type: "success", title: "Targets approved", message: current.scenario.label });
+      showToast({ type: "success", title: tr("Targets approved"), message: current.scenario.label });
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The targets were not changed", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The targets were not changed"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -144,11 +145,11 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     setBusy(true);
     try {
       await backupRestoreApi.verifyDrKitItem(verify.item.code, pickerToInstant(verify.date), verify.note.trim());
-      showToast({ type: "success", title: "Check recorded", message: verify.item.label });
+      showToast({ type: "success", title: tr("Check recorded"), message: verify.item.label });
       setVerify(undefined);
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The check was not recorded", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The check was not recorded"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -163,10 +164,10 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     try {
       const updated = await backupRestoreApi.changeDrAuthority(current.username.trim(), current.reason.trim(), data.signatureToken);
       setAuthority(updated.value);
-      showToast({ type: "success", title: "Declaration authority approved", message: updated.value });
+      showToast({ type: "success", title: tr("Declaration authority approved"), message: updated.value });
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The authority was not changed", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The authority was not changed"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -180,10 +181,10 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     setBusy(true);
     try {
       const made = await backupRestoreApi.declareDisaster(current.scenario, current.reason.trim(), data.signatureToken);
-      showToast({ type: "success", title: "Disaster declared", message: made.code });
+      showToast({ type: "success", title: tr("Disaster declared"), message: made.code });
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The disaster was not declared", message: getApiErrorMessage(e, "Only the declaration authority may declare a disaster.") });
+      showToast({ type: "error", title: tr("The disaster was not declared"), message: getApiErrorMessage(e, "Only the declaration authority may declare a disaster.") });
     } finally {
       setBusy(false);
     }
@@ -197,33 +198,33 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     setBusy(true);
     try {
       await backupRestoreApi.closeDeclaration(current.declaration.code, current.summary.trim(), data.signatureToken);
-      showToast({ type: "success", title: "Declaration closed", message: current.declaration.code });
+      showToast({ type: "success", title: tr("Declaration closed"), message: current.declaration.code });
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The declaration was not closed", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The declaration was not closed"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
   };
 
   const stateBadge = (state: string) =>
-    state === "WITHIN" ? <Badge color="emerald">Within the target</Badge> : state === "EXCEEDED" ? <Badge color="red">Over the target</Badge> : <Badge color="amber">{state === "NOT_TESTED" ? "Not tested" : "No data"}</Badge>;
+    state === "WITHIN" ? <Badge color="emerald">{tr("Within the target")}</Badge> : state === "EXCEEDED" ? <Badge color="red">{tr("Over the target")}</Badge> : <Badge color="amber">{state === "NOT_TESTED" ? "Not tested" : "No data"}</Badge>;
 
   const plan = (
     <div className="space-y-6">
-      {error && <WarningBanner variant="error" title="Unable to load" description={error} />}
+      {error && <WarningBanner variant="error" title={tr("Unable to load")} description={error} />}
       {open && <WarningBanner variant="error" title={`A disaster is declared: ${open.code}`} description={`${open.scenarioLabel}, declared by ${open.declaredBy} on ${formatDateTime(open.declaredAt)}. It stays open until it is closed with a summary and a signature.`} />}
       {notVerified.length > 0 && (
-        <WarningBanner variant="warning" title="The rebuild kit is not verified" description={`${notVerified.length} item(s) have never been checked by a person. Without a check a rebuild cannot be relied on.`} />
+        <WarningBanner variant="warning" title={tr("The rebuild kit is not verified")} description={`${notVerified.length} item(s) have never been checked by a person. Without a check a rebuild cannot be relied on.`} />
       )}
       {overdue.length > 0 && (
-        <WarningBanner variant="warning" title="Rebuild kit checks are overdue" description={`${overdue.length} item(s) were last checked longer ago than the review period of the alert rule.`} />
+        <WarningBanner variant="warning" title={tr("Rebuild kit checks are overdue")} description={`${overdue.length} item(s) were last checked longer ago than the review period of the alert rule.`} />
       )}
 
       <FormSection
-        title="Recovery Targets"
+        title={tr("Recovery Targets")}
         icon={<Siren className="h-4 w-4" />}
-        description="RPO is the most data, in hours, that may be lost; RTO is the longest time, in hours, to be working again. A change needs an electronic signature."
+        description={tr("RPO is the most data, in hours, that may be lost; RTO is the longest time, in hours, to be working again. A change needs an electronic signature.")}
       >
         <DataTable
           rows={scenarios ?? []}
@@ -239,16 +240,16 @@ export const DisasterRecoveryPlanView: React.FC = () => {
                 </div>
               ),
             },
-            { id: "rpo", header: "RPO (hours)", cell: (row) => row.rpoHours },
-            { id: "rto", header: "RTO (hours)", cell: (row) => row.rtoHours },
-            { id: "status", header: "Status", cell: (row) => (row.status === "APPROVED" ? <Badge color="emerald">Approved by {row.approvedBy}</Badge> : <Badge color="amber">Proposed</Badge>) },
+            { id: "rpo", header: tr("RPO (hours)"), cell: (row) => row.rpoHours },
+            { id: "rto", header: tr("RTO (hours)"), cell: (row) => row.rtoHours },
+            { id: "status", header: "Status", cell: (row) => (row.status === "APPROVED" ? <Badge color="emerald">{tr("Approved by")} {row.approvedBy}</Badge> : <Badge color="amber">{tr("Proposed")}</Badge>) },
             {
               id: "change",
               header: "",
               cell: (row) =>
                 canManage ? (
                   <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => setTarget({ scenario: row, rpo: String(row.rpoHours), rto: String(row.rtoHours), reason: "", step: "form" })}>
-                    Change
+                    {tr("Change")}
                   </Button>
                 ) : null,
             },
@@ -257,24 +258,24 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title="Targets Against The Records"
+        title={tr("Targets Against The Records")}
         icon={<Gauge className="h-4 w-4" />}
-        description="What the records show now, next to each target. The age of the data is how old the newest backup that passed its integrity check is; for a site loss or ransomware, the newest one that also reached T2. The recovery time is how long the newest passed test restore took."
+        description={tr("What the records show now, next to each target. The age of the data is how old the newest backup that passed its integrity check is; for a site loss or ransomware, the newest one that also reached T2. The recovery time is how long the newest passed test restore took.")}
       >
         <DataTable
           rows={scenarios ?? []}
           getRowKey={(row) => row.code}
           columns={[
             { id: "scenario", header: "Scenario", cell: (row) => row.label },
-            { id: "age", header: "Age of the data", cell: (row) => hours(readinessOf(row.code)?.dataAgeHours ?? null) },
-            { id: "rpoNow", header: "Against RPO", cell: (row) => stateBadge(readinessOf(row.code)?.rpoState ?? "NO_DATA") },
-            { id: "tested", header: "Tested restore time", cell: (row) => duration(readinessOf(row.code)?.testedRestoreSeconds) },
-            { id: "rtoNow", header: "Against RTO", cell: (row) => stateBadge(readinessOf(row.code)?.rtoState ?? "NOT_TESTED") },
+            { id: "age", header: tr("Age of the data"), cell: (row) => hours(readinessOf(row.code)?.dataAgeHours ?? null) },
+            { id: "rpoNow", header: tr("Against RPO"), cell: (row) => stateBadge(readinessOf(row.code)?.rpoState ?? "NO_DATA") },
+            { id: "tested", header: tr("Tested restore time"), cell: (row) => duration(readinessOf(row.code)?.testedRestoreSeconds) },
+            { id: "rtoNow", header: tr("Against RTO"), cell: (row) => stateBadge(readinessOf(row.code)?.rtoState ?? "NOT_TESTED") },
           ]}
         />
       </FormSection>
 
-      <FormSection title="Rebuild Kit" icon={<Package className="h-4 w-4" />} description="Everything needed to rebuild the system on empty hardware. Each item is verified by a person, with the date of the check.">
+      <FormSection title={tr("Rebuild Kit")} icon={<Package className="h-4 w-4" />} description={tr("Everything needed to rebuild the system on empty hardware. Each item is verified by a person, with the date of the check.")}>
         <DataTable
           rows={kit ?? []}
           getRowKey={(row) => row.code}
@@ -294,14 +295,14 @@ export const DisasterRecoveryPlanView: React.FC = () => {
               header: "State",
               cell: (row) => <Badge color={row.state === "VERIFIED" ? "emerald" : "amber"}>{row.state === "VERIFIED" ? "Verified" : row.state === "OVERDUE" ? "Check overdue" : "Not verified"}</Badge>,
             },
-            { id: "verified", header: "Last verified", cell: (row) => (row.lastVerifiedAt ? `${formatDate(row.lastVerifiedAt)} by ${row.lastVerifiedBy}` : "—") },
+            { id: "verified", header: tr("Last verified"), cell: (row) => (row.lastVerifiedAt ? `${formatDate(row.lastVerifiedAt)} by ${row.lastVerifiedBy}` : "—") },
             {
               id: "check",
               header: "",
               cell: (row) =>
                 canManage ? (
                   <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => setVerify({ item: row, date: nowForPicker(), note: "" })}>
-                    Record check
+                    {tr("Record check")}
                   </Button>
                 ) : null,
             },
@@ -309,17 +310,17 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection title="Declaration Authority" icon={<CircleStar className="h-4 w-4" />}>
+      <FormSection title={tr("Declaration Authority")} icon={<CircleStar className="h-4 w-4" />}>
         <div className="flex items-center justify-between gap-3 py-2.5">
           <div className="min-w-0">
-            <span className="text-xs font-medium text-slate-900 sm:text-sm">Who may declare a disaster</span>
-            <p className="mt-0.5 text-2xs text-slate-400 sm:text-xs">Only this person can declare a disaster, with an electronic signature. Changing the person needs a signature too.</p>
+            <span className="text-xs font-medium text-slate-900 sm:text-sm">{tr("Who may declare a disaster")}</span>
+            <p className="mt-0.5 text-2xs text-slate-400 sm:text-xs">{tr("Only this person can declare a disaster, with an electronic signature. Changing the person needs a signature too.")}</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-900">{authority ?? "—"}</span>
             {canManage && (
               <Button variant="default" size="sm" disabled={busy} onClick={openAuthority}>
-                Change
+                {tr("Change")}
               </Button>
             )}
           </div>
@@ -332,7 +333,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
     <div className="space-y-4">
       <WarningBanner
         variant="info"
-        title="How a declaration works"
+        title={tr("How a declaration works")}
         description={`Only ${authority ?? "the declaration authority"} can declare a disaster, with an electronic signature. One declaration is open at a time. It is closed, again with a signature and a summary, when service is restored; the time between the two is the recovery time actually taken.`}
       />
       <DrDeclarationsList reloadKey={reloadKey} scenarios={scenarios ?? []} />
@@ -341,17 +342,17 @@ export const DisasterRecoveryPlanView: React.FC = () => {
 
   return (
     <BackupAdminLivePage
-      title="Disaster Recovery Plan"
+      title={tr("Disaster Recovery Plan")}
       actions={
         canManage ? (
           <div className="flex flex-wrap gap-2">
             {open && (
               <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setClose({ declaration: open, summary: "", step: "form" })}>
-                Close the Open Declaration
+                {tr("Close the Open Declaration")}
               </Button>
             )}
             <Button size="sm" variant="default" disabled={busy || !!open || authority === undefined} onClick={() => setDeclare({ scenario: scenarios?.[0]?.code ?? "", reason: "", step: "form" })}>
-              Declare a Disaster
+              {tr("Declare a Disaster")}
             </Button>
           </div>
         ) : undefined
@@ -366,19 +367,19 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         isOpen={target?.step === "form"}
         onClose={() => setTarget(undefined)}
         title={`Change Targets: ${target?.scenario.label ?? ""}`}
-        description="The new targets take effect only after the electronic signature."
+        description={tr("The new targets take effect only after the electronic signature.")}
         confirmText="Continue to Sign"
         confirmDisabled={!target || !target.reason.trim() || !(Number(target.rpo) > 0) || !(Number(target.rto) > 0)}
         onConfirm={() => target && setTarget({ ...target, step: "sign" })}
       >
         <div className="space-y-4">
-          <FormField label="RPO (hours)" required hint="The most data, in hours, that may be lost.">
+          <FormField label={tr("RPO (hours)")} required hint={tr("The most data, in hours, that may be lost.")}>
             <Input type="number" min={0} step="0.5" value={target?.rpo ?? ""} onChange={(e) => target && setTarget({ ...target, rpo: e.target.value })} />
           </FormField>
-          <FormField label="RTO (hours)" required hint="The longest time, in hours, to be working again.">
+          <FormField label={tr("RTO (hours)")} required hint={tr("The longest time, in hours, to be working again.")}>
             <Input type="number" min={0} step="0.5" value={target?.rto ?? ""} onChange={(e) => target && setTarget({ ...target, rto: e.target.value })} />
           </FormField>
-          <FormField label="Reason" required hint="Recorded with the change, with your name and the time.">
+          <FormField label={tr("Reason")} required hint={tr("Recorded with the change, with your name and the time.")}>
             <Textarea rows={3} maxLength={500} value={target?.reason ?? ""} onChange={(e) => target && setTarget({ ...target, reason: e.target.value })} />
           </FormField>
         </div>
@@ -397,8 +398,8 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         isOpen={!!verify}
         onClose={() => setVerify(undefined)}
         title={`Record Check: ${verify?.item.label ?? ""}`}
-        description="Record the check a person has made. The date is the date of the check."
-        confirmText="Record check"
+        description={tr("Record the check a person has made. The date is the date of the check.")}
+        confirmText={tr("Record check")}
         confirmDisabled={!verify || busy}
         onConfirm={saveVerify}
       >
@@ -406,15 +407,15 @@ export const DisasterRecoveryPlanView: React.FC = () => {
           <DateTimePicker
             label={
               <>
-                Date of the check <span className="text-red-500">*</span>
+                {tr("Date of the check")} <span className="text-red-500">*</span>
               </>
             }
             value={verify?.date ?? ""}
             onChange={(value) => verify && setVerify({ ...verify, date: value })}
             showTime
-            placeholder="Select date and time"
+            placeholder={tr("Select date and time")}
           />
-          <FormField label="Note" hint="Optional. What was checked and what was found.">
+          <FormField label={tr("Note")} hint={tr("Optional. What was checked and what was found.")}>
             <Textarea rows={3} maxLength={1000} value={verify?.note ?? ""} onChange={(e) => verify && setVerify({ ...verify, note: e.target.value })} />
           </FormField>
         </div>
@@ -423,23 +424,23 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <FormModal
         isOpen={declareAuthority?.step === "form"}
         onClose={() => setDeclareAuthority(undefined)}
-        title="Change Who May Declare a Disaster"
-        description="The person must be an active account. The change takes effect after the electronic signature."
+        title={tr("Change Who May Declare a Disaster")}
+        description={tr("The person must be an active account. The change takes effect after the electronic signature.")}
         confirmText="Continue to Sign"
         confirmDisabled={!declareAuthority || !declareAuthority.username.trim() || !declareAuthority.reason.trim()}
         onConfirm={() => declareAuthority && setDeclareAuthority({ ...declareAuthority, step: "sign" })}
       >
         <div className="space-y-4">
-          <FormField label="Person" required hint="Only active accounts are listed.">
+          <FormField label={tr("Person")} required hint={tr("Only active accounts are listed.")}>
             <Select
               value={declareAuthority?.username ?? ""}
               onChange={(value) => declareAuthority && setDeclareAuthority({ ...declareAuthority, username: String(value) })}
               options={(people ?? []).map((person) => ({ label: `${person.fullName} (${person.username})`, value: person.username ?? "" }))}
-              placeholder={people ? "Choose an active person" : "Loading…"}
+              placeholder={people ? tr("Choose an active person") : "Loading…"}
               disabled={!people}
             />
           </FormField>
-          <FormField label="Reason" required hint="Recorded with the change, with your name and the time.">
+          <FormField label={tr("Reason")} required hint={tr("Recorded with the change, with your name and the time.")}>
             <Textarea rows={3} maxLength={500} value={declareAuthority?.reason ?? ""} onChange={(e) => declareAuthority && setDeclareAuthority({ ...declareAuthority, reason: e.target.value })} />
           </FormField>
         </div>
@@ -457,22 +458,22 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <FormModal
         isOpen={declare?.step === "form"}
         onClose={() => setDeclare(undefined)}
-        title="Declare a Disaster"
-        description="This opens a declaration that stays open until it is closed. It is recorded with your name, the time and your signature."
+        title={tr("Declare a Disaster")}
+        description={tr("This opens a declaration that stays open until it is closed. It is recorded with your name, the time and your signature.")}
         confirmText="Continue to Sign"
         confirmDisabled={!declare || !declare.scenario || !declare.reason.trim()}
         onConfirm={() => declare && setDeclare({ ...declare, step: "sign" })}
       >
         <div className="space-y-4">
-          <FormField label="Scenario" required>
+          <FormField label={tr("Scenario")} required>
             <Select
               value={declare?.scenario ?? ""}
               onChange={(value) => declare && setDeclare({ ...declare, scenario: String(value) })}
               options={(scenarios ?? []).map((s) => ({ label: s.label, value: s.code }))}
-              placeholder="Choose a scenario"
+              placeholder={tr("Choose a scenario")}
             />
           </FormField>
-          <FormField label="What happened" required hint="Recorded with the declaration.">
+          <FormField label={tr("What happened")} required hint={tr("Recorded with the declaration.")}>
             <Textarea rows={4} maxLength={1000} value={declare?.reason ?? ""} onChange={(e) => declare && setDeclare({ ...declare, reason: e.target.value })} />
           </FormField>
         </div>
@@ -491,12 +492,12 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         isOpen={close?.step === "form"}
         onClose={() => setClose(undefined)}
         title={`Close Declaration ${close?.declaration.code ?? ""}`}
-        description="Close it when service is restored. The time since it was declared becomes the recovery time actually taken."
+        description={tr("Close it when service is restored. The time since it was declared becomes the recovery time actually taken.")}
         confirmText="Continue to Sign"
         confirmDisabled={!close || !close.summary.trim()}
         onConfirm={() => close && setClose({ ...close, step: "sign" })}
       >
-        <FormField label="How service was restored, and what was found" required>
+        <FormField label={tr("How service was restored, and what was found")} required>
           <Textarea rows={5} maxLength={2000} value={close?.summary ?? ""} onChange={(e) => close && setClose({ ...close, summary: e.target.value })} />
         </FormField>
       </FormModal>

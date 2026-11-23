@@ -15,6 +15,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName, moduleSelectOptions } from "@/utils/moduleDisplay";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr, trFormat } from "@/i18n";
 
 type SortKey = "code" | "name" | "module" | "groupName";
 
@@ -122,7 +123,7 @@ export const PermissionCatalogTab: React.FC = () => {
       id: "audit",
       header: "Audit",
       label: "Audit",
-      cell: (p) => (p.requiresAudit ? <Badge semantic="warning" size="sm">Audited</Badge> : <span className="text-sm text-slate-300">—</span>),
+      cell: (p) => (p.requiresAudit ? <Badge semantic="warning" size="sm">{tr("Audited")}</Badge> : <span className="text-sm text-slate-300">—</span>),
     },
     {
       id: "lifecycle",
@@ -141,7 +142,7 @@ export const PermissionCatalogTab: React.FC = () => {
                 onClick={(e) => toggleLifecycle(p.code, e, { menuHeight: Math.min(40 + p.lifecycleUsages!.length * 24, 280), menuWidth: 260 })}
                 className="text-2xs text-slate-400 hover:text-emerald-600 hover:underline transition-colors"
               >
-                +{p.lifecycleUsages.length - 1} more
+                {trFormat("+{count} more", { count: p.lifecycleUsages.length - 1 })}
               </button>
             )}
           </span>
@@ -156,13 +157,12 @@ export const PermissionCatalogTab: React.FC = () => {
   return (
     <div className="flex flex-col flex-1">
       <p className="text-xs sm:text-sm text-slate-500 max-w-3xl mb-4 md:mb-5">
-        Seed-managed catalog — every permission grants exactly one action type. New permissions
-        require a migration and code review; there is no "create permission" action here.
+        {tr("Seed-managed catalog — every permission grants exactly one action type. New permissions require a migration and code review; there is no \"create permission\" action here.")}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
         <div className="w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
               <Search className="h-4 w-4 text-slate-400 transition-colors" />
@@ -171,7 +171,7 @@ export const PermissionCatalogTab: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search code, name, description..."
+              placeholder={tr("Search code, name, description...")}
               className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
             />
             {search && (
@@ -184,7 +184,7 @@ export const PermissionCatalogTab: React.FC = () => {
             )}
           </div>
         </div>
-        <Select label="Module" value={moduleFilter} onChange={setModuleFilter} options={moduleOptions} />
+        <Select label={tr("Module")} value={moduleFilter} onChange={setModuleFilter} options={moduleOptions} />
         <div className="filter-actions flex items-end gap-2">
           <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
           {catalogControl}
@@ -212,11 +212,11 @@ export const PermissionCatalogTab: React.FC = () => {
                 isDragging={isDragging}
                 emptyState={
                   error ? (
-                    <TableEmptyState title="Failed to Load" description={error} />
+                    <TableEmptyState title={tr("Failed to Load")} description={error} />
                   ) : (
                     <TableEmptyState
-                      title="No Permissions Found"
-                      description={hasFilters ? "Try adjusting your search or filters." : "No permissions match this filter."}
+                      title={tr("No Permissions Found")}
+                      description={hasFilters ? tr("Try adjusting your search or filters.") : "No permissions match this filter."}
                     />
                   )
                 }

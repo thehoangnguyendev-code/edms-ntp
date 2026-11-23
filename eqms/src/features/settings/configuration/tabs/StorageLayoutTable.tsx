@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge/Badge';
 import { CopyButton } from '@/components/ui/button/CopyButton';
 import { TableMarkup } from '@/components/ui/table/TablePrimitives';
+import { tr } from "@/i18n";
 
 /** What the server generates for each registered data domain (see the Storage Layout text of the tab). `null` while it is still loading. */
 export interface StoragePathPreviewLike {
@@ -34,7 +35,7 @@ export const StorageLayoutTable: React.FC<StorageLayoutTableProps> = ({ preview 
           {['Domain', 'Bucket', 'Object key', 'Status'].map((heading) => (
             <TableMarkup.HeaderCell key={heading} scope="col" className="px-4 py-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">{heading}</TableMarkup.HeaderCell>
           ))}
-          <TableMarkup.HeaderCell scope="col" className="w-12 px-2 py-3"><span className="sr-only">Copy</span></TableMarkup.HeaderCell>
+          <TableMarkup.HeaderCell scope="col" className="w-12 px-2 py-3"><span className="sr-only">{tr("Copy")}</span></TableMarkup.HeaderCell>
         </TableMarkup.Row>
       </TableMarkup.Head>
       <TableMarkup.Body className="divide-y divide-slate-100">

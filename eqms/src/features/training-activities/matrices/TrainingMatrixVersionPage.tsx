@@ -35,6 +35,7 @@ import { TrainingMatrixVersionsPanel } from "./TrainingMatrixVersionsPanel";
 import { trainingFollowUpApi } from "@/services/api/trainingActivities";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { FormDownloadButtons } from "../shared/FormDownloadButtons";
+import { tr, trFormat } from "@/i18n";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -121,7 +122,7 @@ export function TrainingMatrixVersionPage() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The action was not done",
+        title: tr("The action was not done"),
         message: trainingError(e),
       });
       return false;
@@ -141,12 +142,12 @@ export function TrainingMatrixVersionPage() {
       const waiting = result.matrices.filter((m) => m.outcome.startsWith("SKIPPED")).map((m) => m.code);
       showToast({
         type: waiting.length ? "warning" : "success",
-        title: "Locked rows applied",
+        title: tr("Locked rows applied"),
         message: `${changed} matrices changed (${count("NEW_DRAFT")} with a new draft), ${count("ALREADY_THERE")} already had them.${waiting.length ? ` Not applied (a version waits for approval, or none is effective): ${waiting.join(", ")}.` : ""}`,
       });
       setDialog(undefined);
     } catch (e) {
-      showToast({ type: "error", title: "The action was not done", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The action was not done"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -256,7 +257,7 @@ export function TrainingMatrixVersionPage() {
             )
           }
         >
-          Save draft
+          {tr("Save draft")}
         </Button>
       )}
       {caps.submit && (
@@ -269,13 +270,13 @@ export function TrainingMatrixVersionPage() {
             dirty
               ? showToast({
                   type: "info",
-                  title: "Save the draft first",
+                  title: tr("Save the draft first"),
                   message: "",
                 })
               : setDialog("submit")
           }
         >
-          Submit for Approval
+          {tr("Submit for Approval")}
         </Button>
       )}
       {caps.approve && (
@@ -285,7 +286,7 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() =>
             setSign({
-              title: "Complete Approval of the Matrix",
+              title: tr("Complete Approval of the Matrix"),
               changes: statusChange("Pending Approval", "Effective"),
               code: "TRAINING_MATRIX_APPROVED",
               name: "Training Matrix Approved",
@@ -294,7 +295,7 @@ export function TrainingMatrixVersionPage() {
             })
           }
         >
-          Complete Approval
+          {tr("Complete Approval")}
         </Button>
       )}
       {caps.reject && (
@@ -304,12 +305,12 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() => setDialog("reject")}
         >
-          Reject
+          {tr("Reject")}
         </Button>
       )}
       {(version.status === "EFFECTIVE" || version.status === "OBSOLETED") && (
         <FormDownloadButtons
-          label="The matrix"
+          label={tr("The matrix")}
           load={(format) => trainingMatrixApi.exportForm(version.id, format)}
           fileName={(format) => `${version.matrixCode}-v${version.versionNo}-APD.0011.${format}`}
         />
@@ -321,15 +322,15 @@ export function TrainingMatrixVersionPage() {
           className="whitespace-nowrap"
           onClick={() => setDialog("upgrade")}
         >
-          Upgrade Revision
+          {tr("Upgrade Revision")}
         </Button>
       )}
     </>
   );
   const tabs: TabItem[] = [
     { id: "matrix", label: "Matrix", count: rows.length },
-    { id: "general", label: "General Information" },
-    { id: "audit", label: "Audit Trail" },
+    { id: "general", label: tr("General Information") },
+    { id: "audit", label: tr("Audit Trail") },
   ];
 
   return (
@@ -347,7 +348,7 @@ export function TrainingMatrixVersionPage() {
         repeatFooterInHeader
         afterFooter={
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <TabNav tabs={[{ id: "versions", label: "Matrix Versions" }]} activeTab="versions" onChange={() => undefined} variant="simple-underline" />
+            <TabNav tabs={[{ id: "versions", label: tr("Matrix Versions") }]} activeTab="versions" onChange={() => undefined} variant="simple-underline" />
             <div className="p-4 md:p-5">
               <TrainingMatrixVersionsPanel matrixId={version.matrixId} currentVersionId={version.id} />
             </div>
@@ -357,35 +358,35 @@ export function TrainingMatrixVersionPage() {
         <p className="mb-3 text-sm text-slate-700">{NEXT_STEP[version.status]}</p>
         {waiting > 0 && (
           <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {waiting} new or revised document{waiting === 1 ? "" : "s"} of this department {waiting === 1 ? "waits" : "wait"} for the matrix to be assessed or updated.{" "}
-            <button type="button" className="font-medium underline" onClick={() => go("/training-management/document-impact-assessment")}>Open Document Impact Assessment</button>
+            {trFormat("{count} new or revised documents of this department wait for the matrix to be assessed or updated.", { count: waiting })}{" "}
+            <button type="button" className="font-medium underline" onClick={() => go("/training-management/document-impact-assessment")}>{tr("Open Document Impact Assessment")}</button>
           </p>
         )}
         {tab === "general" && (
           <div className="space-y-4">
             <ReadonlyGrid>
-              <ReadonlyField label="Matrix" value={version.matrixCode} />
+              <ReadonlyField label={tr("Matrix")} value={version.matrixCode} />
               <ReadonlyField
-                label="Version"
+                label={tr("Version")}
                 value={String(version.versionNo)}
               />
               <ReadonlyField
-                label="Department"
+                label={tr("Department")}
                 value={version.departmentName}
               />
               <ReadonlyField
-                label="Status"
+                label={tr("Status")}
                 value={STATUS_LABEL[version.status]}
               />
               <ReadonlyField
-                label="Pending With"
+                label={tr("Pending With")}
                 value={version.approvers
                   .filter((a) => a.status === "PENDING")
                   .map((a) => a.assigneeName)
                   .join(", ")}
               />
               <ReadonlyField
-                label="Effective since"
+                label={tr("Effective since")}
                 value={
                   version.status === "EFFECTIVE"
                     ? day(
@@ -397,14 +398,14 @@ export function TrainingMatrixVersionPage() {
               />
               {version.rejectReason && version.status === "DRAFT" && (
                 <ReadonlyField
-                  label="Last rejection"
+                  label={tr("Last rejection")}
                   value={version.rejectReason}
                   wide
                 />
               )}
               {!editing && (
                 <ReadonlyField
-                  label="What changed in this version"
+                  label={tr("What changed in this version")}
                   value={version.changeReason}
                   wide
                 />
@@ -412,7 +413,7 @@ export function TrainingMatrixVersionPage() {
             </ReadonlyGrid>
             {editing && (
               <FormField
-                label="What changed in this version"
+                label={tr("What changed in this version")}
                 required={version.versionNo > 1}
               >
                 <Textarea
@@ -430,13 +431,13 @@ export function TrainingMatrixVersionPage() {
         {tab === "matrix" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-800">Matrix</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{tr("Matrix")}</h3>
               <div className="flex flex-wrap gap-2">
                 {hasPermission("training.admin.manage") && (
                   <>
-                    <Button size="sm" variant="outline-emerald" onClick={() => go(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>Manage Work Positions</Button>
+                    <Button size="sm" variant="outline-emerald" onClick={() => go(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES)}>{tr("Manage Work Positions")}</Button>
                     {!dirty && version.rows.some((r) => r.locked) && (
-                      <Button size="sm" variant="outline-emerald" onClick={() => setDialog("applyLocked")}>Apply Locked Rows to All Departments</Button>
+                      <Button size="sm" variant="outline-emerald" onClick={() => setDialog("applyLocked")}>{tr("Apply Locked Rows to All Departments")}</Button>
                     )}
                   </>
                 )}
@@ -447,14 +448,14 @@ export function TrainingMatrixVersionPage() {
                     variant="outline-emerald"
                     onClick={() => setDialog("addTopic")}
                   >
-                    Add Training Topic
+                    {tr("Add Training Topic")}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline-emerald"
                     onClick={() => setDialog("addDocument")}
                   >
-                    Add SOP
+                    {tr("Add SOP")}
                   </Button>
                 </>
               ) : undefined}
@@ -462,11 +463,10 @@ export function TrainingMatrixVersionPage() {
             </div>
             {positions.length === 0 ? (
               <p className="p-4 text-sm text-amber-700">
-                This department has no Work Position yet. A Training Administrator creates them under
-                Training Administration, Work Positions.
+                {tr("This department has no Work Position yet. A Training Administrator creates them under Training Administration, Work Positions.")}
               </p>
             ) : rows.length === 0 ? (
-              <p className="p-4 text-sm text-slate-500">No row yet.</p>
+              <p className="p-4 text-sm text-slate-500">{tr("No row yet.")}</p>
             ) : (
               <TrainingMatrixGrid
                 rows={rows}
@@ -548,7 +548,7 @@ export function TrainingMatrixVersionPage() {
           onSubmit={(approver) => {
             setDialog(undefined);
             setSign({
-              title: "Send Matrix for Approval",
+              title: tr("Send Matrix for Approval"),
               changes: statusChange("Draft", "Pending Approval"),
               code: "TRAINING_MATRIX_PREPARED",
               name: "Training Matrix Prepared",
@@ -578,8 +578,8 @@ export function TrainingMatrixVersionPage() {
       <FormModal
         isOpen={dialog === "upgrade"}
         onClose={() => setDialog(undefined)}
-        title="Upgrade Revision"
-        description="A copy of this version is opened as a draft. This version stays effective until the new one is approved."
+        title={tr("Upgrade Revision")}
+        description={tr("A copy of this version is opened as a draft. This version stays effective until the new one is approved.")}
         confirmText="Start"
         isLoading={busy}
         size="md"
@@ -592,23 +592,23 @@ export function TrainingMatrixVersionPage() {
         }
       >
         <p className="text-sm text-slate-600">
-          Only one version can be prepared at a time.
+          {tr("Only one version can be prepared at a time.")}
         </p>
       </FormModal>
       <FormModal
         isOpen={dialog === "applyLocked"}
         onClose={() => setDialog(undefined)}
-        title="Apply Locked Rows to All Departments"
-        description="The rows locked in this version are added, locked, to the matrices of all the other departments."
+        title={tr("Apply Locked Rows to All Departments")}
+        description={tr("The rows locked in this version are added, locked, to the matrices of all the other departments.")}
         confirmText="Apply"
         isLoading={busy}
         size="md"
         onConfirm={() => void applyLockedRows()}
       >
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-          <li>A matrix with a draft open gets the rows in that draft.</li>
-          <li>A matrix with only an effective version gets a new draft; the head of the department approves it as usual.</li>
-          <li>A matrix whose version waits for approval is left as it is; apply again once that version is decided.</li>
+          <li>{tr("A matrix with a draft open gets the rows in that draft.")}</li>
+          <li>{tr("A matrix with only an effective version gets a new draft; the head of the department approves it as usual.")}</li>
+          <li>{tr("A matrix whose version waits for approval is left as it is; apply again once that version is decided.")}</li>
         </ul>
       </FormModal>
       <ESignatureModal
@@ -655,26 +655,26 @@ function AddTopicDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Add a Training Topic"
-      description="Write the training topic. A SOP is added with Add SOP."
+      title={tr("Add a Training Topic")}
+      description={tr("Write the training topic. A SOP is added with Add SOP.")}
       confirmText="Add"
       confirmDisabled={!clean || duplicate}
       size="md"
       onConfirm={() => onAdd(clean, group)}
     >
       <div className="grid gap-4">
-        <FormField label="Training Topic" required hint={duplicate ? "This Training Topic is already in the matrix." : "For example: Occupational safety"}>
+        <FormField label={tr("Training Topic")} required hint={duplicate ? "This Training Topic is already in the matrix." : "For example: Occupational safety"}>
           <Input value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
         </FormField>
         <RadioGroup
-          label="Group"
+          label={tr("Group")}
           name="matrix-topic-group"
           layout="horizontal"
           value={group}
           onChange={(v) => setGroup(v === "FACTORY_GENERAL" ? "FACTORY_GENERAL" : "DEPARTMENT_GENERAL")}
           options={[
-            { label: "General training of the department", value: "DEPARTMENT_GENERAL" },
-            { label: "General training of the whole factory", value: "FACTORY_GENERAL" },
+            { label: tr("General training of the department"), value: "DEPARTMENT_GENERAL" },
+            { label: tr("General training of the whole factory"), value: "FACTORY_GENERAL" },
           ]}
         />
       </div>
@@ -736,20 +736,20 @@ function AddDocumentDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Add a SOP"
-      description="The row applies to the revision of the document that is effective at the time."
+      title={tr("Add a SOP")}
+      description={tr("The row applies to the revision of the document that is effective at the time.")}
       confirmText="Add"
       confirmDisabled={!docs[id]}
       size="md"
       onConfirm={() => docs[id] && onAdd(docs[id])}
     >
-      <FormField label="Document" required>
+      <FormField label={tr("Document")} required>
         <Select
           value={id}
           onChange={setId}
           options={options}
           onSearch={search}
-          placeholder="Search a document"
+          placeholder={tr("Search a document")}
         />
       </FormField>
     </FormModal>
@@ -789,8 +789,8 @@ function SubmitDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Send for Approval"
-      description="Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you."
+      title={tr("Send for Approval")}
+      description={tr("Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you.")}
       confirmText="Continue to Signature"
       isLoading={busy}
       confirmDisabled={!id}
@@ -799,12 +799,11 @@ function SubmitDialog({
     >
       {loaded && people.length === 0 ? (
         <p className="text-sm text-amber-700">
-          No eligible person was found. A person needs the permission to approve
-          matrices in this department.
+          {tr("No eligible person was found. A person needs the permission to approve matrices in this department.")}
         </p>
       ) : (
         <Select
-          label="Approver"
+          label={tr("Approver")}
           value={id}
           onChange={setId}
           options={people.map((p) => ({
@@ -812,7 +811,7 @@ function SubmitDialog({
             value: p.id,
           }))}
           onSearch={search}
-          placeholder="Search by name"
+          placeholder={tr("Search by name")}
         />
       )}
     </FormModal>
@@ -833,8 +832,8 @@ function RejectDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Reject This Version"
-      description="The version goes back to draft with your reason."
+      title={tr("Reject This Version")}
+      description={tr("The version goes back to draft with your reason.")}
       confirmText="Reject"
       confirmVariant="destructive"
       isLoading={busy}
@@ -842,7 +841,7 @@ function RejectDialog({
       size="md"
       onConfirm={() => onReject(reason.trim())}
     >
-      <FormField label="Reason" required>
+      <FormField label={tr("Reason")} required>
         <Input value={reason} onChange={(e) => setReason(e.target.value)} />
       </FormField>
     </FormModal>

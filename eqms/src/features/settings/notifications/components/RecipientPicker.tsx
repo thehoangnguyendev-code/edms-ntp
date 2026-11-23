@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button/Button';
 import { Select } from '@/components/ui/select';
 import type { RecipientRule } from '@/services/api/notificationPolicy';
 import { notificationAdministrationApi, type RecipientChoice, type RecipientRuleKind } from '@/services/api/notificationAdministration';
+import { tr } from "@/i18n";
 
 export const sameRule = (a: RecipientRule, b: RecipientRule) => a.type === b.type && (a.value ?? '').trim().toLowerCase() === (b.value ?? '').trim().toLowerCase();
 
@@ -64,7 +65,7 @@ export const RecipientPicker: React.FC<Props> = ({ kinds, existing, onAdd, disab
       {/* wraps by itself: the picker sits in a card that is half the screen wide on a large screen and the whole of it on a phone */}
       <div className="flex flex-wrap items-start gap-2">
         <div className="min-w-[12rem] flex-1 basis-56">
-          <Select value={type} onChange={(next: string) => setType(next)} groups={groups} options={[]} placeholder="Add who gets it…" aria-label="Kind of recipient" />
+          <Select value={type} onChange={(next: string) => setType(next)} groups={groups} options={[]} placeholder={tr("Add who gets it…")} aria-label={tr("Kind of recipient")} />
         </div>
         {kind?.needsValue ? (
           <div className="min-w-[12rem] flex-1 basis-56">
@@ -75,7 +76,7 @@ export const RecipientPicker: React.FC<Props> = ({ kinds, existing, onAdd, disab
             enableSearch
             isLoading={choices === null}
             placeholder={`Choose: ${(kind.valueLabel ?? 'value').toLowerCase()}`}
-            searchPlaceholder="Search…"
+            searchPlaceholder={tr("Search…")}
             aria-label={kind.valueLabel ?? 'Value'}
           />
           </div>
@@ -84,10 +85,10 @@ export const RecipientPicker: React.FC<Props> = ({ kinds, existing, onAdd, disab
         ) : null}
         <Button size="sm" variant="outline-emerald" disabled={!candidate || repeated} onClick={add}>
           <Plus className="mr-1.5 h-4 w-4" />
-          Add
+          {tr("Add")}
         </Button>
       </div>
-      {repeated ? <p className="text-xs text-amber-700">This recipient is already in the list.</p> : null}
+      {repeated ? <p className="text-xs text-amber-700">{tr("This recipient is already in the list.")}</p> : null}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { documentApi } from "@/services/api/documents";
 import { securityApi } from "@/services/api/security";
 import type { RevisionPerson } from "../types";
+import { tr, trFormat } from "@/i18n";
 
 type ParticipantType = "REVIEWER" | "APPROVER";
 
@@ -98,11 +99,11 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
         reason: reason.trim(),
         signatureToken: signature.signatureToken as string,
       });
-      showToast({ type: "success", title: "Assignee replaced", message: "The new assignee has been notified.", duration: 3000 });
+      showToast({ type: "success", title: tr("Assignee replaced"), message: "The new assignee has been notified.", duration: 3000 });
       close();
       await onReplaced();
     } catch (error) {
-      showToast({ type: "error", title: "Replacement failed", message: errorMessage(error) });
+      showToast({ type: "error", title: tr("Replacement failed"), message: errorMessage(error) });
       setSaving(false);
       return;
     }
@@ -120,13 +121,12 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
             <div className="flex items-start gap-2.5 text-xs sm:text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                {item.type === "REVIEWER" ? "Reviewer" : "Approver"}{" "}
-                <b>{item.person.fullName || item.person.username}</b> is {String(item.person.userStatus).toLowerCase()} and
-                cannot act. This revision cannot progress until the assignment is replaced.
+                {item.type === "REVIEWER" ? tr("Reviewer") : tr("Approver")}{" "}
+                <b>{item.person.fullName || item.person.username}</b> {tr("is")} {String(item.person.userStatus).toLowerCase()} {tr("and cannot act. This revision cannot progress until the assignment is replaced.")}
               </span>
             </div>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setTarget(item)}>
-              Replace assignee
+              {tr("Replace assignee")}
             </Button>
           </div>
         ))}
@@ -145,23 +145,23 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
       >
         <div className="space-y-4">
           <Select
-            label="New assignee"
+            label={tr("New assignee")}
             value={toUserId}
             onChange={(value) => setToUserId(String(value))}
             options={[]}
             onSearch={searchUsers}
             minSearchLength={0}
             enableSearch
-            placeholder="Search an eligible user..."
+            placeholder={tr("Search an eligible user...")}
           />
           <div>
-            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Reason</label>
+            <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Reason")}</label>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={3}
               maxLength={500}
-              placeholder="Why is the assignee being replaced?"
+              placeholder={tr("Why is the assignee being replaced?")}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400 resize-none"
             />
           </div>

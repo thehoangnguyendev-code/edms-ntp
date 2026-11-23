@@ -9,6 +9,7 @@ import { IconEye, IconSettings } from "@tabler/icons-react";
 import { ReportLiveSheet } from "./ReportLiveSheet";
 import { ReportPlaceholdersSection } from "./ReportPlaceholdersSection";
 import { ZonePanel, type ZoneKey } from "./ReportZonePanels";
+import { tr } from "@/i18n";
 
 const fonts = [
   { value: "NOTO_SANS", label: "Noto Sans" },
@@ -23,10 +24,10 @@ const papers = [
 ];
 /** The parts a person can point at, in the order of the quick buttons above the page. */
 const QUICK: { zone: ZoneKey; label: string }[] = [
-  { zone: "cover", label: "Cover Page" },
+  { zone: "cover", label: tr("Cover Page") },
   { zone: "hl", label: "Header" },
   { zone: "logo", label: "Logo" },
-  { zone: "info", label: "Information" },
+  { zone: "info", label: tr("Information") },
   { zone: "fl", label: "Footer" },
   { zone: "appr", label: "Approval" },
   { zone: "notes", label: "Notes" },
@@ -58,28 +59,28 @@ export function ReportAppearanceEditor({ value, onChange, disabled }: { value: R
   return (
     <div className="space-y-4">
       {hasWord && (
-        <WarningBanner variant="warning" description="This layout still carries Word page templates from an earlier setup. They replace the header, footer or cover set on the page. Remove them to edit those parts here.">
+        <WarningBanner variant="warning" description={tr("This layout still carries Word page templates from an earlier setup. They replace the header, footer or cover set on the page. Remove them to edit those parts here.")}>
           <Button size="sm" variant="outline" className="mt-2" disabled={disabled} onClick={() => onChange({ ...value, wordComponents: {} })}>
-            Remove Word templates
+            {tr("Remove Word templates")}
           </Button>
         </WarningBanner>
       )}
 
       <>
-          <FormSection title="Page Setup" icon={<IconSettings className="h-4 w-4" />}>
+          <FormSection title={tr("Page Setup")} icon={<IconSettings className="h-4 w-4" />}>
             <div className="grid gap-4 md:grid-cols-3">
-              <Select label="Paper" value={value.orientation ?? "LANDSCAPE"} enableSearch={false} options={papers} disabled={disabled} onChange={(orientation) => onChange({ ...value, orientation: orientation as ReportLayout["orientation"] })} />
-              <Select label="Report Font" value={value.fontFamily ?? "NOTO_SANS"} enableSearch={false} options={fonts} disabled={disabled} onChange={(fontFamily) => onChange({ ...value, fontFamily: fontFamily as ReportLayout["fontFamily"] })} />
-              <FormField label="Company Name" hint="Printed wherever a text has {{company.name}}">
+              <Select label={tr("Paper")} value={value.orientation ?? "LANDSCAPE"} enableSearch={false} options={papers} disabled={disabled} onChange={(orientation) => onChange({ ...value, orientation: orientation as ReportLayout["orientation"] })} />
+              <Select label={tr("Report Font")} value={value.fontFamily ?? "NOTO_SANS"} enableSearch={false} options={fonts} disabled={disabled} onChange={(fontFamily) => onChange({ ...value, fontFamily: fontFamily as ReportLayout["fontFamily"] })} />
+              <FormField label={tr("Company Name")} hint={tr("Printed wherever a text has {{company.name}}")}>
                 <Input maxLength={120} value={frame.companyName} disabled={disabled} onChange={(e) => onChange({ ...value, frame: { ...frame, companyName: e.target.value } })} />
               </FormField>
             </div>
           </FormSection>
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,9fr)_minmax(0,11fr)]">
-            <FormSection title="Page Preview" icon={<IconEye className="h-4 w-4" />} className="flex min-w-0 flex-col" contentClassName="min-w-0 flex-1 space-y-3 p-3 md:p-4">
+            <FormSection title={tr("Page Preview")} icon={<IconEye className="h-4 w-4" />} className="flex min-w-0 flex-col" contentClassName="min-w-0 flex-1 space-y-3 p-3 md:p-4">
               <div data-testid="page-stage" className="min-w-0 space-y-3">
-                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Parts of the page">
-                  <span className="mr-1 text-xs text-slate-500">Click on the page:</span>
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={tr("Parts of the page")}>
+                  <span className="mr-1 text-xs text-slate-500">{tr("Click on the page:")}</span>
                   {QUICK.map((quick) => {
                     const active = selected === quick.zone || (quick.zone === "hl" && HEADER_ZONES.includes(selected)) || (quick.zone === "fl" && FOOTER_ZONES.includes(selected));
                     return (
@@ -102,7 +103,7 @@ export function ReportAppearanceEditor({ value, onChange, disabled }: { value: R
                 />
               </div>
             </FormSection>
-            <aside className="min-w-0 space-y-4" aria-label="Properties of the part of the page">
+            <aside className="min-w-0 space-y-4" aria-label={tr("Properties of the part of the page")}>
               {error && <WarningBanner variant="error" description={error} />}
               <ZonePanel zone={selected} value={value} onChange={onChange} disabled={disabled} onError={setError} onZone={select} />
             </aside>

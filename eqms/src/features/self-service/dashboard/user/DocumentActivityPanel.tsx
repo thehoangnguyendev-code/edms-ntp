@@ -7,6 +7,7 @@ import { fillActivityPeriods, longPeriodLabel, shortPeriodLabel, type ActivityPe
 import { PanelError } from '../shared/dashboardParts';
 import { Card, CardHeader } from '../shared/dashboardUi';
 import { useDashboardResource } from '../shared/useDashboardResource';
+import { tr } from "@/i18n";
 
 const PERIOD_OPTIONS = [
   { label: 'Monthly', value: 'month' },
@@ -25,18 +26,18 @@ export const DocumentActivityPanel: React.FC<{ className?: string }> = ({ classN
   const total = series.reduce((sum, point) => sum + point.value, 0);
 
   return (
-    <Card className={className} aria-label="Document activity">
+    <Card className={className} aria-label={tr("Document activity")}>
       <CardHeader
-        title="Document activity"
+        title={tr("Document activity")}
         subtitle={activity.data ? `${total.toLocaleString()} documents created in the ${PERIOD_LABEL[period]}` : 'Documents created over time'}
         right={<div className="w-32"><Select value={period} onChange={(value) => setPeriod(value as ActivityPeriod)} enableSearch={false} options={PERIOD_OPTIONS} /></div>}
       />
       {activity.error ? (
-        <PanelError message="Document activity could not be loaded." onRetry={activity.reload} />
+        <PanelError message={tr("Document activity could not be loaded.")} onRetry={activity.reload} />
       ) : activity.loading && !activity.data ? (
         <div className="m-4 h-[232px] animate-pulse rounded-lg bg-slate-50" aria-hidden />
       ) : total === 0 ? (
-        <div className="flex h-[232px] items-center justify-center text-sm text-slate-400">No documents were created in this period</div>
+        <div className="flex h-[232px] items-center justify-center text-sm text-slate-400">{tr("No documents were created in this period")}</div>
       ) : (
         <motion.div
           key={period}

@@ -12,6 +12,7 @@ import { AuthField, AuthLayout, AuthBackLink, AuthTopBackButton } from "./compon
 import { IconArrowBigUpFilled } from "@tabler/icons-react";
 import { usePasswordPolicy } from "./usePasswordPolicy";
 import { evaluatePasswordPolicy, passwordReuseNote } from "./passwordPolicyRules";
+import { tr } from "@/i18n";
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -103,24 +104,24 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
     isLoading || !strength.isValid || formData.newPassword !== formData.confirmPassword || !formData.currentPassword;
   const passwordChangeContext = {
     FIRST_LOGIN: {
-      title: "Create Your Password",
-      description: <>Hi <span className="font-semibold text-slate-700">{username}</span>, replace the temporary password issued for your new account.</>,
+      title: tr("Create Your Password"),
+              description: <>{tr("Hi")} <span className="font-semibold text-slate-700">{username}</span>{tr(", replace the temporary password issued for your new account.")}</>,
     },
     ADMIN_RESET: {
-      title: "Reset Your Password",
-      description: "An administrator reset your password. Create a new personal password to continue.",
+      title: tr("Reset Your Password"),
+      description: tr("An administrator reset your password. Create a new personal password to continue."),
     },
     PASSWORD_EXPIRED: {
-      title: "Password Update Required",
-      description: "Your password has expired under the organization’s security policy. Create a new password to continue.",
+      title: tr("Password Update Required"),
+      description: tr("Your password has expired under the organization’s security policy. Create a new password to continue."),
     },
     SECURITY_INCIDENT: {
-      title: "Secure Your Account",
-      description: "A security event requires you to replace your password before continuing.",
+      title: tr("Secure Your Account"),
+      description: tr("A security event requires you to replace your password before continuing."),
     },
     LEGACY_REQUIRED: {
-      title: "Password Update Required",
-      description: "Create a new password to continue securely.",
+      title: tr("Password Update Required"),
+      description: tr("Create a new password to continue securely."),
     },
   }[passwordChangeReason || 'LEGACY_REQUIRED'];
 
@@ -240,7 +241,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
       <AuthLayout
         left={
           <div className={ui.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
+            <AuthTopBackButton onClick={onBackToLogin} label={tr("Back to Sign In")} disabled={isLoading} />
             <div className={ui.brand}>
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
@@ -259,7 +260,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 <div className="flex gap-3">
                   <ShieldAlert className="h-5 w-5 text-red-600" />
                   <div>
-                    <p className="text-sm font-semibold text-red-900">Security Update Failed</p>
+                    <p className="text-sm font-semibold text-red-900">{tr("Security Update Failed")}</p>
                     <p className="mt-0.5 text-sm text-red-700">{submitError}</p>
                   </div>
                 </div>
@@ -270,7 +271,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 saved credential after this form's existing server-side change succeeds. */}
             {isPasswordUpdated ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800" role="status">
-                Password updated successfully. Opening your workspace…
+                {tr("Password updated successfully. Opening your workspace…")}
               </div>
             ) : (
             <form id="change-password-form" name="change-password-form" onSubmit={handleSubmit} className={ui.formStack} noValidate autoComplete="on">
@@ -287,7 +288,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 className="sr-only"
               />
 
-              <AuthField htmlFor="current-password" label="Current Password" required={true} error={errors.currentPassword}>
+              <AuthField htmlFor="current-password" label={tr("Current Password")} required={true} error={errors.currentPassword}>
                 <div className="relative">
                   <input
                     id="current-password"
@@ -298,7 +299,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onChange={(e) => handleInputChange("currentPassword", e.target.value)}
                     className={cn(ui.inputBase, "pr-12", ui.inputFocus, errors.currentPassword ? ui.inputError : ui.inputDefault)}
                     disabled={isLoading}
-                    placeholder='Enter Current Password'
+                    placeholder={tr("Enter Current Password")}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     <PasswordIcon field="current" />
@@ -308,7 +309,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
               <AuthField
                 htmlFor="new-password"
-                label="New Password"
+                label={tr("New Password")}
                 required={true}
                 error={errors.newPassword}
               >
@@ -326,11 +327,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onKeyDown={handleCapsLockCheck}
                     onFocus={() => setFocusedField("new")}
                     onBlur={() => setFocusedField(null)}
-                    placeholder='Enter New Password'
+                    placeholder={tr("Enter New Password")}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     {isCapsLockOn && focusedField === "new" && (
-                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title={tr("Caps Lock is ON")}>
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
                       </div>
                     )}
@@ -373,7 +374,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
 
               <AuthField
                 htmlFor="confirm-new-password"
-                label="Confirm New Password"
+                label={tr("Confirm New Password")}
                 required={true}
                 error={errors.confirmPassword}
               >
@@ -391,11 +392,11 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                     onKeyDown={handleCapsLockCheck}
                     onFocus={() => setFocusedField("confirm")}
                     onBlur={() => setFocusedField(null)}
-                    placeholder='Confirm New Password'
+                    placeholder={tr("Confirm New Password")}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-1 sm:pr-1.5">
                     {isCapsLockOn && focusedField === "confirm" && (
-                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title="Caps Lock is ON">
+                      <div className="mr-2 rounded-md border border-emerald-100 bg-emerald-50 p-1" title={tr("Caps Lock is ON")}>
                         <IconArrowBigUpFilled className="h-4 w-4 text-emerald-700" />
                       </div>
                     )}
@@ -404,7 +405,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 </div>
                 {formData.confirmPassword && formData.confirmPassword !== formData.newPassword && (
                   <p className="mt-1.5 text-xs font-medium text-red-600 animate-in fade-in slide-in-from-top-1 duration-200">
-                    Passwords do not match yet
+                    {tr("Passwords do not match yet")}
                   </p>
                 )}
               </AuthField>
@@ -415,16 +416,16 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
                 disabled={continueDisabled}
                 aria-describedby={continueDisabled && !isLoading ? "continue-hint" : undefined}
               >
-                Continue
+                {tr("Continue")}
               </Button>
               {continueDisabled && !isLoading && (
                 <p id="continue-hint" className={ui.hintText}>
-                  Enter your current password and meet every password rule to continue.
+                  {tr("Enter your current password and meet every password rule to continue.")}
                 </p>
               )}
 
               <div className="hidden sm:block">
-                <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isLoading} />
+                <AuthBackLink onClick={onBackToLogin} label={tr("Back to Sign In")} disabled={isLoading} />
               </div>
             </form>
             )}

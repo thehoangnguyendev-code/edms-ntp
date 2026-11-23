@@ -138,7 +138,7 @@ export function DesktopFilterPanel({
           }}
         >
           <IconFilter2 className="h-4 w-4" />
-          Filter
+          {tr("Filter")}
         </Button>
         {trailing}
       </div>

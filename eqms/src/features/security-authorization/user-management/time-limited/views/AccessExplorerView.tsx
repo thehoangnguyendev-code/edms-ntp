@@ -24,13 +24,14 @@ import { ROUTES } from "@/app/routes.constants";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleLabel } from "./accessExplorerLabels";
 import { moduleSelectOptions } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 type SortKey = "name" | "code" | "module" | "permissionSetCount" | "accessProfileCount" | "holderCount";
 const SORT_KEYS: SortKey[] = ["name", "code", "module", "permissionSetCount", "accessProfileCount", "holderCount"];
 const HELD_OPTIONS = [
   { label: "All", value: "all" },
-  { label: "Held by someone", value: "held" },
-  { label: "Held by nobody", value: "none" },
+  { label: tr("Held by someone"), value: "held" },
+  { label: tr("Held by nobody"), value: "none" },
 ];
 
 /**
@@ -133,8 +134,8 @@ export const AccessExplorerView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center", cell: (_row, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
     {
       id: "name",
-      header: "Permission",
-      label: "Permission",
+      header: tr("Permission"),
+      label: tr("Permission"),
       sort: sortOf("name"),
       cell: (row) => (
         <div className="min-w-0">
@@ -144,19 +145,19 @@ export const AccessExplorerView: React.FC = () => {
       ),
     },
     { id: "module", header: "Module", label: "Module", sort: sortOf("module"), cell: (row) => moduleLabel(row.moduleKey) },
-    { id: "permissionSetCount", header: "Sets", label: "Permission Sets", sort: sortOf("permissionSetCount"), cell: (row) => row.permissionSetCount },
-    { id: "accessProfileCount", header: "Profiles", label: "Access Profiles", sort: sortOf("accessProfileCount"), cell: (row) => row.accessProfileCount },
+    { id: "permissionSetCount", header: "Sets", label: tr("Permission Sets"), sort: sortOf("permissionSetCount"), cell: (row) => row.permissionSetCount },
+    { id: "accessProfileCount", header: "Profiles", label: tr("Access Profiles"), sort: sortOf("accessProfileCount"), cell: (row) => row.accessProfileCount },
     {
       id: "holderCount",
       header: "People",
       label: "People",
       sort: sortOf("holderCount"),
       cell: (row) => (row.holderCount === 0
-        ? <Badge color="amber" size="sm" pill>Nobody</Badge>
+        ? <Badge color="amber" size="sm" pill>{tr("Nobody")}</Badge>
         : (
           <div>
             <span className="text-sm font-medium text-slate-800">{row.holderCount}</span>
-            <span className="block text-2xs text-slate-500">{row.activeHolderCount} with an Active account</span>
+            <span className="block text-2xs text-slate-500">{row.activeHolderCount} {tr("with an Active account")}</span>
           </div>
         )),
     },
@@ -195,7 +196,7 @@ export const AccessExplorerView: React.FC = () => {
       {(isNavigating || isInitialLoading) && <FullPageLoading text="Loading…" />}
 
       <PageHeader
-        title="Access Explorer"
+        title={tr("Access Explorer")}
         breadcrumbItems={accessExplorer(navigate)}
         actions={
           <Button
@@ -203,10 +204,10 @@ export const AccessExplorerView: React.FC = () => {
             size="sm"
             className="whitespace-nowrap gap-2"
             onClick={() => void openPermissionHoldersReport(navigate, showToast)}
-            title="Create a report of the type Permission Holders: the run is authorized, audited and kept like every other report"
+            title={tr("Create a report of the type Permission Holders: the run is authorized, audited and kept like every other report")}
           >
             <IconReportSearch className="h-4 w-4" />
-            Permission Holders Report
+            {tr("Permission Holders Report")}
           </Button>
         }
       />
@@ -220,18 +221,18 @@ export const AccessExplorerView: React.FC = () => {
               <input
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Search permissions…"
+                placeholder={tr("Search permissions…")}
                 className="w-full pl-9 pr-8 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
               />
               {searchQuery && (
-                <button type="button" onClick={() => { setSearchQuery(""); setCurrentPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" aria-label="Clear search">
+                <button type="button" onClick={() => { setSearchQuery(""); setCurrentPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" aria-label={tr("Clear search")}>
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
 
@@ -240,10 +241,10 @@ export const AccessExplorerView: React.FC = () => {
             trailing={<div className="hidden md:block">{control}</div>}
             search={
               <input
-                aria-label="Search"
+                aria-label={tr("Search")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Search permissions…"
+                placeholder={tr("Search permissions…")}
                 className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
               />
             }
@@ -254,22 +255,22 @@ export const AccessExplorerView: React.FC = () => {
           >
             <div className="hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <input
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    placeholder="Search permissions…"
+                    placeholder={tr("Search permissions…")}
                     className="w-full pl-9 pr-3 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                   />
                 </div>
               </div>
               <div className="w-full">
-                <Select label="Module" value={moduleFilter} onChange={(v) => { setModuleFilter(String(v)); setCurrentPage(1); }} options={moduleOptions} />
+                <Select label={tr("Module")} value={moduleFilter} onChange={(v) => { setModuleFilter(String(v)); setCurrentPage(1); }} options={moduleOptions} />
               </div>
               <div className="w-full">
-                <Select label="Held By" value={heldFilter} onChange={(v) => { setHeldFilter(String(v)); setCurrentPage(1); }} options={HELD_OPTIONS} />
+                <Select label={tr("Held By")} value={heldFilter} onChange={(v) => { setHeldFilter(String(v)); setCurrentPage(1); }} options={HELD_OPTIONS} />
               </div>
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearchQuery("")} onClear={clearFilters} />
@@ -280,10 +281,10 @@ export const AccessExplorerView: React.FC = () => {
 
           {/* Mobile FilterDrawer */}
           <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-            <FilterAccordionItem label="Module" isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
+            <FilterAccordionItem label={tr("Module")} isExpanded={expandedSections.has("module")} onToggle={() => toggleSection("module")}>
               {optionButtons(moduleOptions, moduleFilter, setModuleFilter)}
             </FilterAccordionItem>
-            <FilterAccordionItem label="Held By" isExpanded={expandedSections.has("held")} onToggle={() => toggleSection("held")}>
+            <FilterAccordionItem label={tr("Held By")} isExpanded={expandedSections.has("held")} onToggle={() => toggleSection("held")}>
               {optionButtons(HELD_OPTIONS, heldFilter, setHeldFilter)}
             </FilterAccordionItem>
           </FilterDrawer>
@@ -305,7 +306,7 @@ export const AccessExplorerView: React.FC = () => {
               scrollProps={dragEvents}
               isDragging={isDragging}
               onRowClick={open}
-              emptyState={<TableEmptyState title="No permissions found" description={hasFilters ? "Try adjusting your search or filters." : "There are no permissions to show."} />}
+              emptyState={<TableEmptyState title={tr("No permissions found")} description={hasFilters ? tr("Try adjusting your search or filters.") : "There are no permissions to show."} />}
               pagination={
                 totalItems > 0 ? (
                   <div className="border-t border-slate-200">

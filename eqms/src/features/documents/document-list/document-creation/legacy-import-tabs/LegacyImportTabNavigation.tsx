@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React from "react";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 
@@ -18,9 +19,9 @@ export const LegacyImportTabNavigation: React.FC<LegacyImportTabNavigationProps>
 }) => (
   <TabNav
     tabs={[
-      { id: "document", label: "Document Information" },
-      ...(isTemplate ? [] : [{ id: "training", label: "Training Requirement" }]),
-      { id: "revisions", label: "Revision History", count: revisionCount || undefined },
+      { id: "document", label: tr("Document Information") },
+      ...(isTemplate ? [] : [{ id: "training", label: tr("Training Requirement") }]),
+      { id: "revisions", label: tr("Revision History"), count: revisionCount || undefined },
     ]}
     activeTab={activeTab}
     onChange={(id) => onChange(id as LegacyImportTabId)}

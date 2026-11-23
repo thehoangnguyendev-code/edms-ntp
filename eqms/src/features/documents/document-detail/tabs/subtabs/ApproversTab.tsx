@@ -9,6 +9,7 @@ import { metadataApi } from "@/services/api/metadata";
 import { Approver } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface AppUser {
     id: string;
@@ -101,8 +102,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             isOpen={isOpen}
             onClose={onClose}
             onConfirm={handleSave}
-            title="Setup Approver"
-            description="Select the final approver for this document."
+            title={tr("Setup Approver")}
+            description={tr("Select the final approver for this document.")}
             confirmText="Commit Selection"
             confirmDisabled={!selectedId}
             size="lg"
@@ -112,7 +113,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, position, or department..."
+                        placeholder={tr("Search by name, position, or department...")}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-9 pl-9 pr-4 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 transition-colors"
@@ -123,8 +124,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                 <div className="overflow-y-auto max-h-[350px] -mx-1 px-1 custom-scrollbar min-h-[150px]">
                     {isLoading ? (
                         <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                            <p className="text-sm font-semibold text-slate-900">Loading users...</p>
-                            <p className="text-xs text-slate-500 mt-1">Please wait while we load approver candidates</p>
+                            <p className="text-sm font-semibold text-slate-900">{tr("Loading users...")}</p>
+                            <p className="text-xs text-slate-500 mt-1">{tr("Please wait while we load approver candidates")}</p>
                         </div>
                     ) : filteredUsers.length > 0 ? (
                         <div className="space-y-2">
@@ -168,8 +169,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                             <div className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
                                 <User className="h-6 w-6 text-slate-300" />
                             </div>
-                            <p className="text-sm font-semibold text-slate-900">No users found</p>
-                            <p className="text-xs text-slate-500 mt-1">Try a different search term</p>
+                            <p className="text-sm font-semibold text-slate-900">{tr("No users found")}</p>
+                            <p className="text-xs text-slate-500 mt-1">{tr("Try a different search term")}</p>
                         </div>
                     )}
                 </div>
@@ -246,25 +247,25 @@ export const ApproversTab: React.FC<ApproversTabProps> = ({
                             <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                                 <TableMarkup.Row>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                        No.
+                                        {tr("No.")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        User
+                                        {tr("User")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Email
+                                        {tr("Email")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Position
+                                        {tr("Position")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Department
+                                        {tr("Department")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Role
+                                        {tr("Role")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>
-                                        Action
+                                        {tr("Action")}
                                     </TableMarkup.HeaderCell>
                                 </TableMarkup.Row>
                             </TableMarkup.Head>
@@ -293,7 +294,7 @@ export const ApproversTab: React.FC<ApproversTabProps> = ({
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-xs sm:text-sm whitespace-nowrap">
                                             <Badge color="emerald" size="sm">
-                                                Approver
+                                                {tr("Approver")}
                                             </Badge>
                                         </TableMarkup.Cell>
                                         <TableMarkup.Cell className="py-2 px-2 sm:py-3.5 sm:px-4 text-center whitespace-nowrap">
@@ -302,7 +303,7 @@ export const ApproversTab: React.FC<ApproversTabProps> = ({
                                                 variant="ghost"
                                                 size="icon-sm"
                                                 className="text-slate-400 hover:text-red-500 hover:bg-red-50"
-                                                title="Remove approver"
+                                                title={tr("Remove approver")}
                                             >
                                                 <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                             </Button>
@@ -320,7 +321,7 @@ export const ApproversTab: React.FC<ApproversTabProps> = ({
                     <div className="h-12 w-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3">
                         <User className="h-6 w-6 text-slate-400" />
                     </div>
-                    <p className="text-sm font-medium text-slate-500">No Approver Selected</p>
+                    <p className="text-sm font-medium text-slate-500">{tr("No Approver Selected")}</p>
                 </div>
             )}
 

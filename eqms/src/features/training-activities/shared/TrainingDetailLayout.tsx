@@ -7,7 +7,7 @@ import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/Workfl
 import type { WorkflowProgress } from "@/types/document";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface Props {
   title: string;
@@ -40,7 +40,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, workflow,
           breadcrumbItems={breadcrumbItems}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button>
+              <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">{tr("Back")}</Button>
               {headerExtra}
               {repeatFooterInHeader && footer}
             </div>
@@ -53,7 +53,7 @@ export function TrainingDetailLayout({ title, breadcrumbItems, onBack, workflow,
         <div className="p-4 md:p-5">{children}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2 md:gap-3">
-        <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">Back</Button>
+        <Button onClick={onBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">{tr("Back")}</Button>
         {footer}
       </div>
       {afterFooter}

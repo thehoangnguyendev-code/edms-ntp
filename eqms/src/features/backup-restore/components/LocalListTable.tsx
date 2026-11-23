@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -82,7 +83,7 @@ export function LocalListTable<T>({
           rows={pageRows}
           getRowKey={getRowKey}
           columns={tableColumns}
-          emptyState={<TableEmptyState title={rows.length === 0 ? emptyTitle : "No results"} description={rows.length === 0 ? emptyDescription : "Try a different search."} />}
+          emptyState={<TableEmptyState title={rows.length === 0 ? emptyTitle : tr("No results")} description={rows.length === 0 ? emptyDescription : tr("Try a different search.")} />}
           pagination={
             shown.length > 0 ? (
               <div className="border-t border-slate-200">

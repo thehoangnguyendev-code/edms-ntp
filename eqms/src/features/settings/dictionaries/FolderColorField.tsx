@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button/Button";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { Folder } from "@/components/ui/folder-component";
 import { folderColor } from "@/features/self-service/knowledge/explorer/explorerModel";
+import { tr } from "@/i18n";
 
 interface FolderColorFieldProps {
   /** The name the folder carries; it only decides the automatic colour. */
@@ -18,7 +19,7 @@ export const FolderColorField: React.FC<FolderColorFieldProps> = ({ name, value,
   const automatic = folderColor(name);
   return (
     <div>
-      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Knowledge Base Folder Color</label>
+      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Knowledge Base Folder Color")}</label>
       <div className="flex flex-wrap items-center gap-3">
         <div className="h-16 w-20 shrink-0">
           <Folder color={(value || automatic) as `#${string}`} scale={0.24} />
@@ -27,7 +28,7 @@ export const FolderColorField: React.FC<FolderColorFieldProps> = ({ name, value,
           <ColorPickerInput value={value || automatic} onChange={(color) => onChange(color.toLowerCase())} disabled={disabled} />
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")} disabled={disabled || !value}>
-          Default
+          {tr("Default")}
         </Button>
       </div>
     </div>

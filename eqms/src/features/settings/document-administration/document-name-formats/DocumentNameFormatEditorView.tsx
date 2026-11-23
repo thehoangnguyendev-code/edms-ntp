@@ -17,6 +17,7 @@ import { documentNameFormatCreate, documentNameFormatEdit } from "@/components/u
 import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNameFormatTypes";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -256,12 +257,12 @@ export const DocumentNameFormatEditorView: React.FC = () => {
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title={isEdit ? "Edit Document Name Format" : "New Document Name Format"}
+        title={isEdit ? tr("Edit Document Name Format") : tr("New Document Name Format")}
         breadcrumbItems={isEdit ? documentNameFormatEdit(go, name || undefined) : documentNameFormatCreate(go)}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline-emerald" onClick={goBack} className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             {canManage && (
               <Button size="sm" variant="outline-emerald" onClick={handleSave} disabled={!canSubmit} className="whitespace-nowrap">
@@ -278,29 +279,29 @@ export const DocumentNameFormatEditorView: React.FC = () => {
         </div>
       ) : loadError ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
-          <p className="text-sm font-medium text-amber-800">Unable to load this document name format.</p>
-          <Button size="sm" variant="outline" onClick={goBack}>Back to list</Button>
+          <p className="text-sm font-medium text-amber-800">{tr("Unable to load this document name format.")}</p>
+          <Button size="sm" variant="outline" onClick={goBack}>{tr("Back to list")}</Button>
         </div>
       ) : (
         <div className="flex-1 overflow-auto space-y-4 md:space-y-6 pb-6">
-          <FormSection title="General" icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+          <FormSection title={tr("General")} icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
                 <label className={labelClass}>
-                  Name <span className="text-red-500">*</span>
+                  {tr("Name")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className={inputClass}
-                  placeholder="e.g. Document Number Format"
+                  placeholder={tr("e.g. Document Number Format")}
                   disabled={isSaving || !canManage}
                 />
               </div>
               <div>
                 <label className={labelClass}>
-                  Separator <span className="text-red-500">*</span>
+                  {tr("Separator")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -311,10 +312,10 @@ export const DocumentNameFormatEditorView: React.FC = () => {
                   maxLength={10}
                   disabled={isSaving || !canManage}
                 />
-                <p className="mt-1.5 text-xs text-slate-500">e.g. "." "-" "_"</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("e.g. \".\" \"-\" \"_\"")}</p>
               </div>
               <div className="sm:col-span-3">
-                <label className={labelClass}>Description</label>
+                <label className={labelClass}>{tr("Description")}</label>
                 <textarea
                   value={description}
                   onChange={(e) => {
@@ -326,28 +327,28 @@ export const DocumentNameFormatEditorView: React.FC = () => {
                   }}
                   rows={2}
                   className={textareaClass}
-                  placeholder="Auto-suggested from the components below — edit anytime"
+                  placeholder={tr("Auto-suggested from the components below — edit anytime")}
                   disabled={isSaving || !canManage}
                 />
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Follows the Components list below until you type your own text. Clear it to resume auto-suggesting.
+                  {tr("Follows the Components list below until you type your own text. Clear it to resume auto-suggesting.")}
                 </p>
               </div>
               <div className="sm:col-span-3">
-                <Checkbox id="isActive doc-name-format-page" checked={isActive} onChange={setIsActive} label="Active" disabled={isSaving || !canManage} />
+                <Checkbox id="isActive doc-name-format-page" checked={isActive} onChange={setIsActive} label={tr("Active")} disabled={isSaving || !canManage} />
               </div>
             </div>
           </FormSection>
 
           <FormSection
-            title="Components"
-            description="Add components in the order they should appear. Use the arrows to reorder."
+            title={tr("Components")}
+            description={tr("Add components in the order they should appear. Use the arrows to reorder.")}
             contentClassName="p-4 md:p-5"
             headerRight={
               canManage && (
                 <Button type="button" variant="default" size="sm" onClick={handleOpenNewComponent} className="gap-1.5 whitespace-nowrap shrink-0">
                   <Plus className="h-3.5 w-3.5" />
-                  New Component
+                  {tr("New Component")}
                 </Button>
               )
             }
@@ -400,14 +401,14 @@ export const DocumentNameFormatEditorView: React.FC = () => {
                 value={pickerValue}
                 onChange={handlePickComponents}
                 options={pickerOptions}
-                placeholder="Select components to add..."
-                searchPlaceholder="Search components..."
+                placeholder={tr("Select components to add...")}
+                searchPlaceholder={tr("Search components...")}
               />
             )}
 
             {selected.length > 0 && (
               <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-                <p className="text-xs sm:text-sm font-medium text-emerald-700 mb-1">Preview</p>
+                <p className="text-xs sm:text-sm font-medium text-emerald-700 mb-1">{tr("Preview")}</p>
                 <p className="text-sm text-emerald-900 break-all">{preview}</p>
               </div>
             )}

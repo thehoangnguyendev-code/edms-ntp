@@ -1,6 +1,7 @@
 import React from "react";
 import { formatDateTime } from "@/utils/format";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
+import { tr } from "@/i18n";
 
 export interface SignatureRecord {
   actionBy: string;
@@ -77,7 +78,7 @@ export const SignatureFields: React.FC<SignatureFieldsProps> = ({
           <React.Fragment key={`${record.actionBy}-${index}`}>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {record.actionBy}
+                {tr(record.actionBy)}
               </label>
               <input
                 type="text"
@@ -90,7 +91,7 @@ export const SignatureFields: React.FC<SignatureFieldsProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {record.actionOn}
+                {tr(record.actionOn)}
               </label>
               <input
                 type="text"

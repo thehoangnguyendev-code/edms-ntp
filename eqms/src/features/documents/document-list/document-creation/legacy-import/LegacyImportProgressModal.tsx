@@ -1,6 +1,7 @@
 import React from "react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Progress } from "@/components/ui/progress/Progress";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * Shown for the whole (single, atomic) import request, from the moment the e-signature is
@@ -20,7 +21,7 @@ export const LegacyImportProgressModal: React.FC<{
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title="Legacy Import Processing"
+      title={tr("Legacy Import Processing")}
       showFooter={false}
       size="md"
       className="max-w-md"
@@ -33,11 +34,11 @@ export const LegacyImportProgressModal: React.FC<{
           </h3>
         </div>
         <p className="mb-4 text-xs sm:text-sm text-slate-500">
-          Creating the document and importing {sectionCount > 1 ? `all ${sectionCount} historical revisions` : "the revision"} in a single all-or-nothing operation. This can take a while for many or large files -- please don't close this tab.
+          {trFormat("Creating the document and importing {revisions} in a single all-or-nothing operation. This can take a while for many or large files -- please don't close this tab.", { revisions: sectionCount > 1 ? trFormat("all {count} historical revisions", { count: sectionCount }) : tr("the revision") })}
         </p>
         <Progress value={0} variant="emerald" size="md" indeterminate />
         <p className="mt-2.5 text-xs sm:text-sm text-slate-500">
-          If anything fails, nothing is imported and you'll be brought back here with the exact issue to fix -- the document is never left half-imported.
+          {tr("If anything fails, nothing is imported and you'll be brought back here with the exact issue to fix -- the document is never left half-imported.")}
         </p>
       </div>
     </FormModal>

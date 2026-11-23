@@ -10,6 +10,7 @@ import { documentApi } from "@/services/api/documents";
 import { buildDocumentDetailSnapshotState } from "@/features/documents/shared/detailSnapshotHelpers";
 import { buildRevisionWorkspaceNavigationState, type RevisionWorkspaceState } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 type DocumentState = "Draft" | "Active" | "Obsoleted" | "Closed - Cancelled" | string;
 
@@ -128,28 +129,28 @@ export const OriginalDocumentTab: React.FC<OriginalDocumentTabProps> = ({ docume
             <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
               <TableMarkup.Row>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell16}>
-                  No.
+                  {tr("No.")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                  Document Number
+                  {tr("Document Number")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                  Created
+                  {tr("Created")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                  Opened By
+                  {tr("Opened By")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                  Document Name
+                  {tr("Document Name")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                  Status
+                  {tr("Status")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                  Author
+                  {tr("Author")}
                 </TableMarkup.HeaderCell>
                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell13}>
-                  Valid Until
+                  {tr("Valid Until")}
                 </TableMarkup.HeaderCell>
               </TableMarkup.Row>
             </TableMarkup.Head>
@@ -201,7 +202,7 @@ export const OriginalDocumentTab: React.FC<OriginalDocumentTabProps> = ({ docume
                         <Search className="h-5 w-5 text-slate-300" />
                       </div>
                       <p className="text-sm font-medium text-slate-500">
-                        No records to display
+                        {tr("No records to display")}
                       </p>
                     </div>
                   </TableMarkup.Cell>

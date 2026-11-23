@@ -9,7 +9,7 @@ import { ExplorerLibraryTree } from "./ExplorerLibraryTree";
 import { FOCUS_RING, GROUP_LABEL } from "./explorerStyles";
 import { type ExplorerNav, type SmartKey } from "./explorerModel";
 import { useFolderColor } from "./ExplorerIcons";
-import { useLanguage, LANGUAGE_OPTIONS } from "@/i18n";
+import { useLanguage, LANGUAGE_OPTIONS, tr } from "@/i18n";
 import type { ApplicationLanguage } from "@/i18n";
 import { TabNav } from "@/components/ui/tabs";
 
@@ -27,8 +27,8 @@ interface ExplorerSidebarProps {
 const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[] = [
   { key: "home", label: "Home", Icon: Home },
   { key: "featured", label: "Featured", Icon: Star },
-  { key: "viewed", label: "Most Viewed", Icon: Eye },
-  { key: "useful", label: "Most Helpful", Icon: ThumbsUp },
+  { key: "viewed", label: tr("Most Viewed"), Icon: Eye },
+  { key: "useful", label: tr("Most Helpful"), Icon: ThumbsUp },
   { key: "subscribed", label: "Subscribed", Icon: Bell },
 ];
 
@@ -64,7 +64,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
   const isActive = (key: SmartKey | "home") => (key === "home" ? nav.kind === "home" : nav.kind === "smart" && nav.key === key);
 
   return (
-    <nav aria-label="Knowledge Base navigation" className="relative z-10 flex h-full min-h-0 flex-col overflow-visible bg-white">
+    <nav aria-label={tr("Knowledge Base navigation")} className="relative z-10 flex h-full min-h-0 flex-col overflow-visible bg-white">
       {/* Same header as the application sidebar: the logo configured under Settings > Configuration > General. */}
       <div className={cn("relative flex h-14 shrink-0 items-center justify-center border-b border-slate-100 transition-all duration-300", collapsed ? "px-2" : "px-5")}>
         <div className={cn("flex items-center justify-center overflow-hidden", collapsed ? "h-10 w-10" : "h-9 w-full")}>
@@ -143,7 +143,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
         </div>
 
         {collapsed && (
-          <div className="border-t border-slate-100 pt-3" aria-label="Knowledge Bases">
+          <div className="border-t border-slate-100 pt-3" aria-label={tr("Knowledge Bases")}>
             <ul className="space-y-1">
               {overview?.knowledgeBases.map((kb) => {
                 const active = activeKbKey === kb.key;

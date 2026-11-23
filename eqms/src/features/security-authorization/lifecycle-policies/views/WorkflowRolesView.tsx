@@ -31,6 +31,7 @@ import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 interface WorkflowRoleCatalogEntry {
   id: string;
@@ -219,7 +220,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
       } catch {
         showToast({
           type: "error",
-          message: "Failed to load workflow role catalog",
+          message: tr("Failed to load workflow role catalog"),
         });
       } finally {
         setLoading(false);
@@ -252,7 +253,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
       .catch(() =>
         showToast({
           type: "error",
-          message: "Failed to load workflow role filter options",
+          message: tr("Failed to load workflow role filter options"),
         }),
       );
   }, [canView, showToast]);
@@ -328,7 +329,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
     ) {
       showToast({
         type: "error",
-        message: "Code, Label and Module are required",
+        message: tr("Code, Label and Module are required"),
       });
       return;
     }
@@ -378,9 +379,9 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
         <p className="text-sm">
-          You do not have permission to view Workflow Authorization.
+          {tr("You do not have permission to view Workflow Authorization.")}
         </p>
       </div>
     );
@@ -392,7 +393,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
   const roleColumns: DataTableColumn<RoleRow>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-16", cell: (_role, index) => (pagination.page - 1) * pagination.limit + index + 1 },
     { id: "code", header: "Role Code", label: "Role Code", sort: { direction: sort.field === "code" ? sort.direction : undefined, onSort: () => toggleSort("code") }, cellClassName: "font-medium", cell: (role) => role.code },
-    { id: "label", header: "Workflow Role", label: "Workflow Role", sort: { direction: sort.field === "label" ? sort.direction : undefined, onSort: () => toggleSort("label") }, cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
+    { id: "label", header: tr("Workflow Role"), label: tr("Workflow Role"), sort: { direction: sort.field === "label" ? sort.direction : undefined, onSort: () => toggleSort("label") }, cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
     { id: "moduleKey", header: "Module", label: "Module", sort: { direction: sort.field === "moduleKey" ? sort.direction : undefined, onSort: () => toggleSort("moduleKey") }, cell: (role) => moduleDisplayName(role.moduleKey) },
     {
       id: "description",
@@ -414,8 +415,8 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
       label: "Status",
       cell: (role) => <Badge color={flagColor(role.active)} size="sm">{role.active ? "Active" : "Inactive"}</Badge>,
     },
-    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sort.field === "createdAt" ? sort.direction : undefined, onSort: () => toggleSort("createdAt") }, cell: (role) => (role.createdAt ? formatDateTime(role.createdAt) : "-") },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sort.field === "updatedAt" ? sort.direction : undefined, onSort: () => toggleSort("updatedAt") }, cell: (role) => (role.updatedAt ? formatDateTime(role.updatedAt) : "-") },
+    { id: "createdAt", header: tr("Created Date"), label: tr("Created Date"), sort: { direction: sort.field === "createdAt" ? sort.direction : undefined, onSort: () => toggleSort("createdAt") }, cell: (role) => (role.createdAt ? formatDateTime(role.createdAt) : "-") },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sort.field === "updatedAt" ? sort.direction : undefined, onSort: () => toggleSort("updatedAt") }, cell: (role) => (role.updatedAt ? formatDateTime(role.updatedAt) : "-") },
   ];
   const roleAction: DataTableAction<RoleRow> = {
     header: "Action",
@@ -424,7 +425,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
         ref={getRef(role.id)}
         onClick={(event) => toggle(role.id, event)}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
-        aria-label="More actions"
+        aria-label={tr("More actions")}
       >
         <MoreVertical className="h-4 w-4" />
       </button>
@@ -441,7 +442,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
           <div className="flex w-full flex-col">
             <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
               <label className="block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -453,7 +454,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                       setSearch(event.target.value);
                       resetPage();
                     }}
-                    placeholder="Role code, label, module..."
+                    placeholder={tr("Role code, label, module...")}
                     className="block h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   {search && (
@@ -474,7 +475,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                   className="h-10 whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -483,13 +484,13 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
   trailing={<div className="hidden md:block">{roleControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(event) => {
         setSearch(event.target.value);
         resetPage();
       }}
-      placeholder={"Role code, label, module..."}
+      placeholder={tr("Role code, label, module...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -519,7 +520,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
   dates={[
     {
       id: "createdFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFrom,
       to: createdTo,
       onFromChange: (value) => {
@@ -533,7 +534,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
     },
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -550,7 +551,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                  Search
+                  {tr("Search")}
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -561,31 +562,31 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                       setSearch(event.target.value);
                       resetPage();
                     }}
-                    placeholder="Role code, label, module..."
+                    placeholder={tr("Role code, label, module...")}
                     className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
               </div>
               <Select
-                label="Module"
+                label={tr("Module")}
                 value={moduleFilter}
                 onChange={(value) => setFilter(setModuleFilter, String(value))}
                 options={moduleOptions}
               />
               <Select
-                label="Type"
+                label={tr("Type")}
                 value={typeFilter}
                 onChange={(value) => setFilter(setTypeFilter, String(value))}
                 options={typeOptions}
               />
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={(value) => setFilter(setStatusFilter, String(value))}
                 options={statusOptions}
               />
               <DateRangePicker
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 startDate={createdFrom}
                 endDate={createdTo}
                 onStartDateChange={(value) => {
@@ -596,11 +597,11 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                   setCreatedTo(value);
                   resetPage();
                 }}
-                placeholder="Select created date range"
+                placeholder={tr("Select created date range")}
                 autoApply
               />
               <DateRangePicker
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 startDate={updatedFrom}
                 endDate={updatedTo}
                 onStartDateChange={(value) => {
@@ -611,7 +612,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                   setUpdatedTo(value);
                   resetPage();
                 }}
-                placeholder="Select last updated range"
+                placeholder={tr("Select last updated range")}
                 autoApply
               />
               <div className="filter-actions flex items-end gap-2">
@@ -628,7 +629,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
               onApply={() => setIsFilterDrawerOpen(false)}
             >
               <MobileFilter
-                label="Module"
+                label={tr("Module")}
                 id="module"
                 value={moduleFilter}
                 options={moduleOptions}
@@ -638,7 +639,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                 getClassName={getOptionClassName}
               />
               <MobileFilter
-                label="Type"
+                label={tr("Type")}
                 id="type"
                 value={typeFilter}
                 options={typeOptions}
@@ -648,7 +649,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                 getClassName={getOptionClassName}
               />
               <MobileFilter
-                label="Status"
+                label={tr("Status")}
                 id="status"
                 value={statusFilter}
                 options={statusOptions}
@@ -658,7 +659,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                 getClassName={getOptionClassName}
               />
               <DateRangeFilter
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 id="created-date"
                 startDate={createdFrom}
                 endDate={createdTo}
@@ -674,7 +675,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                 }}
               />
               <DateRangeFilter
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 id="updated-date"
                 startDate={updatedFrom}
                 endDate={updatedTo}
@@ -708,8 +709,8 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                   isDragging={isDragging}
                   emptyState={
                     <TableEmptyState
-                      title="No Workflow Roles Found"
-                      description="We couldn't find workflow roles matching your filters. Try adjusting your search criteria."
+                      title={tr("No Workflow Roles Found")}
+                      description={tr("We couldn't find workflow roles matching your filters. Try adjusting your search criteria.")}
                     />
                   }
                   pagination={
@@ -753,7 +754,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
                 close();
               }}
             >
-              Edit Workflow Role
+              {tr("Edit Workflow Role")}
             </DropdownMenuItem>
           )}
         </div>
@@ -762,7 +763,7 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
         isOpen={!!form}
         onClose={() => setForm(null)}
         onConfirm={handleSave}
-        title={form?.id ? "Edit Workflow Role" : "New Custom Workflow Role"}
+        title={form?.id ? tr("Edit Workflow Role") : tr("New Custom Workflow Role")}
         confirmText={form?.id ? "Save" : "Create"}
         isLoading={saving}
         size="md"
@@ -897,10 +898,9 @@ const WorkflowRoleForm: React.FC<{
 }> = ({ form, setForm }) => (
   <div className="space-y-4">
     {!form.id && (
-      <WarningBanner variant="info">This creates a catalog entry only. It does not grant permissions or
-        change a workflow policy.</WarningBanner>
+      <WarningBanner variant="info">{tr("This creates a catalog entry only. It does not grant permissions or change a workflow policy.")}</WarningBanner>
     )}
-    <FormField label="Code" required>
+    <FormField label={tr("Code")} required>
       <input
         type="text"
         value={form.code}
@@ -911,30 +911,30 @@ const WorkflowRoleForm: React.FC<{
       />
       {form.id && (
         <p className="mt-1 text-2xs text-slate-400">
-          Code is immutable once created. Rename the role through Label.
+          {tr("Code is immutable once created. Rename the role through Label.")}
         </p>
       )}
     </FormField>
-    <FormField label="Label" required>
+    <FormField label={tr("Label")} required>
       <input
         type="text"
         value={form.label}
         onChange={(event) => setForm({ ...form, label: event.target.value })}
-        placeholder="Custom Workflow Role"
+        placeholder={tr("Custom Workflow Role")}
         className={inputClass}
       />
     </FormField>
-    <FormField label="Module" required>
+    <FormField label={tr("Module")} required>
       <Select
         value={form.moduleKey}
         disabled={form.isSystem}
         onChange={(value) => setForm({ ...form, moduleKey: String(value) })}
         options={WORKFLOW_ROLE_MODULES}
         enableSearch={false}
-        placeholder="Select module..."
+        placeholder={tr("Select module...")}
       />
     </FormField>
-    <FormField label="Description">
+    <FormField label={tr("Description")}>
       <textarea
         value={form.description}
         onChange={(event) =>
@@ -942,7 +942,7 @@ const WorkflowRoleForm: React.FC<{
         }
         rows={2}
         className={`${inputClass} h-auto resize-none py-2`}
-        placeholder="Enter description (optional)"
+        placeholder={tr("Enter description (optional)")}
       />
     </FormField>
     <div className="flex items-center gap-3">
@@ -951,12 +951,12 @@ const WorkflowRoleForm: React.FC<{
         checked={form.active}
         disabled={form.isSystem}
         onChange={(checked) => setForm({ ...form, active: checked })}
-        label="Active"
+        label={tr("Active")}
       />
       {form.isSystem && (
         <span className="text-2xs text-slate-400">
           <LockKeyhole className="mr-1 inline h-3 w-3" />
-          System role cannot be deactivated
+          {tr("System role cannot be deactivated")}
         </span>
       )}
     </div>

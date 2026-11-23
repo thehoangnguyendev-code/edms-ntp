@@ -1,6 +1,7 @@
 import React from 'react';
 import { Radio } from '@/components/ui/radio/Radio';
 import type { GeneralConfig } from '../types';
+import { tr } from "@/i18n";
 
 interface NotificationInboxLayoutSectionProps {
   config: GeneralConfig;
@@ -45,9 +46,9 @@ export const NotificationInboxLayoutSection: React.FC<NotificationInboxLayoutSec
   const layout = config.appearance?.notificationInboxLayout ?? 'TABS';
   return (
     <div className="border-t border-slate-200 pt-6">
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Notifications</h3>
-      <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Inbox layout</p>
-      <div role="radiogroup" aria-label="Notifications inbox layout" className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Notifications")}</h3>
+      <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Inbox layout")}</p>
+      <div role="radiogroup" aria-label={tr("Notifications inbox layout")} className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Radio
           variant="card"
           name="notification-inbox-layout"
@@ -55,8 +56,8 @@ export const NotificationInboxLayoutSection: React.FC<NotificationInboxLayoutSec
           checked={layout === 'TABS'}
           onChange={() => onChange('notificationInboxLayout', 'TABS')}
           icon={<Thumb value="TABS" />}
-          label="Priority tabs"
-          description="Tabs for All, High, Medium, Low and Unread with their counts, and a plain list. The lightest page, best on a phone."
+          label={tr("Priority tabs")}
+          description={tr("Tabs for All, High, Medium, Low and Unread with their counts, and a plain list. The lightest page, best on a phone.")}
         />
         <Radio
           variant="card"
@@ -65,11 +66,11 @@ export const NotificationInboxLayoutSection: React.FC<NotificationInboxLayoutSec
           checked={layout === 'TIMELINE'}
           onChange={() => onChange('notificationInboxLayout', 'TIMELINE')}
           icon={<Thumb value="TIMELINE" />}
-          label="Timeline"
-          description="Notifications by day on a timeline, a dot coloured by priority on each card, and a column of filters on the right."
+          label={tr("Timeline")}
+          description={tr("Notifications by day on a timeline, a dot coloured by priority on each card, and a column of filters on the right.")}
         />
       </div>
-      <p className="mt-2 text-xs text-slate-500">Applies to the Notifications page of every signed-in user, after you save. The bell menu and the pop-up messages are not affected.</p>
+      <p className="mt-2 text-xs text-slate-500">{tr("Applies to the Notifications page of every signed-in user, after you save. The bell menu and the pop-up messages are not affected.")}</p>
     </div>
   );
 };

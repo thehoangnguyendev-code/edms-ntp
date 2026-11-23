@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { knowledgeApi, type SharingDelegate, type SharingGrantee, type SharingNode, type SharingScope } from "@/services/api/knowledge";
 import { errorMessage, useShareAction, type FooterAction } from "./shareUi";
 import { ShareScrollList } from "./ShareScrollList";
+import { tr, trFormat } from "@/i18n";
 
 interface ShareDelegatesTabProps {
   node: SharingNode;
@@ -64,7 +65,7 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
       setReloadKey((k) => k + 1);
       showToast({ type: "success", title: "Added", message: `${added === 1 ? "The person" : `${added} people`} may now share like you. The change was recorded in the Audit Trail.` });
     }
-    if (failed.length > 0) showToast({ type: "error", title: "Could not add everyone", message: failed.join(" ") });
+    if (failed.length > 0) showToast({ type: "error", title: tr("Could not add everyone"), message: failed.join(" ") });
     setAdding(false);
   };
 
@@ -79,10 +80,10 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
     if (!removeTarget) return;
     try {
       await knowledgeApi.sharingRemoveDelegate(removeTarget.id);
-      showToast({ type: "success", title: "Removed", message: "The person may no longer share. What they shared stays until a Head removes it." });
+      showToast({ type: "success", title: "Removed", message: tr("The person may no longer share. What they shared stays until a Head removes it.") });
       setReloadKey((k) => k + 1);
     } catch (error) {
-      showToast({ type: "error", title: "Could not remove", message: errorMessage(error, "Please try again.") });
+      showToast({ type: "error", title: tr("Could not remove"), message: errorMessage(error, "Please try again.") });
     } finally {
       setRemoveTarget(null);
     }
@@ -90,10 +91,10 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-      <section className="order-1 space-y-3" aria-label="Add a person who may share">
-        <h3 className="text-sm font-semibold text-slate-900">Who may share for you</h3>
+      <section className="order-1 space-y-3" aria-label={tr("Add a person who may share")}>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Who may share for you")}</h3>
         <MultiSelect
-          label="Add people"
+          label={tr("Add people")}
           value={picked.map((u) => u.id)}
           onChange={(values) =>
             setPicked((current) => {
@@ -108,19 +109,19 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
             return found.map((u) => ({ value: u.id, label: userLabel(u) }));
           }}
           minSearchLength={0}
-          placeholder={unit ? "Search a person of the Unit" : "Search a person of the Department"}
-          searchPlaceholder="Type a name or employee ID"
+          placeholder={unit ? tr("Search a person of the Unit") : tr("Search a person of the Department")}
+          searchPlaceholder={tr("Type a name or employee ID")}
           maxVisibleTags={4}
         />
       </section>
 
-      <section className="order-2 min-w-0 space-y-2.5" aria-label="People who may share">
-        <h3 className="text-sm font-semibold text-slate-900">People who may share</h3>
+      <section className="order-2 min-w-0 space-y-2.5" aria-label={tr("People who may share")}>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("People who may share")}</h3>
         <ShareScrollList<SharingDelegate>
           ariaLabel="People who may share"
           fetchPage={fetchDelegates}
           getKey={(d) => d.id}
-          searchPlaceholder="Search the people who may share"
+          searchPlaceholder={tr("Search the people who may share")}
           emptyText={`Nobody else may share for ${scopeName} yet.`}
           reloadKey={reloadKey}
           renderRow={(d) => (
@@ -142,11 +143,10 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
         onClose={() => setRemoveTarget(null)}
         onConfirm={remove}
         type="confirm"
-        title="Remove this person?"
+        title={tr("Remove this person?")}
         description={
           <p className="text-sm text-slate-600">
-            <strong>{removeTarget?.fullName}</strong> may no longer share for {scopeName}. What they already shared stays until a Head removes it.
-            This is recorded in the Audit Trail.
+            {trFormat("{name} may no longer share for {scope}. What they already shared stays until a Head removes it. This is recorded in the Audit Trail.", { name: removeTarget?.fullName, scope: scopeName })}
           </p>
         }
         confirmText="Remove"

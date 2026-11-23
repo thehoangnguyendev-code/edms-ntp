@@ -56,7 +56,7 @@ class TrainingParticipationRoleTest {
     @BeforeEach
     void setUp() {
         when(actor.getId()).thenReturn(UUID.randomUUID());
-        service = spy(new TrainingActivityService(jdbc, access, store, null, null, approvals, signatures, users, notifier, null, suspensions, null, com.eqms.service.authorization.TestGuards.allowingTraining()));
+        service = spy(new TrainingActivityService(jdbc, access, store, null, null, approvals, signatures, users, notifier, null, suspensions, null, com.eqms.service.authorization.TestGuards.allowingTraining(), null));
         doReturn(Map.of()).when(service).get(any(), any());
     }
 

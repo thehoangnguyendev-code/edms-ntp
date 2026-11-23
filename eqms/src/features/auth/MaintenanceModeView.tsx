@@ -5,6 +5,7 @@ import { BrandLogo } from '@/components/branding/BrandLogo';
 import { ROUTES } from '@/app/routes.constants';
 import { fetchMaintenanceStatus } from '@/features/maintenance/maintenanceStatus';
 import { AuthVideoBackground } from '@/components/branding/AuthVideoBackground';
+import { tr } from "@/i18n";
 
 /**
  * Shown only when the administrator switches maintenance mode on (System Administration > Configuration > General), or when a
@@ -48,13 +49,13 @@ export const MaintenanceModeView: React.FC = () => {
       {/* Content Section */}
       <div className="flex w-full max-w-2xl flex-col items-center text-center">
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          The EQMS is currently
+          {tr("The EQMS is currently")}
           <br />
-          down for maintenance
+          {tr("down for maintenance")}
         </h1>
 
         <p className="mt-6 text-xs sm:text-sm font-medium leading-relaxed text-slate-500 sm:text-base">
-          We apologize for any inconveniences caused. Please check back soon.
+          {tr("We apologize for any inconveniences caused. Please check back soon.")}
         </p>
 
         {/* Animated Custom SVG Plug Illustration */}

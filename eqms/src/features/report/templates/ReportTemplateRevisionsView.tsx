@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -120,10 +121,10 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     else navigate(`${templatePath(row)}/details?action=upgrade`);
   };
   const ROW_MENU: Record<ReportRevisionRowAction, { icon: ReactNode; label: string }> = {
-    view: { icon: <IconInfoCircle className="h-4 w-4" />, label: "View Details" },
-    edit: { icon: <IconPencilMinus className="h-4 w-4" />, label: "Edit Revision" },
-    approve: { icon: <IconChecks className="h-4 w-4" />, label: "Approve Revision" },
-    upgrade: { icon: <IconArrowUpRight className="h-4 w-4" />, label: "Upgrade Report Template" },
+    view: { icon: <IconInfoCircle className="h-4 w-4" />, label: tr("View Details") },
+    edit: { icon: <IconPencilMinus className="h-4 w-4" />, label: tr("Edit Revision") },
+    approve: { icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Revision") },
+    upgrade: { icon: <IconArrowUpRight className="h-4 w-4" />, label: tr("Upgrade Report Template") },
   };
   const rowAction: DataTableAction<ReportRevisionListRow> = {
     cell: (row) => (
@@ -134,7 +135,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
           toggle(rowKey(row), event);
         }}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
-        aria-label="More actions"
+        aria-label={tr("More actions")}
       >
         <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
       </button>
@@ -145,7 +146,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     { id: "no", header: "No.", cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     {
       id: "templateNumber",
-      header: "Report Template Number",
+      header: tr("Report Template Number"),
       sort: sortOf("templateNumber"),
       cell: (row) => (
         <button
@@ -159,13 +160,13 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     },
     {
       id: "templateName",
-      header: "Report Template Name",
+      header: tr("Report Template Name"),
       sort: sortOf("templateName"),
       cell: (row) => <div className="min-w-48 whitespace-normal">{row.displayName}</div>,
     },
     {
       id: "revision",
-      header: "Report Template Revision",
+      header: tr("Report Template Revision"),
       sort: sortOf("revision"),
       cell: (row) => (
         <button type="button" className="whitespace-nowrap font-medium text-emerald-600 hover:text-emerald-700 hover:underline" onClick={() => open(row)}>
@@ -185,7 +186,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     },
     {
       id: "gmp",
-      header: "Used for GMP Decisions",
+      header: tr("Used for GMP Decisions"),
       sort: sortOf("gmpUse"),
       cell: (row) => (
         <Badge color={flagColor(row.gmpUse)} size="sm">
@@ -195,7 +196,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     },
     {
       id: "source",
-      header: "Report Type",
+      header: tr("Report Type"),
       cell: (row) => sources.find((source) => source.code === row.sourceCode)?.name ?? row.sourceCode,
     },
     {
@@ -210,16 +211,16 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
           "—"
         ),
     },
-    { id: "createdBy", header: "Created By", cell: (row) => row.createdByName ?? "—" },
+    { id: "createdBy", header: tr("Created By"), cell: (row) => row.createdByName ?? "—" },
     {
       id: "lastChanged",
-      header: "Last Updated",
+      header: tr("Last Updated"),
       sort: sortOf("lastChangedAt"),
       cell: (row) => <span className="whitespace-nowrap">{whenText(row.lastChangedAt)}</span>,
     },
     {
       id: "effectiveAt",
-      header: "In Force Since",
+      header: tr("In Force Since"),
       sort: sortOf("effectiveAt"),
       cell: (row) => <span className="whitespace-nowrap">{whenText(row.effectiveAt)}</span>,
     },
@@ -228,7 +229,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
   const title = pendingApproval ? "Pending My Approval" : "All Revisions";
 
   const statusOptions = pendingApproval
-    ? [{ label: "Pending Approval", value: "PENDING_APPROVAL" }]
+    ? [{ label: tr("Pending Approval"), value: "PENDING_APPROVAL" }]
     : [
         { label: "All", value: "" },
         ...(Object.keys(REVISION_STATUS) as Array<keyof typeof REVISION_STATUS>).map((value) => ({ label: REVISION_STATUS[value].label, value })),
@@ -256,7 +257,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
           ...(pendingApproval ? [] : [{ id: "status", label: "Status", value: filters.status, options: statusOptions, onChange: (value: string) => apply({ ...filters, status: value }) }]),
           {
             id: "gmp",
-            label: "Used for GMP Decisions",
+            label: tr("Used for GMP Decisions"),
             value: filters.gmp,
             options: [
               { label: "All", value: "" },
@@ -267,7 +268,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
           },
           {
             id: "sourceCode",
-            label: "Report Type",
+            label: tr("Report Type"),
             value: filters.sourceCode,
             options: [{ label: "All", value: "" }, ...sources.map((source) => ({ label: source.name, value: source.code }))],
             onChange: (value: string) => apply({ ...filters, sourceCode: value }),
@@ -276,7 +277,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
         dates={[
           {
             id: "updated",
-            label: "Last Updated Range",
+            label: tr("Last Updated Range"),
             from: updated.from,
             to: updated.to,
             onChange: (from, to) => {
@@ -303,8 +304,8 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
             loadingContent={<SectionLoading text="Loading report template revisions..." />}
             emptyState={
               <TableEmptyState
-                title={error ? "Unable to load revisions" : pendingApproval ? "Nothing Is Waiting For Your Approval" : "No Revisions Found"}
-                description={error || (pendingApproval ? "No revision is waiting for an approval you may give." : "No revision matches these filters.")}
+                title={error ? tr("Unable to load revisions") : pendingApproval ? tr("Nothing Is Waiting For Your Approval") : "No Revisions Found"}
+                description={error || (pendingApproval ? tr("No revision is waiting for an approval you may give.") : tr("No revision matches these filters."))}
               />
             }
             scrollerRef={drag.scrollerRef}

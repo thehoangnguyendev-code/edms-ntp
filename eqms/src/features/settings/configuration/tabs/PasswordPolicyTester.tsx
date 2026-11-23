@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Check, Eye, EyeOff, X } from 'lucide-react';
 import { evaluatePasswordPolicy } from '@/features/auth/passwordPolicyRules';
 import type { SecurityConfig } from '../types';
+import { tr } from "@/i18n";
 
 const inputClass = 'w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
 
@@ -22,10 +23,10 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
 
   return (
     <div className="border-t border-slate-200 pt-6">
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Test a Password</h3>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Test a Password")}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="password-policy-test" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Password to Check</label>
+          <label htmlFor="password-policy-test" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Password to Check")}</label>
           <div className="relative">
             <input
               id="password-policy-test"
@@ -34,7 +35,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               spellCheck={false}
-              placeholder="Type a password to test the rules above"
+              placeholder={tr("Type a password to test the rules above")}
               className={`${inputClass} pr-10`}
             />
             <button
@@ -46,21 +47,21 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Uses the rules as shown on this screen, including changes not saved yet. Nothing typed here is stored.</p>
+          <p className="text-xs text-slate-500 mt-1">{tr("Uses the rules as shown on this screen, including changes not saved yet. Nothing typed here is stored.")}</p>
         </div>
         {config.disallowUserInfo && (
           <div>
-            <label htmlFor="password-policy-test-user" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Username, E-mail or Name</label>
+            <label htmlFor="password-policy-test-user" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Username, E-mail or Name")}</label>
             <input
               id="password-policy-test-user"
               type="text"
               value={userInfo}
               onChange={(e) => setUserInfo(e.target.value)}
               autoComplete="off"
-              placeholder="e.g. nguyen.van.a@company.com"
+              placeholder={tr("e.g. nguyen.van.a@company.com")}
               className={inputClass}
             />
-            <p className="text-xs text-slate-500 mt-1">The password may not contain any part (3 characters or more) of this text.</p>
+            <p className="text-xs text-slate-500 mt-1">{tr("The password may not contain any part (3 characters or more) of this text.")}</p>
           </div>
         )}
       </div>

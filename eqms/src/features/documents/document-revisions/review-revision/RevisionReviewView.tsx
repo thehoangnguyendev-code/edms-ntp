@@ -45,6 +45,7 @@ import {
   loadPdfPreviewFile,
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType =
@@ -333,7 +334,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to add comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to add comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
 
@@ -343,7 +344,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       await documentApi.resolveRevisionReviewComment(revisionId, commentId, resolutionNote);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to resolve comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to resolve comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
 
@@ -359,7 +360,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to send reply", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to send reply"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
 
@@ -369,7 +370,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       await documentApi.deleteRevisionReviewComment(revisionId, commentId, reason);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to delete comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to delete comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
   const handleEditReviewComment = async (commentId: string, content: string) => { if (revisionId) { await documentApi.updateRevisionReviewComment(revisionId, commentId, content); await loadReviewComments(); } };
@@ -505,7 +506,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
+        title: tr("Unable to add note"),
         message: (error as any)?.response?.data?.message || "Working note could not be saved.",
         duration: 3000,
       });
@@ -530,7 +531,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
+        title: tr("Unable to delete note"),
         message: (error as any)?.response?.data?.message || "Working note could not be deleted.",
         duration: 3000,
       });
@@ -568,7 +569,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
     <>
       {(isNavigating || isLoadingDetail) && <FullPageLoading text="Loading..." />}
       <DocumentWorkflowLayout
-        title="Review Revision"
+        title={tr("Review Revision")}
         breadcrumbs={breadcrumbs}
         onBack={handleBack}
         workflow={document?.workflow}
@@ -578,30 +579,30 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
         headerActions={
           canActOnReview ? (
             <>
-              {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Reject</Button>}
-              {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Complete Review</Button>}
+              {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">{tr("Reject")}</Button>}
+              {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">{tr("Complete Review")}</Button>}
             </>
           ) : undefined
         }
         footerActions={
           <>
             <Button onClick={handleBack} variant="outline-emerald" size="sm" className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             {canActOnReview && (
               <>
           <Button onClick={handleOpenWordReview} variant="outline-emerald" size="sm" loading={isOpeningWordReview} loadingText="Opening Word Online…" className="whitespace-nowrap">
-                  Open File to Comment
+                  {tr("Open File to Comment")}
                 </Button>
-                {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Reject</Button>}
-                {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">Complete Review</Button>}
+                {canRejectReview && <Button onClick={handleReject} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">{tr("Reject")}</Button>}
+                {canReview && <Button onClick={handleApprove} variant="outline-emerald" size="sm" disabled={isSubmitting} className="whitespace-nowrap">{tr("Complete Review")}</Button>}
               </>
             )}
           </>
         }
         afterTabContent={
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-            <TabNav tabs={[{ id: "originalDocument", label: "Document Master" }]} activeTab="originalDocument" onChange={() => { }} />
+            <TabNav tabs={[{ id: "originalDocument", label: tr("Document Master") }]} activeTab="originalDocument" onChange={() => { }} />
             <div className="p-4 md:p-5 min-h-0">
               <OriginalDocumentTab
                 document={currentRevision?.originalDocument ?? null}
@@ -696,8 +697,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
           onClose={() => setShowRejectWarning(false)}
           onConfirm={handleRejectWarningConfirm}
           type="warning"
-          title="Reject Revision?"
-          description="When rejecting this revision at Pending Review stage, the document will return to Draft status. Are you sure you want to continue?"
+          title={tr("Reject Revision?")}
+          description={tr("When rejecting this revision at Pending Review stage, the document will return to Draft status. Are you sure you want to continue?")}
         />
 
         {/* E-Signature Modal */}
@@ -707,7 +708,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
           onConfirm={handleESignConfirm}
           actionTitle={
             eSignAction === "approve"
-              ? "Complete Review"
+              ? tr("Complete Review")
               : "Reject"
           }
           meaningDisplayName={eSignAction === "approve" ? "Reviewed" : "Rejected"}
@@ -717,8 +718,8 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
             oldValue: "Pending Review",
             newValue: eSignAction === "approve"
               ? ((currentRevision?.approvers?.length ?? 0) > 0
-                  ? "Pending Approval"
-                  : (currentRevision?.requiresTraining ? "Pending Training" : "Ready for Publishing"))
+                  ? tr("Pending Approval")
+                  : (currentRevision?.requiresTraining ? tr("Pending Training") : tr("Ready for Publishing")))
               : "Draft",
             category: "status",
           }]}

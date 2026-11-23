@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { useLanguage } from '@/i18n';
 
 /**
  * Radio button component with custom styling
@@ -66,6 +67,7 @@ export const Radio: React.FC<RadioProps> = ({
   variant = 'default',
   icon,
 }) => {
+  const { tLabel } = useLanguage();
   const handleChange = () => {
     if (onChange && !disabled) {
       onChange(value);
@@ -103,12 +105,12 @@ export const Radio: React.FC<RadioProps> = ({
           {label && (
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-1">
               {icon}
-              <span>{label}</span>
+              <span>{tLabel(label)}</span>
             </div>
           )}
           {description && (
             <p className="text-[10px] sm:text-xs text-slate-600">
-              {description}
+              {tLabel(description)}
             </p>
           )}
         </div>
@@ -158,14 +160,14 @@ export const Radio: React.FC<RadioProps> = ({
                 disabled && 'cursor-default'
               )}
             >
-              {label}
+              {tLabel(label)}
             </label>
           )}
           {description && (
             <p className={cn(
               'text-xs sm:text-sm text-slate-500 mt-0.5'
             )}>
-              {description}
+              {tLabel(description)}
             </p>
           )}
         </div>
@@ -223,11 +225,12 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   required = false,
   variant = 'default',
 }) => {
+  const { tLabel } = useLanguage();
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
         <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-          {label}
+          {tLabel(label)}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
@@ -256,7 +259,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
         ))}
       </div>
       {error && (
-        <p className="text-sm text-red-600 mt-1.5">{error}</p>
+        <p className="text-sm text-red-600 mt-1.5">{tLabel(error)}</p>
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { moduleDisplayName, sortModulesLikeMenu } from "@/utils/moduleDisplay";
+import { tr, trFormat } from "@/i18n";
 
 export interface ReviewPermissionSet { id: string; name: string; count: number }
 export interface ReviewVisibility { module: string; level: string }
@@ -54,11 +55,11 @@ const PhoneModule: React.FC<{ row: ModuleRow; open: boolean; onToggle: () => voi
       <div className="overflow-hidden">
         <dl className="space-y-3 px-4 pb-3 pl-10 text-sm">
           <div>
-            <dt className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-slate-400">Records they can see <EditButton onClick={() => onEdit(1)} label="" /></dt>
+            <dt className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-slate-400">{tr("Records they can see")} <EditButton onClick={() => onEdit(1)} label="" /></dt>
             <dd className="mt-0.5 text-slate-800">{row.records ?? <Dash />}</dd>
           </div>
           <div>
-            <dt className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-slate-400">Workflow roles <EditButton onClick={() => onEdit(2)} label="" /></dt>
+            <dt className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-slate-400">{tr("Workflow roles")} <EditButton onClick={() => onEdit(2)} label="" /></dt>
             <dd className="mt-1 flex flex-wrap gap-1.5">{row.roles.length === 0 ? <Dash /> : row.roles.map((role) => <RoleChip key={role}>{role}</RoleChip>)}</dd>
           </div>
         </dl>
@@ -133,9 +134,9 @@ export const WizardReviewStep: React.FC<{
 
   return (
     <FormSection
-      title="Review & Create"
+      title={tr("Review & Create")}
       icon={<ScanEye className="h-4 w-4" />}
-      description="Nothing has been saved yet — everything below is created in one batch after you sign."
+      description={tr("Nothing has been saved yet — everything below is created in one batch after you sign.")}
       contentClassName="p-4 md:p-5"
     >
       <div ref={sheet} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -143,34 +144,34 @@ export const WizardReviewStep: React.FC<{
           <div className="flex items-start justify-between gap-3">
             <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-slate-900 md:text-lg">{name}</h3>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden md:inline-flex"><Badge color="teal" size="sm">Custom</Badge></span>
-              <span className="hidden md:inline-flex"><Badge color="emerald" size="sm">Active</Badge></span>
+              <span className="hidden md:inline-flex"><Badge color="teal" size="sm">{tr("Custom")}</Badge></span>
+              <span className="hidden md:inline-flex"><Badge color="emerald" size="sm">{tr("Active")}</Badge></span>
               <EditButton onClick={() => onEdit(0)} />
             </div>
           </div>
           {description && <p className="mt-1 line-clamp-2 break-words text-sm text-slate-600 md:line-clamp-none">{description}</p>}
           <div className="mt-2 flex items-center gap-2 md:hidden">
-            <Badge color="teal" size="sm">Custom</Badge>
-            <Badge color="emerald" size="sm">Active</Badge>
+            <Badge color="teal" size="sm">{tr("Custom")}</Badge>
+            <Badge color="emerald" size="sm">{tr("Active")}</Badge>
           </div>
         </div>
 
         <div data-review-part>
           <div className="flex items-center gap-2 px-4 pb-2 md:px-5">
-            <Caption>What people with this profile can do</Caption>
+            <Caption>{tr("What people with this profile can do")}</Caption>
           </div>
 
           {nothing ? (
-            <p className="border-t border-slate-200 px-4 py-3 text-sm text-slate-500 md:px-5">This profile grants nothing yet — go back and choose permissions.</p>
+            <p className="border-t border-slate-200 px-4 py-3 text-sm text-slate-500 md:px-5">{tr("This profile grants nothing yet — go back and choose permissions.")}</p>
           ) : (
             <>
               {/* laptop: one table */}
               <div className="hidden md:block">
                 <div className={`grid gap-x-4 border-y border-slate-200 bg-slate-50 px-5 py-2 text-2xs font-semibold uppercase tracking-wider text-slate-500 ${MATRIX_GRID}`}>
-                  <span>Module</span>
-                  <span className="text-right">Permissions</span>
-                  <span className="flex items-center gap-2">Records they can see <EditButton onClick={() => onEdit(1)} label="" /></span>
-                  <span className="flex items-center gap-2">Workflow roles <EditButton onClick={() => onEdit(2)} label="" /></span>
+                  <span>{tr("Module")}</span>
+                  <span className="text-right">{tr("Permissions")}</span>
+                  <span className="flex items-center gap-2">{tr("Records they can see")} <EditButton onClick={() => onEdit(1)} label="" /></span>
+                  <span className="flex items-center gap-2">{tr("Workflow roles")} <EditButton onClick={() => onEdit(2)} label="" /></span>
                 </div>
                 {rows.map((row) => (
                   <div key={row.module} className={`grid items-center gap-x-4 border-b border-slate-100 px-5 py-2.5 text-sm text-slate-800 ${MATRIX_GRID}`}>
@@ -181,9 +182,9 @@ export const WizardReviewStep: React.FC<{
                   </div>
                 ))}
                 <div className={`grid items-baseline gap-x-4 bg-slate-50 px-5 py-2.5 text-sm ${MATRIX_GRID}`}>
-                  <span className="font-semibold text-slate-900">Total</span>
+                  <span className="font-semibold text-slate-900">{tr("Total")}</span>
                   <span className="text-right font-semibold tabular-nums text-slate-900">{permissionTotal}</span>
-                  <span className="col-span-2 text-xs text-slate-500">from {origin}; a permission granted twice is counted once</span>
+                  <span className="col-span-2 text-xs text-slate-500">{trFormat("from {origin}; a permission granted twice is counted once", { origin })}</span>
                 </div>
               </div>
 
@@ -195,7 +196,7 @@ export const WizardReviewStep: React.FC<{
                   ))}
                 </ul>
                 <div className="flex items-baseline justify-between border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
-                  <span className="font-semibold text-slate-900">Total permissions</span>
+                  <span className="font-semibold text-slate-900">{tr("Total permissions")}</span>
                   <span className="font-semibold tabular-nums text-slate-900">{permissionTotal}</span>
                 </div>
               </div>
@@ -205,18 +206,18 @@ export const WizardReviewStep: React.FC<{
 
         <div data-review-part>
           <div className="flex items-center gap-2 border-t border-slate-200 px-4 pb-2 pt-4 md:px-5">
-            <Caption>Who receives it now</Caption>
+            <Caption>{tr("Who receives it now")}</Caption>
             <span className="text-xs text-slate-500">{users.length}</span>
             <span className="ml-auto"><EditButton onClick={() => onEdit(3)} /></span>
           </div>
           {users.length === 0 ? (
-            <p className="border-t border-slate-200 px-4 py-3 text-sm text-slate-500 md:px-5">None — assign users later from the profile's Assigned Users tab.</p>
+            <p className="border-t border-slate-200 px-4 py-3 text-sm text-slate-500 md:px-5">{tr("None — assign users later from the profile's Assigned Users tab.")}</p>
           ) : (
             <div>
               <div className={`hidden grid-cols-1 gap-x-4 border-y border-slate-200 bg-slate-50 px-5 py-2 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:grid ${USERS_GRID}`}>
-                <span>Employee ID</span>
-                <span>Full name</span>
-                <span>Department</span>
+                <span>{tr("Employee ID")}</span>
+                <span>{tr("Full name")}</span>
+                <span>{tr("Department")}</span>
               </div>
               <ul className="max-h-72 overflow-y-auto border-t border-slate-200 md:max-h-60 md:border-t-0">
                 {users.map((user) => (
@@ -237,7 +238,7 @@ export const WizardReviewStep: React.FC<{
         <div data-review-part className="flex items-start gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 md:px-5">
           <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
           <span>
-            Created in <strong className="font-semibold text-slate-800">one atomic operation</strong> under a single electronic signature<span className="hidden md:inline"> — if any step fails (e.g. a Segregation-of-Duties conflict), nothing is created</span>.
+            {tr("Created in")} <strong className="font-semibold text-slate-800">{tr("one atomic operation")}</strong> {tr("under a single electronic signature")}<span className="hidden md:inline"> {tr("— if any step fails (e.g. a Segregation-of-Duties conflict), nothing is created")}</span>.
           </span>
         </div>
       </div>

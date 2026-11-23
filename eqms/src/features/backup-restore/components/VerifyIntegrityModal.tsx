@@ -7,6 +7,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { backupRestoreApi, type IntegrityCheckResult } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { statusLabel } from "../types";
+import { tr } from "@/i18n";
 
 type Phase = "starting" | "running" | "done" | "error";
 type RowState = "pending" | "running" | "passed" | "failed" | "skipped";
@@ -18,16 +19,16 @@ const REVEAL_MS = 320;
 
 /** The checks in the order the agent runs them, with names for what each one checks. They are shown only; nothing here decides anything. */
 const PLAN: { code: string; label: string }[] = [
-  { code: "RUN_COMPLETED", label: "The backup finished" },
-  { code: "SET_PRESENT", label: "The backup folder is present" },
-  { code: "MANIFEST_UNCHANGED", label: "The manifest is unchanged" },
-  { code: "MANIFEST_SIGNATURE", label: "The manifest signature is valid" },
-  { code: "FILES_MATCH_MANIFEST", label: "The files match the manifest" },
-  { code: "OBJECTS_PRESENT", label: "Stored documents are present" },
-  { code: "CHECKSUM_FILE", label: "The checksum file agrees" },
-  { code: "CHAIN_TO_PREVIOUS", label: "It follows the previous backup" },
-  { code: "ENCRYPTED_FOR_KEY", label: "It is encrypted for the expected key" },
-  { code: "LEDGER_RECORDS_MANIFEST", label: "The ledger recorded this backup" },
+  { code: "RUN_COMPLETED", label: tr("The backup finished") },
+  { code: "SET_PRESENT", label: tr("The backup folder is present") },
+  { code: "MANIFEST_UNCHANGED", label: tr("The manifest is unchanged") },
+  { code: "MANIFEST_SIGNATURE", label: tr("The manifest signature is valid") },
+  { code: "FILES_MATCH_MANIFEST", label: tr("The files match the manifest") },
+  { code: "OBJECTS_PRESENT", label: tr("Stored documents are present") },
+  { code: "CHECKSUM_FILE", label: tr("The checksum file agrees") },
+  { code: "CHAIN_TO_PREVIOUS", label: tr("It follows the previous backup") },
+  { code: "ENCRYPTED_FOR_KEY", label: tr("It is encrypted for the expected key") },
+  { code: "LEDGER_RECORDS_MANIFEST", label: tr("The ledger recorded this backup") },
 ];
 const EXTRA_LABEL: Record<string, string> = {
   SET_RECORDED: "Location and manifest are recorded",
@@ -49,7 +50,7 @@ const parseChecks = (text: string | null | undefined): IntegrityCheckResult[] =>
 
 /** The mark of a row: a spinner while it is being checked, a tick that draws itself when it passed, a cross when it failed. */
 const Mark: React.FC<{ state: RowState; reduce: boolean }> = ({ state, reduce }) => {
-  if (state === "running") return <Loader2 className="h-5 w-5 animate-spin text-emerald-600" aria-label="Checking" />;
+  if (state === "running") return <Loader2 className="h-5 w-5 animate-spin text-emerald-600" aria-label={tr("Checking")} />;
   if (state === "passed" || state === "failed") {
     const passed = state === "passed";
     return (
@@ -70,8 +71,8 @@ const Mark: React.FC<{ state: RowState; reduce: boolean }> = ({ state, reduce })
       </motion.span>
     );
   }
-  if (state === "skipped") return <Minus className="h-5 w-5 text-slate-300" aria-label="Not needed for this backup" />;
-  return <span className="block h-5 w-5 rounded-full border-2 border-slate-200" aria-label="Waiting" />;
+  if (state === "skipped") return <Minus className="h-5 w-5 text-slate-300" aria-label={tr("Not needed for this backup")} />;
+  return <span className="block h-5 w-5 rounded-full border-2 border-slate-200" aria-label={tr("Waiting")} />;
 };
 
 /**
@@ -167,7 +168,7 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={onClose}
-      title="Verify Integrity"
+      title={tr("Verify Integrity")}
       description={`Checks that ${backupNumber} is complete, unchanged and signed. The data is not decrypted and nothing is changed.`}
       confirmText="Close"
       showCancel={false}
@@ -180,11 +181,11 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
             <span aria-live="polite">{progress}%</span>
           </div>
           <Progress value={progress} size="lg" variant={running ? "emerald" : phase === "done" && passed ? "success" : "error"} />
-          {running && <p className="text-xs text-slate-500">You can close this window; the check carries on and is recorded either way.</p>}
+          {running && <p className="text-xs text-slate-500">{tr("You can close this window; the check carries on and is recorded either way.")}</p>}
         </div>
 
         {phase !== "error" || arrived.length > 0 ? (
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200" aria-label="Checks">
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200" aria-label={tr("Checks")}>
             {rows.map((row) => (
               <li key={row.code} data-check={row.code} data-state={row.state} className={`flex items-start gap-3 px-3 py-2 ${row.state === "pending" || row.state === "skipped" ? "text-slate-400" : "text-slate-800"}`}>
                 <span className="mt-0.5 shrink-0">
@@ -204,20 +205,20 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
                     ) : null}
                   </AnimatePresence>
                 </span>
-                {row.state === "skipped" && <span className="shrink-0 text-xs text-slate-400">Not needed</span>}
+                {row.state === "skipped" && <span className="shrink-0 text-xs text-slate-400">{tr("Not needed")}</span>}
               </li>
             ))}
           </ul>
         ) : null}
 
-        {phase === "error" && caughtUp && <WarningBanner variant="error" title="The check did not finish" description={message} />}
+        {phase === "error" && caughtUp && <WarningBanner variant="error" title={tr("The check did not finish")} description={message} />}
 
         {phase === "done" && caughtUp && (
           <motion.div initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
             <WarningBanner
               variant={passed ? "success" : "error"}
-              title={passed ? "This backup passed its integrity check" : "This backup did not pass its integrity check"}
-              description={passed ? "It can be used for a restore request." : "It cannot be used for a restore. See the checks above for what failed."}
+              title={passed ? tr("This backup passed its integrity check") : tr("This backup did not pass its integrity check")}
+              description={passed ? tr("It can be used for a restore request.") : tr("It cannot be used for a restore. See the checks above for what failed.")}
             />
           </motion.div>
         )}

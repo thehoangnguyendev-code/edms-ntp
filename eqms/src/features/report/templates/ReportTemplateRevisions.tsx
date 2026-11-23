@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -30,7 +31,7 @@ export const REVISION_STATUS: Record<
   { label: string; color: "emerald" | "amber" | "slate" }
 > = {
   EFFECTIVE: { label: "Effective", color: "emerald" },
-  PENDING_APPROVAL: { label: "Pending Approval", color: "amber" },
+  PENDING_APPROVAL: { label: tr("Pending Approval"), color: "amber" },
   DRAFT: { label: "Draft", color: "slate" },
   OBSOLETE: { label: "Obsoleted", color: "slate" },
   DISCARDED: { label: "Discarded", color: "slate" },
@@ -119,7 +120,7 @@ export function ReportTemplateRevisions({
     },
     {
       id: "reason",
-      header: "Reason for the change",
+      header: tr("Reason for the change"),
       cell: (row) => (
         <div className="max-w-80 whitespace-normal">
           {row.changeReason ?? "—"}
@@ -128,23 +129,23 @@ export function ReportTemplateRevisions({
     },
     {
       id: "author",
-      header: "Created by",
+      header: tr("Created by"),
       cell: (row) => row.createdByName ?? "—",
     },
     {
       id: "approver",
-      header: "Approved by",
+      header: tr("Approved by"),
       cell: (row) => row.approvedByName ?? "—",
     },
     {
       id: "approved",
-      header: "Approved on",
+      header: tr("Approved on"),
       sort: sortOf("approvedAt"),
       cell: (row) => whenText(row.approvedAt),
     },
     {
       id: "effective",
-      header: "Effective from",
+      header: tr("Effective from"),
       sort: sortOf("effectiveAt"),
       cell: (row) => whenText(row.effectiveAt),
     },
@@ -164,7 +165,7 @@ export function ReportTemplateRevisions({
       <button
         type="button"
         ref={menu.getRef(String(row.revision))}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => { ; menu.toggle(String(row.revision), event); }}
       >

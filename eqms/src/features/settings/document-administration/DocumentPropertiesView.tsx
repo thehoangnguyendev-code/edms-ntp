@@ -18,6 +18,7 @@ import { documentProperties } from "@/components/ui/breadcrumb/breadcrumbs.confi
 import { ROUTES } from "@/app/routes.constants";
 import type { DocumentNameFormatItem } from "./document-name-formats/documentNameFormatTypes";
 import { IconApiBook, IconTableSpark } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 type RevisionSeed = "0.0.1" | "0.1";
 /** Stable machine values stored by the server -- never the translated labels below. */
@@ -32,14 +33,14 @@ type EffectiveDateBasisNoTraining = "AFTER_APPROVAL" | "AFTER_PUBLISH";
  *  choice when the document is first created (Author/DCO decide it then; it is not editable per revision
  *  afterward), so a document without it never has a training completion event to count from. */
 const EFFECTIVE_DATE_BASIS_OPTIONS: { value: EffectiveDateBasis; label: string }[] = [
-  { value: "AFTER_APPROVAL", label: "After Approval (last Approver completes)" },
-  { value: "AFTER_TRAINING", label: "After Training completion" },
-  { value: "AFTER_PUBLISH", label: "After DCO Publish" },
+  { value: "AFTER_APPROVAL", label: tr("After Approval (last Approver completes)") },
+  { value: "AFTER_TRAINING", label: tr("After Training completion") },
+  { value: "AFTER_PUBLISH", label: tr("After DCO Publish") },
 ];
 
 const EFFECTIVE_DATE_BASIS_NO_TRAINING_OPTIONS: { value: EffectiveDateBasisNoTraining; label: string }[] = [
-  { value: "AFTER_APPROVAL", label: "After Approval (last Approver completes)" },
-  { value: "AFTER_PUBLISH", label: "After DCO Publish" },
+  { value: "AFTER_APPROVAL", label: tr("After Approval (last Approver completes)") },
+  { value: "AFTER_PUBLISH", label: tr("After DCO Publish") },
 ];
 
 interface DocumentPolicy {
@@ -94,10 +95,10 @@ interface DocumentPolicy {
 
 
 const KNOWLEDGE_VISIBILITY_OPTIONS: { value: KnowledgeVisibilityMode; label: string }[] = [
-  { value: "OWN_DEPARTMENT", label: "Own Department (a user sees the Effective documents of their Department)" },
-  { value: "OWN_BUSINESS_UNIT", label: "Own Business Unit (a user sees the Effective documents of their whole Business Unit)" },
-  { value: "ALL", label: "Everything (a user sees every Effective document of the system)" },
-  { value: "SHARING", label: "Sharing (the Heads share folders and documents)" },
+  { value: "OWN_DEPARTMENT", label: tr("Own Department (a user sees the Effective documents of their Department)") },
+  { value: "OWN_BUSINESS_UNIT", label: tr("Own Business Unit (a user sees the Effective documents of their whole Business Unit)") },
+  { value: "ALL", label: tr("Everything (a user sees every Effective document of the system)") },
+  { value: "SHARING", label: tr("Sharing (the Heads share folders and documents)") },
 ];
 const RETAIN_VISIBILITY_ROLE_FIELDS = [
   "retainVisibilityForRemovedAuthor",
@@ -114,8 +115,8 @@ const RETAIN_VISIBILITY_ROLE_OPTIONS: { field: (typeof RETAIN_VISIBILITY_ROLE_FI
 ];
 
 const REVISION_SEED_OPTIONS = [
-  { value: "0.0.1", label: "0.0.1  — three-part (0.0.1 → 0.0.2 … approve → 1.0.0)" },
-  { value: "0.1", label: "0.1  — two-part (0.1 → 0.2 … approve → 1.0)" },
+  { value: "0.0.1", label: tr("0.0.1  — three-part (0.0.1 → 0.0.2 … approve → 1.0.0)") },
+  { value: "0.1", label: tr("0.1  — two-part (0.1 → 0.2 … approve → 1.0)") },
 ];
 
 /** One short grey line; the full explanation sits behind the (i) next to it. */
@@ -123,7 +124,7 @@ const Details: React.FC<{ summary: React.ReactNode; children: React.ReactNode }>
   <p className="text-xs leading-5 text-slate-500">
     {summary}{" "}
     <span className="inline-block align-middle">
-      <Popover content={<div className="space-y-2 text-xs leading-relaxed" style={{ width: 360, maxWidth: "100%" }}>{children}</div>} triggerAriaLabel="More details" />
+      <Popover content={<div className="space-y-2 text-xs leading-relaxed" style={{ width: 360, maxWidth: "100%" }}>{children}</div>} triggerAriaLabel={tr("More details")} />
     </span>
   </p>
 );
@@ -216,10 +217,10 @@ export const DocumentPropertiesView: React.FC = () => {
       setDocuments(doc);
       setOriginal(JSON.parse(JSON.stringify(doc)));
       setShowSaveModal(false);
-      showToast({ type: "success", title: "Changes saved", message: "Document properties have been updated." });
+      showToast({ type: "success", title: tr("Changes saved"), message: "Document properties have been updated." });
     } catch (saveError) {
       setShowSaveModal(false);
-      showToast({ type: "error", title: "Save failed", message: getApiErrorMessage(saveError, "Unable to save document properties.") });
+      showToast({ type: "error", title: tr("Save failed"), message: getApiErrorMessage(saveError, "Unable to save document properties.") });
     } finally {
       setSaving(false);
     }
@@ -228,12 +229,12 @@ export const DocumentPropertiesView: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Document Properties"
+        title={tr("Document Properties")}
         breadcrumbItems={documentProperties(go)}
         actions={
           canManage && documents ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
-              Save
+              {tr("Save")}
             </Button>
           ) : undefined
         }
@@ -247,9 +248,9 @@ export const DocumentPropertiesView: React.FC = () => {
 
       {!loading && error && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
-          <p className="text-sm font-medium text-amber-800">Unable to load document properties.</p>
+          <p className="text-sm font-medium text-amber-800">{tr("Unable to load document properties.")}</p>
           <Button size="sm" variant="outline" onClick={load}>
-            Retry
+            {tr("Retry")}
           </Button>
         </div>
       )}
@@ -257,26 +258,24 @@ export const DocumentPropertiesView: React.FC = () => {
       {!loading && !error && documents && (
         <div className="space-y-4">
           {/* Who can see what: one section, the two settings side by side (one under the other on a narrower screen) */}
-          <FormSection title="Visibility" icon={<IconTableSpark className="h-4 w-4" />}>
+          <FormSection title={tr("Visibility")} icon={<IconTableSpark className="h-4 w-4" />}>
           <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {/* 0. Who can see which records -- first, because it changes what every user sees in Document Control */}
-          <Group title="Record Visibility">
+          <Group title={tr("Record Visibility")}>
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-slate-900">Set per Access Profile</p>
+              <p className="text-sm font-semibold text-slate-900">{tr("Set per Access Profile")}</p>
               <Details
-                summary={<>A user sees the records where their name is in the flow; what more they see is chosen on their <strong>Access Profile</strong>.</>}
+                summary={<>{tr("A user sees the records where their name is in the flow; what more they see is chosen on their")} <strong>{tr("Access Profile")}</strong>.</>}
               >
                 <p>
-                  Each Access Profile has a <strong>Document Control: record visibility</strong> choice: only the records where the person is named, the records of
-                  the person's department, or all records. A person with several profiles gets the highest level. People outside the flow still need their own
-                  permission to preview files or open the Audit Trail. Change it at{" "}
+                  {tr("Each Access Profile has a")} <strong>{tr("Document Control: record visibility")}</strong> {tr("choice: only the records where the person is named, the records of the person's department, or all records. A person with several profiles gets the highest level. People outside the flow still need their own permission to preview files or open the Audit Trail. Change it at")}{" "}
                   <button
                     type="button"
                     onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
                     className="font-medium text-emerald-700 underline underline-offset-2"
                   >
-                    Security & Authorization &gt; Access Profiles
+                    {tr("Security & Authorization &gt; Access Profiles")}
                   </button>
                   .
                 </p>
@@ -285,11 +284,11 @@ export const DocumentPropertiesView: React.FC = () => {
           </Group>
 
           {/* Knowledge Base: who sees which Effective document in the Knowledge explorer (separate from Record Visibility) */}
-          <Group title="Knowledge Base Visibility">
+          <Group title={tr("Knowledge Base Visibility")}>
             <div className="space-y-4">
               <div>
                 <Select
-                  label="Who can see documents in the Knowledge Base"
+                  label={tr("Who can see documents in the Knowledge Base")}
                   disabled={!canManage}
                   value={documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT"}
                   onChange={(value) => patch({ knowledgeVisibilityMode: String(value) as KnowledgeVisibilityMode })}
@@ -300,35 +299,35 @@ export const DocumentPropertiesView: React.FC = () => {
                   <Details
                     summary={
                       (documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING"
-                        ? "Closed by default: a user sees a document only when the Head of its Department or Business Unit shared it with them."
+                        ? tr("Closed by default: a user sees a document only when the Head of its Department or Business Unit shared it with them.")
                         : documents.knowledgeVisibilityMode === "OWN_BUSINESS_UNIT"
-                          ? "A user sees the Effective documents of every Department of their own Business Unit."
+                          ? tr("A user sees the Effective documents of every Department of their own Business Unit.")
                           : documents.knowledgeVisibilityMode === "ALL"
-                            ? "A user sees every Effective document of the system."
-                            : "A user sees the Effective documents of their own Department."
+                            ? tr("A user sees every Effective document of the system.")
+                            : tr("A user sees the Effective documents of their own Department.")
                     }
                   >
                     <p>
                       {(documents.knowledgeVisibilityMode ?? "OWN_DEPARTMENT") === "SHARING"
-                        ? "A user sees an Effective document only when the Head of its Department or Business Unit shared it with them (a folder or a document, right-click > Share), or when they are that Head. A Head can share with people, Positions, other Departments or everyone. The user still needs the Knowledge Base permission. This does not change Document Control."
-                        : "Everybody who may see a document already sees it, so there is no Share menu. Switch to Sharing when the Heads are ready to decide who sees what."}
+                        ? tr("A user sees an Effective document only when the Head of its Department or Business Unit shared it with them (a folder or a document, right-click > Share), or when they are that Head. A Head can share with people, Positions, other Departments or everyone. The user still needs the Knowledge Base permission. This does not change Document Control.")
+                        : tr("Everybody who may see a document already sees it, so there is no Share menu. Switch to Sharing when the Heads are ready to decide who sees what.")}
                     </p>
                   </Details>
                 </div>
               </div>
-              <Details summary={<>Whoever holds <strong>View All Documents in the Knowledge Base</strong> sees every Effective document in every mode.</>}>
+              <Details summary={<>{tr("Whoever holds")} <strong>{tr("View All Documents in the Knowledge Base")}</strong> {tr("sees every Effective document in every mode.")}</>}>
                 <p>
-                  Only the <strong>Department Head</strong> named on a Department and the <strong>Head of Unit</strong> named on a Business Unit (in Dictionaries)
-                  may share, and only under Sharing: being named is the whole grant. The person designated as DCO shares any Department through{" "}
-                  <strong>Share Knowledge Base of Any Department</strong>, assigned to an Access Profile at{" "}
+                  {tr("Only the")} <strong>{tr("Department Head")}</strong> {tr("named on a Department and the")} <strong>{tr("Head of Unit")}</strong>{" "}
+                  {tr("named on a Business Unit (in Dictionaries) may share, and only under Sharing: being named is the whole grant. The person designated as DCO shares any Department through")}{" "}
+                  <strong>{tr("Share Knowledge Base of Any Department")}</strong>{tr(", assigned to an Access Profile at")}{" "}
                   <button
                       type="button"
                       onClick={() => go(ROUTES.SECURITY.ACCESS_PROFILES)}
                       className="font-medium text-emerald-700 underline underline-offset-2"
                     >
-                      Security & Authorization &gt; Access Profiles
+                      {tr("Security & Authorization > Access Profiles")}
                     </button>
-                  . View All Documents in the Knowledge Base is a Knowledge Base permission of its own and changes nothing in Document Control.
+                  {tr(". View All Documents in the Knowledge Base is a Knowledge Base permission of its own and changes nothing in Document Control.")}
                 </p>
               </Details>
             </div>
@@ -336,12 +335,10 @@ export const DocumentPropertiesView: React.FC = () => {
           </div>
 
           {/* Access kept after a role is removed: part of the same visibility rules */}
-            <Group title="Retain visibility for removed participants">
-              <Details summary="A user removed from a checked role keeps read-only visibility of the Document.">
+            <Group title={tr("Retain visibility for removed participants")}>
+              <Details summary={tr("A user removed from a checked role keeps read-only visibility of the Document.")}>
                 <p>
-                  When a user is removed from one of these roles on a Document (e.g. via "Edit Revision for Upgrade"), they keep read-only visibility of it based on
-                  having held that role before. Each role is independent. If none are checked, a removed participant with no other role on the Document loses
-                  visibility immediately (default).
+                  {tr("When a user is removed from one of these roles on a Document (e.g. via \"Edit Revision for Upgrade\"), they keep read-only visibility of it based on having held that role before. Each role is independent. If none are checked, a removed participant with no other role on the Document loses visibility immediately (default).")}
                 </p>
               </Details>
               {(() => {
@@ -352,7 +349,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   <>
                     <Checkbox
                       id="retainVisibilityForRemovedParticipants-all"
-                      label="All roles"
+                      label={tr("All roles")}
                       disabled={retainDisabled}
                       checked={allChecked}
                       indeterminate={checkedCount > 0 && !allChecked}
@@ -381,14 +378,14 @@ export const DocumentPropertiesView: React.FC = () => {
 
           {/* 1. How documents are identified and dated */}
           <FormSection
-            title="Numbering & Effective Date"
+            title={tr("Numbering & Effective Date")}
             icon={<FileDigit className="h-4 w-4" />}
           >
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Document number">
+              <Group title={tr("Document number")}>
                 <div>
                   <Select
-                    label="Default Document Number Format"
+                    label={tr("Default Document Number Format")}
                     disabled={!canManage}
                     value={(documents.defaultDocumentNameFormatId as string) ?? ""}
                     onChange={(value) => patch({ defaultDocumentNameFormatId: value || null })}
@@ -398,13 +395,12 @@ export const DocumentPropertiesView: React.FC = () => {
                     ]}
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Fallback when a Document Type has no format of its own. Only formats composed of Document Type + Serial
-                    Number are eligible. Manage the full catalog under Document Name Formats.
+                    {tr("Fallback when a Document Type has no format of its own. Only formats composed of Document Type + Serial Number are eligible. Manage the full catalog under Document Name Formats.")}
                   </p>
                 </div>
                 <NumberField
-                  label="Digits of the Serial Number"
-                  hint='Zero-padding width (e.g. 4 → "0007"). Applies only to numbers generated after saving; existing numbers are never rewritten.'
+                  label={tr("Digits of the Serial Number")}
+                  hint={tr("Zero-padding width (e.g. 4 → \"0007\"). Applies only to numbers generated after saving; existing numbers are never rewritten.")}
                   value={documents.serialNumberDigits ?? 4}
                   min={1}
                   max={9}
@@ -414,7 +410,7 @@ export const DocumentPropertiesView: React.FC = () => {
                 />
                 <div className="space-y-2">
                   <Select
-                    label="How the Document Number is given"
+                    label={tr("How the Document Number is given")}
                     value={documents.documentNumberEntryMode ?? "AUTO"}
                     disabled={!canManage}
                     onChange={(value) => patch({ documentNumberEntryMode: String(value) as NumberEntryMode })}
@@ -431,39 +427,38 @@ export const DocumentPropertiesView: React.FC = () => {
                 </div>
                 {documents.documentNumberEntryMode === "MANUAL" && (
                   <p className="text-xs text-slate-500">
-                    The number is the Document Type's code, a dot and exactly the digits set above (for example SOP.0008). The screen warns at once when it is
-                    already used. It can be changed, with a reason, only while the Document is a Draft with no source file stored.
+                    {tr("The number is the Document Type's code, a dot and exactly the digits set above (for example SOP.0008). The screen warns at once when it is already used. It can be changed, with a reason, only while the Document is a Draft with no source file stored.")}
                   </p>
                 )}
               </Group>
 
-              <Group title="Revision number">
+              <Group title={tr("Revision number")}>
                 <div>
                   <Select
-                    label="Default Revision Number Format"
+                    label={tr("Default Revision Number Format")}
                     disabled={!canManage}
                     value={(documents.revisionNumberSeed as RevisionSeed) ?? "0.0.1"}
                     onChange={(value) => patch({ revisionNumberSeed: value as RevisionSeed })}
                     options={REVISION_SEED_OPTIONS}
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Starting revision number for newly created documents. Existing documents keep their current numbering.
+                    {tr("Starting revision number for newly created documents. Existing documents keep their current numbering.")}
                   </p>
                 </div>
               </Group>
 
               <div className="lg:col-span-2 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <Group title="Effective date — Required Training">
+                <Group title={tr("Effective date — Required Training")}>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Select
-                      label="Effective Date is counted from"
+                      label={tr("Effective Date is counted from")}
                       disabled={!canManage}
                       value={documents.effectiveDateBasisTrainingRequired ?? documents.effectiveDateBasis ?? "AFTER_APPROVAL"}
                       onChange={(value) => patch({ effectiveDateBasisTrainingRequired: String(value) as EffectiveDateBasis })}
                       options={EFFECTIVE_DATE_BASIS_OPTIONS}
                     />
                     <NumberField
-                      label="Number of days after that event"
+                      label={tr("Number of days after that event")}
                       value={documents.effectiveDateOffsetDaysTrainingRequired ?? documents.effectiveDateOffsetDays ?? 0}
                       min={0}
                       max={365}
@@ -473,24 +468,21 @@ export const DocumentPropertiesView: React.FC = () => {
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    Applies to documents whose Author/DCO flagged "Requires Training" when the document was created (this
-                    is decided once, at creation, and is not editable per revision afterward). If the revision has no
-                    training completion or no approval record when the DCO publishes, the date falls back to the approval
-                    date and then the publish date.
+                    {tr("Applies to documents whose Author/DCO flagged \"Requires Training\" when the document was created (this is decided once, at creation, and is not editable per revision afterward). If the revision has no training completion or no approval record when the DCO publishes, the date falls back to the approval date and then the publish date.")}
                   </p>
                 </Group>
 
-                <Group title="Effective date — Non-Required Training">
+                <Group title={tr("Effective date — Non-Required Training")}>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Select
-                      label="Effective Date is counted from"
+                      label={tr("Effective Date is counted from")}
                       disabled={!canManage}
                       value={documents.effectiveDateBasisTrainingNotRequired ?? "AFTER_APPROVAL"}
                       onChange={(value) => patch({ effectiveDateBasisTrainingNotRequired: String(value) as EffectiveDateBasisNoTraining })}
                       options={EFFECTIVE_DATE_BASIS_NO_TRAINING_OPTIONS}
                     />
                     <NumberField
-                      label="Number of days after that event"
+                      label={tr("Number of days after that event")}
                       value={documents.effectiveDateOffsetDaysTrainingNotRequired ?? 0}
                       min={0}
                       max={365}
@@ -500,49 +492,44 @@ export const DocumentPropertiesView: React.FC = () => {
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    Applies to documents without the "Requires Training" flag -- no training event exists for them, so
-                    only After Approval or After DCO Publish are offered. If the revision has no approval record when
-                    the DCO publishes, the date falls back to the publish date.
+                    {tr("Applies to documents without the \"Requires Training\" flag -- no training event exists for them, so only After Approval or After DCO Publish are offered. If the revision has no approval record when the DCO publishes, the date falls back to the publish date.")}
                   </p>
                 </Group>
 
                 <p className="col-span-full text-xs text-slate-500">
-                  Effective Date = the chosen event + the configured calendar days (0 = the same day). It is fixed when
-                  the DCO publishes, using the rule in force for that document at that moment, and the rule used is
-                  recorded in the Audit Trail. A date earlier than the publish day means the document is effective from
-                  before it was published.
+                  {tr("Effective Date = the chosen event + the configured calendar days (0 = the same day). It is fixed when the DCO publishes, using the rule in force for that document at that moment, and the rule used is recorded in the Audit Trail. A date earlier than the publish day means the document is effective from before it was published.")}
                 </p>
               </div>
             </div>
           </FormSection>
 
           {/* 2. Review / approval behaviour */}
-          <FormSection title="Review & Approval Workflow" icon={<Users className="h-4 w-4" />}>
+          <FormSection title={tr("Review & Approval Workflow")} icon={<Users className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Review mode">
+              <Group title={tr("Review mode")}>
                 <Select
-                  label="Reviewer order"
+                  label={tr("Reviewer order")}
                   disabled={!canManage}
                   value={documents.parallelReviewEnabled ? "PARALLEL" : "SEQUENTIAL"}
                   onChange={(value) => patch({ parallelReviewEnabled: value === "PARALLEL" })}
                   options={[
-                    { value: "SEQUENTIAL", label: "Sequential (default) — one Reviewer at a time" },
-                    { value: "PARALLEL", label: "Parallel — any Reviewer, any order" },
+                    { value: "SEQUENTIAL", label: tr("Sequential (default) — one Reviewer at a time") },
+                    { value: "PARALLEL", label: tr("Parallel — any Reviewer, any order") },
                   ]}
                   enableSearch={false}
                 />
                 <p className="text-xs text-slate-500">
                   {documents.parallelReviewEnabled
-                    ? "Parallel: any assigned Reviewer may act in any order; the Revision still moves on only once every Reviewer has reviewed, and a single Reject sends it back to Draft."
-                    : "Sequential (default): Reviewers act one at a time, in the order configured on the Revision."}{" "}
-                  The mode is fixed when a Revision is submitted, so a change only affects Revisions submitted afterwards.
+                    ? tr("Parallel: any assigned Reviewer may act in any order; the Revision still moves on only once every Reviewer has reviewed, and a single Reject sends it back to Draft.")
+                    : tr("Sequential (default): Reviewers act one at a time, in the order configured on the Revision.")}{" "}
+                  {tr("The mode is fixed when a Revision is submitted, so a change only affects Revisions submitted afterwards.")}
                 </p>
               </Group>
 
-              <Group title="Reminders & escalation">
+              <Group title={tr("Reminders & escalation")}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <NumberField
-                    label="Remind assignee after (days)"
+                    label={tr("Remind assignee after (days)")}
                     value={documents.workflowReminderAfterDays ?? 3}
                     min={0}
                     max={365}
@@ -551,7 +538,7 @@ export const DocumentPropertiesView: React.FC = () => {
                     onChange={(v) => patch({ workflowReminderAfterDays: v })}
                   />
                   <NumberField
-                    label="Escalate to Document Control after (days)"
+                    label={tr("Escalate to Document Control after (days)")}
                     value={documents.workflowEscalationAfterDays ?? 7}
                     min={0}
                     max={365}
@@ -561,32 +548,31 @@ export const DocumentPropertiesView: React.FC = () => {
                   />
                 </div>
                 <p className="text-xs text-slate-500">
-                  A Reviewer/Approver who has not acted after the reminder period is reminded once; after the escalation period
-                  Document Control is notified. Use 0 to switch either off.
+                  {tr("A Reviewer/Approver who has not acted after the reminder period is reminded once; after the escalation period Document Control is notified. Use 0 to switch either off.")}
                 </p>
               </Group>
             </div>
             <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-              Want to configure a rule that prevents duplicate Reviewers/Approvers (Segregation of Duties)? See at{" "}
+              {tr("Want to configure a rule that prevents duplicate Reviewers/Approvers (Segregation of Duties)? See at")}{" "}
               <button
                 type="button"
                 onClick={() => go(ROUTES.SECURITY.SOD)}
                 className="font-medium underline underline-offset-2 hover:text-sky-900"
               >
-                Security & Authorization &gt; Segregation of Duties
+                {tr("Security & Authorization > Segregation of Duties")}
               </button>
               .
             </div>
           </FormSection>
 
           {/* 3. Files and what readers see */}
-          <FormSection title="Storage & Knowledge Base" icon={<Archive className="h-4 w-4" />}>
+          <FormSection title={tr("Storage & Knowledge Base")} icon={<Archive className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Group title="Uploads">
+              <Group title={tr("Uploads")}>
                 <NumberField
-                  label="Max File Size (MB)"
+                  label={tr("Max File Size (MB)")}
                   // Same default (25) and 1-100 range the backend applies when the value is missing or out of range.
-                  hint="Maximum file size for document uploads."
+                  hint={tr("Maximum file size for document uploads.")}
                   value={documents.maxFileSizeMB ?? 25}
                   min={1}
                   max={100}
@@ -596,10 +582,10 @@ export const DocumentPropertiesView: React.FC = () => {
                 />
               </Group>
 
-              <Group title="Knowledge Base portal">
+              <Group title={tr("Knowledge Base portal")}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <NumberField
-                    label="Documents listed per card"
+                    label={tr("Documents listed per card")}
                     value={documents.knowledgePortalTopCount ?? 5}
                     min={1}
                     max={20}
@@ -608,7 +594,7 @@ export const DocumentPropertiesView: React.FC = () => {
                     onChange={(v) => patch({ knowledgePortalTopCount: v })}
                   />
                   <NumberField
-                    label="Most Viewed window (days)"
+                    label={tr("Most Viewed window (days)")}
                     value={documents.knowledgePortalViewsWindowDays ?? 30}
                     min={1}
                     max={365}
@@ -618,8 +604,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   />
                 </div>
                 <p className="text-xs text-slate-500">
-                  Featured, Most Useful and Most Viewed are computed from recorded views, "helpful" votes and featured
-                  documents. These values only change how many are shown and how far back views count.
+                  {tr("Featured, Most Useful and Most Viewed are computed from recorded views, \"helpful\" votes and featured documents. These values only change how many are shown and how far back views count.")}
                 </p>
               </Group>
             </div>
@@ -632,10 +617,10 @@ export const DocumentPropertiesView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={save}
         type="confirm"
-        title="Save Document Properties?"
+        title={tr("Save Document Properties?")}
         description={
           <p className="text-sm text-slate-600">
-            You are about to save changes to Document Properties. This action will be recorded in the Audit Trail.
+            {tr("You are about to save changes to Document Properties. This action will be recorded in the Audit Trail.")}
           </p>
         }
         confirmText="Save"

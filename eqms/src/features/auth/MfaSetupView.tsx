@@ -11,6 +11,7 @@ import { AuthBackLink, AuthLayout } from "./components";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { authApi } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { tr } from "@/i18n";
 
 type MfaMethod = "email" | "app";
 type SetupStep = "selection" | "config" | "success";
@@ -148,9 +149,9 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
     >
       <div className={ui.headerArea}>
         <div className={ui.headingBlock}>
-          <h1 className={ui.pageTitle}>Multi-Factor Setup</h1>
+          <h1 className={ui.pageTitle}>{tr("Multi-Factor Setup")}</h1>
           <p className={ui.description}>
-            Choose how you would like to receive your secure login verification codes.
+            {tr("Choose how you would like to receive your secure login verification codes.")}
           </p>
         </div>
       </div>
@@ -164,8 +165,8 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-slate-600"><IconMailOpened size={26} stroke={1.5} /></span>
             <div>
-              <p className="text-xs font-semibold text-slate-900 sm:text-sm">Email Authentication</p>
-              <p className="text-xs text-slate-500">Receive codes at <span className="font-semibold text-slate-700">{email}</span></p>
+              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{tr("Email Authentication")}</p>
+              <p className="text-xs text-slate-500">{tr("Receive codes at")} <span className="font-semibold text-slate-700">{email}</span></p>
             </div>
           </div>
         </button>
@@ -178,8 +179,8 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-slate-600"><IconQrcode size={26} stroke={1.5} /></span>
             <div>
-              <p className="text-xs font-semibold text-slate-900 sm:text-sm">Authenticator App</p>
-              <p className="text-xs text-slate-500">Google Authenticator, Microsoft, Authy, etc.</p>
+              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{tr("Authenticator App")}</p>
+              <p className="text-xs text-slate-500">{tr("Google Authenticator, Microsoft, Authy, etc.")}</p>
             </div>
           </div>
         </button>
@@ -204,7 +205,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
               "Open your authenticator app and scan the code below."
             ) : (
               <span className="sm:whitespace-nowrap">
-                We've prepared a code for <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
+                {tr("We've prepared a code for")} <span className="font-semibold text-slate-700">{maskEmail(email)}</span>.
               </span>
             )}
           </p>
@@ -220,7 +221,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
               </div>
             ) : (
               <div className="flex h-36 w-36 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400 sm:h-48 sm:w-48">
-                Loading QR...
+                {tr("Loading QR...")}
               </div>
             )}
             <motion.div
@@ -262,7 +263,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
           </div>
           <div className="text-center max-w-xs">
             <p className="text-xs text-slate-500 leading-relaxed">
-              Please check your inbox. We have sent a 6-digit verification code to your email address.
+              {tr("Please check your inbox. We have sent a 6-digit verification code to your email address.")}
             </p>
           </div>
         </div>
@@ -302,7 +303,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       </div>
 
       <Button className={cn(ui.submitButton, "mt-4")} onClick={verifySetup} disabled={isLoading || otp.join("").length < 6}>
-        Verify & Finalize
+        {tr("Verify & Finalize")}
       </Button>
 
       <div className="flex flex-col items-start gap-2 pt-0.5 sm:gap-3 sm:pt-1">
@@ -315,7 +316,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
             disabled={isLoading}
             className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-700 hover:text-emerald-900"
           >
-            <IconRefresh size={16} /> Resend Code
+            <IconRefresh size={16} /> {tr("Resend Code")}
           </button>
         )}
 
@@ -326,7 +327,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
             setMethod(null);
             setError("");
           }}
-          label="Change verification method"
+          label={tr("Change verification method")}
           disabled={isLoading}
         />
       </div>
@@ -334,7 +335,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       {onBackToLogin && (
         <AuthBackLink
           onClick={onBackToLogin}
-          label="Back to Sign In"
+          label={tr("Back to Sign In")}
           disabled={isLoading}
         />
       )}
@@ -356,9 +357,9 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       </div>
 
       <div className="space-y-3">
-        <h1 className={ui.pageTitleStrong}>Account Secured</h1>
+        <h1 className={ui.pageTitleStrong}>{tr("Account Secured")}</h1>
         <p className="max-w-xs text-sm leading-6 text-slate-500 sm:text-sm sm:leading-7">
-          Two-factor authentication has been successfully enabled.
+          {tr("Two-factor authentication has been successfully enabled.")}
         </p>
       </div>
 
@@ -369,7 +370,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
               <IconDeviceMobile  size={20} />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase text-emerald-800">Primary Method</p>
+              <p className="text-xs font-semibold uppercase text-emerald-800">{tr("Primary Method")}</p>
               <p className="text-sm font-semibold text-emerald-900">
                 {method === "app" ? "Authenticator Application" : `Email: ${email}`}
               </p>
@@ -378,7 +379,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
         </div>
 
         <Button className={cn("w-full py-6 text-lg", ui.submitButton)} onClick={onComplete}>
-          Continue to System
+          {tr("Continue to System")}
         </Button>
       </div>
     </motion.div>

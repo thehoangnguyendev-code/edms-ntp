@@ -2,6 +2,7 @@ import React from 'react';
 import { IconLock } from '@tabler/icons-react';
 import { formatDate } from '@/utils/format';
 import { DEFAULT_FIXED_RETENTION_YEARS, MAX_RETENTION_YEARS, isPermanentRetention, retentionLockedUntil } from './storageIntegration';
+import { tr, trFormat } from "@/i18n";
 
 interface RetentionControlProps {
   /** The retention being set (MAX_RETENTION_YEARS means Permanent). */
@@ -24,16 +25,16 @@ export const RetentionControl: React.FC<RetentionControlProps> = ({ years, saved
 
   return (
     <div>
-      <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Retention Period</p>
+      <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Retention Period")}</p>
       <div className="flex flex-wrap items-center gap-3">
-        <div role="radiogroup" aria-label="Retention mode" className="inline-flex gap-1 rounded-lg bg-slate-100 p-1">
+        <div role="radiogroup" aria-label={tr("Retention mode")} className="inline-flex gap-1 rounded-lg bg-slate-100 p-1">
           <label className="relative cursor-pointer">
             <input type="radio" name="retention-mode" checked={permanent} onChange={() => onChange(MAX_RETENTION_YEARS)} className="peer sr-only" />
-            <span className={MODE_CLASS}>Permanent</span>
+            <span className={MODE_CLASS}>{tr("Permanent")}</span>
           </label>
           <label className="relative cursor-pointer">
             <input type="radio" name="retention-mode" checked={!permanent} onChange={() => onChange(DEFAULT_FIXED_RETENTION_YEARS)} className="peer sr-only" />
-            <span className={MODE_CLASS}>Set years</span>
+            <span className={MODE_CLASS}>{tr("Set years")}</span>
           </label>
         </div>
         {!permanent && (
@@ -45,22 +46,22 @@ export const RetentionControl: React.FC<RetentionControlProps> = ({ years, saved
               value={years}
               onChange={(e) => onChange(Math.min(Math.max(Number(e.target.value || DEFAULT_FIXED_RETENTION_YEARS), 1), MAX_RETENTION_YEARS - 1))}
               className="h-9 w-24 rounded-lg border border-slate-200 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              aria-label="Retention period in years"
+              aria-label={tr("Retention period in years")}
             />
-            <span className="text-sm text-slate-600">years</span>
+            <span className="text-sm text-slate-600">{tr("years")}</span>
           </div>
         )}
       </div>
       <div className={`mt-3 flex items-start gap-2.5 rounded-lg border p-3 text-sm ${changed ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
         <IconLock className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
-          <p>Records stored from now on are <strong>locked until {until}</strong>. Nobody, administrators included, can shorten or delete them before then.</p>
+          <p>{tr("Records stored from now on are")} <strong>{tr("locked until")} {until}</strong>{tr(". Nobody, administrators included, can shorten or delete them before then.")}</p>
           <p className="mt-1 text-xs opacity-80">
-            Objects already stored keep the period they were written with. Permanent is the longest period the storage allows ({MAX_RETENTION_YEARS} years).
+            {trFormat("Objects already stored keep the period they were written with. Permanent is the longest period the storage allows ({years} years).", { years: MAX_RETENTION_YEARS })}
           </p>
         </div>
       </div>
-      {changed && <p className="mt-2 text-xs text-slate-500">You are asked to confirm this change when you press Save.</p>}
+      {changed && <p className="mt-2 text-xs text-slate-500">{tr("You are asked to confirm this change when you press Save.")}</p>}
     </div>
   );
 };

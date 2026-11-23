@@ -35,6 +35,7 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "businessUnit", label: "Business Unit", visible: true, order: 9 },
   { id: "department", label: "Department", visible: true, order: 10 },
   { id: "status", label: "Account Status", visible: true, order: 11 },
+  { id: "lastLogin", label: "Last Sign-in", visible: true, order: 12 },
   { id: "suspendedUntil", label: "Suspended Until", visible: true, order: 13 },
   { id: "terminationDate", label: "Termination Date", visible: true, order: 14 },
   { id: "createdDate", label: "Created Date", visible: true, order: 16 },

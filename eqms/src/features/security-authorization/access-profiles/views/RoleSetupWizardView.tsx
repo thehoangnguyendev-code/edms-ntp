@@ -35,6 +35,7 @@ import { moduleDisplayName } from "@/utils/moduleDisplay";
 import { WizardUsersStep } from "./WizardUsersStep";
 import { WizardPickerTable, type PickerPage, type PickerQuery } from "./WizardPickerTable";
 import { WizardReviewStep } from "./WizardReviewStep";
+import { tr, trFormat } from "@/i18n";
 
 /** What the fields that the system fills in say until the profile is created (the last step). */
 const AFTER_CREATION = "Auto-filled after the profile is created";
@@ -48,8 +49,8 @@ const clearSelectionClass =
 
 const STEPS = ["Basic Info", "Permissions", "Workflow Eligibility", "Users", "Review & Create"] as const;
 const PERMISSION_MODE_TABS: TabItem[] = [
-  { id: "existing", label: "Use existing Permission Sets" },
-  { id: "custom", label: "Pick individual permissions" },
+  { id: "existing", label: tr("Use existing Permission Sets") },
+  { id: "custom", label: tr("Pick individual permissions") },
 ];
 
 interface WorkflowRoleCatalogEntry {
@@ -328,7 +329,7 @@ export const RoleSetupWizardView: React.FC = () => {
       );
       showToast({
         type: "success",
-        title: "Access Profile created",
+        title: tr("Access Profile created"),
         message: selectedUserIds.size > 0
           ? `"${profile.name}" is ready and assigned to ${selectedUserIds.size} user(s).`
           : `"${profile.name}" is ready — assign users from the profile's Assigned Users tab whenever needed.`,
@@ -337,7 +338,7 @@ export const RoleSetupWizardView: React.FC = () => {
     } catch (e: any) {
       showToast({
         type: "error",
-        title: "Access Profile creation failed",
+        title: tr("Access Profile creation failed"),
         message: getApiErrorMessage(e, "Unexpected error — nothing was created."),
       });
     } finally {
@@ -348,7 +349,7 @@ export const RoleSetupWizardView: React.FC = () => {
   const breadcrumbItems = useMemo(() => {
     return [
       ...accessProfilesBreadcrumb(navigate).map((item) => ({ ...item, isActive: false })),
-      { label: "New Access Profile", isActive: true },
+      { label: tr("New Access Profile"), isActive: true },
     ];
   }, [navigate]);
 
@@ -356,11 +357,11 @@ export const RoleSetupWizardView: React.FC = () => {
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
       <PageHeader
-        title="New Access Profile"
+        title={tr("New Access Profile")}
         breadcrumbItems={breadcrumbItems}
         actions={
           <Button variant="outline-emerald" size="sm" className="whitespace-nowrap" onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}>
-            Cancel
+            {tr("Cancel")}
           </Button>
         }
       />
@@ -376,66 +377,66 @@ export const RoleSetupWizardView: React.FC = () => {
 
       {/* ── Step 1: Basic Info ── */}
       {step === 0 && (
-        <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+        <FormSection title={tr("Basic Information")} icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
           {/* The same fields as the Access Profile Details page; what the system fills in after the profile is created is shown as a placeholder. */}
           <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
             <div>
-              <label className={labelClass}>Created By</label>
+              <label className={labelClass}>{tr("Created By")}</label>
               <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
             </div>
             <div>
-              <label className={labelClass}>Created Time</label>
+              <label className={labelClass}>{tr("Created Time")}</label>
               <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
             </div>
 
             <div>
               <label className={labelClass}>
-                Profile Name <span className="text-red-500">*</span>
+                {tr("Profile Name")} <span className="text-red-500">*</span>
               </label>
               <input
                 className={cn(inputClass, nameTaken && "border-red-300 focus:ring-red-500 focus:border-red-500")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Document Reviewer - North Region"
+                placeholder={tr("e.g. Document Reviewer - North Region")}
                 autoFocus
               />
               {nameTaken ? (
                 <p className="text-xs text-red-500 mt-1.5">
-                  An access profile named “{name.trim()}” already exists — choose a different name.
+                  {trFormat("An access profile named “{name}” already exists — choose a different name.", { name: name.trim() })}
                 </p>
               ) : (
                 <p className="text-xs text-slate-500 mt-1.5">
-                  This is the named bundle of permissions that will be assigned to users.
+                  {tr("This is the named bundle of permissions that will be assigned to users.")}
                 </p>
               )}
             </div>
             <div>
-              <label className={labelClass}>Code (Immutable)</label>
+              <label className={labelClass}>{tr("Code (Immutable)")}</label>
               <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
             </div>
 
             <div>
-              <label className={labelClass}>Type</label>
+              <label className={labelClass}>{tr("Type")}</label>
               <div className="flex h-9 items-center">
-                <Badge color="teal" size="sm">Custom</Badge>
+                <Badge color="teal" size="sm">{tr("Custom")}</Badge>
               </div>
             </div>
             <div>
-              <label className={labelClass}>Status</label>
+              <label className={labelClass}>{tr("Status")}</label>
               <div className="flex h-9 items-center gap-2.5">
                 <Switch checked onChange={() => {}} disabled size="sm" />
-                <Badge size="sm" color={flagColor(true)}>Active</Badge>
+                <Badge size="sm" color={flagColor(true)}>{tr("Active")}</Badge>
               </div>
             </div>
 
             <div className="md:col-span-2">
-              <label className={labelClass}>Description</label>
+              <label className={labelClass}>{tr("Description")}</label>
               <textarea
                 className={textareaClass}
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What responsibilities and access does this profile provide?"
+                placeholder={tr("What responsibilities and access does this profile provide?")}
               />
             </div>
           </div>
@@ -445,16 +446,16 @@ export const RoleSetupWizardView: React.FC = () => {
       {/* ── Step 2: Permissions ── */}
       {step === 1 && (
         <FormSection
-          title="What can this Access Profile do?"
+          title={tr("What can this Access Profile do?")}
           icon={<ListTodoIcon className="h-4 w-4" />}
-          description="Pick one or more existing permission sets, or build a custom set by ticking individual permissions."
+          description={tr("Pick one or more existing permission sets, or build a custom set by ticking individual permissions.")}
           contentClassName="p-4 md:p-5"
         >
           <div className="mb-4">
             <Checkbox
               checked={includeKnowledge}
               onChange={setIncludeKnowledge}
-              label="Allow reading Effective documents in the Knowledge Base"
+              label={tr("Allow reading Effective documents in the Knowledge Base")}
             />
           </div>
           <TabNav
@@ -477,13 +478,13 @@ export const RoleSetupWizardView: React.FC = () => {
                 onToggle={toggleSet}
                 onToggleMany={toggleManySets}
                 onClear={() => { setSelectedSetIds(new Set()); setSelectedSetDetails(new Map()); }}
-                searchPlaceholder="Search permission sets by name, code, description…"
+                searchPlaceholder={tr("Search permission sets by name, code, description…")}
                 noun="permission set"
                 requiredHint="Select at least one permission set"
-                emptyTitle="No permission sets found"
+                emptyTitle={tr("No permission sets found")}
                 columns={({ sortOf, offset }) => [
                   { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_set, index) => offset + index + 1 },
-                  { id: "name", header: "Permission Set", label: "Permission Set", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (set) => set.name },
+                  { id: "name", header: tr("Permission Set"), label: tr("Permission Set"), sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (set) => set.name },
                   { id: "type", header: "Type", label: "Type", sort: sortOf("type"), cell: (set) => <Badge color={set.system ? "blue" : "teal"} size="sm">{set.system ? "System" : "Custom"}</Badge> },
                   { id: "permissionCount", header: "Permissions", label: "Permissions", sort: sortOf("permissionCount"), cellClassName: "tabular-nums", cell: (set) => set.permissionCount },
                   { id: "description", header: "Description", label: "Description", cellClassName: "min-w-[20rem] max-w-[34rem] !whitespace-normal text-xs text-slate-600", cell: (set) => set.description || "—" },
@@ -500,18 +501,18 @@ export const RoleSetupWizardView: React.FC = () => {
             <div className="space-y-3">
               <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-2">
                 <div className="flex items-center gap-2">
-                  <Badge color="emerald" size="sm">{customCodes.size} selected</Badge>
+                  <Badge color="emerald" size="sm">{customCodes.size} {tr("selected")}</Badge>
                   {customCodes.size > 0 && (
                     <button type="button" className={clearSelectionClass} onClick={() => setCustomCodes(new Set())}>
-                      Clear all
+                      {tr("Clear all")}
                     </button>
                   )}
                   {customCodes.size === 0 && (
-                    <span className="text-xs text-red-500 whitespace-nowrap">Tick at least one permission</span>
+                    <span className="text-xs text-red-500 whitespace-nowrap">{tr("Tick at least one permission")}</span>
                   )}
                 </div>
                 <span className="text-xs text-slate-500">
-                  A new Permission Set named “{name.trim() || "…"} Permissions” will be created with these.
+                        {trFormat("A new Permission Set named “{name} Permissions” will be created with these.", { name: name.trim() || "…" })}
                 </span>
               </div>
               <PermissionSplitExplorer
@@ -529,9 +530,9 @@ export const RoleSetupWizardView: React.FC = () => {
       {/* ── Step 3: Workflow eligibility ── */}
       {step === 2 && (
         <FormSection
-          title="Workflow participant eligibility"
+          title={tr("Workflow participant eligibility")}
           icon={<IconArrowsShuffle className="h-4 w-4" />}
-          description="Select the workflow capacities that users with this Access Profile may be considered for. A capacity never grants action rights by itself: the user still needs the configured permission and must be assigned to that document/revision."
+          description={tr("Select the workflow capacities that users with this Access Profile may be considered for. A capacity never grants action rights by itself: the user still needs the configured permission and must be assigned to that document/revision.")}
           contentClassName="p-4 md:p-5"
         >
           <WizardPickerTable<WorkflowRoleCatalogEntry>
@@ -542,13 +543,13 @@ export const RoleSetupWizardView: React.FC = () => {
             onToggle={toggleRole}
             onToggleMany={toggleManyRoles}
             onClear={() => { setSelectedRoleCodes(new Set()); setSelectedRoleDetails(new Map()); }}
-            searchPlaceholder="Search workflow roles by name, code, module…"
+            searchPlaceholder={tr("Search workflow roles by name, code, module…")}
             noun="workflow role"
             noneSelectedHint="Optional — leave empty if users with this profile are not to be considered for any workflow capacity."
-            emptyTitle="No workflow roles found"
+            emptyTitle={tr("No workflow roles found")}
             columns={({ sortOf, offset }) => [
               { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_role, index) => offset + index + 1 },
-              { id: "label", header: "Workflow Role", label: "Workflow Role", sort: sortOf("label"), cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
+              { id: "label", header: tr("Workflow Role"), label: tr("Workflow Role"), sort: sortOf("label"), cellClassName: "font-medium text-slate-900", cell: (role) => role.label },
               { id: "code", header: "Code", label: "Code", sort: sortOf("code"), cellClassName: "font-mono text-2xs text-slate-600 md:text-xs", cell: (role) => role.code },
               { id: "moduleKey", header: "Module", label: "Module", sort: sortOf("moduleKey"), cell: (role) => <Badge color="slate" size="sm">{moduleDisplayName(role.moduleKey)}</Badge> },
               { id: "description", header: "Description", label: "Description", cellClassName: "min-w-[18rem] max-w-[32rem] !whitespace-normal text-xs text-slate-600", cell: (role) => role.description || "—" },
@@ -560,9 +561,9 @@ export const RoleSetupWizardView: React.FC = () => {
       {/* ── Step 4: Users (optional) ── */}
       {step === 3 && (
         <FormSection
-          title="Who should receive this Access Profile?"
+          title={tr("Who should receive this Access Profile?")}
           icon={<Users className="h-4 w-4" />}
-          description="Optional — assignments are created together with the Access Profile under the same signature. You can always assign more users later. Segregation-of-Duties conflicts are checked per user and block the whole creation."
+          description={tr("Optional — assignments are created together with the Access Profile under the same signature. You can always assign more users later. Segregation-of-Duties conflicts are checked per user and block the whole creation.")}
           contentClassName="p-4 md:p-5"
         >
           <WizardUsersStep
@@ -600,7 +601,7 @@ export const RoleSetupWizardView: React.FC = () => {
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0 || creating}
         >
-          Back
+          {tr("Back")}
         </Button>
         {step < STEPS.length - 1 ? (
           <Button
@@ -609,7 +610,7 @@ export const RoleSetupWizardView: React.FC = () => {
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
             disabled={!canProceed}
           >
-            Next
+            {tr("Next")}
           </Button>
         ) : (
           <Button

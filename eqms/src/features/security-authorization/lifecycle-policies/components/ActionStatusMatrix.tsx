@@ -21,6 +21,7 @@ import type { WorkflowActionPolicy } from "../types";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr, trFormat } from "@/i18n";
 /**
  * Canonical lifecycle order per object type. Keys must match the raw
  * workflow_action_policies.object_type values (REVISION, CONTROLLED_COPY, …)
@@ -219,11 +220,7 @@ export const ActionStatusMatrix: React.FC = () => {
         variant="info"
         description={
           <>
-          Which action can start from which status. Each ✓ means the action is allowed from that status;
-          click it to see who: a person needs the required permission AND must be the right person
-          (for example the named Reviewer, or anyone holding the operator permission). A blank cell means
-          the action cannot start from that status. Only objects that show a status stepper on their screen are
-          listed. Choose the module first, then the object type: each object type has its own statuses, so they are shown one at a time. To change a rule, use the Transition Policies tab.
+          {tr("Which action can start from which status. Each ✓ means the action is allowed from that status; click it to see who: a person needs the required permission AND must be the right person (for example the named Reviewer, or anyone holding the operator permission). A blank cell means the action cannot start from that status. Only objects that show a status stepper on their screen are listed. Choose the module first, then the object type: each object type has its own statuses, so they are shown one at a time. To change a rule, use the Transition Policies tab.")}
           </>
         }
       />
@@ -233,7 +230,7 @@ export const ActionStatusMatrix: React.FC = () => {
           variant="success"
           description={
             <>
-            <strong>Create controlled copy request:</strong> access is determined by the configured action policy. The source Document Master must be Active and its Revision must be Effective. This is an entry condition, not a Controlled Copy status.
+            <strong>{tr("Create controlled copy request:")}</strong> {tr("access is determined by the configured action policy. The source Document Master must be Active and its Revision must be Effective. This is an entry condition, not a Controlled Copy status.")}
             </>
           }
         />
@@ -246,35 +243,35 @@ export const ActionStatusMatrix: React.FC = () => {
           description={
             <>
             {workflowLoadError && statePolicyLoadError
-              ? "Workflow and document-master policy data could not be loaded. The matrix is incomplete."
+              ? tr("Workflow and document-master policy data could not be loaded. The matrix is incomplete.")
               : workflowLoadError
-                ? "Workflow transition policy data could not be loaded. The matrix is incomplete."
-                : "Document-master capability policy data could not be loaded. The matrix is incomplete."}
+                ? tr("Workflow transition policy data could not be loaded. The matrix is incomplete.")
+                : tr("Document-master capability policy data could not be loaded. The matrix is incomplete.")}
             </>
           }
         >
           <Button size="sm" variant="outline" onClick={() => setLoadVersion((version) => version + 1)}>
-            Retry
+            {tr("Retry")}
           </Button>
         </WarningBanner>
       )}
 
       <ConfiguredDesktopFilters preserveMobile
-        search={<input aria-label="Search actions" value={actionSearch} onChange={event => setActionSearch(event.target.value)} placeholder="Search actions..." className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
+        search={<input aria-label={tr("Search actions")} value={actionSearch} onChange={event => setActionSearch(event.target.value)} placeholder={tr("Search actions...")} className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm" />}
         filters={[
-          { id: 'module', label: 'Module', value: moduleName, options: moduleOptions, resetOnChange: { objectType: '' }, onChange: setModuleName },
-          { id: 'objectType', label: 'Object Type', value: objectType, options: objectTypeOptions, dependsOn: ['module'], getOptions: (draft) => objectTypeOptionsOf(draft.module ?? moduleName), onChange: setObjectType },
+          { id: 'module', label: tr('Module'), value: moduleName, options: moduleOptions, resetOnChange: { objectType: '' }, onChange: setModuleName },
+          { id: 'objectType', label: tr('Object Type'), value: objectType, options: objectTypeOptions, dependsOn: ['module'], getOptions: (draft) => objectTypeOptionsOf(draft.module ?? moduleName), onChange: setObjectType },
         ]}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
         <div className="w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-400" />
             </div>
             <input
               type="text"
-              placeholder="Search actions..."
+              placeholder={tr("Search actions...")}
               value={actionSearch}
               onChange={(e) => setActionSearch(e.target.value)}
               className="block w-full pl-10 pr-9 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
@@ -292,7 +289,7 @@ export const ActionStatusMatrix: React.FC = () => {
         </div>
         <div className="w-full">
           <Select
-            label="Module"
+            label={tr("Module")}
             value={moduleName}
             onChange={(v) => { const next = String(v); setModuleName(next); setObjectType(objectTypeOptionsOf(next)[0]?.value ?? ""); }}
             options={moduleOptions}
@@ -300,7 +297,7 @@ export const ActionStatusMatrix: React.FC = () => {
         </div>
         <div className="w-full">
           <Select
-            label="Object Type"
+            label={tr("Object Type")}
             value={objectType}
             onChange={(v) => setObjectType(String(v))}
             options={objectTypeOptions}
@@ -314,11 +311,11 @@ export const ActionStatusMatrix: React.FC = () => {
           <TableMarkup.Head className="bg-slate-50">
             <TableMarkup.Row>
               <TableMarkup.HeaderCell className="text-left px-4 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap border-r border-slate-200">
-                Action
+                {tr("Action")}
               </TableMarkup.HeaderCell>
               {statuses.map((s, i) => (
                 <TableMarkup.HeaderCell key={s} className={`text-center px-3 py-3 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap ${i > 0 ? "border-l border-slate-100" : ""}`}>
-                  {prettify(s)}
+                  {tr(prettify(s))}
                 </TableMarkup.HeaderCell>
               ))}
             </TableMarkup.Row>
@@ -327,13 +324,13 @@ export const ActionStatusMatrix: React.FC = () => {
             {actions.length === 0 && (
               <TableMarkup.Row>
                 <TableMarkup.Cell colSpan={statuses.length + 1} className="p-0">
-                  <TableEmptyState title="No actions found" description="No actions match your search." />
+                  <TableEmptyState title={tr("No actions found")} description={tr("No actions match your search.")} />
                 </TableMarkup.Cell>
               </TableMarkup.Row>
             )}
             {actions.map((action) => (
               <TableMarkup.Row key={action}>
-                <TableMarkup.Cell className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap border-r border-slate-200">{prettify(action)}</TableMarkup.Cell>
+                <TableMarkup.Cell className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap border-r border-slate-200">{tr(prettify(action))}</TableMarkup.Cell>
                 {statuses.map((status, i) => {
                   const colBorder = i > 0 ? "border-l border-slate-100" : "";
                   const cell = cellPolicies(action, status);
@@ -354,10 +351,10 @@ export const ActionStatusMatrix: React.FC = () => {
                         }
                       >
                         <Check className="h-4 w-4" />
-                        {hasOverride && <span className="sr-only">has document-type overrides</span>}
+                        {hasOverride && <span className="sr-only">{tr("has document-type overrides")}</span>}
                       </button>
                       {hasOverride && (
-                        <Badge color="amber" size="xs" className="mt-0.5">+doc-type</Badge>
+                        <Badge color="amber" size="xs" className="mt-0.5">{tr("+doc-type")}</Badge>
                       )}
                     </TableMarkup.Cell>
                   );
@@ -379,7 +376,7 @@ export const ActionStatusMatrix: React.FC = () => {
         {detail && (
           <div className="space-y-3 text-sm">
             <p className="text-xs text-slate-500">
-              This list shows configuration scope, not one universal effective policy. A document-type override applies only when its document type matches.
+              {tr("This list shows configuration scope, not one universal effective policy. A document-type override applies only when its document type matches.")}
             </p>
             {detail.policies.map((winner) => (
             <div key={winner.id} className="rounded-lg border border-slate-200 p-3 space-y-3">
@@ -388,14 +385,14 @@ export const ActionStatusMatrix: React.FC = () => {
                   {winner.documentTypeId ? `Document Type: ${winner.documentTypeName ?? "—"}` : "Global"}
                 </Badge>
               </div>
-              <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">Required permission</p>
+              <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">{tr("Required permission")}</p>
               <p className=" text-xs text-slate-700 mt-0.5">{winner.requiredPermissionCode}</p>
               {winner.requiredPermissionName && <p className="text-xs text-slate-500">{winner.requiredPermissionName}</p>}
             <div>
-              <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">Allowed actors</p>
+              <p className="text-2xs md:text-xs font-semibold uppercase tracking-wider text-slate-400">{tr("Allowed actors")}</p>
               <div className="flex flex-wrap gap-1.5 mt-1">
                 {winner.actors.length === 0 ? (
-                  <span className="text-xs text-slate-500">No actor restriction rows</span>
+                  <span className="text-xs text-slate-500">{tr("No actor restriction rows")}</span>
                 ) : (
                   winner.actors.map((a, i) => (
                     <Badge key={i} color="blue" size="sm">
@@ -407,11 +404,11 @@ export const ActionStatusMatrix: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge color={flagColor(winner.active)} size="sm">{winner.active ? "Active" : "Inactive"}</Badge>
-              <Badge color="slate" size="sm">Priority {winner.priority}</Badge>
-              {winner.system && <Badge color="blue" size="sm">System</Badge>}
+              <Badge color="slate" size="sm">{tr("Priority")} {winner.priority}</Badge>
+              {winner.system && <Badge color="blue" size="sm">{tr("System")}</Badge>}
               {detail.policies.length > 1 && (
                 <span className="text-xs text-slate-500">
-                  +{detail.policies.length - 1} more policy(ies) for this cell (doc-type overrides / lower priority)
+                  {trFormat("+{count} more policies for this cell (doc-type overrides / lower priority)", { count: detail.policies.length - 1 })}
                 </span>
               )}
             </div>

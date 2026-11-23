@@ -15,6 +15,7 @@ import { settingsApi, type PermissionSetSummary, type PermissionSetResponse } fr
 import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
+import { tr } from "@/i18n";
 
 type SortKey = "name" | "type" | "permissionCount" | "moduleCount";
 
@@ -60,7 +61,7 @@ export const PermissionSetsTab: React.FC<{
       setAssignedIds(ids);
       onChangesChange?.({ added: [], removed: [] });
     } catch {
-      showToast({ type: "error", message: "Failed to load permission sets" });
+      showToast({ type: "error", message: tr("Failed to load permission sets") });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, showToast, reloadKey]);
@@ -83,7 +84,7 @@ export const PermissionSetsTab: React.FC<{
         setTotalPages(pages);
         if (page > pages) setPage(pages);
       })
-      .catch(() => { if (active) { setRows([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: "Failed to load permission sets" }); } })
+      .catch(() => { if (active) { setRows([]); setTotal(0); setTotalPages(1); showToast({ type: "error", message: tr("Failed to load permission sets") }); } })
       .finally(() => { if (active) setListLoading(false); });
     return () => { active = false; };
   }, [page, limit, searchTerm, sort, reloadKey, showToast, canAssign, profileId]);
@@ -134,7 +135,7 @@ export const PermissionSetsTab: React.FC<{
     { id: "name", header: "Name", label: "Name", sort: sortOf("name"), cellClassName: "font-medium text-slate-900", cell: (row) => (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {row.name}
-        {row.code.startsWith("ROLE_") && <Badge semantic="info" size="xs" title="The direct permissions of another Access Profile, attached to this one">Another profile's permissions</Badge>}
+        {row.code.startsWith("ROLE_") && <Badge semantic="info" size="xs" title={tr("The direct permissions of another Access Profile, attached to this one")}>{tr("Another profile's permissions")}</Badge>}
       </span>
     ) },
     { id: "code", header: "Code", label: "Code", cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{row.code}</code> },
@@ -151,7 +152,7 @@ export const PermissionSetsTab: React.FC<{
         ref={getButtonRef(row.id)}
         onClick={(e) => { e.stopPropagation(); toggleMenu(row.id, e); }}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
-        aria-label="More actions"
+        aria-label={tr("More actions")}
       >
         <MoreVertical className="h-3.5 w-3.5 text-slate-600 sm:h-4 sm:w-4" />
       </button>
@@ -165,13 +166,13 @@ export const PermissionSetsTab: React.FC<{
           variant="info"
           description={
             <>
-              Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click <b>Save</b>{" "}
-              (a single electronic signature covers all changes). To modify a set's contents, use{" "}
+              {tr("Tick a shared permission set to attach it to this Access Profile. Changes are applied when you click")} <b>{tr("Save")}</b>{" "}
+              {tr("(a single electronic signature covers all changes). To modify a set's contents, use")}{" "}
               <button
                 onClick={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
                 className="font-medium underline hover:text-blue-900"
               >
-                Shared Permission Sets
+                {tr("Shared Permission Sets")}
               </button>.
             </>
           }
@@ -187,7 +188,7 @@ export const PermissionSetsTab: React.FC<{
           className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search permission sets…"
+          placeholder={tr("Search permission sets…")}
         />
       </div>
 
@@ -210,8 +211,8 @@ export const PermissionSetsTab: React.FC<{
         }}
         emptyState={
           <TableEmptyState
-            title={searchTerm.trim() ? "No permission sets match your search" : "No shared permission sets"}
-            description={searchTerm.trim() ? "Try a different search." : canAssign ? "No shared permission set exists yet." : "No shared permission set is attached to this Access Profile."}
+            title={searchTerm.trim() ? tr("No permission sets match your search") : tr("No shared permission sets")}
+            description={searchTerm.trim() ? tr("Try a different search.") : canAssign ? "No shared permission set exists yet." : "No shared permission set is attached to this Access Profile."}
           />
         }
         pagination={total > 0 ? (
@@ -232,7 +233,7 @@ export const PermissionSetsTab: React.FC<{
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 transition-colors hover:bg-slate-50"
           >
             <IconInfoCircle className="h-3.5 w-3.5" />
-            <span>View Permissions</span>
+            <span>{tr("View Permissions")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
@@ -242,7 +243,7 @@ export const PermissionSetsTab: React.FC<{
         onClose={() => setPendingRemove(null)}
         onConfirm={confirmRemove}
         type="warning"
-        title="Remove Permission Set"
+        title={tr("Remove Permission Set")}
         description={
           pendingRemove
             ? `Users assigned through this Access Profile will lose the permissions in "${pendingRemove.name}" once you save. Continue?`

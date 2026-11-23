@@ -9,6 +9,7 @@ import type { DigestMode, NotificationPolicyDetail, RecipientRule, UpdateNotific
 import type { RecipientRuleKind } from '@/services/api/notificationAdministration';
 import { RecipientRulesEditor } from './RecipientRulesEditor';
 import { RecipientsMatrix } from './RecipientsMatrix';
+import { tr } from "@/i18n";
 
 /** What an administrator decides about the delivery of a notification: whether it is sent, on which channels, to whom, and when. */
 export interface DeliveryForm {
@@ -97,9 +98,9 @@ export const withChannel = (form: DeliveryForm, channel: string, on: boolean, su
 };
 
 const DIGEST_OPTIONS = [
-  { value: 'IMMEDIATE', label: 'Immediately' },
-  { value: 'DAILY_DIGEST', label: 'Daily digest' },
-  { value: 'WEEKLY_DIGEST', label: 'Weekly digest' },
+  { value: 'IMMEDIATE', label: tr('Immediately') },
+  { value: 'DAILY_DIGEST', label: tr('Daily digest') },
+  { value: 'WEEKLY_DIGEST', label: tr('Weekly digest') },
 ];
 
 interface Props {
@@ -153,7 +154,7 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
             className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50"
           >
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-slate-800">Advanced</span>
+              <span className="block text-sm font-medium text-slate-800">{tr("Advanced")}</span>
               <span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">
                 {channel === 'EMAIL' ? 'When the email is sent: timing and quiet hours.' : 'Escalate the notification when it is not acted on.'} {summary}.
               </span>
@@ -163,9 +164,9 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
         </div>
 
         <div className="min-w-0">
-          <p className="mb-2 text-sm font-medium text-slate-800">Who gets this notification, and on which channel</p>
+          <p className="mb-2 text-sm font-medium text-slate-800">{tr("Who gets this notification, and on which channel")}</p>
           <RecipientsMatrix kinds={kinds} value={form.rules} onChange={(rules) => set({ rules })} supportedChannels={supportedChannels} channelsOn={channelsOn} disabled={disabled} />
-          <p className="mt-2 text-xs text-slate-500">The same list is shown on the in-app and on the email screen of this event.</p>
+          <p className="mt-2 text-xs text-slate-500">{tr("The same list is shown on the in-app and on the email screen of this event.")}</p>
         </div>
       </div>
 
@@ -174,7 +175,7 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
         onClose={() => setAdvanced(false)}
         onConfirm={() => setAdvanced(false)}
         title={channel === 'EMAIL' ? 'Advanced: when the email is sent' : 'Advanced: escalation'}
-        description="What you change here is part of this notification and is saved with Publish."
+        description={tr("What you change here is part of this notification and is saved with Publish.")}
         confirmText="Done"
         showCancel={false}
         size="lg"
@@ -183,33 +184,33 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
           {channel === 'EMAIL' ? (
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <FormField label="Email timing">
-                  <Select value={form.digest} onChange={(digest: DigestMode) => set({ digest })} options={DIGEST_OPTIONS} disabled={disabled} aria-label="Email timing" />
+                <FormField label={tr("Email timing")}>
+                  <Select value={form.digest} onChange={(digest: DigestMode) => set({ digest })} options={DIGEST_OPTIONS} disabled={disabled} aria-label={tr("Email timing")} />
                 </FormField>
-                <FormField label="Quiet hours start">
-                  <TimePicker value={form.quietStart} onChange={(quietStart) => set({ quietStart })} placeholder="None" disabled={disabled} />
+                <FormField label={tr("Quiet hours start")}>
+                  <TimePicker value={form.quietStart} onChange={(quietStart) => set({ quietStart })} placeholder={tr("None")} disabled={disabled} />
                 </FormField>
-                <FormField label="Quiet hours end">
-                  <TimePicker value={form.quietEnd} onChange={(quietEnd) => set({ quietEnd })} placeholder="None" disabled={disabled} />
+                <FormField label={tr("Quiet hours end")}>
+                  <TimePicker value={form.quietEnd} onChange={(quietEnd) => set({ quietEnd })} placeholder={tr("None")} disabled={disabled} />
                 </FormField>
               </div>
-              <p className="-mt-2 text-xs text-slate-500">Timing and quiet hours hold back the email; a digest groups the emails of a person into one.</p>
+              <p className="-mt-2 text-xs text-slate-500">{tr("Timing and quiet hours hold back the email; a digest groups the emails of a person into one.")}</p>
             </>
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800">Escalate when it is not acted on</p>
-                  <p className="text-xs text-slate-500">Tell more people when the notification stays unread.</p>
+                  <p className="text-sm font-medium text-slate-800">{tr("Escalate when it is not acted on")}</p>
+                  <p className="text-xs text-slate-500">{tr("Tell more people when the notification stays unread.")}</p>
                 </div>
-                <Switch checked={form.escalate} onChange={(escalate) => set({ escalate })} disabled={disabled} aria-label="Escalate when it is not acted on" />
+                <Switch checked={form.escalate} onChange={(escalate) => set({ escalate })} disabled={disabled} aria-label={tr("Escalate when it is not acted on")} />
               </div>
               {form.escalate ? (
                 <>
-                  <FormField label="Escalate after (minutes)">
+                  <FormField label={tr("Escalate after (minutes)")}>
                     <Input type="number" min={1} value={form.escalateMinutes} disabled={disabled} onChange={(e) => set({ escalateMinutes: e.target.value })} />
                   </FormField>
-                  <FormField label="Escalate to">
+                  <FormField label={tr("Escalate to")}>
                     <RecipientRulesEditor kinds={kinds.filter((k) => k.kind === 'AUDIENCE')} value={form.escalationRules} onChange={(escalationRules) => set({ escalationRules })} disabled={disabled} />
                   </FormField>
                 </>

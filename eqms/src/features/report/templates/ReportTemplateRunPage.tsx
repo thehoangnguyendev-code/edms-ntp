@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -41,7 +42,7 @@ export function ReportTemplateRunPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Create Report"
-        breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, { label: "Report Library", onClick: () => navigate("/report/templates") })}
+        breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, { label: tr("Report Library"), onClick: () => navigate("/report/templates") })}
         actions={
           <Button size="sm" variant="outline" className="whitespace-nowrap touch-manipulation" onClick={() => navigate("/report/templates")}>
             Back

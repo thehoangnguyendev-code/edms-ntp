@@ -12,6 +12,7 @@ import {
   type TrainingFormFormat,
 } from "@/services/api/trainingActivities";
 import { saveBlob } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 /**
  * The Export button of a form of the company: one button that opens the choice of PDF File or Word File. The file is written by the server in the Word template that Training Administration
@@ -85,7 +86,7 @@ export function FormDownloadButtons({
               void download("pdf");
             }}
           >
-            PDF File (.pdf)
+            {tr("PDF File (.pdf)")}
           </DropdownMenuItem>
           <DropdownMenuItem
             icon={<img src={wordLogo} alt="" className="h-4 w-4 object-contain" />}
@@ -94,7 +95,7 @@ export function FormDownloadButtons({
               void download("docx");
             }}
           >
-            Word File (.docx)
+            {tr("Word File (.docx)")}
           </DropdownMenuItem>
         </div>
       </PortalDropdownMenu>

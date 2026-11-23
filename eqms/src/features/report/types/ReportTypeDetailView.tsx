@@ -12,6 +12,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable
 import { reportError } from "@/services/api/reportTemplates";
 import { reportTypesApi, type ReportTypeDetail } from "@/services/api/reportTypes";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { tr, trFormat } from "@/i18n";
 
 type Column = ReportTypeDetail["columns"][number];
 type Filter = ReportTypeDetail["filters"][number];
@@ -28,7 +29,7 @@ const columnColumns: DataTableColumn<Column>[] = [
   { id: "label", header: "Column", label: "Column", cell: (column) => <span className="font-medium text-slate-900">{column.label}</span> },
   { id: "code", header: "Code", label: "Code", cell: (column) => code(column.code) },
   { id: "type", header: "Type", label: "Type", cell: (column) => TYPE_TEXT[column.type] ?? column.type },
-  { id: "required", header: "In every report", label: "In every report", cell: (column) => (column.required ? <Badge color="emerald">Yes</Badge> : <Badge color="slate">No</Badge>) },
+  { id: "required", header: tr("In every report"), label: tr("In every report"), cell: (column) => (column.required ? <Badge color="emerald">{tr("Yes")}</Badge> : <Badge color="slate">{tr("No")}</Badge>) },
 ];
 const filterColumns: DataTableColumn<Filter>[] = [
   { id: "label", header: "Filter", label: "Filter", cell: (filter) => <span className="font-medium text-slate-900">{filter.label}</span> },
@@ -64,10 +65,10 @@ export const ReportTypeDetailView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: "Report Types", onClick: () => navigate("/settings/report-types") })}
+        breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: tr("Report Types"), onClick: () => navigate("/settings/report-types") })}
         actions={
           <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate("/settings/report-types")}>
-            Back
+            {tr("Back")}
           </Button>
         }
       />
@@ -79,51 +80,51 @@ export const ReportTypeDetailView: React.FC = () => {
       {!loading && error && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
           <p role="alert" className="text-sm font-medium text-amber-800">{error}</p>
-          <Button size="sm" variant="outline" onClick={load}>Retry</Button>
+          <Button size="sm" variant="outline" onClick={load}>{tr("Retry")}</Button>
         </div>
       )}
       {!loading && !error && detail && (
         <>
           <FormSection
-            title="General Information"
+            title={tr("General Information")}
             icon={<IconInfoCircle className="h-4 w-4" />}
-            headerRight={detail.enabled ? <Badge color="emerald">Enabled</Badge> : <Badge color="slate">Disabled</Badge>}
+            headerRight={detail.enabled ? <Badge color="emerald">{tr("Enabled")}</Badge> : <Badge color="slate">{tr("Disabled")}</Badge>}
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <FormField label="Report Type Name">
+              <FormField label={tr("Report Type Name")}>
                 <ReadOnlyField value={detail.name} />
               </FormField>
-              <FormField label="Report Type Code">
+              <FormField label={tr("Report Type Code")}>
                 <ReadOnlyField value={detail.code} className="font-mono text-xs" />
               </FormField>
-              <FormField label="Report Type Category">
+              <FormField label={tr("Report Type Category")}>
                 <ReadOnlyField value={detail.category} />
               </FormField>
-              <FormField label="Report Templates">
+              <FormField label={tr("Report Templates")}>
                 <ReadOnlyField value={detail.templateCount} />
               </FormField>
               <div className="md:col-span-2 lg:col-span-4">
-                <FormField label="Description">
+                <FormField label={tr("Description")}>
                   <p className="min-h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{detail.description || "—"}</p>
                 </FormField>
               </div>
             </div>
           </FormSection>
 
-          <FormSection title="Access" icon={<IconLock className="h-4 w-4" />}>
+          <FormSection title={tr("Access")} icon={<IconLock className="h-4 w-4" />}>
             {noOwnPermission ? (
-              <p className="text-sm text-slate-600">This type needs no permission of its own: the data scope of each report template decides what a person sees.</p>
+              <p className="text-sm text-slate-600">{tr("This type needs no permission of its own: the data scope of each report template decides what a person sees.")}</p>
             ) : (
               <div className="space-y-3">
                 {detail.requiredPermissions.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 sm:text-sm">Needs all of</span>
+                    <span className="text-xs font-medium text-slate-500 sm:text-sm">{tr("Needs all of")}</span>
                     {detail.requiredPermissions.map((permission) => code(permission))}
                   </div>
                 )}
                 {detail.usePermissions.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 sm:text-sm">Needs one of</span>
+                    <span className="text-xs font-medium text-slate-500 sm:text-sm">{tr("Needs one of")}</span>
                     {detail.usePermissions.map((permission) => code(permission))}
                   </div>
                 )}
@@ -132,10 +133,10 @@ export const ReportTypeDetailView: React.FC = () => {
           </FormSection>
 
           <div className="space-y-4 md:space-y-6">
-            <FormSection title="Columns" icon={<IconColumns3 className="h-4 w-4" />} description={`${detail.columns.length} columns a report can show`}>
+            <FormSection title={tr("Columns")} icon={<IconColumns3 className="h-4 w-4" />} description={trFormat("{count} columns a report can show", { count: detail.columns.length })}>
               <DataTable rows={detail.columns} getRowKey={(column) => column.code} columns={columnColumns} />
             </FormSection>
-            <FormSection title="Filters" icon={<IconFilter className="h-4 w-4" />} description={`${detail.filters.length} filters a report can use`}>
+            <FormSection title={tr("Filters")} icon={<IconFilter className="h-4 w-4" />} description={trFormat("{count} filters a report can use", { count: detail.filters.length })}>
               <DataTable rows={detail.filters} getRowKey={(filter) => filter.code} columns={filterColumns} />
             </FormSection>
           </div>

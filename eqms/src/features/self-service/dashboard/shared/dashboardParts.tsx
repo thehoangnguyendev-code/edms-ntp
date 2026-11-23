@@ -1,13 +1,14 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { tr } from "@/i18n";
 
 /** Inline failure notice with a retry, used inside panels. */
 export const PanelError: React.FC<{ message: string; onRetry: () => void }> = ({ message, onRetry }) => (
   <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
     <p className="text-sm text-slate-500">{message}</p>
     <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5">
-      <RefreshCw className="h-3.5 w-3.5" /> Try again
+      <RefreshCw className="h-3.5 w-3.5" /> {tr("Try again")}
     </Button>
   </div>
 );

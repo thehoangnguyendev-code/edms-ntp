@@ -11,6 +11,7 @@ import { ReportListToolbar, pickerDateToIso } from "@/features/report/shared/Rep
 import { myTrainingApi } from "@/services/api/myTraining";
 import type { TrainingTask } from "@/services/api/trainingActivities";
 import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => void }) {
   const navigate = useNavigate();
@@ -25,24 +26,24 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
   const columns: DataTableColumn<TrainingTask>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "number", header: "Training Number", sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : t.method === "SELF_READING" ? `/training-management/participations/${t.participantId}` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
-    { id: "topics", header: "Training Topic", sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
+    { id: "number", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (t) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(t.examReady ? `/training-management/participations/${t.participantId}/test` : t.method === "SELF_READING" ? `/training-management/participations/${t.participantId}` : `/training-management/activities/${t.activityId}/participate`)}>{t.trainingNumber}</button> },
+    { id: "topics", header: tr("Training Topic"), sort: sorted("topics"), cell: (t) => <div className="max-w-80 whitespace-normal">{t.topics ?? "—"}</div> },
     { id: "method", header: "Mode", sort: sorted("method"), cell: (t) => METHOD_LABEL[t.method] ?? t.method },
     { id: "when", header: "Scheduled", sort: sorted("scheduledOn"), cell: (t) => day(t.scheduledOn) },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (t) => day(t.dueDate) },
-    { id: "todo", header: "To do", cell: (t) => (t.examReady ? <Badge color="blue">Take the test</Badge> : <Badge color="slate">Attend</Badge>) },
+    { id: "todo", header: "To do", cell: (t) => (t.examReady ? <Badge color="blue">{tr("Take the test")}</Badge> : <Badge color="slate">{tr("Attend")}</Badge>) },
     { id: "status", header: "Status", sort: sorted("status"), cell: (t) => <Badge color={STATUS_COLOR[t.status] ?? "slate"}>{STATUS_LABEL[t.status] ?? t.status}</Badge> },
   ];
   const { layout, control } = useCustomColumnLayout("training.mine.tasks", columns);
   const change = (setter: (value: string) => void) => (value: string) => { setter(value); table.setCurrentPage(1); };
   return <ReportListToolbar
-    searchPlaceholder="Search Training Number or Training Topic…" search={table.searchQuery}
+    searchPlaceholder={tr("Search Training Number or Training Topic…")} search={table.searchQuery}
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
       { id: "method", label: "Mode", value: method, options: [{ label: "All", value: "" }, ...Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))], onChange: change(setMethod) },
       { id: "status", label: "Status", value: status, options: [{ label: "All", value: "" }, ...["NOTIFIED", "IN_PROGRESS"].map((value) => ({ value, label: STATUS_LABEL[value] }))], onChange: change(setStatus) },
     ]}
-    dates={[{ id: "scheduled", label: "Scheduled date", from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
+    dates={[{ id: "scheduled", label: tr("Scheduled date"), from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
     hasActiveFilters={Boolean(method || status || from || to || table.searchQuery)}
     onClear={() => { setMethod(""); setStatus(""); setFrom(""); setTo(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
     customControl={control} framed={false} flush
@@ -50,7 +51,7 @@ export function MyTrainingTodoTab({ onTotal }: { onTotal: (total: number) => voi
     <DataTable rows={table.items} getRowKey={(t) => t.participantId} columns={columns} columnLayout={layout}
       scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
       isLoading={table.isLoading}
-      emptyState={<TableEmptyState title="Nothing to do" description="No training tasks match the current filters." />}
+      emptyState={<TableEmptyState title={tr("Nothing to do")} description={tr("No training tasks match the current filters.")} />}
       pagination={<TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} />} />
   </ReportListToolbar>;
 }

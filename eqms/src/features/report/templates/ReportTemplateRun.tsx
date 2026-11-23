@@ -36,6 +36,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { RealtimeReportPreview } from "../shared/RealtimeReportPreview";
 import { ReportFilePreview } from "../shared/ReportFilePreview";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
+import { tr } from "@/i18n";
 
 const stages = ["Criteria", "Preview", "Output"];
 function isoDate(value: string): string {
@@ -117,7 +118,7 @@ function PreviewResults({
         isDragging={drag.isDragging}
         isLoading={busy}
         loadingContent={<SectionLoading text="Loading preview..." />}
-        emptyState={<TableEmptyState title="No Records Found" description="No record matches the criteria. Go back and change the filters to continue." />}
+        emptyState={<TableEmptyState title="No Records Found" description={tr("No record matches the criteria. Go back and change the filters to continue.")} />}
         pagination={
           <TablePagination
             currentPage={preview.pagination.page}
@@ -288,7 +289,7 @@ export function ReportTemplateRun({
           disabled={!reportTitle.trim()}
           onClick={() => (template.runNeedsSignature ? setSigning(true) : void generate())}
         >
-          {template.runNeedsSignature ? "Sign And Generate Report" : "Generate Report"}
+          {template.runNeedsSignature ? tr("Sign And Generate Report") : "Generate Report"}
         </Button>
       )}
     </>
@@ -298,7 +299,7 @@ export function ReportTemplateRun({
       <PageHeader
         title="Create Report"
         breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, {
-          label: "Report Library",
+          label: tr("Report Library"),
           onClick: onBack,
         })}
         actions={actionButtons}
@@ -322,7 +323,7 @@ export function ReportTemplateRun({
                     checked={!full}
                     onChange={() => chooseScope(false)}
                     label="Filtered"
-                    description="Narrow the report with at least one filter."
+                    description={tr("Narrow the report with at least one filter.")}
                   />
                   <Radio
                     variant="card"
@@ -330,8 +331,8 @@ export function ReportTemplateRun({
                     value="full"
                     checked={full}
                     onChange={() => chooseScope(true)}
-                    label="Full report (no filter)"
-                    description="Made in the background as CSV or XLSX when it is large, and written to the Audit Trail."
+                    label={tr("Full report (no filter)")}
+                    description={tr("Made in the background as CSV or XLSX when it is large, and written to the Audit Trail.")}
                   />
                 </div>
               </section>
@@ -353,7 +354,7 @@ export function ReportTemplateRun({
                         label={withRequiredMark(item.label, item.from.required === "true" || item.to.required === "true")}
                         startDate={pickerDate(criteria.filters[item.from.code] ?? "")}
                         endDate={pickerDate(criteria.filters[item.to.code] ?? "")}
-                        placeholder="Select date range"
+                        placeholder={tr("Select date range")}
                         onStartDateChange={() => undefined}
                         onEndDateChange={() => undefined}
                         onApply={({ startDate, endDate }) =>
@@ -424,7 +425,7 @@ export function ReportTemplateRun({
                     enableSearch={false}
                     options={[
                       { value: "asc", label: "Ascending" },
-                      { value: "desc", label: "Descending" },
+                      { value: "desc", label: tr("Descending") },
                     ]}
                     onChange={(value) =>
                       changeCriteria({
@@ -507,7 +508,7 @@ export function ReportTemplateRun({
             <div className="grid min-w-0 gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-slate-700">
-                  Generated Report Name <span className="text-red-600">*</span>
+                  {tr("Generated Report Name")} <span className="text-red-600">*</span>
                   <Input
                     className="mt-1.5 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
                     maxLength={255}

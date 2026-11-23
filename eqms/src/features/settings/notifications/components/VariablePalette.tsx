@@ -6,6 +6,7 @@ import { FormSection } from '@/components/ui/form/FormSection';
 import { LocalListTable, type LocalColumn } from '@/features/backup-restore/components/LocalListTable';
 import type { NotificationVariable } from '@/services/api/notificationPolicy';
 import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { tr, trFormat } from "@/i18n";
 
 interface VariablePaletteProps {
   /** The placeholders this notification offers: the ones its wording may use. */
@@ -62,7 +63,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
   const columns: LocalColumn<Row>[] = [
     {
       id: 'token',
-      header: 'Placeholder',
+      header: tr('Placeholder'),
       sortValue: (r) => r.variable.name,
       cell: (r) => <code className={`rounded px-1.5 py-0.5 font-mono text-xs ${r.offered ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{r.variable.token}</code>,
     },
@@ -80,7 +81,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
     { id: 'module', header: 'Module', sortValue: (r) => r.variable.module || 'Other', cell: (r) => (r.variable.module ? moduleDisplayName(r.variable.module) : 'Other') },
     {
       id: 'offered',
-      header: 'This Notification',
+      header: tr('This Notification'),
       sortValue: (r) => (r.offered ? 0 : 1),
       cell: (r) => (
         <Badge semantic={r.offered ? 'success' : undefined} color={r.offered ? undefined : 'slate'}>
@@ -94,11 +95,11 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
       cell: (r) => (
         <div className="flex items-center gap-1">
           {r.offered ? (
-            <button type="button" aria-label={`Insert ${r.variable.token}`} title="Insert" onMouseDown={(e) => e.preventDefault()} onClick={() => onInsert(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700">
+            <button type="button" aria-label={`Insert ${r.variable.token}`} title={tr("Insert")} onMouseDown={(e) => e.preventDefault()} onClick={() => onInsert(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700">
               <Plus className="h-4 w-4" />
             </button>
           ) : null}
-          <button type="button" aria-label={`Copy ${r.variable.token}`} title="Copy" onClick={() => void copy(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+          <button type="button" aria-label={`Copy ${r.variable.token}`} title={tr("Copy")} onClick={() => void copy(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700">
             <Copy className="h-4 w-4" />
           </button>
         </div>
@@ -109,30 +110,30 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
   const content = (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
-        Click + to put a placeholder{' '}
+        {tr("Click + to put a placeholder")}{' '}
         {target ? (
           <>
-            in <b>{target}</b>
+            {tr("in")} <b>{target}</b>
           </>
         ) : (
-          'where the cursor is'
+          tr("where the cursor is")
         )}
-        , or copy it. A placeholder this notification does not offer cannot be used in its wording: its sender has no value for it.
+        {tr(", or copy it. A placeholder this notification does not offer cannot be used in its wording: its sender has no value for it.")}
       </p>
       {loading ? (
-        <p className="py-4 text-sm text-slate-500">Loading placeholders…</p>
+        <p className="py-4 text-sm text-slate-500">{tr("Loading placeholders…")}</p>
       ) : (
         <>
-          {variables.length === 0 ? <p className="text-sm text-slate-500">This notification offers no placeholders.</p> : null}
+          {variables.length === 0 ? <p className="text-sm text-slate-500">{tr("This notification offers no placeholders.")}</p> : null}
           <LocalListTable
             rows={rows}
             getRowKey={(r) => `${r.offered ? 'o' : 'x'}:${r.variable.name}`}
             columns={columns}
             searchText={(r) => [r.variable.name, r.variable.token, r.variable.label, r.variable.sample, r.variable.module ?? '', r.offered ? 'offered' : 'not offered'].join(' ')}
             searchLabel="Search placeholders"
-            searchPlaceholder="Search a placeholder by its name, meaning, example or module…"
-            emptyTitle="No Placeholders"
-            emptyDescription="There is no placeholder to show."
+            searchPlaceholder={tr("Search a placeholder by its name, meaning, example or module…")}
+            emptyTitle={tr("No Placeholders")}
+            emptyDescription={tr("There is no placeholder to show.")}
           />
         </>
       )}
@@ -141,7 +142,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
 
   if (bare) return content;
   return (
-    <FormSection title="Placeholders" icon={<Braces className="h-4 w-4" />} description="Each one is replaced by real information when the message is sent.">
+    <FormSection title={tr("Placeholders")} icon={<Braces className="h-4 w-4" />} description={tr("Each one is replaced by real information when the message is sent.")}>
       {content}
     </FormSection>
   );

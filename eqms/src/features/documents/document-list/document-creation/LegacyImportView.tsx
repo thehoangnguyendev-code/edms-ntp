@@ -22,6 +22,7 @@ import { useLegacyImportLookups } from "./legacy-import/useLegacyImportLookups";
 import { useLegacyImportValidation } from "./legacy-import/useLegacyImportValidation";
 import { useRevisionSections } from "./legacy-import/useRevisionSections";
 import { EMPTY_DOCUMENT_FORM, errorMessage, type DocumentFormState, type FormTabId } from "./legacy-import/legacyImportModel";
+import { tr } from "@/i18n";
 
 // The model and the date rules live in legacy-import/legacyImportModel.ts; they stay importable from here.
 export { emptySection, getSectionDateErrors, parseDateTimePickerValue, type RevisionSection } from "./legacy-import/legacyImportModel";
@@ -118,7 +119,7 @@ export const LegacyImportView: React.FC = () => {
       setActiveTab(missingField.tab);
       showToast({
         type: "error",
-        title: "Missing information",
+        title: tr("Missing information"),
         // Most entries are bare noun phrases ("Document Type") that read naturally with " is
         // required." appended; the date chronology messages above are already complete sentences
         // (e.g. "... (Must be on or after the Authored Date.)"), so skip the suffix for those.
@@ -162,7 +163,7 @@ export const LegacyImportView: React.FC = () => {
       // user fix it and resubmit from this same, still-filled-in form.
       showToast({
         type: "error",
-        title: "Import failed -- nothing was created",
+        title: tr("Import failed -- nothing was created"),
         message: errorMessage(error, "Unable to complete the Legacy Import. No document or revisions were saved; fix the issue below and try again."),
       });
       setSubmitting(false);
@@ -174,15 +175,15 @@ export const LegacyImportView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <LegacyImportProgressModal isOpen={submitting} sectionCount={sections.length} stage={submitStage} />
       <PageHeader
-        title="Legacy Import"
+        title={tr("Legacy Import")}
         breadcrumbItems={legacyImportBreadcrumb(navigate)}
         actions={
           <>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(ROUTES.DOCUMENTS.ALL)} disabled={submitting}>
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button size="sm" variant="default" className="whitespace-nowrap" onClick={openSignature} disabled={submitting}>
-              Publish Document
+              {tr("Publish Document")}
             </Button>
           </>
         }
@@ -232,14 +233,12 @@ export const LegacyImportView: React.FC = () => {
           {activeTab === "training" && (
             <div className="space-y-4 md:space-y-5">
               <p className="text-xs sm:text-sm text-slate-500">
-                Whether employees must complete training for this document going forward, tracked by the Training module -- independent of any training already done
-                offline on paper before this document was brought into the system.
+                {tr("Whether employees must complete training for this document going forward, tracked by the Training module -- independent of any training already done offline on paper before this document was brought into the system.")}
               </p>
               <TrainingTab data={trainingConfig} onChange={setTrainingConfig} validationError={showValidation ? validateTrainingTab(trainingConfig).errors : undefined} showParticipants={false} />
               {trainingConfig.isRequired && (
                 <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:text-sm">
-                  The persons who were trained on paper are chosen in the tab Revision History, in the section of each revision (they need the Training Number of the paper record). A document imported
-                  from paper has no training that opens, so there is no list of people to propose here.
+                  {tr("The persons who were trained on paper are chosen in the tab Revision History, in the section of each revision (they need the Training Number of the paper record). A document imported from paper has no training that opens, so there is no list of people to propose here.")}
                 </p>
               )}
             </div>

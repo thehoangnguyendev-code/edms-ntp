@@ -7,6 +7,7 @@ import { useDebounce } from '@/hooks';
 import type { RecipientRule } from '@/services/api/notificationPolicy';
 import { notificationAdministrationApi, type RecipientPreview, type RecipientRuleKind, type RecipientRuleView } from '@/services/api/notificationAdministration';
 import { RecipientPicker } from './RecipientPicker';
+import { tr, trFormat } from "@/i18n";
 
 const CHANNEL_NAME: Record<string, string> = { IN_APP: 'In-app', EMAIL: 'Email' };
 
@@ -39,17 +40,16 @@ interface Row {
 const Who: React.FC<{ named: boolean; description: string; view?: RecipientRuleView; onShowAll: () => void }> = ({ named, description, view, onShowAll }) => {
   if (named) return <p className="text-xs text-slate-500">{description}</p>;
   if (!view) return null;
-  if (view.people === 0) return <p className="text-xs text-slate-500">Nobody holds this today.</p>;
-  const noun = view.people === 1 ? 'person' : 'people';
+  if (view.people === 0) return <p className="text-xs text-slate-500">{tr("Nobody holds this today.")}</p>;
   const hidden = view.people - NAMES_SHOWN;
   return (
     <p className="text-xs text-slate-500 [overflow-wrap:anywhere]">
-      {view.people} {noun} today: {view.names.slice(0, NAMES_SHOWN).join(', ')}
+      {trFormat("{count} people today: {names}", { count: view.people, names: view.names.slice(0, NAMES_SHOWN).join(', ') })}
       {hidden > 0 ? (
         <>
-          {' '}and {hidden} more{' '}
+          {' '}{trFormat("and {count} more", { count: hidden })}{' '}
           <button type="button" className="font-medium text-emerald-700 hover:underline" onClick={onShowAll}>
-            Show all
+            {tr("Show all")}
           </button>
         </>
       ) : null}
@@ -110,12 +110,12 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
   const columns: DataTableColumn<Row>[] = [
     {
       id: 'recipient',
-      header: 'Who Gets It',
+      header: tr('Who Gets It'),
       cell: (row) => <div className="min-w-48 max-w-xs whitespace-normal text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">{nameOf(row.rule, row.index)}</div>,
     },
     {
       id: 'people',
-      header: 'People Today',
+      header: tr('People Today'),
       cell: (row) => (
         <div className="min-w-56 max-w-md whitespace-normal">
           <Who named={kindOf(row.rule)?.kind === 'CONTEXT'} description={kindOf(row.rule)?.description ?? ''} view={preview?.rules[row.index]} onShowAll={() => setListed(row.index)} />
@@ -142,7 +142,7 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
           <button
             type="button"
             aria-label={`Remove ${kindOf(row.rule)?.label ?? row.rule.type}${row.rule.value ? ` ${row.rule.value}` : ''}`}
-            title="Remove"
+            title={tr("Remove")}
             className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
             onClick={() => onChange(value.filter((_, i) => i !== row.index))}
           >
@@ -162,23 +162,23 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
           rows={rows}
           columns={columns}
           getRowKey={(row) => `${row.rule.type}|${row.rule.value ?? ''}`}
-          emptyState={<TableEmptyState title="Nobody Yet" description="Add at least one recipient, or switch the notification off." />}
+          emptyState={<TableEmptyState title={tr("Nobody Yet")} description={tr("Add at least one recipient, or switch the notification off.")} />}
         />
       </div>
-      {noChannel ? <p className="text-xs text-red-600">A recipient needs at least one channel. Tick one, or remove the recipient.</p> : null}
+      {noChannel ? <p className="text-xs text-red-600">{tr("A recipient needs at least one channel. Tick one, or remove the recipient.")}</p> : null}
       <RecipientPicker kinds={kinds} existing={value} onAdd={(rule) => onChange([...value, rule])} disabled={disabled} />
       {preview && value.length > 0 ? (
-        <p className="text-xs text-slate-600" aria-label="Who it reaches today">
-          Today this reaches{' '}
-          {supportedChannels.map((c) => `${c === 'IN_APP' ? preview.inAppPeople : preview.emailPeople} ${(c === 'IN_APP' ? preview.inAppPeople : preview.emailPeople) === 1 ? 'person' : 'people'} by ${CHANNEL_NAME[c].toLowerCase()}`).join(' and ')}
-          {named ? ', plus the people the module names when it happens' : ''}.
+        <p className="text-xs text-slate-600" aria-label={tr("Who it reaches today")}>
+          {tr("Today this reaches")}{' '}
+          {supportedChannels.map((c) => trFormat("{count} people by {channel}", { count: c === 'IN_APP' ? preview.inAppPeople : preview.emailPeople, channel: CHANNEL_NAME[c].toLowerCase() })).join(tr(" and "))}
+          {named ? tr(", plus the people the module names when it happens") : ''}.
         </p>
       ) : null}
       <FormModal
         isOpen={listed !== null && Boolean(value[listed])}
         onClose={() => setListed(null)}
         onConfirm={() => setListed(null)}
-        title="Who gets it today"
+        title={tr("Who gets it today")}
         description={listed !== null && value[listed] ? nameOf(value[listed], listed) : undefined}
         confirmText="Close"
         showCancel={false}
@@ -187,9 +187,9 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
         {listed !== null && preview?.rules[listed] ? (
           <div>
             <p className="text-sm text-slate-600">
-              {preview.rules[listed].people} {preview.rules[listed].people === 1 ? 'person' : 'people'} today. Anyone added later to this group is reached without changing this list.
+              {preview.rules[listed].people} {preview.rules[listed].people === 1 ? 'person' : 'people'} {tr("today. Anyone added later to this group is reached without changing this list.")}
             </p>
-            <ul className="mt-3 flex max-h-[50vh] flex-wrap gap-1.5 overflow-y-auto" aria-label="People">
+            <ul className="mt-3 flex max-h-[50vh] flex-wrap gap-1.5 overflow-y-auto" aria-label={tr("People")}>
               {preview.rules[listed].names.map((name, index) => (
                 <li key={`${name}-${index}`} className="max-w-full rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 [overflow-wrap:anywhere]">
                   {name}
@@ -197,7 +197,7 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
               ))}
             </ul>
             {preview.rules[listed].people > preview.rules[listed].names.length ? (
-              <p className="mt-2 text-xs text-slate-500">and {preview.rules[listed].people - preview.rules[listed].names.length} more not listed here.</p>
+              <p className="mt-2 text-xs text-slate-500">{trFormat("and {count} more not listed here.", { count: preview.rules[listed].people - preview.rules[listed].names.length })}</p>
             ) : null}
           </div>
         ) : null}

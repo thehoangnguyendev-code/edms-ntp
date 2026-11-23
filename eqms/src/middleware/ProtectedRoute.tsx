@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FullPageLoading } from '@/components/ui/loading/Loading';
 import { canBypassMaintenance } from '@/utils/maintenance';
 import { resolvePermissionAliasCodes } from '@/features/settings/permissionCatalog';
+import { tr } from "@/i18n";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -49,9 +50,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{tr("Access Denied")}</h1>
           <p className="text-slate-600 mt-2">
-            You don't have permission to access this page.
+            {tr("You don't have permission to access this page.")}
           </p>
         </div>
       </div>

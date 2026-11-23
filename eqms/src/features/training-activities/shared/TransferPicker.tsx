@@ -4,6 +4,7 @@ import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type Side = "available" | "selected";
 
@@ -139,7 +140,7 @@ export function TransferPicker<T>({
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
       <div className="flex min-w-0 flex-col">
-        <h3 className="mb-2 text-xs font-semibold text-slate-900 sm:mb-3 sm:text-sm">Available {capital(noun)}</h3>
+        <h3 className="mb-2 text-xs font-semibold text-slate-900 sm:mb-3 sm:text-sm">{tr("Available")} {capital(noun)}</h3>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input type="text" aria-label={`Search available ${noun}`} value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder={availableSearchPlaceholder ?? "Search..."} className={searchClass} />
@@ -164,8 +165,8 @@ export function TransferPicker<T>({
           onClick={() => add(available.filter((item) => markedAvailable.includes(getKey(item))))}
           disabled={markedAvailable.length === 0}
           className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 sm:p-2.5"
-          title="Move to selected"
-          aria-label="Move to selected"
+          title={tr("Move to selected")}
+          aria-label={tr("Move to selected")}
         >
           <ChevronRight className="h-5 w-5 rotate-90 lg:rotate-0" />
         </button>
@@ -174,8 +175,8 @@ export function TransferPicker<T>({
           onClick={() => remove(markedSelected)}
           disabled={markedSelected.length === 0}
           className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 sm:p-2.5"
-          title="Move to available"
-          aria-label="Move to available"
+          title={tr("Move to available")}
+          aria-label={tr("Move to available")}
         >
           <ChevronLeft className="h-5 w-5 rotate-90 lg:rotate-0" />
         </button>
@@ -185,7 +186,7 @@ export function TransferPicker<T>({
         <h3 className="mb-2 text-xs font-semibold text-slate-900 sm:mb-3 sm:text-sm">Selected {capital(noun)} ({selected.length})</h3>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input type="text" aria-label={`Search selected ${noun}`} value={selectedQuery} onChange={(e) => setSelectedQuery(e.target.value)} placeholder="Search in selected..." className={searchClass} />
+          <input type="text" aria-label={`Search selected ${noun}`} value={selectedQuery} onChange={(e) => setSelectedQuery(e.target.value)} placeholder={tr("Search in selected...")} className={searchClass} />
         </div>
         {selectedList}
       </div>

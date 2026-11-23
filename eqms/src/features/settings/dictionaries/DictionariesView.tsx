@@ -12,17 +12,17 @@ import { DepartmentsTab } from "./tabs/DepartmentsTab";
 import { PositionsTab } from "./tabs/PositionsTab";
 import { StorageLocationsTab } from "./tabs/StorageLocationsTab";
 import { RetentionPoliciesTab } from "./tabs/RetentionPoliciesTab";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 // Order here is the left-to-right order of the old tab strip, now the top-to-bottom order of
 // the "Dictionaries" nav group's child menu items (NavigationService.java is authoritative;
 // navigation.ts mirrors it) -- each dictionary is its own page/menu entry instead of a tab.
 const DICTIONARIES: Dictionary[] = [
-  { id: "business-units", label: "Business Units" },
+  { id: "business-units", label: tr("Business Units") },
   { id: "departments", label: "Departments" },
   { id: "positions", label: "Positions" },
-  { id: "storage-locations", label: "Storage Locations" },
-  { id: "retention-policies", label: "Retention Policies" },
+  { id: "storage-locations", label: tr("Storage Locations") },
+  { id: "retention-policies", label: tr("Retention Policies") },
 ];
 
 /** One page per dictionary category. The Dictionaries sub-routes are separate literal paths

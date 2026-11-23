@@ -1,8 +1,7 @@
 import React, { useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/components/ui/utils';
-import { useLanguage } from '@/i18n';
-import { tr } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 interface SearchInputProps {
   value: string;

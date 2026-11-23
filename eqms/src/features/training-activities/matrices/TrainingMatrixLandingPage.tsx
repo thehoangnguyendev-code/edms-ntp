@@ -6,6 +6,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { trainingMatrixApi } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs } from "../shared/trainingLabels";
 import { TrainingMatrixListView } from "./TrainingMatrixListView";
+import { tr } from "@/i18n";
 
 /**
  * The way into the training matrix. The matrix is kept per department (SOP.0003 5.3.1): the head of a department works on the matrix of that department, so the
@@ -34,7 +35,7 @@ export function TrainingMatrixLandingPage() {
   if (showList) return <TrainingMatrixListView />;
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <PageHeader title="Training Matrix" breadcrumbItems={trainingBreadcrumbs(navigate, "matrices")} />
+      <PageHeader title={tr("Training Matrix")} breadcrumbItems={trainingBreadcrumbs(navigate, "matrices")} />
       <SectionLoading text="Opening the matrix of your department…" />
     </div>
   );

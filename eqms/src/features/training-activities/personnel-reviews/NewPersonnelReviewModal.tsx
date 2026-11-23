@@ -9,6 +9,7 @@ import { Input, Textarea } from "../shared/TrainingFields";
 import { TrainingDateField } from "../shared/TrainingDateField";
 import { useDepartmentNameOptions } from "../shared/useListFilters";
 import { REVIEW_KIND_LABEL } from "./personnelReviewLabels";
+import { tr } from "@/i18n";
 
 export interface NewReviewForm {
   personId: string;
@@ -120,11 +121,11 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
         departmentTo: isTransfer ? form.departmentTo : undefined,
         note: form.note.trim() || undefined,
       });
-      showToast({ type: "success", title: "Review opened", message: created.fullName });
+      showToast({ type: "success", title: tr("Review opened"), message: created.fullName });
       onClose();
       navigate(`/training-management/personnel-reviews/${created.id}`);
     } catch (error) {
-      showToast({ type: "error", title: "The review was not opened", message: trainingError(error) });
+      showToast({ type: "error", title: tr("The review was not opened"), message: trainingError(error) });
     } finally {
       setIsSaving(false);
     }
@@ -140,28 +141,28 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={() => void handleCreate()}
-      title="Open a Training Review"
-      confirmText="Open review"
+      title={tr("Open a Training Review")}
+      confirmText={tr("Open review")}
       isLoading={isSaving}
       confirmDisabled={!isValid}
       size="2xl"
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FormField label="Employee" required hint="Choose the employee first: the other fields follow it.">
+        <FormField label={tr("Employee")} required hint={tr("Choose the employee first: the other fields follow it.")}>
           <Select
             value={form.personId}
             onChange={(value) => setForm({ ...emptyReviewForm, personId: value })}
             options={people}
             onSearch={searchPeople}
-            placeholder="Search by name"
+            placeholder={tr("Search by name")}
           />
         </FormField>
-        <FormField label="Event">
+        <FormField label={tr("Event")}>
           <Select
             value={form.kind}
             enableSearch={false}
             disabled={!form.personId}
-            placeholder={form.personId ? "Choose the event" : "Choose the employee first"}
+            placeholder={form.personId ? "Choose the event" : tr("Choose the employee first")}
             onChange={(value) => setForm({ ...emptyReviewForm, personId: form.personId, kind: value })}
             options={Object.entries(REVIEW_KIND_LABEL).map(([value, label]) => ({ label, value }))}
           />
@@ -169,15 +170,15 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
 
         {isTransfer && (
           <>
-            <FormField label={form.kind === "LOCATION_TRANSFER" ? "Previous site / department" : "Previous department"} hint="The department the employee works in now. It cannot be changed here.">
-              <Input readOnly value={plan?.departmentFrom ?? ""} placeholder="The department of the employee" />
+            <FormField label={form.kind === "LOCATION_TRANSFER" ? "Previous site / department" : "Previous department"} hint={tr("The department the employee works in now. It cannot be changed here.")}>
+              <Input readOnly value={plan?.departmentFrom ?? ""} placeholder={tr("The department of the employee")} />
             </FormField>
-            <FormField label={form.kind === "LOCATION_TRANSFER" ? "New site / department" : "New department"} required hint="The head of this department closes the review.">
+            <FormField label={form.kind === "LOCATION_TRANSFER" ? "New site / department" : "New department"} required hint={tr("The head of this department closes the review.")}>
               <Select
                 value={form.departmentTo}
                 disabled={!kindReady}
                 options={departmentOptions}
-                placeholder="Choose the new department"
+                placeholder={tr("Choose the new department")}
                 onChange={(value) => setForm({ ...form, departmentTo: value, eventDate: "" })}
               />
             </FormField>
@@ -186,21 +187,21 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
 
         {isAbsence && (
           <>
-            <TrainingDateField label="Absent From" hint="First day of the absence. It cannot be in the future." value={form.absenceFrom} disabled={!kindReady} error={absenceFromError || undefined}
+            <TrainingDateField label={tr("Absent From")} hint={tr("First day of the absence. It cannot be in the future.")} value={form.absenceFrom} disabled={!kindReady} error={absenceFromError || undefined}
               onChange={(value) => setForm({ ...form, absenceFrom: value, absenceTo: "", eventDate: "" })} />
-            <TrainingDateField label="Absent Until (last day of the absence)" hint={`Must be more than ${months} months after the first day (SOP.0003), and not in the future.`} value={form.absenceTo} disabled={!form.absenceFrom || Boolean(absenceFromError)} error={absenceToError || undefined}
+            <TrainingDateField label={tr("Absent Until (last day of the absence)")} hint={`Must be more than ${months} months after the first day (SOP.0003), and not in the future.`} value={form.absenceTo} disabled={!form.absenceFrom || Boolean(absenceFromError)} error={absenceToError || undefined}
               onChange={(value) => setForm({ ...form, absenceTo: value, eventDate: "" })} />
           </>
         )}
 
         {eventDateField}
-        <FormField label="Person Who Closes The Review" required hint="Set automatically.">
-          <Input readOnly error={Boolean(planProblem)} value={plan?.closerName ?? ""} placeholder="The head of the department" />
+        <FormField label={tr("Person Who Closes The Review")} required hint={tr("Set automatically.")}>
+          <Input readOnly error={Boolean(planProblem)} value={plan?.closerName ?? ""} placeholder={tr("The head of the department")} />
           {planProblem && <p role="alert" className="mt-1 text-xs text-red-600">{planProblem}</p>}
         </FormField>
 
         <div className="md:col-span-2">
-          <FormField label="Description" hint="Optional. Say why the review is opened, if the date and the event do not tell it.">
+          <FormField label={tr("Description")} hint={tr("Optional. Say why the review is opened, if the date and the event do not tell it.")}>
             <Textarea rows={3} maxLength={1000} disabled={!dateReady} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </FormField>
         </div>

@@ -17,6 +17,7 @@ import { defaultReportLayout, reportError } from "@/services/api/reportTemplates
 import { reportAppearanceApi, type ReportAppearance } from "@/services/api/reportAppearance";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { ReportAppearanceEditor } from "./ReportAppearanceEditor";
+import { tr } from "@/i18n";
 
 const STANDARD = "__STANDARD__";
 
@@ -39,7 +40,7 @@ export const ReportAppearanceView: React.FC = () => {
   const [value, setValue] = React.useState<ReportAppearance | null>(null);
   const [original, setOriginal] = React.useState<ReportAppearance | null>(null);
   const [startFrom, setStartFrom] = React.useState(copyFrom || STANDARD);
-  const [choices, setChoices] = React.useState<{ label: string; value: string }[]>([{ label: "Standard layout (blank)", value: STANDARD }]);
+  const [choices, setChoices] = React.useState<{ label: string; value: string }[]>([{ label: tr("Standard layout (blank)"), value: STANDARD }]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
   const [showSaveModal, setShowSaveModal] = React.useState(false);
@@ -70,7 +71,7 @@ export const ReportAppearanceView: React.FC = () => {
     let alive = true;
     reportAppearanceApi
       .list({ limit: 100, sort: "name", direction: "asc" })
-      .then((result) => alive && setChoices([{ label: "Standard layout (blank)", value: STANDARD }, ...result.data.map((row) => ({ label: row.name, value: row.id }))]))
+      .then((result) => alive && setChoices([{ label: tr("Standard layout (blank)"), value: STANDARD }, ...result.data.map((row) => ({ label: row.name, value: row.id }))]))
       .catch(() => undefined);
     return () => {
       alive = false;
@@ -94,7 +95,7 @@ export const ReportAppearanceView: React.FC = () => {
       if (isNew) {
         const created = await reportAppearanceApi.create(value.name, value.appearance, startFrom === STANDARD ? undefined : startFrom);
         setShowSaveModal(false);
-        showToast({ type: "success", title: "Appearance created", message: "It is Inactive: activate it from the list when it is ready." });
+        showToast({ type: "success", title: tr("Appearance created"), message: "It is Inactive: activate it from the list when it is ready." });
         navigate(`/settings/report-appearance/${created.id}`, { replace: true });
         return;
       }
@@ -102,10 +103,10 @@ export const ReportAppearanceView: React.FC = () => {
       setValue(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
       setShowSaveModal(false);
-      showToast({ type: "success", title: "Changes saved", message: "The report appearance has been updated." });
+      showToast({ type: "success", title: tr("Changes saved"), message: "The report appearance has been updated." });
     } catch (saveError) {
       setShowSaveModal(false);
-      showToast({ type: "error", title: "Save failed", message: reportError(saveError) });
+      showToast({ type: "error", title: tr("Save failed"), message: reportError(saveError) });
     } finally {
       setSaving(false);
     }
@@ -116,16 +117,16 @@ export const ReportAppearanceView: React.FC = () => {
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
         title={title}
-        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: "Report Appearance", onClick: () => go("/settings/report-appearance") })}
+        breadcrumbItems={reportBreadcrumbs(go, title, true, { label: tr("Report Appearance"), onClick: () => go("/settings/report-appearance") })}
         actions={
           value ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline-emerald" onClick={() => go("/settings/report-appearance")} className="whitespace-nowrap">
-                Back
+                {tr("Back")}
               </Button>
               {canManage && (
                 <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving} onClick={() => setShowSaveModal(true)}>
-                  Save
+                  {tr("Save")}
                 </Button>
               )}
             </div>
@@ -143,7 +144,7 @@ export const ReportAppearanceView: React.FC = () => {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
           <p role="alert" className="text-sm font-medium text-amber-800">{error}</p>
           <Button size="sm" variant="outline" onClick={load}>
-            Retry
+            {tr("Retry")}
           </Button>
         </div>
       )}
@@ -151,15 +152,15 @@ export const ReportAppearanceView: React.FC = () => {
       {!loading && !error && value && (
         <>
           <FormSection
-            title="Appearance"
+            title={tr("Appearance")}
             icon={<IconId className="h-4 w-4" />}
             headerRight={<Badge color={flagColor(value.status === "ACTIVE")}>{isNew ? "New" : value.status === "ACTIVE" ? "Active" : "Inactive"}</Badge>}
           >
             <div className={isNew ? "grid gap-4 md:grid-cols-2" : undefined}>
-              <FormField label="Appearance Name" required>
+              <FormField label={tr("Appearance Name")} required>
                 <Input maxLength={120} value={value.name} disabled={!canManage} onChange={(e) => setValue((previous) => (previous ? { ...previous, name: e.target.value } : previous))} />
               </FormField>
-              {isNew && <Select label="Start from" value={startFrom} enableSearch={false} options={choices} onChange={changeStart} />}
+              {isNew && <Select label={tr("Start from")} value={startFrom} enableSearch={false} options={choices} onChange={changeStart} />}
             </div>
           </FormSection>
           <ReportAppearanceEditor
@@ -181,7 +182,7 @@ export const ReportAppearanceView: React.FC = () => {
             {isNew
               ? "The new appearance is created Inactive: activate it from the list when it is ready. "
               : `You are about to save changes to the report appearance. ${value?.status === "ACTIVE" ? "It is the Active appearance, so every new report will be drawn with the change. " : ""}`}
-            This action will be recorded in the Audit Trail.
+            {tr("This action will be recorded in the Audit Trail.")}
           </p>
         }
         confirmText={isNew ? "Create" : "Save"}

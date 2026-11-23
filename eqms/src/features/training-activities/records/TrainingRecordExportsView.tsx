@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IconPlus } from "@tabler/icons-react";
@@ -9,8 +10,8 @@ import { ExportsPersonalTab } from "./tabs/ExportsPersonalTab";
 import { ExportsBatchesTab } from "./tabs/ExportsBatchesTab";
 
 const TABS: TabItem[] = [
-  { id: "personal", label: "One person" },
-  { id: "batches", label: "Department and year" },
+  { id: "personal", label: tr("One person") },
+  { id: "batches", label: tr("Department and year") },
 ];
 
 /** Exports of personal training records (APD.0014): one person at a time, or a whole department for a year. Both are prepared and approved with signatures by two people. */

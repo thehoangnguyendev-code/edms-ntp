@@ -11,12 +11,13 @@ import { Fact } from "@/features/backup-restore/components/Fact";
 import { formatDate, formatDateTime } from "@/features/backup-restore/format";
 import { backupRestoreApi, type ManualCopyRecord, type ManualCopyStatus } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
+import { tr } from "@/i18n";
 
 const STATE: Record<ManualCopyStatus["state"], { label: string; color: "emerald" | "amber" | "red" | "slate" }> = {
   ON_TIME: { label: "On time", color: "emerald" },
   OVERDUE: { label: "Overdue", color: "red" },
-  NEVER_RECORDED: { label: "None recorded yet", color: "amber" },
-  NOT_DECLARED: { label: "Not declared in the policy", color: "slate" },
+  NEVER_RECORDED: { label: tr("None recorded yet"), color: "amber" },
+  NOT_DECLARED: { label: tr("Not declared in the policy"), color: "slate" },
 };
 
 const todayText = () => {
@@ -78,12 +79,12 @@ export const ManualCopyPanel: React.FC = () => {
         madeBy: form.madeBy.trim(),
         note: form.note.trim() || undefined,
       });
-      showToast({ type: "success", title: "Copy recorded", message: form.place.trim() });
+      showToast({ type: "success", title: tr("Copy recorded"), message: form.place.trim() });
       setForm(undefined);
       setPage(1);
       setReloadKey((k) => k + 1);
     } catch (e) {
-      showToast({ type: "error", title: "The copy was not recorded", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The copy was not recorded"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -93,26 +94,26 @@ export const ManualCopyPanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {error && <WarningBanner variant="error" title="Unable to load" description={error} />}
+      {error && <WarningBanner variant="error" title={tr("Unable to load")} description={error} />}
       {status && !status.declared && (
-        <WarningBanner variant="info" title="The policy declares no manual copy" description="A manual copy counts toward the 3-2-1 rule only when the active Backup Policy declares it. Records can still be kept here." />
+        <WarningBanner variant="info" title={tr("The policy declares no manual copy")} description={tr("A manual copy counts toward the 3-2-1 rule only when the active Backup Policy declares it. Records can still be kept here.")} />
       )}
-      {status?.state === "OVERDUE" && <WarningBanner variant="error" title="The manual copy is overdue" description={`It was due on ${formatDate(status.nextDueOn)}.`} />}
-      {status?.state === "NEVER_RECORDED" && <WarningBanner variant="warning" title="No manual copy has been recorded" description="The policy relies on a copy made by hand. Record each one here when it is made." />}
+      {status?.state === "OVERDUE" && <WarningBanner variant="error" title={tr("The manual copy is overdue")} description={`It was due on ${formatDate(status.nextDueOn)}.`} />}
+      {status?.state === "NEVER_RECORDED" && <WarningBanner variant="warning" title={tr("No manual copy has been recorded")} description={tr("The policy relies on a copy made by hand. Record each one here when it is made.")} />}
       {status && (
         <div className="space-y-3">
-          <Fact label="State">{state && <Badge color={state.color}>{state.label}</Badge>}</Fact>
-          <Fact label="What the policy says">{status.declared ? `${status.description}. Made every ${status.everyDays} day(s) by a person.` : "—"}</Fact>
-          <Fact label="Last copy">
+          <Fact label={tr("State")}>{state && <Badge color={state.color}>{state.label}</Badge>}</Fact>
+          <Fact label={tr("What the policy says")}>{status.declared ? `${status.description}. Made every ${status.everyDays} day(s) by a person.` : "—"}</Fact>
+          <Fact label={tr("Last copy")}>
             {status.lastCopiedOn ? `${formatDate(status.lastCopiedOn)} at ${status.lastPlace}, by ${status.lastMadeBy}${status.lastBackupNumber ? `, up to ${status.lastBackupNumber}` : ""}` : "—"}
           </Fact>
-          <Fact label="Next one due">{status.nextDueOn ? formatDate(status.nextDueOn) : "—"}</Fact>
+          <Fact label={tr("Next one due")}>{status.nextDueOn ? formatDate(status.nextDueOn) : "—"}</Fact>
         </div>
       )}
       {canRecord && (
         <div>
           <Button size="sm" variant="default" onClick={() => setForm(EMPTY())}>
-            Record a Copy
+            {tr("Record a Copy")}
           </Button>
         </div>
       )}
@@ -123,7 +124,7 @@ export const ManualCopyPanel: React.FC = () => {
           { id: "day", header: "Copied on", cell: (row) => formatDate(row.copiedOn) },
           { id: "place", header: "Kept at", cell: (row) => row.place },
           { id: "by", header: "Made by", cell: (row) => row.madeBy },
-          { id: "backup", header: "Newest backup held", cell: (row) => row.backupNumber ?? "—" },
+          { id: "backup", header: tr("Newest backup held"), cell: (row) => row.backupNumber ?? "—" },
           { id: "note", header: "Note", cell: (row) => <span className="block max-w-xs whitespace-normal break-words text-xs">{row.note ?? "—"}</span> },
           { id: "recorded", header: "Recorded", cell: (row) => `${row.recordedBy} · ${formatDateTime(row.recordedAt)}` },
         ]}
@@ -144,26 +145,26 @@ export const ManualCopyPanel: React.FC = () => {
       <FormModal
         isOpen={!!form}
         onClose={() => setForm(undefined)}
-        title="Record a Manual Copy"
-        description="Record a copy that has been made. It is kept with your name and the time and cannot be edited or removed."
+        title={tr("Record a Manual Copy")}
+        description={tr("Record a copy that has been made. It is kept with your name and the time and cannot be edited or removed.")}
         confirmText="Record"
         confirmDisabled={!valid || busy}
         onConfirm={save}
       >
         <div className="space-y-4">
-          <FormField label="Day the copy was made" required>
+          <FormField label={tr("Day the copy was made")} required>
             <Input type="date" max={todayText()} value={form?.copiedOn ?? ""} onChange={(e) => form && setForm({ ...form, copiedOn: e.target.value })} />
           </FormField>
-          <FormField label="Where it is kept" required hint="For example: the safe at head office.">
+          <FormField label={tr("Where it is kept")} required hint={tr("For example: the safe at head office.")}>
             <Input maxLength={200} value={form?.place ?? ""} onChange={(e) => form && setForm({ ...form, place: e.target.value })} />
           </FormField>
-          <FormField label="Who made it" required>
+          <FormField label={tr("Who made it")} required>
             <Input maxLength={120} value={form?.madeBy ?? ""} onChange={(e) => form && setForm({ ...form, madeBy: e.target.value })} />
           </FormField>
-          <FormField label="Newest backup it holds" hint="For example BK-20261110-1900-0001. It must be a completed backup.">
+          <FormField label={tr("Newest backup it holds")} hint={tr("For example BK-20261110-1900-0001. It must be a completed backup.")}>
             <Input maxLength={40} value={form?.backupNumber ?? ""} onChange={(e) => form && setForm({ ...form, backupNumber: e.target.value })} />
           </FormField>
-          <FormField label="Note">
+          <FormField label={tr("Note")}>
             <Textarea rows={3} maxLength={1000} value={form?.note ?? ""} onChange={(e) => form && setForm({ ...form, note: e.target.value })} />
           </FormField>
         </div>

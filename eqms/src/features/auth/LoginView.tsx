@@ -15,7 +15,7 @@ import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { ACCOUNT_NOTICE_STORAGE_KEY } from "@/services/api/client";
 import { LoginMaintenanceNotice } from "@/features/maintenance/LoginMaintenanceNotice";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 
 // ============================================================================
@@ -520,7 +520,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onForgotPassword 
             </div>
 
             <div className="text-center">
-              <p className="text-xs text-slate-500 sm:text-sm">{t("auth.developedBy", "Product is developed by")} Nguyen The Hoang</p>
+              <p className="text-xs text-slate-500 sm:text-sm">{t("auth.developedBy", "Product is developed by")} {tr("Nguyen The Hoang")}</p>
             </div>
           </div>
         }

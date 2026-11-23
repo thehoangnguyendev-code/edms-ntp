@@ -10,6 +10,7 @@ import { getControlledCopyDistributionListText, getControlledCopyDistributionMod
 import { normalizeControlledCopyStatusLabel } from "../../status";
 import { getCachedControlledCopyChildren, preloadControlledCopyChildren } from "../../components/ExpandControlledCopiesRow";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 interface DistributionInformationTabProps {
   controlledCopy: ControlledCopy & { copyIds?: string[] };
@@ -100,11 +101,11 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
   return (
     <div className="space-y-4 md:space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-        <ReadonlyField label="Distribution Mode" value={distributionMode} />
+        <ReadonlyField label={tr("Distribution Mode")} value={distributionMode} />
         {unitScopeLabel && <ReadonlyField label={unitScopeLabel} value={unitNames} />}
         {!isBatchParent && (
           <ReadonlyField
-            label="Distribution List"
+            label={tr("Distribution List")}
             value={getControlledCopyDistributionListText(controlledCopy)}
             fullWidth
           />
@@ -114,27 +115,27 @@ export const DistributionInformationTab: React.FC<DistributionInformationTabProp
       {isBatchParent && (
         <div className="flex flex-col gap-1.5">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-            {unitScopeLabel ? "Recipients" : "Distribution List"}{members && members.length > 0 ? ` (${members.length})` : ""}
+            {unitScopeLabel ? tr("Recipients") : tr("Distribution List")}{members && members.length > 0 ? ` (${members.length})` : ""}
           </label>
           {isLoadingMembers || !members ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-6 text-center text-xs sm:text-sm text-slate-400">
-              Loading recipients…
+              {tr("Loading recipients…")}
             </div>
           ) : members.length === 0 ? (
-            <TableEmptyState title="No recipients found" description="No recipients found for this batch." />
+            <TableEmptyState title={tr("No recipients found")} description={tr("No recipients found for this batch.")} />
           ) : (
             <div className="max-h-80 overflow-auto rounded-lg border border-slate-200">
               <TableMarkup.Root className="w-full text-xs sm:text-sm">
                 <TableMarkup.Head className="sticky top-0 bg-slate-50">
                   <TableMarkup.Row className="border-b border-slate-200">
-                    <TableMarkup.HeaderCell className="py-2 px-3 text-center text-2xs md:text-xs font-semibold text-slate-600 w-10">No.</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Document Number</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Recipient</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Employee ID</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Department</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Email</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">Status</TableMarkup.HeaderCell>
-                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>Distributed On</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-center text-2xs md:text-xs font-semibold text-slate-600 w-10">{tr("No.")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">{tr("Document Number")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">{tr("Recipient")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>{tr("Employee ID")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>{tr("Department")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">{tr("Email")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className="py-2 px-3 text-left text-2xs md:text-xs font-semibold text-slate-600">{tr("Status")}</TableMarkup.HeaderCell>
+                    <TableMarkup.HeaderCell className={TABLE_STYLES.cell17}>{tr("Distributed On")}</TableMarkup.HeaderCell>
                   </TableMarkup.Row>
                 </TableMarkup.Head>
                 <TableMarkup.Body className="divide-y divide-slate-100 bg-white">

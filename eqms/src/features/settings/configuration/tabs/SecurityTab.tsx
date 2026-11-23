@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { SecurityConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
+import { trFormat, tr } from "@/i18n";
 import { FieldHint } from '@/components/ui/form/FieldHint';
 import { IconKey, IconNetwork, IconPasswordUser, IconShieldLock } from '@tabler/icons-react';
 import { PasswordPolicyTester } from './PasswordPolicyTester';
@@ -9,9 +10,9 @@ import { ConfigHistory } from './ConfigHistory';
 import type { SecurityTabId } from './securityTabs';
 
 const ALL_TABS = [
-  { id: 'password-rules', label: 'Password Rules', icon: IconPasswordUser },
-  { id: 'sessions-accounts', label: 'Sessions & Accounts', icon: IconShieldLock },
-  { id: 'network-access', label: 'Network Access', icon: IconNetwork },
+  { id: 'password-rules', label: tr('Password Rules'), icon: IconPasswordUser },
+  { id: 'sessions-accounts', label: tr('Sessions & Accounts'), icon: IconShieldLock },
+  { id: 'network-access', label: tr('Network Access'), icon: IconNetwork },
   HISTORY_TAB,
 ] as const;
 
@@ -87,10 +88,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
       {activeTab === 'password-rules' && (
         <div className="space-y-6">
           <div>
-            <h3 className={headingClass}>Length</h3>
+            <h3 className={headingClass}>{tr("Length")}</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className={labelClass}>Minimum Password Length</label>
+                <label className={labelClass}>{tr("Minimum Password Length")}</label>
                 <input
                   type="number"
                   value={config.passwordMinLength}
@@ -99,36 +100,36 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={8}
                   max={128}
                 />
-                <p className="mt-1 text-xs text-slate-500">Minimum: 8 characters</p>
+                <p className="mt-1 text-xs text-slate-500">{tr("Minimum: 8 characters")}</p>
               </div>
             </div>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Required Characters</h3>
+            <h3 className={headingClass}>{tr("Required Characters")}</h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Checkbox id="requireUppercase" label="Require Uppercase Letters (A-Z)" checked={config.requireUppercase} onChange={(checked) => handleChange('requireUppercase', checked)} />
-              <Checkbox id="requireLowercase" label="Require Lowercase Letters (a-z)" checked={config.requireLowercase} onChange={(checked) => handleChange('requireLowercase', checked)} />
-              <Checkbox id="requireSpecialChars" label="Require Special Characters (@, #, $, etc.)" checked={config.requireSpecialChars} onChange={(checked) => handleChange('requireSpecialChars', checked)} />
-              <Checkbox id="requireNumbers" label="Require Numbers (0-9)" checked={config.requireNumbers} onChange={(checked) => handleChange('requireNumbers', checked)} />
+              <Checkbox id="requireUppercase" label={tr("Require Uppercase Letters (A-Z)")} checked={config.requireUppercase} onChange={(checked) => handleChange('requireUppercase', checked)} />
+              <Checkbox id="requireLowercase" label={tr("Require Lowercase Letters (a-z)")} checked={config.requireLowercase} onChange={(checked) => handleChange('requireLowercase', checked)} />
+              <Checkbox id="requireSpecialChars" label={tr("Require Special Characters (@, #, $, etc.)")} checked={config.requireSpecialChars} onChange={(checked) => handleChange('requireSpecialChars', checked)} />
+              <Checkbox id="requireNumbers" label={tr("Require Numbers (0-9)")} checked={config.requireNumbers} onChange={(checked) => handleChange('requireNumbers', checked)} />
             </div>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Not Allowed</h3>
+            <h3 className={headingClass}>{tr("Not Allowed")}</h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Checkbox id="disallowWhitespace" label="Disallow Spaces" checked={config.disallowWhitespace ?? false} onChange={(checked) => handleChange('disallowWhitespace', checked)} />
-              <Checkbox id="disallowSequentialChars" label="Disallow Sequences (abc, 123, cba)" checked={config.disallowSequentialChars ?? false} onChange={(checked) => handleChange('disallowSequentialChars', checked)} />
-              <Checkbox id="disallowCommonPasswords" label="Disallow Commonly Used Passwords" checked={config.disallowCommonPasswords ?? false} onChange={(checked) => handleChange('disallowCommonPasswords', checked)} />
-              <Checkbox id="disallowUserInfo" label="Disallow Username, E-mail or Name in Password" checked={config.disallowUserInfo ?? false} onChange={(checked) => handleChange('disallowUserInfo', checked)} />
+              <Checkbox id="disallowWhitespace" label={tr("Disallow Spaces")} checked={config.disallowWhitespace ?? false} onChange={(checked) => handleChange('disallowWhitespace', checked)} />
+              <Checkbox id="disallowSequentialChars" label={tr("Disallow Sequences (abc, 123, cba)")} checked={config.disallowSequentialChars ?? false} onChange={(checked) => handleChange('disallowSequentialChars', checked)} />
+              <Checkbox id="disallowCommonPasswords" label={tr("Disallow Commonly Used Passwords")} checked={config.disallowCommonPasswords ?? false} onChange={(checked) => handleChange('disallowCommonPasswords', checked)} />
+              <Checkbox id="disallowUserInfo" label={tr("Disallow Username, E-mail or Name in Password")} checked={config.disallowUserInfo ?? false} onChange={(checked) => handleChange('disallowUserInfo', checked)} />
             </div>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Complexity Limits</h3>
+            <h3 className={headingClass}>{tr("Complexity Limits")}</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className={labelClass}>Minimum Unique Characters</label>
+                <label className={labelClass}>{tr("Minimum Unique Characters")}</label>
                 <input
                   type="number"
                   value={config.minUniqueChars ?? 0}
@@ -137,10 +138,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={0}
                   max={64}
                 />
-                <p className="mt-1 text-xs text-slate-500">Number of different characters required. 0 = not enforced.</p>
+                <p className="mt-1 text-xs text-slate-500">{tr("Number of different characters required. 0 = not enforced.")}</p>
               </div>
               <div>
-                <label className={labelClass}>Maximum Repeated Characters in a Row</label>
+                <label className={labelClass}>{tr("Maximum Repeated Characters in a Row")}</label>
                 <input
                   type="number"
                   value={config.maxRepeatedChars ?? 0}
@@ -149,18 +150,18 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={0}
                   max={10}
                 />
-                <p className="mt-1 text-xs text-slate-500">E.g. 2 rejects "aaa". 0 = not enforced.</p>
+                <p className="mt-1 text-xs text-slate-500">{tr("E.g. 2 rejects \"aaa\". 0 = not enforced.")}</p>
               </div>
             </div>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Password Expiration</h3>
-            <Checkbox id="enablePasswordExpiry" label="Enable Password Expiration" checked={config.enablePasswordExpiry} onChange={(checked) => handleChange('enablePasswordExpiry', checked)} />
-            <FieldHint indent>Ask users to change their password regularly.</FieldHint>
+            <h3 className={headingClass}>{tr("Password Expiration")}</h3>
+            <Checkbox id="enablePasswordExpiry" label={tr("Enable Password Expiration")} checked={config.enablePasswordExpiry} onChange={(checked) => handleChange('enablePasswordExpiry', checked)} />
+            <FieldHint indent>{tr("Ask users to change their password regularly.")}</FieldHint>
             {config.enablePasswordExpiry && (
               <div className="ml-7 mt-3">
-                <label className={labelClass}>Password Expiry Period (Days)</label>
+                <label className={labelClass}>{tr("Password Expiry Period (Days)")}</label>
                 <input
                   type="number"
                   value={config.passwordExpiryDays}
@@ -169,18 +170,18 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={30}
                   max={365}
                 />
-                <FieldHint className="mt-1">Users must change their password every {config.passwordExpiryDays} days.</FieldHint>
+                <FieldHint className="mt-1">{trFormat("Users must change their password every {days} days.", { days: config.passwordExpiryDays })}</FieldHint>
               </div>
             )}
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Password History</h3>
-            <Checkbox id="preventPasswordReuse" label="Prevent Password Reuse" checked={config.preventPasswordReuse} onChange={(checked) => handleChange('preventPasswordReuse', checked)} />
-            <FieldHint indent>Stop users from reusing recent passwords.</FieldHint>
+            <h3 className={headingClass}>{tr("Password History")}</h3>
+            <Checkbox id="preventPasswordReuse" label={tr("Prevent Password Reuse")} checked={config.preventPasswordReuse} onChange={(checked) => handleChange('preventPasswordReuse', checked)} />
+            <FieldHint indent>{tr("Stop users from reusing recent passwords.")}</FieldHint>
             {config.preventPasswordReuse && (
               <div className="ml-7 mt-3">
-                <label className={labelClass}>Password History Count</label>
+                <label className={labelClass}>{tr("Password History Count")}</label>
                 <input
                   type="number"
                   value={config.passwordHistoryCount}
@@ -189,20 +190,20 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={3}
                   max={24}
                 />
-                <FieldHint className="mt-1">The last {config.passwordHistoryCount} passwords cannot be used again.</FieldHint>
+                <FieldHint className="mt-1">{trFormat("The last {count} passwords cannot be used again.", { count: config.passwordHistoryCount })}</FieldHint>
               </div>
             )}
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>First Sign-In</h3>
+            <h3 className={headingClass}>{tr("First Sign-In")}</h3>
             <Checkbox
               id="forcePasswordChangeOnFirstLogin"
-              label="Require Password Change on First Sign-In"
+              label={tr("Require Password Change on First Sign-In")}
               checked={config.forcePasswordChangeOnFirstLogin ?? true}
               onChange={(checked) => handleChange('forcePasswordChangeOnFirstLogin', checked)}
             />
-            <FieldHint indent>A new account must replace its temporary password at the first sign-in.</FieldHint>
+            <FieldHint indent>{tr("A new account must replace its temporary password at the first sign-in.")}</FieldHint>
           </div>
 
           <PasswordPolicyTester config={config} />
@@ -212,13 +213,13 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
       {activeTab === 'sessions-accounts' && (
         <div className="space-y-6">
           <div>
-            <h3 className={headingClass}>Session Timeout</h3>
-            <Checkbox id="sessionTimeoutEnabled" label="Enable Session Timeout" checked={config.sessionTimeoutEnabled ?? true} onChange={(checked) => handleChange('sessionTimeoutEnabled', checked)} />
-            <FieldHint indent>Locks idle sessions. The user unlocks with their password, and a verification code if they use one. Wrong entries count toward Account Lockout.</FieldHint>
+            <h3 className={headingClass}>{tr("Session Timeout")}</h3>
+            <Checkbox id="sessionTimeoutEnabled" label={tr("Enable Session Timeout")} checked={config.sessionTimeoutEnabled ?? true} onChange={(checked) => handleChange('sessionTimeoutEnabled', checked)} />
+            <FieldHint indent>{tr("Locks idle sessions. The user unlocks with their password, and a verification code if they use one. Wrong entries count toward Account Lockout.")}</FieldHint>
             {(config.sessionTimeoutEnabled ?? true) && (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Session Timeout (Minutes)</label>
+                  <label className={labelClass}>{tr("Session Timeout (Minutes)")}</label>
                   <input
                     type="number"
                     value={config.sessionTimeoutMinutes}
@@ -228,15 +229,15 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                     max={1440}
                     step={1}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Minimum: 1 minute. Maximum: 1440 minutes.</p>
+                  <p className="mt-1 text-xs text-slate-500">{tr("Minimum: 1 minute. Maximum: 1440 minutes.")}</p>
                 </div>
               </div>
             )}
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Concurrent Sessions</h3>
-            <label className={labelClass}>Maximum Concurrent Sessions</label>
+            <h3 className={headingClass}>{tr("Concurrent Sessions")}</h3>
+            <label className={labelClass}>{tr("Maximum Concurrent Sessions")}</label>
             <input
               type="number"
               value={config.maxConcurrentSessions ?? 0}
@@ -245,23 +246,23 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
               min={0}
               max={10}
             />
-            <FieldHint className="mt-1">How many devices one account can use at the same time. When it signs in on one more, the oldest session ends and shows a notice. 1 means one device only. 0 means no limit.</FieldHint>
+            <FieldHint className="mt-1">{tr("How many devices one account can use at the same time. When it signs in on one more, the oldest session ends and shows a notice. 1 means one device only. 0 means no limit.")}</FieldHint>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Two-Factor Authentication</h3>
-            <Checkbox id="enable2FA" label="Enforce Two-Factor Authentication (2FA)" checked={config.enable2FA} onChange={(checked) => handleChange('enable2FA', checked)} />
-            <FieldHint indent>Every user must set up 2FA (authenticator app or e-mail). To start with some users only, use Require Multifactor Authentication on their Security &amp; Authorization tab in Users.</FieldHint>
+            <h3 className={headingClass}>{tr("Two-Factor Authentication")}</h3>
+            <Checkbox id="enable2FA" label={tr("Enforce Two-Factor Authentication (2FA)")} checked={config.enable2FA} onChange={(checked) => handleChange('enable2FA', checked)} />
+            <FieldHint indent>{tr("Every user must set up 2FA (authenticator app or e-mail). To start with some users only, use Require Multifactor Authentication on their Security &amp; Authorization tab in Users.")}</FieldHint>
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Account Lockout</h3>
-            <Checkbox id="enableAccountLockout" label="Enable Account Lockout" checked={config.enableAccountLockout} onChange={(checked) => handleChange('enableAccountLockout', checked)} />
-            <FieldHint indent>Locks an account after repeated wrong passwords or codes. Sign-in and signing are counted separately, each with its own limit.</FieldHint>
+            <h3 className={headingClass}>{tr("Account Lockout")}</h3>
+            <Checkbox id="enableAccountLockout" label={tr("Enable Account Lockout")} checked={config.enableAccountLockout} onChange={(checked) => handleChange('enableAccountLockout', checked)} />
+            <FieldHint indent>{tr("Locks an account after repeated wrong passwords or codes. Sign-in and signing are counted separately, each with its own limit.")}</FieldHint>
             {config.enableAccountLockout && (
               <>
               <div className="ml-7 mt-3">
-                <label className={labelClass}>Maximum Login Attempts</label>
+                <label className={labelClass}>{tr("Maximum Login Attempts")}</label>
                 <input
                   type="number"
                   value={config.maxLoginAttempts}
@@ -270,10 +271,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={3}
                   max={10}
                 />
-                <FieldHint className="mt-1">Locked after {config.maxLoginAttempts} wrong passwords or codes in a row at sign-in or when unlocking a session. A correct sign-in resets the count. An administrator or a password reset restores access.</FieldHint>
+                <FieldHint className="mt-1">{trFormat("Locked after {count} wrong passwords or codes in a row at sign-in or when unlocking a session. A correct sign-in resets the count. An administrator or a password reset restores access.", { count: config.maxLoginAttempts })}</FieldHint>
               </div>
               <div className="ml-7 mt-3">
-                <label className={labelClass}>Maximum Signature Attempts</label>
+                <label className={labelClass}>{tr("Maximum Signature Attempts")}</label>
                 <input
                   type="number"
                   value={config.maxSignatureAttempts ?? 5}
@@ -282,15 +283,15 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={3}
                   max={10}
                 />
-                <FieldHint className="mt-1">Counted apart from sign-in. Locked after {config.maxSignatureAttempts ?? 5} wrong passwords in a row when signing. A correct signature resets the count.</FieldHint>
+                <FieldHint className="mt-1">{trFormat("Counted apart from sign-in. Locked after {count} wrong passwords in a row when signing. A correct signature resets the count.", { count: config.maxSignatureAttempts ?? 5 })}</FieldHint>
               </div>
               </>
             )}
           </div>
 
           <div className={groupClass}>
-            <h3 className={headingClass}>Inactive Accounts</h3>
-            <label className={labelClass}>Flag accounts without a sign-in for (days)</label>
+            <h3 className={headingClass}>{tr("Inactive Accounts")}</h3>
+            <label className={labelClass}>{tr("Flag accounts without a sign-in for (days)")}</label>
             <input
               type="number"
               value={config.inactiveAccountDays ?? 90}
@@ -299,7 +300,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
               min={0}
               max={3650}
             />
-            <FieldHint className="mt-1">Accounts with no sign-in for this many days are marked Inactive in Access Review (a new account counts from its creation). Nothing is suspended automatically. 0 turns it off.</FieldHint>
+            <FieldHint className="mt-1">{tr("Accounts with no sign-in for this many days are marked Inactive in Access Review (a new account counts from its creation). Nothing is suspended automatically. 0 turns it off.")}</FieldHint>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import { MoreVertical } from 'lucide-react';
 import { PortalDropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown';
 import { usePortalDropdown } from '@/hooks';
 import type { DataTableAction } from '@/components/ui/table';
+import { tr } from "@/i18n";
 
 export interface RowMenuItem {
   label: string;
@@ -26,7 +27,7 @@ export function useRowMenu<T>(rows: readonly T[], getId: (row: T) => string, ite
       <button
         type="button"
         ref={menu.getRef(getId(row))}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(getId(row), event)}
       >

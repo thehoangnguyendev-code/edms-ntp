@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { trainingProperties } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { trainingError, trainingSettingsApi, type TrainingSettings } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /** Whole-number input that clamps to [min, max] and falls back when the field is emptied. */
 const NumberField: React.FC<{
@@ -51,12 +52,12 @@ const NumberField: React.FC<{
  * "Save Changes" saves the changes of every tab.
  */
 const SETTING_TABS = [
-  { id: "assessment", label: "Assessment", about: "How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training." },
-  { id: "documents", label: "Document Training", about: "How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control." },
-  { id: "annual", label: "Annual & Retraining", about: "When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance." },
-  { id: "reminders", label: "Reminders", about: "When a person who has not signed a self-reading is reminded before the due date, and when the person who must close a training review, and the person who opened it, are reminded (once a week)." },
-  { id: "files", label: "File Names", about: "The name of the file a person downloads for each form (APD.0011, 0014, 0024, 0108, 0117, 0118). Write the name with variables in braces; the example shows the result. It is used every time a form is downloaded as Word or PDF." },
-  { id: "retention", label: "Records Retention", about: "How long training records are kept. It is used when the records of a person who left are archived." },
+  { id: "assessment", label: "Assessment", about: tr("How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training.") },
+  { id: "documents", label: tr("Document Training"), about: tr("How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control.") },
+  { id: "annual", label: tr("Annual & Retraining"), about: tr("When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance.") },
+  { id: "reminders", label: "Reminders", about: tr("When a person who has not signed a self-reading is reminded before the due date, and when the person who must close a training review, and the person who opened it, are reminded (once a week).") },
+  { id: "files", label: tr("File Names"), about: tr("The name of the file a person downloads for each form (APD.0011, 0014, 0024, 0108, 0117, 0118). Write the name with variables in braces; the example shows the result. It is used every time a form is downloaded as Word or PDF.") },
+  { id: "retention", label: tr("Records Retention"), about: tr("How long training records are kept. It is used when the records of a person who left are archived.") },
 ] as const;
 
 const SAMPLE: Record<string, string> = { EMPLOYEE_CODE: "NT-0123", EMPLOYEE_NAME: "Nguyen-Van-An", DEPARTMENT: "Quality-Control", TRAINING_NUMBER: "TRN-QC-26-045", SESSION_NO: "01", MATRIX_CODE: "TM-QC", VERSION: "3", ISSUE_NO: "2", REQUEST_NO: "TR-QC-26-001", YEAR: "2026", DATE: "20261101" };
@@ -91,7 +92,7 @@ export const TrainingPropertiesView: React.FC = () => {
   const tabs: TabItem[] = [
     ...SETTING_TABS.map(({ id, label }) => ({ id, label })),
     // Not a setting: the counters of the Training Numbers are raised on their own, not saved with the settings.
-    { id: "numbers", label: "Number Counters" },
+    { id: "numbers", label: tr("Number Counters") },
   ];
   const requested = params.get("tab");
   const tab = tabs.some((x) => x.id === requested) ? (requested as string) : SETTING_TABS[0].id;
@@ -165,10 +166,10 @@ export const TrainingPropertiesView: React.FC = () => {
       setSettings(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
       setShowSaveModal(false);
-      showToast({ type: "success", title: "Changes saved", message: "Training properties have been updated." });
+      showToast({ type: "success", title: tr("Changes saved"), message: "Training properties have been updated." });
     } catch (saveError) {
       setShowSaveModal(false);
-      showToast({ type: "error", title: "Save failed", message: trainingError(saveError) });
+      showToast({ type: "error", title: tr("Save failed"), message: trainingError(saveError) });
     } finally {
       setSaving(false);
     }
@@ -177,10 +178,10 @@ export const TrainingPropertiesView: React.FC = () => {
   const panels: Record<string, React.ReactNode> = settings ? {
     assessment: (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <FormSection title="Pass Mark" icon={<GraduationCap className="h-4 w-4" />} className="h-full">
+        <FormSection title={tr("Pass Mark")} icon={<GraduationCap className="h-4 w-4" />} className="h-full">
           <NumberField
-            label="Pass mark (%)"
-            hint="A trainee passes a test with at least this percentage. The system computes the result."
+            label={tr("Pass mark (%)")}
+            hint={tr("A trainee passes a test with at least this percentage. The system computes the result.")}
             value={settings.passPercent}
             min={1}
             max={100}
@@ -189,10 +190,10 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ passPercent: v })}
           />
         </FormSection>
-        <FormSection title="Results to QA" icon={<NotebookPen className="h-4 w-4" />} className="h-full">
+        <FormSection title={tr("Results to QA")} icon={<NotebookPen className="h-4 w-4" />} className="h-full">
           <NumberField
-            label="Days to finish the training and send the results to QA"
-            hint="SOP.0003 5.3.7: the results go to QA within 7 working days from the day the training was held; the number is the company's to set. This is the deadline, not a wait: Finish Training sends the results at once, and the trainer is reminded on the last day, then every week while it is late."
+            label={tr("Days to finish the training and send the results to QA")}
+            hint={tr("SOP.0003 5.3.7: the results go to QA within 7 working days from the day the training was held; the number is the company's to set. This is the deadline, not a wait: Finish Training sends the results at once, and the trainer is reminded on the last day, then every week while it is late.")}
             value={settings.resultsDueDays}
             min={1}
             max={60}
@@ -201,29 +202,29 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ resultsDueDays: v })}
           />
           <div className="mt-4 min-w-0">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Which days are counted</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Which days are counted")}</label>
             <Select
               value={settings.resultsDueDayType}
               enableSearch={false}
               disabled={!canManage}
               onChange={(v) => patch({ resultsDueDayType: v as TrainingSettings["resultsDueDayType"] })}
               options={[
-                { label: "Working days: Monday to Friday", value: "WORKING_MON_FRI" },
-                { label: "Working days: Monday to Saturday", value: "WORKING_MON_SAT" },
-                { label: "Every day (calendar days)", value: "CALENDAR" },
+                { label: tr("Working days: Monday to Friday"), value: "WORKING_MON_FRI" },
+                { label: tr("Working days: Monday to Saturday"), value: "WORKING_MON_SAT" },
+                { label: tr("Every day (calendar days)"), value: "CALENDAR" },
               ]}
             />
-            <p className="text-xs text-slate-500 mt-1">The public holidays are not known to the system: a holiday counts as a working day.</p>
+            <p className="text-xs text-slate-500 mt-1">{tr("The public holidays are not known to the system: a holiday counts as a working day.")}</p>
           </div>
         </FormSection>
       </div>
     ),
     documents: (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <FormSection title="Training Period" icon={<Timer className="h-4 w-4" />} className="h-full">
+        <FormSection title={tr("Training Period")} icon={<Timer className="h-4 w-4" />} className="h-full">
           <NumberField
-            label="Days to train on a new document"
-            hint="Default Training Period (days) proposed for a document that requires training."
+            label={tr("Days to train on a new document")}
+            hint={tr("Default Training Period (days) proposed for a document that requires training.")}
             value={settings.documentTrainingDaysDefault}
             min={1}
             max={365}
@@ -232,10 +233,10 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ documentTrainingDaysDefault: v })}
           />
         </FormSection>
-        <FormSection title="Training Number" icon={<FileText className="h-4 w-4" />} className="h-full">
+        <FormSection title={tr("Training Number")} icon={<FileText className="h-4 w-4" />} className="h-full">
           <div className="space-y-2">
             <Select
-              label="How the Training Number is given"
+              label={tr("How the Training Number is given")}
               value={settings.trainingNumberEntryMode ?? "AUTO"}
               disabled={!canManage}
               onChange={(value) => patch({ trainingNumberEntryMode: value === "MANUAL" ? "MANUAL" : "AUTO" })}
@@ -258,19 +259,19 @@ export const TrainingPropertiesView: React.FC = () => {
             </p>
           )}
         </FormSection>
-        <FormSection title="Scheduling" icon={<CalendarClock className="h-4 w-4" />} className="h-full">
+        <FormSection title={tr("Scheduling")} icon={<CalendarClock className="h-4 w-4" />} className="h-full">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">Warn when a session is scheduled after the due date</p>
+              <p className="text-sm font-semibold text-slate-900">{tr("Warn when a session is scheduled after the due date")}</p>
               <p className="mt-1 text-xs text-slate-500">
                 <strong>{settings.warnScheduledAfterDue ? "On." : "Off."}</strong>{" "}
-                The session can still be saved; the activity shows that the day is after the due date.
+                {tr("The session can still be saved; the activity shows that the day is after the due date.")}
               </p>
             </div>
             <Switch
               checked={settings.warnScheduledAfterDue}
               disabled={!canManage}
-              aria-label="Warn when a session is scheduled after the due date"
+              aria-label={tr("Warn when a session is scheduled after the due date")}
               onChange={(checked) => patch({ warnScheduledAfterDue: checked })}
             />
           </div>
@@ -279,11 +280,11 @@ export const TrainingPropertiesView: React.FC = () => {
     ),
     annual: (
       <div className="space-y-4">
-      <FormSection title="Annual Requirement & Retraining" icon={<CalendarClock className="h-4 w-4" />}>
+      <FormSection title={tr("Annual Requirement & Retraining")} icon={<CalendarClock className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
-            label="Due month"
-            hint="Month (1 to 12) by which the annual requirement is due."
+            label={tr("Due month")}
+            hint={tr("Month (1 to 12) by which the annual requirement is due.")}
             value={settings.annualRequirementDueMonth}
             min={1}
             max={12}
@@ -292,8 +293,8 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ annualRequirementDueMonth: v })}
           />
           <NumberField
-            label="Due day"
-            hint="Day of that month."
+            label={tr("Due day")}
+            hint={tr("Day of that month.")}
             value={settings.annualRequirementDueDay}
             min={1}
             max={31}
@@ -302,8 +303,8 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ annualRequirementDueDay: v })}
           />
           <NumberField
-            label="Absence limit (months)"
-            hint="After a longer absence a person is retrained. A training review for a return after an absence is opened only for an absence longer than this."
+            label={tr("Absence limit (months)")}
+            hint={tr("After a longer absence a person is retrained. A training review for a return after an absence is opened only for an absence longer than this.")}
             value={settings.absenceRetrainMonths}
             min={1}
             max={60}
@@ -313,11 +314,11 @@ export const TrainingPropertiesView: React.FC = () => {
           />
         </div>
       </FormSection>
-      <FormSection title="New Employees" icon={<UserPlus className="h-4 w-4" />}>
+      <FormSection title={tr("New Employees")} icon={<UserPlus className="h-4 w-4" />}>
         <div className="max-w-md">
           <NumberField
-            label="Days a person counts as a new employee"
-            hint="SOP.0003 5.1: a new employee has an initial training of three parts. A person who started within this number of days shows the label New employee in Training Compliance, Initial Training. The start is the start date of the person, or the day the account was created."
+            label={tr("Days a person counts as a new employee")}
+            hint={tr("SOP.0003 5.1: a new employee has an initial training of three parts. A person who started within this number of days shows the label New employee in Training Compliance, Initial Training. The start is the start date of the person, or the day the account was created.")}
             value={settings.initialTrainingDays}
             min={1}
             max={730}
@@ -331,11 +332,11 @@ export const TrainingPropertiesView: React.FC = () => {
     ),
     reminders: (
       <div className="space-y-4">
-      <FormSection title="Self-reading Reminders" icon={<BellRing className="h-4 w-4" />}>
+      <FormSection title={tr("Self-reading Reminders")} icon={<BellRing className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <NumberField
-            label="First reminder: days before the due date"
-            hint="Every invited person who has not read and signed a self-reading receives an e-mail and a notice this many days before the due date of the training. Must be more than the second reminder."
+            label={tr("First reminder: days before the due date")}
+            hint={tr("Every invited person who has not read and signed a self-reading receives an e-mail and a notice this many days before the due date of the training. Must be more than the second reminder.")}
             value={settings.selfReadingReminderFirstDays}
             min={1}
             max={30}
@@ -344,8 +345,8 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ selfReadingReminderFirstDays: v })}
           />
           <NumberField
-            label="Second reminder: days before the due date"
-            hint="The same reminder once more, closer to the due date. The trainer can also remind one person at any time with Send Reminder in the Reading step."
+            label={tr("Second reminder: days before the due date")}
+            hint={tr("The same reminder once more, closer to the due date. The trainer can also remind one person at any time with Send Reminder in the Reading step.")}
             value={settings.selfReadingReminderSecondDays}
             min={1}
             max={30}
@@ -354,8 +355,8 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ selfReadingReminderSecondDays: v })}
           />
           <NumberField
-            label="Make-up reminder: days after the due date"
-            hint="SOP.0003 5.3.7 leaves the rescheduling of an absent person to the organizer. This many days after the due date of a training, and every week after, the organizer is told of each person still absent whom no supplementary training lists. People who left the company or are suspended are not chased."
+            label={tr("Make-up reminder: days after the due date")}
+            hint={tr("SOP.0003 5.3.7 leaves the rescheduling of an absent person to the organizer. This many days after the due date of a training, and every week after, the organizer is told of each person still absent whom no supplementary training lists. People who left the company or are suspended are not chased.")}
             value={settings.makeupReminderDays}
             min={1}
             max={365}
@@ -365,11 +366,11 @@ export const TrainingPropertiesView: React.FC = () => {
           />
         </div>
       </FormSection>
-      <FormSection title="Training Review Reminders" icon={<BellRing className="h-4 w-4" />}>
+      <FormSection title={tr("Training Review Reminders")} icon={<BellRing className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <NumberField
-            label="Days before a review ready to close is reminded"
-            hint="Every item is settled and the person chosen to close it has not signed. The reminder goes to that person every week."
+            label={tr("Days before a review ready to close is reminded")}
+            hint={tr("Every item is settled and the person chosen to close it has not signed. The reminder goes to that person every week.")}
             value={settings.reviewReadyReminderDays}
             min={1}
             max={60}
@@ -378,8 +379,8 @@ export const TrainingPropertiesView: React.FC = () => {
             onChange={(v) => patch({ reviewReadyReminderDays: v })}
           />
           <NumberField
-            label="Days before a review with items to do is reminded"
-            hint="The person who opened the review is reminded every week."
+            label={tr("Days before a review with items to do is reminded")}
+            hint={tr("The person who opened the review is reminded every week.")}
             value={settings.reviewOpenReminderDays}
             min={1}
             max={365}
@@ -397,7 +398,7 @@ export const TrainingPropertiesView: React.FC = () => {
           <FormSection key={f.form} title={f.label} icon={<FileText className="h-4 w-4" />}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
               <div className="min-w-0">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5" htmlFor={`file-name-${f.form}`}>File name pattern</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5" htmlFor={`file-name-${f.form}`}>{tr("File name pattern")}</label>
                 <input
                   id={`file-name-${f.form}`}
                   type="text"
@@ -410,13 +411,13 @@ export const TrainingPropertiesView: React.FC = () => {
               </div>
               {canManage && (
                 <Button size="sm" variant="outline-emerald" disabled={f.pattern === f.defaultPattern} onClick={() => patch({ downloadFileNames: settings.downloadFileNames.map((x) => (x.form === f.form ? { ...x, pattern: x.defaultPattern, example: previewFileName(x, x.defaultPattern) } : x)) })}>
-                   Default
+                   {tr("Default")}
                 </Button>
               )}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Example: <span className="font-mono text-slate-800" data-testid={`file-name-example-${f.form}`}>{f.example}</span></p>
+                  <p className="mt-2 text-xs text-slate-500">{tr("Example:")} <span className="font-mono text-slate-800" data-testid={`file-name-example-${f.form}`}>{f.example}</span></p>
             <p className="mt-1 text-xs text-slate-500">
-              Variables:{" "}
+                  {tr("Variables:")}{" "}
               {f.variables.map((v) => (
                 <span key={v.name} title={v.meaning} className="mr-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700">{`{${v.name}}`}</span>
               ))}
@@ -424,14 +425,14 @@ export const TrainingPropertiesView: React.FC = () => {
             {fileNameProblem(f) && <p className="mt-1 text-xs text-red-600" role="alert">{fileNameProblem(f)}</p>}
           </FormSection>
         ))}
-        <p className="text-xs text-slate-500">Accents are taken out, a blank becomes "-", and the characters \ / : * ? " &lt; &gt; | never appear in a name. A name is at most 120 characters. An empty pattern brings back the default.</p>
+        <p className="text-xs text-slate-500">{tr("Accents are taken out, a blank becomes \"-\", and the characters \\ / : * ? \" &lt; &gt; | never appear in a name. A name is at most 120 characters. An empty pattern brings back the default.")}</p>
       </div>
     ),
     retention: (
-      <FormSection title="Records Retention" icon={<Archive className="h-4 w-4" />}>
+      <FormSection title={tr("Records Retention")} icon={<Archive className="h-4 w-4" />}>
         <NumberField
-          label="Years to keep records after the employee leaves"
-          hint="Training records are kept at least 10 years after the employee leaves."
+          label={tr("Years to keep records after the employee leaves")}
+          hint={tr("Training records are kept at least 10 years after the employee leaves.")}
           value={settings.retentionYearsAfterLeaving}
           min={10}
           max={100}
@@ -446,12 +447,12 @@ export const TrainingPropertiesView: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Training Properties"
+        title={tr("Training Properties")}
         breadcrumbItems={trainingProperties(go)}
         actions={
           settingTab && canManage && settings ? (
             <Button size="sm" variant="outline-emerald" disabled={!isDirty || saving || hasFileNameProblem} onClick={() => setShowSaveModal(true)}>
-              Save
+              {tr("Save")}
             </Button>
           ) : undefined
         }
@@ -468,15 +469,15 @@ export const TrainingPropertiesView: React.FC = () => {
             )}
             {!loading && error && (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
-                <p className="text-sm font-medium text-amber-800">Unable to load training properties.</p>
+                <p className="text-sm font-medium text-amber-800">{tr("Unable to load training properties.")}</p>
                 <Button size="sm" variant="outline" onClick={load}>
-                  Retry
+                  {tr("Retry")}
                 </Button>
               </div>
             )}
             {!loading && !error && settings && (
               <div className="space-y-4">
-                <p className="text-sm text-slate-600">{settingTab.about} Changes made in any tab are saved together with Save.</p>
+                <p className="text-sm text-slate-600">{tr(settingTab.about)} {tr("Changes made in any tab are saved together with Save.")}</p>
                 {panels[settingTab.id]}
               </div>
             )}
@@ -492,8 +493,8 @@ export const TrainingPropertiesView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={() => { void save(); }}
         type="confirm"
-        title="Save Training Properties?"
-        description="You are about to save changes to Training Properties. The previous and new values will be recorded in the Audit Trail."
+        title={tr("Save Training Properties?")}
+        description={tr("You are about to save changes to Training Properties. The previous and new values will be recorded in the Audit Trail.")}
         confirmText="Save"
         cancelText="Cancel"
         isLoading={saving}

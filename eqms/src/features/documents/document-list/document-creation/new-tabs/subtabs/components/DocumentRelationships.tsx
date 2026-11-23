@@ -13,6 +13,7 @@ import { documentApi } from "@/services/api/documents";
 import type { DocumentListItem } from "@/features/documents/document-list/types";
 import { ParentDocument, RelatedDocument } from "../types";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const mapDocumentListItemToRelation = (item: DocumentListItem): RelatedDocument => ({
   id: item.id,
@@ -566,7 +567,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
   const DocumentPreviewPanel = ({ docId }: { docId: string | null }) => {
     if (!docId) return (
       <div className="mt-6 p-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
-        <p className="text-xs">Click a document to view details</p>
+        <p className="text-xs">{tr("Click a document to view details")}</p>
       </div>
     );
 
@@ -578,16 +579,16 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
     if (!doc) return null;
 
     const infoItems = [
-      { label: "Document Number", value: doc.documentNumber || "N/A" },
+      { label: tr("Document Number"), value: doc.documentNumber || "N/A" },
       { label: "Created", value: doc.created || "N/A" },
       { label: "Opened By", value: doc.openedBy || "N/A" },
-      { label: "Document Name", value: doc.documentName, fullWidth: true },
+      { label: tr("Document Name"), value: doc.documentName, fullWidth: true },
       { label: "State", value: <StatusBadge status={(doc.status?.toLowerCase() as any) || 'draft'} size="xs" /> },
-      { label: "Document Type", value: doc.type },
+      { label: tr("Document Type"), value: doc.type },
       { label: "Department", value: doc.department || "N/A" },
       { label: "Author", value: doc.author || doc.authorCoAuthor || "N/A" },
-      { label: "Effective Date", value: doc.effectiveDate || "N/A" },
-      { label: "Valid Until", value: doc.validUntil || "N/A" },
+      { label: tr("Effective Date"), value: doc.effectiveDate || "N/A" },
+      { label: tr("Valid Until"), value: doc.validUntil || "N/A" },
     ];
 
     return (
@@ -614,8 +615,8 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
       <FormModal
         isOpen={isParentModalOpen}
         onClose={handleCancelCorrelated}
-        title="Select Correlated Documents"
-        description="Link peer-level documents (e.g., Procurement SOP ↔ Inventory Control SOP)"
+        title={tr("Select Correlated Documents")}
+        description={tr("Link peer-level documents (e.g., Procurement SOP ↔ Inventory Control SOP)")}
         size="2xl"
         className="max-w-[95%] sm:max-w-3xl"
         showCancel={true}
@@ -627,14 +628,14 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-2 lg:gap-6">
             {/* Available Documents */}
             <div className="flex flex-col min-w-0">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">Available Documents</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">{tr("Available Documents")}</h3>
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={correlatedSearchQuery}
                   onChange={(e) => setCorrelatedSearchQuery(e.target.value)}
-                  placeholder="Search by Document Number or Title..."
+                  placeholder={tr("Search by Document Number or Title...")}
                   className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                 />
               </div>
@@ -646,7 +647,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 {isCorrelatedLoading ? (
                   <div className="flex flex-col items-center justify-center h-full text-sm text-slate-400 py-10">
                     <FileText className="h-8 w-8 mb-2 opacity-10 animate-pulse" />
-                    Loading documents...
+                    {tr("Loading documents...")}
                   </div>
                 ) : filteredAvailableCorrelatedDocs.length > 0 ? (
                   <div className="divide-y divide-slate-100">
@@ -706,14 +707,14 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
 
             {/* Selected Documents */}
             <div className="flex flex-col min-w-0">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">Selected Documents</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">{tr("Selected Documents")}</h3>
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={selectedCorrelatedSearchQuery}
                   onChange={(e) => setSelectedCorrelatedSearchQuery(e.target.value)}
-                  placeholder="Search in selected..."
+                  placeholder={tr("Search in selected...")}
                   className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                 />
               </div>
@@ -754,7 +755,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-60">
                     <Check className="h-8 w-8 mb-2 opacity-10" />
-                    <span className="text-xs">No documents selected</span>
+                    <span className="text-xs">{tr("No documents selected")}</span>
                   </div>
                 )}
               </div>
@@ -769,8 +770,8 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
       <FormModal
         isOpen={isRelatedModalOpen}
         onClose={handleCancelRelated}
-        title="Select Related Documents"
-        description="Link subordinate documents (Forms, Annexes, Work Instructions, etc.)"
+        title={tr("Select Related Documents")}
+        description={tr("Link subordinate documents (Forms, Annexes, Work Instructions, etc.)")}
         size="2xl"
         className="max-w-[95%] sm:max-w-3xl"
         showCancel={true}
@@ -783,7 +784,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
             {/* Available Documents */}
             <div className="flex flex-col min-w-0">
               <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">
-                Available Documents
+                {tr("Available Documents")}
               </h3>
 
               <div className="relative mb-3">
@@ -792,7 +793,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Document Number or Title..."
+                  placeholder={tr("Search by Document Number or Title...")}
                   className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                 />
               </div>
@@ -805,7 +806,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 {isRelatedLoading ? (
                   <div className="flex flex-col items-center justify-center h-full text-sm text-slate-400 py-10">
                     <FileText className="h-8 w-8 mb-2 opacity-10 animate-pulse" />
-                    Loading documents...
+                    {tr("Loading documents...")}
                   </div>
                 ) : filteredAvailableDocs.length > 0 ? (
                   <div className="divide-y divide-slate-100">
@@ -851,7 +852,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 onClick={handleMoveToSelected}
                 disabled={selectedAvailableIds.length === 0}
                 className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                title="Move to selected"
+                title={tr("Move to selected")}
               >
                 <ChevronRight className="h-5 w-5 rotate-90 lg:rotate-0" />
               </button>
@@ -859,7 +860,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 onClick={handleMoveToAvailable}
                 disabled={selectedDocIds.length === 0}
                 className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                title="Move to available"
+                title={tr("Move to available")}
               >
                 <ChevronLeft className="h-5 w-5 rotate-90 lg:rotate-0" />
               </button>
@@ -868,7 +869,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
             {/* Selected Documents */}
             <div className="flex flex-col min-w-0">
               <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">
-                Selected Documents
+                {tr("Selected Documents")}
               </h3>
 
               <div className="relative mb-3">
@@ -877,7 +878,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                   type="text"
                   value={selectedSearchQuery}
                   onChange={(e) => setSelectedSearchQuery(e.target.value)}
-                  placeholder="Search in selected..."
+                  placeholder={tr("Search in selected...")}
                   className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                 />
               </div>
@@ -919,7 +920,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-60">
                     <Check className="h-8 w-8 mb-2 opacity-10" />
-                    <span className="text-xs">No documents selected</span>
+                    <span className="text-xs">{tr("No documents selected")}</span>
                   </div>
                 )}
               </div>

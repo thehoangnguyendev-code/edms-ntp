@@ -3,6 +3,7 @@ import { TemplateNoTrainingNotice } from "./TemplateNoTrainingNotice";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
 import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
+import { tr } from "@/i18n";
 
 export interface TrainingInformationValue {
   trainingPlannedDate?: string | null;
@@ -194,55 +195,55 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {shownNumber && (
           <>
-            <FormField label="Training Number">
+            <FormField label={tr("Training Number")}>
               <Input type="text" value={shownNumber ?? ""} disabled readOnly />
             </FormField>
-            <FormField label="Training Status">
+            <FormField label={tr("Training Status")}>
               <Input type="text" value={shownStatus} disabled readOnly />
             </FormField>
             <div className="hidden xl:block" />
           </>
         )}
         <DateTimePicker
-          label="Training Planned Date"
+          label={tr("Training Planned Date")}
           value={trainingPlannedDate}
           onChange={handlePlannedDateChange}
-          placeholder="Select planned date"
+          placeholder={tr("Select planned date")}
           disabled={isReadOnly || !canEditPlannedDate}
           error={localErrors.trainingPlannedDate}
         />
 
         <DateTimePicker
-          label="Training Period End Date"
+          label={tr("Training Period End Date")}
           value={trainingPeriodEndDate}
           onChange={setTrainingPeriodEndDate}
-          placeholder="Select end date"
+          placeholder={tr("Select end date")}
           disabled={isReadOnly}
         />
 
         <DateTimePicker
-          label="Training Completion Date"
+          label={tr("Training Completion Date")}
           value={trainingCompletionDate}
           onChange={handleCompletionDateChange}
-          placeholder="Select completion date"
+          placeholder={tr("Select completion date")}
           disabled={isReadOnly || !canEditCompletionDate}
         />
       </div>
 
       <p className="text-xs text-slate-500">
-        Training Planned Date is the start of the training period (the day the document is approved), not the day the training is held; the period ends after the Training Period (Days). The Training Completion Date is the day the training was held.
+        {tr("Training Planned Date is the start of the training period (the day the document is approved), not the day the training is held; the period ends after the Training Period (Days). The Training Completion Date is the day the training was held.")}
       </p>
 
       {!isReadOnly && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] sm:text-xs text-slate-600 leading-relaxed space-y-1.5">
           <p>
-            <span className="font-medium text-slate-700">Training Planned Date:</span> editable only while the revision is in Pending Training and your assigned permissions allow training-plan management.
+              <span className="font-medium text-slate-700">{tr("Training Planned Date:")}</span> {tr("editable only while the revision is in Pending Training and your assigned permissions allow training-plan management.")}
           </p>
           <p>
-            <span className="font-medium text-slate-700">Training Period End Date:</span> auto-calculated from Training Planned Date + Training Period (Days) and always read-only.
+              <span className="font-medium text-slate-700">{tr("Training Period End Date:")}</span> {tr("auto-calculated from Training Planned Date + Training Period (Days) and always read-only.")}
           </p>
           <p>
-            <span className="font-medium text-slate-700">Training Completion Date:</span> editable only while Pending Training and your assigned permissions allow training completion; if left blank, the server may use the current date on complete.
+            <span className="font-medium text-slate-700">{tr("Training Completion Date:")}</span> {tr("editable only while Pending Training and your assigned permissions allow training completion; if left blank, the server may use the current date on complete.")}
           </p>
         </div>
       )}

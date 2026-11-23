@@ -24,14 +24,15 @@ import type { PermissionGroup } from "@/features/security-authorization/shared/p
 import { formatDateUS } from "@/utils/format";
 import { IconChartColumn } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { tr } from "@/i18n";
 
 type TabId = "general" | "permissions" | "access-profiles" | "audit";
 
 const TABS: TabItem[] = [
   { id: "general",         label: "General" },
   { id: "permissions",     label: "Permissions" },
-  { id: "access-profiles", label: "Assigned Access Profiles" },
-  { id: "audit",           label: "Audit Trail" },
+  { id: "access-profiles", label: tr("Assigned Access Profiles") },
+  { id: "audit",           label: tr("Audit Trail") },
 ];
 
 const getModuleLabels = (permissionSet: PermissionSetResponse, groups: PermissionGroup[]) => {
@@ -122,9 +123,9 @@ export const PermissionSetDetailView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Shared Permission Set Details"
+          title={tr("Shared Permission Set Details")}
           breadcrumbItems={permissionSetDetailBreadcrumb(navigate)}
-          actions={<Button size="sm" variant="outline-emerald" onClick={handleBack}>Back</Button>}
+          actions={<Button size="sm" variant="outline-emerald" onClick={handleBack}>{tr("Back")}</Button>}
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex items-center justify-center">
           <div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent" />
@@ -137,15 +138,15 @@ export const PermissionSetDetailView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Shared Permission Set Details"
+          title={tr("Shared Permission Set Details")}
           breadcrumbItems={permissionSetDetailBreadcrumb(navigate)}
-          actions={<Button size="sm" variant="outline-emerald" onClick={handleBack}>Back</Button>}
+          actions={<Button size="sm" variant="outline-emerald" onClick={handleBack}>{tr("Back")}</Button>}
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex flex-col items-center text-center gap-3">
           <KeyRound className="h-12 w-12 text-slate-300" />
-          <p className="text-sm font-medium text-slate-700">Shared permission set not found</p>
-          <p className="text-xs text-slate-400">The requested shared permission set does not exist or has been deleted.</p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={handleBack}>Back to Shared Permission Sets</Button>
+          <p className="text-sm font-medium text-slate-700">{tr("Shared permission set not found")}</p>
+          <p className="text-xs text-slate-400">{tr("The requested shared permission set does not exist or has been deleted.")}</p>
+          <Button variant="outline" size="sm" className="mt-2" onClick={handleBack}>{tr("Back to Shared Permission Sets")}</Button>
         </div>
       </div>
     );
@@ -156,12 +157,12 @@ export const PermissionSetDetailView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Shared Permission Set Details"
+        title={tr("Shared Permission Set Details")}
         breadcrumbItems={permissionSetDetailBreadcrumb(navigate)}
         actions={
           <>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={handleBack}>
-              Back
+              {tr("Back")}
             </Button>
             {!permissionSet.system && (
               <Button
@@ -170,7 +171,7 @@ export const PermissionSetDetailView: React.FC = () => {
                 className="whitespace-nowrap gap-2"
                 onClick={() => navigate(`${ROUTES.SECURITY.PERMISSION_SETS}/${id}/edit`)}
               >
-                Edit
+                {tr("Edit")}
               </Button>
             )}
             <Button
@@ -179,7 +180,7 @@ export const PermissionSetDetailView: React.FC = () => {
               className="whitespace-nowrap gap-2"
               onClick={() => setCloneModal(true)}
             >
-              Clone
+              {tr("Clone")}
             </Button>
           </>
         }
@@ -199,7 +200,7 @@ export const PermissionSetDetailView: React.FC = () => {
               <Badge color={permissionSet.system ? "blue" : "slate"} size="xs">
                 {permissionSet.system ? "System" : "Custom"}
               </Badge>
-              {permissionSet.testData ? <Badge color="amber" size="xs">Test</Badge> : null}
+              {permissionSet.testData ? <Badge color="amber" size="xs">{tr("Test")}</Badge> : null}
               <Badge color={flagColor(permissionSet.active)} size="xs" >
                 {permissionSet.active ? "Active" : "Inactive"}
               </Badge>
@@ -214,7 +215,7 @@ export const PermissionSetDetailView: React.FC = () => {
               {[
                 { icon: <Grid3X3 className="h-4 w-4 text-emerald-600" />, label: "Modules", value: modules.length },
                 { icon: <KeyRound className="h-4 w-4 text-emerald-600" />, label: "Permissions", value: permissionSet.permissionCount },
-                { icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />, label: "Access Profiles", value: assignedProfiles.length },
+                { icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />, label: tr("Access Profiles"), value: assignedProfiles.length },
                 { icon: <Users className="h-4 w-4 text-emerald-600" />, label: "Users", value: assignedUserCount },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="flex min-w-[112px] flex-col items-center rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 shadow-sm">
@@ -243,57 +244,57 @@ export const PermissionSetDetailView: React.FC = () => {
           {/* ── General ─────────────────────────────────────────────────── */}
           {activeTab === "general" && (
             <div className="space-y-4">
-              <FormSection title="Basic Information" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+              <FormSection title={tr("Basic Information")} icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Name</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Name")}</p>
                     <p className="text-sm font-semibold text-slate-900">{permissionSet.name}</p>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Code</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Code")}</p>
                     <p className="text-sm text-slate-700">{permissionSet.code}</p>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Type</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Type")}</p>
                     <Badge color={permissionSet.system ? "blue" : "slate"} size="sm">
                       {permissionSet.system ? "System" : "Custom"}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Status</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Status")}</p>
                     <Badge color={flagColor(permissionSet.active)} size="sm" >
                       {permissionSet.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Category</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Category")}</p>
                     <p className="text-sm text-slate-700">{category}</p>
                   </div>
                   <div className="sm:col-span-2">
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Description</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Description")}</p>
                     <p className="text-sm text-slate-700 whitespace-pre-line">
-                      {permissionSet.description || <span className="text-slate-400">No description provided.</span>}
+                      {permissionSet.description || <span className="text-slate-400">{tr("No description provided.")}</span>}
                     </p>
                   </div>
                 </div>
               </FormSection>
 
-              <FormSection title="Metadata" icon={<IconChartColumn className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+              <FormSection title={tr("Metadata")} icon={<IconChartColumn className="h-4 w-4" />} contentClassName="p-4 md:p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Created By</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Created By")}</p>
                     <p className="text-sm text-slate-700">—</p>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Created Date</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Created Date")}</p>
                     <p className="text-sm text-slate-700">{safeDate(permissionSet.createdAt)}</p>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Updated By</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Updated By")}</p>
                     <p className="text-sm text-slate-700">—</p>
                   </div>
                   <div>
-                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">Updated Date</p>
+                    <p className="text-2xs uppercase tracking-wide text-slate-400 mb-1">{tr("Updated Date")}</p>
                     <p className="text-sm text-slate-700">{safeDate(permissionSet.updatedAt)}</p>
                   </div>
                 </div>
@@ -318,9 +319,9 @@ export const PermissionSetDetailView: React.FC = () => {
           {activeTab === "access-profiles" && (
             <div className="space-y-4">
               <FormSection
-                title="Assigned Access Profiles"
+                title={tr("Assigned Access Profiles")}
                 icon={<Users className="h-4 w-4" />}
-                description="Access Profiles are managed from the Access Profiles module."
+                description={tr("Access Profiles are managed from the Access Profiles module.")}
                 contentClassName="p-4 md:p-5"
               >
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between gap-4">
@@ -342,7 +343,7 @@ export const PermissionSetDetailView: React.FC = () => {
                     onClick={() => navigate(ROUTES.SECURITY.ACCESS_PROFILES)}
                     className="shrink-0 gap-1.5"
                   >
-                    Manage
+                    {tr("Manage")}
                   </Button>
                 </div>
               </FormSection>
@@ -366,15 +367,15 @@ export const PermissionSetDetailView: React.FC = () => {
                   <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                     {assignedProfilesLoading ? (
                       <TableMarkup.Row>
-                        <TableMarkup.Cell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Loading…</TableMarkup.Cell>
+                        <TableMarkup.Cell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">{tr("Loading…")}</TableMarkup.Cell>
                       </TableMarkup.Row>
                     ) : assignedProfiles.length === 0 ? (
                       <TableMarkup.Row>
                         <TableMarkup.Cell colSpan={6} className="p-0">
                           <TableEmptyState
                            
-                            title="No Access Profiles assigned"
-                            description="Assign this permission set to an Access Profile from the Access Profiles module."
+                            title={tr("No Access Profiles assigned")}
+                            description={tr("Assign this permission set to an Access Profile from the Access Profiles module.")}
                           />
                         </TableMarkup.Cell>
                       </TableMarkup.Row>

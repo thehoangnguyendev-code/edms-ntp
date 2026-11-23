@@ -21,6 +21,7 @@ import { ConfigHistory } from './ConfigHistory';
 import { GENERAL_TABS, changedGeneralTabs, revertGeneralTab, type GeneralTabId } from './generalTabs';
 import { DEFAULT_MENU_COLOR } from '@/config/menu-colors';
 import type { PageBackground } from '@/config/page-background';
+import { tr, trFormat } from "@/i18n";
 
 interface GeneralTabProps {
   config: GeneralConfig;
@@ -141,12 +142,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   const selectBrandImage = async (file: File | undefined, key: 'systemLogo' | 'systemSidebarCollapsedLogo' | 'systemFavicon', maxBytes: number) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast({ type: 'error', title: 'Invalid file', message: 'Please select an image file.' });
+      showToast({ type: 'error', title: tr('Invalid file'), message: 'Please select an image file.' });
       return;
     }
     if (file.size > maxBytes) {
       const label = key === 'systemFavicon' ? 'favicon' : key === 'systemSidebarCollapsedLogo' ? 'collapsed sidebar logo' : 'logo';
-      showToast({ type: 'error', title: 'File too large', message: `The ${label} must be smaller than ${Math.round(maxBytes / 1024)} KB.` });
+      showToast({ type: 'error', title: tr('File too large'), message: `The ${label} must be smaller than ${Math.round(maxBytes / 1024)} KB.` });
       return;
     }
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -173,43 +174,43 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div className="space-y-6">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">System Identity</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("System Identity")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    System Name (Internal)
+                    {tr("System Name (Internal)")}
                   </label>
                   <input
                     type="text"
                     value={config.systemName}
                     onChange={(e) => handleChange('systemName',e.target.value)}
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="EQMS Enterprise"
+                    placeholder={tr("EQMS Enterprise")}
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Internal system identifier
+                    {tr("Internal system identifier")}
                   </p>
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Display Name (Browser Tab)
+                    {tr("Display Name (Browser Tab)")}
                   </label>
                   <input
                     type="text"
                     value={config.systemDisplayName}
                     onChange={(e) => handleChange('systemDisplayName',e.target.value)}
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="EQMS - Quality Management System"
+                    placeholder={tr("EQMS - Quality Management System")}
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Displayed in browser tab title
+                    {tr("Displayed in browser tab title")}
                   </p>
                 </div>
               </div>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Header</h3>
-              <label htmlFor="system-header-title" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Header Title (Dashboard)</label>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Header")}</h3>
+              <label htmlFor="system-header-title" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Header Title (Dashboard)")}</label>
               <input
                 id="system-header-title"
                 type="text"
@@ -220,14 +221,14 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 placeholder={DEFAULT_SYSTEM_HEADER_TITLE}
               />
               <p className="mt-1 text-xs text-slate-500">
-                Shown in the top bar of the Dashboard on desktop, and stays there while the page is scrolled. Leave empty to use “{DEFAULT_SYSTEM_HEADER_TITLE}”.
+                {trFormat("Shown in the top bar of the Dashboard on desktop, and stays there while the page is scrolled. Leave empty to use “{title}”.", { title: DEFAULT_SYSTEM_HEADER_TITLE })}
               </p>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Footer</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Footer")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="systemFooterLeft" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Left Footer</label>
+                  <label htmlFor="systemFooterLeft" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Left Footer")}</label>
                   <input
                     id="systemFooterLeft"
                     type="text"
@@ -235,12 +236,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     onChange={(e) => handleChange('systemFooterLeft', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
                     maxLength={500}
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="© {year} Your Company. All rights reserved."
+                    placeholder={tr("© {year} Your Company. All rights reserved.")}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Shown at the left of the footer. Use <code>{'{year}'}</code> to insert the current year.</p>
+                  <p className="mt-1 text-xs text-slate-500">{trFormat("Shown at the left of the footer. Use {year} to insert the current year.", { year: "{year}" })}</p>
                 </div>
                 <div>
-                  <label htmlFor="systemFooterRight" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Right Footer</label>
+                  <label htmlFor="systemFooterRight" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Right Footer")}</label>
                   <input
                     id="systemFooterRight"
                     type="text"
@@ -248,60 +249,60 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     onChange={(e) => handleChange('systemFooterRight', e.target.value.replace(/[\r\n]+/g, ' ').slice(0, 500))}
                     maxLength={500}
                     className="w-full h-9 px-3 text-sm text-right border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="e.g. Version, hotline or support e-mail"
+                    placeholder={tr("e.g. Version, hotline or support e-mail")}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Always shown at the right of the footer. Leave empty to show nothing there.</p>
+                  <p className="mt-1 text-xs text-slate-500">{tr("Always shown at the right of the footer. Leave empty to show nothing there.")}</p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
                 <label className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
                   <Switch checked={config.footerShowOnDesktop ?? true} onChange={(on) => handleChange('footerShowOnDesktop', on)} />
-                  Show footer on Desktop and Tablet
+                  {tr("Show footer on Desktop and Tablet")}
                 </label>
                 <label className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 cursor-pointer select-none">
                   <Switch checked={config.footerShowOnMobile ?? false} onChange={(on) => handleChange('footerShowOnMobile', on)} />
-                  Show footer on Mobile
+                  {tr("Show footer on Mobile")}
                 </label>
               </div>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Logos & Browser Icon</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Logos & Browser Icon")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Application Logo</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Application Logo")}</label>
                   <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                     <BrandImagePreview src={config.systemLogo} alt="Application logo preview" variant="logo" />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInputRef.current?.click()}>Upload Logo</Button>
-                      {config.systemLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemLogo','')}>Reset</Button>}
+                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInputRef.current?.click()}>{tr("Upload Logo")}</Button>
+                      {config.systemLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemLogo','')}>{tr("Reset")}</Button>}
                     </div>
                   </div>
                   <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={(e) => { void selectBrandImage(e.target.files?.[0],'systemLogo',5*1024*1024); e.currentTarget.value=''; }} />
-                  <p className="text-xs text-slate-500 mt-1">Used in the sidebar and all authentication screens. PNG, JPG, SVG or WebP; max 5 MB.</p>
+                  <p className="text-xs text-slate-500 mt-1">{tr("Used in the sidebar and all authentication screens. PNG, JPG, SVG or WebP; max 5 MB.")}</p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Collapsed Sidebar Logo</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Collapsed Sidebar Logo")}</label>
                   <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                     <BrandImagePreview src={collapsedSidebarLogo} alt="Collapsed sidebar logo preview" variant="sidebar" />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => collapsedSidebarLogoInputRef.current?.click()}>Upload Compact Logo</Button>
-                      {collapsedSidebarLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemSidebarCollapsedLogo','')}>Reset</Button>}
+                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => collapsedSidebarLogoInputRef.current?.click()}>{tr("Upload Compact Logo")}</Button>
+                      {collapsedSidebarLogo&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemSidebarCollapsedLogo','')}>{tr("Reset")}</Button>}
                     </div>
                   </div>
                   <input ref={collapsedSidebarLogoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={(e) => { void selectBrandImage(e.target.files?.[0],'systemSidebarCollapsedLogo',5*1024*1024); e.currentTarget.value=''; }} />
-                  <p className="text-xs text-slate-500 mt-1">Used only when the sidebar is collapsed. Square PNG, JPG, SVG or WebP; max 5 MB. Falls back to Application Logo when not configured.</p>
+                  <p className="text-xs text-slate-500 mt-1">{tr("Used only when the sidebar is collapsed. Square PNG, JPG, SVG or WebP; max 5 MB. Falls back to Application Logo when not configured.")}</p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Browser Tab Icon (Favicon)</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Browser Tab Icon (Favicon)")}</label>
                   <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
                     <BrandImagePreview src={config.systemFavicon} alt="Favicon preview" variant="favicon" />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => faviconInputRef.current?.click()}>Upload Favicon</Button>
-                      {config.systemFavicon&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemFavicon','')}>Reset</Button>}
+                      <Button type="button" size="sm" variant="outline-emerald" onClick={() => faviconInputRef.current?.click()}>{tr("Upload Favicon")}</Button>
+                      {config.systemFavicon&&<Button type="button" size="sm" variant="ghost" onClick={() => handleChange('systemFavicon','')}>{tr("Reset")}</Button>}
                     </div>
                   </div>
                   <input ref={faviconInputRef} type="file" accept="image/png,image/svg+xml,image/x-icon" className="hidden" onChange={(e) => { void selectBrandImage(e.target.files?.[0],'systemFavicon',1024*1024); e.currentTarget.value=''; }} />
-                  <p className="text-xs text-slate-500 mt-1">Used in the browser tab. Square PNG, SVG or ICO; max 1 MB.</p>
+                  <p className="text-xs text-slate-500 mt-1">{tr("Used in the browser tab. Square PNG, SVG or ICO; max 1 MB.")}</p>
                 </div>
               </div>
             </div>
@@ -314,16 +315,16 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div className="space-y-6">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Sign-in Screen</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Sign-in Screen")}</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Select
-                  label="Sign-in screen layout"
+                  label={tr("Sign-in screen layout")}
                   value={config.appearance?.loginLayout ?? 'CLASSIC'}
                   enableSearch={false}
                   onChange={(val) => handleAppearanceChange('loginLayout', val)}
                   options={[
                     { label: 'Classic', value: 'CLASSIC' },
-                    { label: 'Split with product panel', value: 'SPLIT' },
+                    { label: tr('Split with product panel'), value: 'SPLIT' },
                   ]}
                 />
               </div>
@@ -332,9 +333,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               )}
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Authentication Background</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Authentication Background")}</h3>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <PageBackgroundEditor title="Authentication" allowImage value={config.appearance?.authBackground} onChange={(value) => handleAppearanceChange('authBackground', value)} />
+                <PageBackgroundEditor title={tr("Authentication")} allowImage value={config.appearance?.authBackground} onChange={(value) => handleAppearanceChange('authBackground', value)} />
               </div>
             </div>
           </div>
@@ -345,71 +346,71 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div className="space-y-6">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Sidebar</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Sidebar")}</h3>
               <Checkbox
                 id="showSidebarUserProfile"
-                label="Show signed-in user profile at the bottom of the sidebar"
+                label={tr("Show signed-in user profile at the bottom of the sidebar")}
                 checked={config.appearance?.showSidebarUserProfile??false}
                 onChange={(checked) => handleAppearanceChange('showSidebarUserProfile',checked)}
               />
-              <FieldHint indent className="mt-1">Shows the user&apos;s avatar, name and position. Collapsed sidebar: avatar only.</FieldHint>
+              <FieldHint indent className="mt-1">{tr("Shows the user&apos;s avatar, name and position. Collapsed sidebar: avatar only.")}</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Desktop Filters</h3>
-              <Checkbox id="compactDesktopFilters" label="Use compact desktop filters"
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Desktop Filters")}</h3>
+              <Checkbox id="compactDesktopFilters" label={tr("Use compact desktop filters")}
                 checked={config.appearance?.compactDesktopFilters??false}
                 onChange={(checked) => handleAppearanceChange('compactDesktopFilters',checked)} />
-              <FieldHint indent className="mt-1">Shows a Search box and a Filter button. Pick a field, set its values, then click Apply. Desktop only. Applies after Save.</FieldHint>
+              <FieldHint indent className="mt-1">{tr("Shows a Search box and a Filter button. Pick a field, set its values, then click Apply. Desktop only. Applies after Save.")}</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Record Lists</h3>
-              <Checkbox id="alternatingRecordColors" label="Use alternating record colors"
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Record Lists")}</h3>
+              <Checkbox id="alternatingRecordColors" label={tr("Use alternating record colors")}
                 checked={config.appearance?.alternatingRecordColors ?? false}
                 onChange={(checked) => handleAppearanceChange('alternatingRecordColors', checked)} />
-              <FieldHint indent className="mt-1">Shades every other record. Status and selection colours stay on top. Applies after Save.</FieldHint>
+              <FieldHint indent className="mt-1">{tr("Shades every other record. Status and selection colours stay on top. Applies after Save.")}</FieldHint>
               <div className="ml-7 mt-3 max-w-xs">
-                <ColorPickerInput label="Alternating row color" value={config.appearance?.alternatingRecordColor ?? DEFAULT_ALTERNATING_RECORD_COLOR}
+                <ColorPickerInput label={tr("Alternating row color")} value={config.appearance?.alternatingRecordColor ?? DEFAULT_ALTERNATING_RECORD_COLOR}
                   onChange={(value) => handleAppearanceChange('alternatingRecordColor', value)} disabled={!config.appearance?.alternatingRecordColors} />
               </div>
               <div className="mt-4">
-                <Checkbox id="tableColumnDividers" label="Show vertical column dividers"
+                <Checkbox id="tableColumnDividers" label={tr("Show vertical column dividers")}
                   checked={config.appearance?.tableColumnDividers ?? false}
                   onChange={(checked) => handleAppearanceChange('tableColumnDividers', checked)} />
-                <FieldHint indent className="mt-1">Adds a vertical line between table columns. Applies after Save.</FieldHint>
+                <FieldHint indent className="mt-1">{tr("Adds a vertical line between table columns. Applies after Save.")}</FieldHint>
               </div>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Dropdown Menus</h3>
-              <p className="mb-3 text-xs text-slate-500">Colours of the text and of the icons in the items of every dropdown (action) menu, for every user. A red item (such as Terminate or Delete) keeps its own colour. Applies after Save.</p>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Dropdown Menus")}</h3>
+              <p className="mb-3 text-xs text-slate-500">{tr("Colours of the text and of the icons in the items of every dropdown (action) menu, for every user. A red item (such as Terminate or Delete) keeps its own colour. Applies after Save.")}</p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {(['menuTextColor', 'menuIconColor'] as const).map((field) => (
                   <div key={field} className="flex items-end gap-2">
                     <div className="min-w-0 flex-1">
-                      <ColorPickerInput label={field === 'menuTextColor' ? 'Menu text color' : 'Menu icon color'} value={config.appearance?.[field] || DEFAULT_MENU_COLOR}
+                      <ColorPickerInput label={field === 'menuTextColor' ? tr('Menu text color') : tr('Menu icon color')} value={config.appearance?.[field] || DEFAULT_MENU_COLOR}
                         onChange={(value) => handleAppearanceChange(field, value)} />
                     </div>
-                    <Button type="button" size="sm" variant="outline" disabled={!config.appearance?.[field]} onClick={() => handleAppearanceChange(field, '')}>Use default</Button>
+                    <Button type="button" size="sm" variant="outline" disabled={!config.appearance?.[field]} onClick={() => handleAppearanceChange(field, '')}>{tr("Use default")}</Button>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-sm" aria-label="Menu preview">
+              <div className="mt-3 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-sm" aria-label={tr("Menu preview")}>
                 {['View/Edit Profile', 'Reset Password', 'Suspend Account'].map((label) => (
                   <div key={label} className="flex items-center gap-2 px-3 py-2 text-xs font-medium" style={{ color: config.appearance?.menuTextColor || DEFAULT_MENU_COLOR }}>
                     <span className="h-4 w-4 rounded-sm border-2" style={{ borderColor: config.appearance?.menuIconColor || DEFAULT_MENU_COLOR }} aria-hidden="true" />
-                    {label}
+                    {tr(label)}
                   </div>
                 ))}
                 <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-500">
                   <span className="h-4 w-4 rounded-sm border-2 border-red-500" aria-hidden="true" />
-                  Terminate Account
+                  {tr("Terminate Account")}
                 </div>
               </div>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Page Backgrounds</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Page Backgrounds")}</h3>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <PageBackgroundEditor title="Main Layout" value={config.appearance?.mainBackground} onChange={(value) => handleAppearanceChange('mainBackground', value)} />
-                <PageBackgroundEditor title="Knowledge Base" value={config.appearance?.knowledgeBackground} onChange={(value) => handleAppearanceChange('knowledgeBackground', value)} />
+                <PageBackgroundEditor title={tr("Main Layout")} value={config.appearance?.mainBackground} onChange={(value) => handleAppearanceChange('mainBackground', value)} />
+                <PageBackgroundEditor title={tr("Knowledge Base")} value={config.appearance?.knowledgeBackground} onChange={(value) => handleAppearanceChange('knowledgeBackground', value)} />
               </div>
             </div>
           </div>
@@ -420,26 +421,26 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
           <div className="space-y-6">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Training Management</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Training Management")}</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Select
-                  label="Training Materials layout"
+                  label={tr("Training Materials layout")}
                   value={config.appearance?.trainingMaterialsLayout ?? 'TABLE'}
                   enableSearch={false}
                   onChange={(val) => handleAppearanceChange('trainingMaterialsLayout', val)}
                   options={[
                     { label: 'Table', value: 'TABLE' },
-                    { label: 'Tiles with a drop zone', value: 'TILES' },
+                    { label: tr('Tiles with a drop zone'), value: 'TILES' },
                   ]}
                 />
               </div>
-              <FieldHint className="mt-1">How training materials are shown. Table is a list with actions on each row; Tiles is a drop zone with a card per material. Applies to everyone after Save.</FieldHint>
+              <FieldHint className="mt-1">{tr("How training materials are shown. Table is a list with actions on each row; Tiles is a drop zone with a card per material. Applies to everyone after Save.")}</FieldHint>
             </div>
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Knowledge Base</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Knowledge Base")}</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Select
-                  label="Folder names in the layout"
+                  label={tr("Folder names in the layout")}
                   value={config.appearance?.knowledgeFolderNames ?? 'FULL'}
                   enableSearch={false}
                   onChange={(val) => handleAppearanceChange('knowledgeFolderNames', val)}
@@ -449,7 +450,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                   ]}
                 />
                 <Select
-                  label="Folder names in the sidebar"
+                  label={tr("Folder names in the sidebar")}
                   value={config.appearance?.knowledgeSidebarFolderNames ?? config.appearance?.knowledgeFolderNames ?? 'FULL'}
                   enableSearch={false}
                   onChange={(val) => handleAppearanceChange('knowledgeSidebarFolderNames', val)}
@@ -462,11 +463,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               <div className="mt-4">
                 <Checkbox
                   id="knowledgeOpenInNewTab"
-                  label="Open the Knowledge Base in a new browser tab"
+                  label={tr("Open the Knowledge Base in a new browser tab")}
                   checked={config.appearance?.knowledgeOpenInNewTab ?? true}
                   onChange={(checked) => handleAppearanceChange('knowledgeOpenInNewTab', checked)}
                 />
-                <FieldHint indent className="mt-1">Off: the Knowledge Base replaces the current page.</FieldHint>
+                <FieldHint indent className="mt-1">{tr("Off: the Knowledge Base replaces the current page.")}</FieldHint>
               </div>
             </div>
           </div>
@@ -479,11 +480,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
         {activeTab === 'system' && (
           <div className="space-y-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Contact Information</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Contact Information")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-                    Admin Email
+                    {tr("Admin Email")}
                   </label>
                   <input
                     type="email"
@@ -493,7 +494,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     placeholder="admin@example.com"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Receives the e-mail about maintenance windows and restore requests
+                    {tr("Receives the e-mail about maintenance windows and restore requests")}
                   </p>
                 </div>
               </div>
@@ -501,33 +502,33 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
 
             {/* Localization */}
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Localization</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Localization")}</h3>
               <div className="space-y-6">
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold text-slate-900">Date & Time</h3>
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Date & Time")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Date & Time Format</p>
-                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">DD/MM/YYYY HH:mm:ss</p>
-                      <p className="mt-1 text-xs text-slate-500">One format for the whole system: dates are dd/MM/yyyy and dates with a time are dd/MM/yyyy HH:mm:ss. It is not a setting.</p>
+                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Date & Time Format")}</p>
+                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">{tr("DD/MM/YYYY HH:mm:ss")}</p>
+                      <p className="mt-1 text-xs text-slate-500">{tr("One format for the whole system: dates are dd/MM/yyyy and dates with a time are dd/MM/yyyy HH:mm:ss. It is not a setting.")}</p>
                     </div>
                     <div>
-                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Time Zone</p>
-                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">Asia/Ho_Chi_Minh (UTC+7)</p>
-                      <p className="mt-1 text-xs text-slate-500">The zone of the site, for every screen, document and record. It is not a setting.</p>
+                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Time Zone")}</p>
+                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">{tr("Asia/Ho_Chi_Minh (UTC+7)")}</p>
+                      <p className="mt-1 text-xs text-slate-500">{tr("The zone of the site, for every screen, document and record. It is not a setting.")}</p>
                     </div>
                   </div>
                 </div>
                 <div className="border-t border-slate-200 pt-6">
-                  <h3 className="mb-3 text-sm font-semibold text-slate-900">Language & Numbers</h3>
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Language & Numbers")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">Language</p>
-                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">English</p>
-                      <p className="mt-1 text-xs text-slate-500">The system is written in English only. It is not a setting.</p>
+                      <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Language")}</p>
+                      <p className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">{tr("English")}</p>
+                      <p className="mt-1 text-xs text-slate-500">{tr("The system is written in English only. It is not a setting.")}</p>
                     </div>
                     <Select
-                      label="Number Format"
+                      label={tr("Number Format")}
                       value={locale.numberFormat||'en-US'}
                       onChange={(val) => handleLocaleChange('numberFormat',val)}
                       options={[
@@ -545,16 +546,16 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
 
             {/* System Maintenance */}
             <div className="border-t border-slate-200 pt-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">System Maintenance</h3>
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("System Maintenance")}</h3>
               <div className="space-y-4">
                 <div>
                   <Checkbox
                     id="maintenanceMode"
-                    label="Enable Maintenance Mode"
+                    label={tr("Enable Maintenance Mode")}
                     checked={config.maintenanceMode}
                     onChange={(checked) => handleChange('maintenanceMode',checked)}
                   />
-                  <FieldHint indent>Only administrators can get in. Other users see a maintenance notice.</FieldHint>
+                  <FieldHint indent>{tr("Only administrators can get in. Other users see a maintenance notice.")}</FieldHint>
                 </div>
               </div>
             </div>

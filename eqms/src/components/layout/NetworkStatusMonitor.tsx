@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { WifiOff, Wifi } from 'lucide-react';
+import { tr } from "@/i18n";
 
 export const NetworkStatusMonitor: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -57,10 +58,10 @@ export const NetworkStatusMonitor: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900">
-                    No Internet Connection
+                    {tr("No Internet Connection")}
                   </h3>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    Connection lost
+                    {tr("Connection lost")}
                   </p>
                 </div>
               </div>
@@ -69,12 +70,12 @@ export const NetworkStatusMonitor: React.FC = () => {
               <div className="p-6 space-y-4">
                 <div className="space-y-2">
                   <p className="text-sm text-slate-700">
-                    You are currently offline. Please check your internet connection.
+                    {tr("You are currently offline. Please check your internet connection.")}
                   </p>
                   <ul className="text-sm text-slate-600 space-y-1.5 ml-4 list-disc">
-                    <li>Check your network cables or WiFi connection</li>
-                    <li>Try disabling airplane mode</li>
-                    <li>Check your router or modem</li>
+                    <li>{tr("Check your network cables or WiFi connection")}</li>
+                    <li>{tr("Try disabling airplane mode")}</li>
+                    <li>{tr("Check your router or modem")}</li>
                   </ul>
                 </div>
 
@@ -84,7 +85,7 @@ export const NetworkStatusMonitor: React.FC = () => {
                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   </div>
                   <span className="text-xs sm:text-sm font-medium text-slate-700">
-                    Waiting for connection...
+                    {tr("Waiting for connection...")}
                   </span>
                 </div>
               </div>
@@ -92,7 +93,7 @@ export const NetworkStatusMonitor: React.FC = () => {
               {/* Footer */}
               <div className="px-6 py-4 bg-slate-50 rounded-b-xl">
                 <p className="text-xs text-slate-500 text-center">
-                  This dialog will automatically close when connection is restored
+                  {tr("This dialog will automatically close when connection is restored")}
                 </p>
               </div>
             </div>
@@ -110,10 +111,10 @@ export const NetworkStatusMonitor: React.FC = () => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-900">
-                Connection Restored
+                {tr("Connection Restored")}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                You are back online
+                {tr("You are back online")}
               </p>
             </div>
             <div className="flex-shrink-0">

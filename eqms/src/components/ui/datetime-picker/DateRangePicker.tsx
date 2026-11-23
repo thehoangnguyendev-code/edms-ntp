@@ -7,8 +7,7 @@ import { IconCalendarWeek } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../utils';
 import { Button } from '../button/Button';
-import { useLanguage } from '@/i18n';
-import { tr } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 export interface DateRangePickerProps {
   /** Label displayed above picker */
@@ -101,7 +100,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   endDate,
   onStartDateChange,
   onEndDateChange,
-  placeholder = "Select date range",
+  placeholder = tr("Select date range"),
   disabled = false,
   includeTime = false,
   onApply,
@@ -896,8 +895,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           { label: 'Yesterday', key: 'yesterday' },
           { label: 'This week', key: 'thisWeek' },
           { label: 'Last week', key: 'lastWeek' },
-          { label: 'This month', key: 'thisMonth' },
-          { label: 'Last month', key: 'lastMonth' },
+          { label: tr('This month'), key: 'thisMonth' },
+          { label: tr('Last month'), key: 'lastMonth' },
           { label: 'This year', key: 'thisYear' },
           { label: 'Last year', key: 'lastYear' },
         ].map((p) => (
@@ -1032,7 +1031,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   if (inline) {
     return (
-      <fieldset disabled={disabled} className="h-full min-h-[320px] min-w-0 w-full" aria-label={typeof label === 'string' ? label : 'Choose date range'}>
+      <fieldset disabled={disabled} className="h-full min-h-[320px] min-w-0 w-full" aria-label={typeof label === 'string' ? label : tr('Choose date range')}>
         <div ref={popoverRef} data-inline-date-layout className="flex h-full min-w-0 w-full flex-row overflow-hidden rounded-lg border border-slate-200 bg-white">
           {pickerContent}
         </div>

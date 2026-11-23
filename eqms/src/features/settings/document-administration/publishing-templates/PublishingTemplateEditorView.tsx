@@ -74,6 +74,7 @@ import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput"
 import { DEFAULT_BLACK_HEX } from "@/styles/tokens";
 import { displayDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 type LayoutType = "PORTRAIT" | "LANDSCAPE";
 type ComponentType = "cover" | "header" | "footer";
@@ -103,18 +104,18 @@ const SLOT_GROUPS: Array<{
 }> = [
   {
     componentType: "cover",
-    title: "Cover Template",
-    help: "First page only. Body source always starts from page 1. In the final PDF, the cover becomes page 1 and header/footer start from page 2 when cover is enabled. Upload a separate .docx for each supported layout.",
+    title: tr("Cover Template"),
+    help: tr("First page only. Body source always starts from page 1. In the final PDF, the cover becomes page 1 and header/footer start from page 2 when cover is enabled. Upload a separate .docx for each supported layout."),
   },
   {
     componentType: "header",
-    title: "Header Template",
-    help: "Upload a DOCX that contains only the Word header section. Body content is ignored.",
+    title: tr("Header Template"),
+    help: tr("Upload a DOCX that contains only the Word header section. Body content is ignored."),
   },
   {
     componentType: "footer",
-    title: "Footer Template",
-    help: "Upload a DOCX that contains only the Word footer section. Body content is ignored.",
+    title: tr("Footer Template"),
+    help: tr("Upload a DOCX that contains only the Word footer section. Body content is ignored."),
   },
 ];
 
@@ -126,13 +127,13 @@ const FORM_DEFAULTS: TemplateFormState = {
 };
 
 const PUBLISHING_MODE_OPTIONS = [
-  { value: "COVER_ONLY", label: "Cover only" },
-  { value: "COVER_HEADER_FOOTER", label: "Cover + Header/Footer" },
-  { value: "HEADER_FOOTER_ONLY", label: "Header/Footer only" },
+  { value: "COVER_ONLY", label: tr("Cover only") },
+  { value: "COVER_HEADER_FOOTER", label: tr("Cover + Header/Footer") },
+  { value: "HEADER_FOOTER_ONLY", label: tr("Header/Footer only") },
 ];
 
 const FONT_FAMILY_OPTIONS = [
-  { value: "", label: "Use Word style" },
+  { value: "", label: tr("Use Word style") },
   { value: "Arial", label: "Arial" },
   { value: "Times New Roman", label: "Times New Roman" },
   { value: "Calibri", label: "Calibri" },
@@ -145,13 +146,13 @@ const TRANSFORM_OPTIONS = [
   { value: "TRIM", label: "Trim" },
   { value: "UPPER", label: "Uppercase" },
   { value: "LOWER", label: "Lowercase" },
-  { value: "TITLE", label: "Title Case" },
+  { value: "TITLE", label: tr("Title Case") },
 ];
 
 
 
 const NUMBER_FORMAT_OPTIONS = [
-  { value: "", label: "No number override" },
+  { value: "", label: tr("No number override") },
   { value: "000", label: "001" },
   { value: "0000", label: "0001" },
   { value: "'CC-'0000", label: "CC-0001" },
@@ -219,7 +220,7 @@ const normalizePublishingMode = (value?: string | null) => {
 };
 
 const layoutLabel = (layout: LayoutType) =>
-  layout === "PORTRAIT" ? "Portrait" : "Landscape";
+  layout === "PORTRAIT" ? tr("Portrait") : tr("Landscape");
 
 const slotKey = (componentType: ComponentType, layout: LayoutType) =>
   `${componentType}:${layout}`;
@@ -331,7 +332,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
-      showToast({ type: "error", title: "Download failed", message: getApiErrorMessage(error, "Unable to download the template file.") });
+      showToast({ type: "error", title: tr("Download failed"), message: getApiErrorMessage(error, "Unable to download the template file.") });
     } finally {
       setDownloadingSlot(null);
     }
@@ -630,7 +631,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         console.error("Failed to load publishing template", error);
         showToast({
           type: "error",
-          title: "Load failed",
+          title: tr("Load failed"),
           message: getApiErrorMessage(error, "Unable to load publishing template data."),
         });
       } finally {
@@ -879,9 +880,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         setActiveSlot(getFallbackActiveSlot(latestTemplate.components));
         showToast({
           type: "success",
-          title: "Mode updated",
+          title: tr("Mode updated"),
           message:
-            "Slots outside the selected publishing mode were cleared automatically.",
+            tr("Slots outside the selected publishing mode were cleared automatically."),
         });
       } catch (error) {
         console.error(
@@ -892,7 +893,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         lastPublishingModeRef.current = previousMode;
         showToast({
           type: "error",
-          title: "Mode update failed",
+          title: tr("Mode update failed"),
           message: getApiErrorMessage(error, "Unable to clear incompatible template files."),
         });
       }
@@ -1009,8 +1010,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       if (!form.templateName.trim()) {
         showToast({
           type: "warning",
-          title: "Template Name required",
-          message: "Template Name is required before saving.",
+          title: tr("Template Name required"),
+          message: tr("Template Name is required before saving."),
         });
         return null;
       }
@@ -1024,7 +1025,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "success",
         title: "Saved",
-        message: "Publishing template saved successfully.",
+        message: tr("Publishing template saved successfully."),
       });
       if (options?.redirectAfterCreate !== false && !isEditMode && saved.id) {
         navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(saved.id), {
@@ -1037,7 +1038,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to save publishing template", error);
       showToast({
         type: "error",
-        title: "Save failed",
+        title: tr("Save failed"),
         message: getApiErrorMessage(error, "Unable to save publishing template."),
       });
       return null;
@@ -1061,7 +1062,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to delete publishing template", error);
       showToast({
         type: "error",
-        title: "Delete failed",
+        title: tr("Delete failed"),
         message: getApiErrorMessage(error, "Unable to delete publishing template."),
       });
     } finally {
@@ -1087,7 +1088,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       formDirty.markSaved();
       showToast({
         type: "success",
-        title: "Duplicated",
+        title: tr("Duplicated"),
         message: "Publishing template duplicated.",
       });
       navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(duplicated.id || ""), {
@@ -1098,7 +1099,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to duplicate publishing template", error);
       showToast({
         type: "error",
-        title: "Duplicate failed",
+        title: tr("Duplicate failed"),
         message: getApiErrorMessage(error, "Unable to duplicate template."),
       });
     } finally {
@@ -1220,7 +1221,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       if (showErrorToast) {
         showToast({
           type: "error",
-          title: "Preview failed",
+          title: tr("Preview failed"),
           message: getApiErrorMessage(error, "Unable to load template preview."),
         });
       }
@@ -1251,8 +1252,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     if (!isDocxFile) {
       showToast({
         type: "error",
-        title: "Invalid file type",
-        message: "Only .docx files are allowed for publishing templates.",
+        title: tr("Invalid file type"),
+        message: tr("Only .docx files are allowed for publishing templates."),
       });
       return;
     }
@@ -1299,7 +1300,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to upload publishing template component", error);
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message: getApiErrorMessage(error, "Unable to upload template file."),
       });
     } finally {
@@ -1339,7 +1340,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to delete publishing template component", error);
       showToast({
         type: "error",
-        title: "Delete failed",
+        title: tr("Delete failed"),
         message: getApiErrorMessage(error, "Unable to delete template file."),
       });
     } finally {
@@ -1359,7 +1360,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       console.error("Failed to copy placeholder", error);
       showToast({
         type: "error",
-        title: "Copy failed",
+        title: tr("Copy failed"),
         message: getApiErrorMessage(error, "Unable to copy placeholder."),
       });
     }
@@ -1420,10 +1421,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: "Style saved", message: "Placeholder style updated." });
+      showToast({ type: "success", title: tr("Style saved"), message: "Placeholder style updated." });
     } catch (error) {
       console.error("Failed to save placeholder style", error);
-      showToast({ type: "error", title: "Save failed", message: getApiErrorMessage(error, "Unable to save placeholder style.") });
+      showToast({ type: "error", title: tr("Save failed"), message: getApiErrorMessage(error, "Unable to save placeholder style.") });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }
@@ -1454,10 +1455,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: "Style cleared", message: "Placeholder style removed." });
+      showToast({ type: "success", title: tr("Style cleared"), message: "Placeholder style removed." });
     } catch (error) {
       console.error("Failed to delete placeholder style", error);
-      showToast({ type: "error", title: "Delete failed", message: getApiErrorMessage(error, "Unable to delete placeholder style.") });
+      showToast({ type: "error", title: tr("Delete failed"), message: getApiErrorMessage(error, "Unable to delete placeholder style.") });
     } finally {
       setIsSavingPlaceholderStyle(false);
     }
@@ -1479,7 +1480,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
-        title="Delete Publishing Template"
+        title={tr("Delete Publishing Template")}
         description={`Are you sure you want to delete "${deleteTarget?.templateName || template?.templateName || "this template"}"? This cannot be undone.`}
         confirmText="Delete"
         type="warning"
@@ -1489,7 +1490,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         isOpen={!!deleteSlotTarget}
         onClose={() => setDeleteSlotTarget(null)}
         onConfirm={() => void handleDeleteSlot()}
-        title="Delete Template File"
+        title={tr("Delete Template File")}
         description={`Are you sure you want to delete the ${deleteSlotTarget ? `${layoutLabel(deleteSlotTarget.layout)} ${deleteSlotTarget.componentType}` : "selected"} file? This cannot be undone.`}
         confirmText="Delete"
         type="warning"
@@ -1528,7 +1529,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">
-                  Placeholder Style
+                  {tr("Placeholder Style")}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-slate-500">
                   <span className="font-medium text-emerald-700">{placeholderToken(selectedStylePlaceholder)}</span>
@@ -1541,7 +1542,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {modalStyleRecord ? <Badge color="emerald">Configured</Badge> : <Badge color="slate">Default Word style</Badge>}
+                {modalStyleRecord ? <Badge color="emerald">{tr("Configured")}</Badge> : <Badge color="slate">{tr("Default Word style")}</Badge>}
                 <button
                   type="button"
                   onClick={() => setStyleModalOpen(false)}
@@ -1559,10 +1560,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   value. Keep them together so the relationship is explicit without changing the
                   underlying publishing or controlled-copy behaviour. */}
               <div>
-                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Usage</p>
+                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">{tr("Usage")}</p>
                 <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <Select
-                    label="Visible in"
+                    label={tr("Visible in")}
                     value={styleForm.visibility || "BOTH"}
                     onChange={(value) => {
                       const visibility = String(value || "BOTH") as PublishingPlaceholderStyleConfig["visibility"];
@@ -1572,23 +1573,23 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       }
                     }}
                     options={[
-                      { label: "Published document and controlled copy", value: "BOTH" },
-                      { label: "Published document only", value: "PUBLISH" },
-                      { label: "Controlled copy only", value: "CONTROLLED_COPY" },
+                      { label: tr("Published document and controlled copy"), value: "BOTH" },
+                      { label: tr("Published document only"), value: "PUBLISH" },
+                      { label: tr("Controlled copy only"), value: "CONTROLLED_COPY" },
                     ]}
                     enableSearch={false}
                   />
                   {styleForm.visibility === "PUBLISH" ? (
                     <p className="text-2xs sm:text-xs text-slate-500">
-                      This placeholder is not used in controlled copies, so no distribution-time value is collected.
+                      {tr("This placeholder is not used in controlled copies, so no distribution-time value is collected.")}
                     </p>
                   ) : isSignaturePlaceholder ? (
                     <p className="text-2xs sm:text-xs text-slate-500">
-                      Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value.
+                      {tr("Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value.")}
                     </p>
                   ) : systemPlaceholderKeys.has(selectedStyleKey) ? (
                     <p className="text-2xs sm:text-xs text-slate-500">
-                      This value is filled in by the system from the controlled copy record and cannot be changed at distribution time.
+                      {tr("This value is filled in by the system from the controlled copy record and cannot be changed at distribution time.")}
                     </p>
                   ) : (() => {
                     const isBuiltIn = builtInPlaceholderKeys.has(selectedStyleKey);
@@ -1601,11 +1602,11 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                           disabled={isSavingDataSource}
                         />
                         <span>
-                          <span className="text-xs font-medium text-slate-800 sm:text-sm">Allow DCO-entered value</span>
+                          <span className="text-xs font-medium text-slate-800 sm:text-sm">{tr("Allow DCO-entered value")}</span>
                           <span className="mt-0.5 block text-2xs text-slate-500 sm:text-xs">
                             {isBuiltIn
-                              ? "The entered value overrides the automatic value for that controlled copy."
-                              : "The DCO fills this value in when distributing a controlled copy; otherwise it renders as \"-\"."}
+                              ? tr("The entered value overrides the automatic value for that controlled copy.")
+                              : tr("The DCO fills this value in when distributing a controlled copy; otherwise it renders as \"-\".")}
                           </span>
                         </span>
                       </label>
@@ -1616,16 +1617,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
               {/* Font: the controls of Word's Font and Paragraph groups, in the same order (family, size, colour, then Bold / Italic / Underline and alignment as icon buttons) */}
               <div>
-                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Font</p>
+                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">{tr("Font")}</p>
                 <div className="grid grid-cols-1 gap-3 items-end sm:grid-cols-3">
                   <Select
-                    label="Font family"
+                    label={tr("Font family")}
                     value={styleForm.fontFamily || ""}
                     onChange={(value) => setStyleForm((c) => ({ ...c, fontFamily: String(value || "") }))}
                     options={FONT_FAMILY_OPTIONS}
                   />
                   <label className="space-y-1">
-                    <span className={TYPOGRAPHY.formLabel}>Font size (pt)</span>
+                    <span className={TYPOGRAPHY.formLabel}>{tr("Font size (pt)")}</span>
                     <Input
                       type="number"
                       min={1}
@@ -1636,12 +1637,12 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     />
                   </label>
                   <ColorPickerInput
-                    label="Text color"
+                    label={tr("Text color")}
                     value={styleForm.color || DEFAULT_BLACK_HEX}
                     onChange={(color) => setStyleForm((c) => ({ ...c, color }))}
                   />
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Text formatting">
+                <div className="mt-3 flex flex-wrap items-center gap-2" role="toolbar" aria-label={tr("Text formatting")}>
                   <div className="flex h-9 overflow-hidden rounded-lg border border-slate-200">
                     {([
                       { key: "bold", icon: Bold, title: "Bold" },
@@ -1666,9 +1667,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   </div>
                   <div className="flex h-9 overflow-hidden rounded-lg border border-slate-200">
                     {([
-                      { value: "LEFT", icon: AlignLeft, title: "Align left" },
+                      { value: "LEFT", icon: AlignLeft, title: tr("Align left") },
                       { value: "CENTER", icon: AlignCenter, title: "Center" },
-                      { value: "RIGHT", icon: AlignRight, title: "Align right" },
+                      { value: "RIGHT", icon: AlignRight, title: tr("Align right") },
                       { value: "BOTH", icon: AlignJustify, title: "Justify" },
                     ] as { value: string; icon: React.ElementType; title: string }[]).map(({ value, icon: Icon, title }) => {
                       const active = styleForm.alignment === value;
@@ -1692,34 +1693,34 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
               {/* Text processing */}
               <div>
-                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">Text processing</p>
+                <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">{tr("Text processing")}</p>
                 <div className="grid grid-cols-2 gap-3 items-end">
                   <Select
-                    label="Text transform"
+                    label={tr("Text transform")}
                     value={styleForm.transforms?.[0] || "NONE"}
                     onChange={(value) => setStyleForm((c) => ({ ...c, transforms: String(value || "NONE") === "NONE" ? [] : [String(value)] }))}
                     options={TRANSFORM_OPTIONS}
                     disabled={isSignaturePlaceholder}
                   />
 <Select
-                    label="Number format"
+                    label={tr("Number format")}
                     value={styleForm.numberFormat || ""}
                     onChange={(value) => setStyleForm((c) => ({ ...c, numberFormat: String(value || "") }))}
                     options={NUMBER_FORMAT_OPTIONS}
                     disabled={selectedPlaceholderType !== "NUMBER"}
                   />
                   <label className="space-y-1">
-                    <span className={TYPOGRAPHY.formLabel}>Max lines</span>
+                    <span className={TYPOGRAPHY.formLabel}>{tr("Max lines")}</span>
                     <Input
                       type="number"
                       min={1}
                       value={styleForm.maxLines ?? ""}
                       onChange={(e) => setStyleForm((c) => ({ ...c, maxLines: e.target.value ? Number(e.target.value) : null }))}
-                      placeholder="No limit"
+                      placeholder={tr("No limit")}
                     />
                   </label>
                   <label className="flex h-9 items-center justify-between gap-3 text-xs font-medium text-slate-700 sm:text-sm">
-                    <span>Keep line breaks</span>
+                    <span>{tr("Keep line breaks")}</span>
                     <Switch
                       size="sm"
                       checked={Boolean(styleForm.preserveLineBreaks)}
@@ -1740,7 +1741,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 disabled={!modalStyleRecord || isSavingPlaceholderStyle}
                 className="gap-2"
               >
-                Clear style
+                {tr("Clear style")}
               </Button>
               <Button
                 type="button"
@@ -1749,7 +1750,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 onClick={() => setStyleModalOpen(false)}
                 className="gap-2"
               >
-                Cancel
+                {tr("Cancel")}
               </Button>
               <Button
                 type="button"
@@ -1760,7 +1761,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 className="gap-2"
               >
                 {isSavingPlaceholderStyle && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save style
+                {tr("Save style")}
               </Button>
             </div>
           </motion.div>
@@ -1772,7 +1773,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
       <PageHeader
         title={
-          isEditMode ? "Edit Publishing Template" : "New Publishing Template"
+          isEditMode ? tr("Edit Publishing Template") : tr("New Publishing Template")
         }
         breadcrumbItems={
           isEditMode
@@ -1787,7 +1788,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
               onClick={handleBack}
               className="gap-2"
             >
-              Back
+              {tr("Back")}
             </Button>
             <Button
               size="sm"
@@ -1796,7 +1797,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
               disabled={isSaving}
               className="gap-2"
             >
-              Save
+              {tr("Save")}
             </Button>
             {isEditMode && (
               <>
@@ -1807,7 +1808,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   onClick={(event) => toggleHeaderMenu("template-actions", event)}
                   className="gap-2"
                 >
-                  More actions
+                  {tr("More actions")}
                   <ChevronDown
                     className={cn(
                       "h-4 w-4 transition-transform duration-200",
@@ -1830,7 +1831,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
                     >
                       <Copy className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-slate-500">Duplicate</span>
+                      <span className="font-medium text-slate-500">{tr("Duplicate")}</span>
                     </button>
                     <button
                       onClick={() => {
@@ -1840,7 +1841,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors"
                     >
                       <Trash2 className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium">Delete</span>
+                      <span className="font-medium">{tr("Delete")}</span>
                     </button>
                   </div>
                 </PortalDropdownMenu>
@@ -1853,13 +1854,13 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       <div className="flex flex-col gap-4 lg:gap-6 xl:flex-row xl:items-start">
         <div className="min-w-0 space-y-4 xl:flex-1">
           <FormSection
-            title="General Information"
+            title={tr("General Information")}
             icon={<IconInfoCircle className="h-4 w-4" />}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={COMPONENT_PRESETS.formLabel}>
-                  Template Name <span className="text-rose-600">*</span>
+                  {tr("Template Name")} <span className="text-rose-600">*</span>
                 </label>
                 <Input
                   value={form.templateName}
@@ -1869,12 +1870,12 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                       templateName: e.target.value,
                     }))
                   }
-                  placeholder="Enter template name"
+                  placeholder={tr("Enter template name")}
                   required
                 />
               </div>
               <div>
-                <label className={COMPONENT_PRESETS.formLabel}>Status</label>
+                <label className={COMPONENT_PRESETS.formLabel}>{tr("Status")}</label>
                 <Select
                   value={form.status}
                   onChange={(value) =>
@@ -1884,15 +1885,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     { value: "INACTIVE", label: "Inactive" },
                     { value: "ACTIVE", label: "Active" },
                   ]}
-                  placeholder="Select status"
+                  placeholder={tr("Select status")}
                 />
                 <p className="mt-1 text-2xs text-slate-400">
-                  Any number of templates can be Active at once; whoever publishes a document chooses one. A template needs the files its Publishing Mode calls for before it can be Active.
+                  {tr("Any number of templates can be Active at once; whoever publishes a document chooses one. A template needs the files its Publishing Mode calls for before it can be Active.")}
                 </p>
               </div>
               <div>
                 <label className={COMPONENT_PRESETS.formLabel}>
-                  Publishing Mode
+                  {tr("Publishing Mode")}
                 </label>
                 <Select
                   value={form.publishingMode}
@@ -1903,14 +1904,14 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     }))
                   }
                   options={PUBLISHING_MODE_OPTIONS}
-                  placeholder="Select publishing mode"
+                  placeholder={tr("Select publishing mode")}
                 />
               </div>
             </div>
           </FormSection>
 
           <FormSection
-            title="Template Layout Uploads"
+            title={tr("Template Layout Uploads")}
             icon={<GalleryHorizontalEnd className="h-4 w-4" />}
           >
             <div className="space-y-4">
@@ -1929,9 +1930,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className={TYPOGRAPHY.cardSectionTitle}>
-                          {group.title}
+                          {tr(group.title)}
                         </p>
-                        <p className={cn(TYPOGRAPHY.helpText, "hidden sm:block")}>{group.help}</p>
+                        <p className={cn(TYPOGRAPHY.helpText, "hidden sm:block")}>{tr(group.help)}</p>
                       </div>
                       <Badge color="blue">
                         {PUBLISHING_MODE_OPTIONS.find(
@@ -1972,10 +1973,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <p className={TYPOGRAPHY.cardSectionTitle}>
-                                    {layoutLabel(layout)} Layout
+                                    {layoutLabel(layout)} {tr("Layout")}
                                   </p>
                                   <Badge color={flagColor(hasFile)}>
-                                    {hasFile ? "Configured" : "Missing"}
+                                    {hasFile ? tr("Configured") : tr("Missing")}
                                   </Badge>
                                 </div>
                               </div>
@@ -1988,7 +1989,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                                     : "border-slate-200 bg-white text-slate-500 hover:border-emerald-200",
                                 )}
-                                title="Focus preview"
+                                title={tr("Focus preview")}
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
@@ -1996,10 +1997,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
 
                             <div className="mt-1 space-y-3">
                               <div>
-                                <p className={TYPOGRAPHY.subDetail}>File</p>
+                                <p className={TYPOGRAPHY.subDetail}>{tr("File")}</p>
                                 <div className="mt-1 flex items-start justify-between gap-2">
                                   <p className="min-w-0 break-words text-xs sm:text-sm font-medium text-slate-700">
-                                    {state.fileName || "No file uploaded"}
+                                    {state.fileName || tr("No file uploaded")}
                                   </p>
                                   {hasFile && (
                                     <button
@@ -2011,8 +2012,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                         })
                                       }
                                       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-                                      title="Delete uploaded file"
-                                      aria-label="Delete uploaded file"
+                                      title={tr("Delete uploaded file")}
+                                      aria-label={tr("Delete uploaded file")}
                                       disabled={
                                         isSaving ||
                                         uploadingSlot === key ||
@@ -2030,7 +2031,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                 </div>
                                 {state.uploadedBy && (
                                   <p className="mt-1 text-xs text-slate-500">
-                                    Uploaded by {state.uploadedBy}
+                                    {trFormat("Uploaded by {name}", { name: state.uploadedBy })}
                                     {state.uploadedAt
                                       ? ` - ${displayDateTime(state.uploadedAt)}`
                                       : ""}
@@ -2054,7 +2055,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   }
                                   title={
                                     !template?.id
-                                      ? "Save the template first before uploading"
+                                      ? tr("Save the template first before uploading")
                                       : undefined
                                   }
                                 >
@@ -2063,7 +2064,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   ) : (
                                     <Upload className="h-4 w-4" />
                                   )}
-                                  Upload
+                                  {tr("Upload")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -2071,10 +2072,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   className="gap-2"
                                   onClick={() => void handleDownloadSlot(group.componentType, layout.toLowerCase() as "portrait" | "landscape", state.fileName, key)}
                                   disabled={!hasFile || !template?.id || isSaving || downloadingSlot === key || deletingSlot === key}
-                                  title="Download the uploaded Word file, complete it, then upload it again"
+                                  title={tr("Download the uploaded Word file, complete it, then upload it again")}
                                 >
                                   {downloadingSlot === key ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                  Download
+                                  {tr("Download")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -2101,7 +2102,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                   }
                                 >
                                   <Wand2 className="h-4 w-4" />
-                                  Preview
+                                  {tr("Preview")}
                                 </Button>
                               </div>
 
@@ -2128,9 +2129,9 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                 )}
                               >
                                 <p className={TYPOGRAPHY.cardSectionTitle}>
-                                  Detected placeholders
+                                  {tr("Detected placeholders")}
                                 </p>
-                                <p className="mt-1 text-2xs text-slate-400">Click a placeholder to edit its style.</p>
+                                <p className="mt-1 text-2xs text-slate-400">{tr("Click a placeholder to edit its style.")}</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {(state.detectedPlaceholders || []).length >
                                   0 ? (
@@ -2150,7 +2151,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                           title={
                                             registeredField
                                               ? `Controlled Copy Field: ${registeredField.label}. Click to edit style.`
-                                              : "Click to edit style."
+                                              : tr("Click to edit style.")
                                           }
                                           onClick={() => openStyleModal(item, group.componentType, layout)}
                                           className={cn(
@@ -2168,7 +2169,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                     })
                                   ) : (
                                     <span className="text-slate-400">
-                                      No placeholders detected yet.
+                                      {tr("No placeholders detected yet.")}
                                     </span>
                                   )}
                                 </div>
@@ -2186,7 +2187,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           </FormSection>
 
           <FormSection
-            title="Available Placeholders"
+            title={tr("Available Placeholders")}
             icon={<Copy className="h-4 w-4" />}
           >
             <div className="space-y-3">
@@ -2196,13 +2197,11 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   "border border-emerald-200 bg-emerald-50 p-3 text-xs sm:text-sm text-slate-600",
                 )}
               >
-                Use clean placeholders in Word, then configure casing, font,
-                size, alignment, and other display rules in{" "}
+                {tr("Use clean placeholders in Word, then configure casing, font, size, alignment, and other display rules in")}{" "}
                 <span className="font-semibold text-slate-900">
-                  Placeholder Style Manager
+                  {tr("Placeholder Style Manager")}
                 </span>
-                . This keeps the DOCX template readable and lets Admin adjust
-                formatting without downloading and re-uploading the file.
+                {tr(". This keeps the DOCX template readable and lets Admin adjust formatting without downloading and re-uploading the file.")}
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium text-slate-700">
                   {["{{documentName}}", "{{titleLocalLanguage}}", "{{authorName}}", "{{documentType}}"].map((token) => (
                     <span key={token} className="rounded-full border border-slate-200 bg-white px-2 py-1">{token}</span>
@@ -2219,7 +2218,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   type="text"
                   value={placeholderSearch}
                   onChange={(event) => setPlaceholderSearch(event.target.value)}
-                  placeholder="Search placeholders by name or description..."
+                  placeholder={tr("Search placeholders by name or description...")}
                   className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {placeholderSearch && (
@@ -2238,7 +2237,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 size="sm"
                 className="shrink-0 gap-1.5"
                 aria-expanded={placeholderCatalogExpanded || Boolean(placeholderSearch.trim())}
-                aria-label="Show or hide the placeholder catalog"
+                aria-label={tr("Show or hide the placeholder catalog")}
                 disabled={Boolean(placeholderSearch.trim())}
                 onClick={() => setPlaceholderCatalogExpanded((prev) => !prev)}
               >
@@ -2255,13 +2254,13 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
               {(placeholderCatalogExpanded || placeholderSearch.trim()) && (
                 placeholderCatalogLoading ? (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Loading placeholders from server...
+                  {tr("Loading placeholders from server...")}
                 </div>
               ) : placeholderCatalog.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
                   {placeholderSearch.trim()
                     ? `No placeholders match "${placeholderSearch.trim()}".`
-                    : "No placeholder catalog is available yet."}
+                    : tr("No placeholder catalog is available yet.")}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -2386,17 +2385,16 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
         </div>
 
         <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:w-[42%] xl:shrink-0 xl:self-start">
-          <FormSection title="Live Preview" icon={<Eye className="h-4 w-4" />}>
+          <FormSection title={tr("Live Preview")} icon={<Eye className="h-4 w-4" />}>
             <div className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className={TYPOGRAPHY.cardSectionTitle}>
-                    {activeSlotMeta.componentType.charAt(0).toUpperCase() +
-                      activeSlotMeta.componentType.slice(1)}{" "}
+                    {tr(activeSlotMeta.componentType.charAt(0).toUpperCase() + activeSlotMeta.componentType.slice(1))}{" "}
                     - {layoutLabel(activeSlotMeta.layout)}
                   </p>
                   <p className={cn(TYPOGRAPHY.subDetail, "break-words")}>
-                    {currentSlotState.fileName || "No file uploaded"}
+                    {currentSlotState.fileName || tr("No file uploaded")}
                   </p>
                 </div>
                 <Button
@@ -2422,7 +2420,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   }
                 >
                   <RefreshCw className={cn("h-4 w-4 shrink-0", slotPreviewButtonRefreshingKey === activeSlotMeta.key && "animate-spin")} />
-                  Reload Preview
+                  {tr("Reload Preview")}
                 </Button>
               </div>
 
@@ -2459,11 +2457,10 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                 >
                   <div className="max-w-sm space-y-2 p-6">
                     <p className="text-sm font-medium text-slate-800">
-                      No preview loaded yet
+                      {tr("No preview loaded yet")}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Upload only a .docx file and click Preview to render the
-                      selected slot here.
+                      {tr("Upload only a .docx file and click Preview to render the selected slot here.")}
                     </p>
                   </div>
                 </div>

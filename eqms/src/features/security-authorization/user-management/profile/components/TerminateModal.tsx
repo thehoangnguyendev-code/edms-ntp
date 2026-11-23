@@ -8,12 +8,13 @@ import { Select } from "@/components/ui/select/Select";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { tr } from "@/i18n";
 
 const TERMINATION_REASON_OPTIONS = [
-  { label: "Resignation", value: "Resignation" },
-  { label: "Layoff / Redundancy", value: "Layoff / Redundancy" },
-  { label: "Contract Ended", value: "Contract Ended" },
-  { label: "Retirement", value: "Retirement" },
+  { label: tr("Resignation"), value: "Resignation" },
+  { label: tr("Layoff / Redundancy"), value: "Layoff / Redundancy" },
+  { label: tr("Contract Ended"), value: "Contract Ended" },
+  { label: tr("Retirement"), value: "Retirement" },
   { label: "Dismissal", value: "Dismissal" },
   { label: "Other", value: "Other" },
 ];
@@ -70,41 +71,41 @@ export const TerminateModal: React.FC<TerminateModalProps> = ({
         isOpen={isOpen}
         onClose={handleClose}
         onConfirm={handleConfirm}
-        title="Terminate Employee"
-        description={<>Terminating <span className="font-semibold text-slate-700">{userName}</span></>}
-        confirmText="Terminate Employee"
+        title={tr("Terminate Employee")}
+        description={<>{tr("Terminating")} <span className="font-semibold text-slate-700">{userName}</span></>}
+        confirmText={tr("Terminate Employee")}
         size="md"
       >
         <div className="space-y-4">
           <div>
             <Select
-              label={<>Reason <span className="text-red-500">*</span></>}
+              label={<>{tr("Reason")} <span className="text-red-500">*</span></>}
               value={reason}
               onChange={(v) => {
                 setReason(v);
                 setErrors((e) => ({ ...e, reason: undefined }));
               }}
               options={TERMINATION_REASON_OPTIONS}
-              placeholder="Select termination reason"
+              placeholder={tr("Select termination reason")}
             />
             {errors.reason && <p className="text-xs text-red-600 mt-1">{errors.reason}</p>}
           </div>
 
           <div>
             <DateTimePicker
-              label={<>Termination Date <span className="text-red-500">*</span></>}
+              label={<>{tr("Termination Date")} <span className="text-red-500">*</span></>}
               value={terminationDate}
               onChange={(v) => {
                 setTerminationDate(v);
                 setErrors((e) => ({ ...e, date: undefined }));
               }}
-              placeholder="Select termination date"
+              placeholder={tr("Select termination date")}
             />
             {errors.date && <p className="text-xs text-red-600 mt-1">{errors.date}</p>}
           </div>
 
           <WarningBanner variant="error">
-            The user's account will be permanently deactivated. All historical records, documents, and audit trail entries will be preserved.
+            {tr("The user's account will be permanently deactivated. All historical records, documents, and audit trail entries will be preserved.")}
           </WarningBanner>
         </div>
       </FormModal>

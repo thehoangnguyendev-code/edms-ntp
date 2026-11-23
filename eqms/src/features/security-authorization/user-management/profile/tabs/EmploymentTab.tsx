@@ -3,6 +3,7 @@ import { trainingWorkPositionApi } from "@/services/api/trainingActivities";
 import { EditableField, InfoField, FieldGroup } from "../components/ProfileSectionCard";
 import { formatDate } from "@/utils/format";
 import type { User } from "../../types";
+import { tr } from "@/i18n";
 
 interface EmploymentTabProps {
   user: User;
@@ -41,7 +42,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
   }, [user.id]);
 
   const filteredPositionOptions = React.useMemo(() => {
-    const base = [{ label: "Select Position", value: "" }];
+    const base = [{ label: tr("Select Position"), value: "" }];
     if (!draft.businessUnit || !draft.department) return base;
     if (positionOptions.length === 0) return base;
     return [...base, ...positionOptions];
@@ -49,16 +50,16 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
 
   return (
     <div>
-      <FieldGroup title="Position">
+      <FieldGroup title={tr("Position")}>
         <EditableField
-          label="Business Unit *" value={user.businessUnit} draftValue={draft.businessUnit}
+          label={tr("Business Unit *")} value={user.businessUnit} draftValue={draft.businessUnit}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "businessUnit", options: businessUnitOptions }}
           onChange={onDraftChange}
           error={fieldErrors.businessUnit}
         />
         <EditableField
-          label="Department *" value={user.department} draftValue={draft.department}
+          label={tr("Department *")} value={user.department} draftValue={draft.department}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "department", options:
             draftDepartments.map((d) => ({ label: d, value: d })),
@@ -68,7 +69,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           error={fieldErrors.department}
         />
         <EditableField
-          label="Position *" value={user.position} draftValue={draft.position}
+          label={tr("Position *")} value={user.position} draftValue={draft.position}
           isEditing={isEditing}
           field={{
             type: "select",
@@ -80,19 +81,19 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           error={fieldErrors.position}
         />
         {workPosition.positionName && (
-          <InfoField label="Work Position (Training)" value={workPosition.positionName} />
+          <InfoField label={tr("Work Position (Training)")} value={workPosition.positionName} />
         )}
         <EditableField
-          label="Direct Manager" value={user.managerName} draftValue={draft.managerName}
+          label={tr("Direct Manager")} value={user.managerName} draftValue={draft.managerName}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "managerName", options: managerOptions }}
           onChange={onDraftChange}
           error={fieldErrors.managerName}
         />
       </FieldGroup>
-      <FieldGroup title="Contract" divided>
+      <FieldGroup title={tr("Contract")} divided>
         <EditableField
-          label="Employment Type" value={user.employmentType} draftValue={draft.employmentType}
+          label={tr("Employment Type")} value={user.employmentType} draftValue={draft.employmentType}
           isEditing={isEditing}
           field={{ type: "select", fieldKey: "employmentType", options: [
             { label: "Full-time", value: "Full-time" },
@@ -104,7 +105,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           error={fieldErrors.employmentType}
         />
         <EditableField
-          label="Start Date *"
+          label={tr("Start Date *")}
           value={user.startDate ? formatDate(user.startDate) : null}
           draftValue={draft.startDate}
           isEditing={isEditing}
@@ -112,7 +113,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
           onChange={onDraftChange}
           error={fieldErrors.startDate}
         />
-        <InfoField label="Timeserving" value={yearsOfService} />
+        <InfoField label={tr("Timeserving")} value={yearsOfService} />
       </FieldGroup>
     </div>
   );

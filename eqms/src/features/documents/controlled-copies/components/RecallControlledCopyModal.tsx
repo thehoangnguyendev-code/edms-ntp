@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Upload } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { tr } from "@/i18n";
 
 interface RecallControlledCopyModalProps {
   isOpen: boolean;
@@ -50,13 +51,11 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
       onClose={handleClose}
       onConfirm={handleConfirm}
       confirmDisabled={formCompleted && !file}
-      title="Recall Controlled Copy"
+      title={tr("Recall Controlled Copy")}
       description={
         <>
-          Confirm recalling this {targetLabel}
-          {controlledCopyNumber ? ` (${controlledCopyNumber})` : ""}. The recall date will be
-          recorded automatically at the moment you complete the electronic signature in the next
-          step, and you will be asked for the reason there too.
+          {tr("Confirm recalling this")} {targetLabel}
+          {controlledCopyNumber ? ` (${controlledCopyNumber})` : ""}{tr(". The recall date will be recorded automatically at the moment you complete the electronic signature in the next step, and you will be asked for the reason there too.")}
         </>
       }
       confirmText="Continue to Signature"
@@ -66,7 +65,7 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
         <div className="space-y-3">
           <Checkbox
             id="recall-form-completed"
-            label="This Form was filled in and signed by hand -- attach the executed scan"
+            label={tr("This Form was filled in and signed by hand -- attach the executed scan")}
             checked={formCompleted}
             onChange={setFormCompleted}
           />

@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import { AUTH_PARTNER_BRANDS, AUTH_UI } from "../auth-ui";
+import { tr } from "@/i18n";
 
 interface AuthInfoPanelProps {
   title: string;
@@ -33,7 +34,7 @@ export const AuthInfoPanel: React.FC<AuthInfoPanelProps> = ({
 
       <div className={AUTH_UI.rightPanelFooter}>
         <div className={AUTH_UI.modulesHeader}>
-          <span className="text-xs uppercase tracking-[0.14em] text-emerald-200/80">EQMS Modules</span>
+          <span className="text-xs uppercase tracking-[0.14em] text-emerald-200/80">{tr("EQMS Modules")}</span>
           <span className="h-px flex-1 bg-emerald-200/30" />
         </div>
         <div className={AUTH_UI.modulesGrid}>

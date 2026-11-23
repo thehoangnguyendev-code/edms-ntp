@@ -8,6 +8,7 @@ import { formatDateTime } from "@/features/backup-restore/format";
 import { backupRestoreApi, type DrDeclarationRecord, type DrScenarioRecord } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const ALL = "ALL";
 type Direction = "asc" | "desc";
@@ -114,12 +115,12 @@ export const DrDeclarationsList: React.FC<{ reloadKey: number; scenarios: DrScen
   const scenarioOptions = [{ label: "All", value: ALL }, ...scenarios.map((s) => ({ label: s.label, value: s.code }))];
   const columns: DataTableColumn<DrDeclarationRecord>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: NO, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (list.page - 1) * list.pageSize + index + 1 },
-    { id: "code", header: "Declaration", label: "Declaration", sort: list.sortFor("code"), cell: (row) => row.code },
+    { id: "code", header: tr("Declaration"), label: tr("Declaration"), sort: list.sortFor("code"), cell: (row) => row.code },
     { id: "scenario", header: "Scenario", label: "Scenario", sort: list.sortFor("scenario"), cell: (row) => row.scenarioLabel },
     { id: "status", header: "Status", label: "Status", sort: list.sortFor("status"), cell: (row) => <Badge color={row.status === "OPEN" ? "red" : "emerald"}>{row.status === "OPEN" ? "Open" : "Closed"}</Badge> },
     { id: "declared", header: "Declared", label: "Declared", sort: list.sortFor("declaredAt"), cell: (row) => `${row.declaredBy} · ${formatDateTime(row.declaredAt)}` },
     { id: "reason", header: "Reason", label: "Reason", cell: (row) => <span className="block max-w-xs whitespace-normal break-words text-xs">{row.reason}</span> },
-    { id: "taken", header: "Time taken", label: "Time taken", sort: list.sortFor("timeTaken"), cell: (row) => (row.hoursTaken === null ? "—" : `${row.hoursTaken} h (target ${row.rtoTargetHours} h)`) },
+    { id: "taken", header: tr("Time taken"), label: tr("Time taken"), sort: list.sortFor("timeTaken"), cell: (row) => (row.hoursTaken === null ? "—" : `${row.hoursTaken} h (target ${row.rtoTargetHours} h)`) },
     { id: "closed", header: "Closed", label: "Closed", sort: list.sortFor("closedAt"), cell: (row) => (row.closedAt ? `${row.closedBy} · ${formatDateTime(row.closedAt)}` : "—") },
     { id: "summary", header: "Summary", label: "Summary", cell: (row) => <span className="block max-w-xs whitespace-normal break-words text-xs">{row.summary ?? "—"}</span> },
   ];
@@ -134,12 +135,12 @@ export const DrDeclarationsList: React.FC<{ reloadKey: number; scenarios: DrScen
       loading={list.loading}
       hasLoaded={list.hasLoaded}
       error={list.error}
-      emptyTitle="No Declarations"
-      emptyDescription="No disaster has been declared for this filter."
+      emptyTitle={tr("No Declarations")}
+      emptyDescription={tr("No disaster has been declared for this filter.")}
       search={list.search}
       onSearch={list.setSearch}
       searchLabel="Search declarations"
-      searchPlaceholder="Declaration, scenario, person or reason…"
+      searchPlaceholder={tr("Declaration, scenario, person or reason…")}
       filters={[
         { id: "status", label: "Status", value: list.filters.status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: list.setFilter("status") },
         { id: "scenario", label: "Scenario", value: list.filters.scenario, options: scenarioOptions, defaultValue: ALL, placeholder: "All", onChange: list.setFilter("scenario") },

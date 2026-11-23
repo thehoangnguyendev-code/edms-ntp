@@ -6,6 +6,7 @@ import { PdfPreviewModal } from "@/features/documents/shared/components/PdfPrevi
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 import { reportsApi } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 /**
  * A report file looked at in the page, never saved to the computer (REPORT-ARTIFACT-PREVIEW-2026-11-14): a PDF in the project PDF viewer (EmbedPDF), a CSV or XLSX in
@@ -15,7 +16,7 @@ export function ReportArtifactPreview({ runId, artifactId, format, title, onClos
   return format === "PDF" ? (
     <PdfArtifact runId={runId} artifactId={artifactId} title={title} onClose={onClose} />
   ) : (
-    <FormModal isOpen onClose={onClose} onConfirm={onClose} title={title} description="Read-only preview" confirmText="Close" cancelText="Close" showCancel={false} size="2xl" className="backdrop-blur-none !max-w-[96vw]">
+    <FormModal isOpen onClose={onClose} onConfirm={onClose} title={title} description={tr("Read-only preview")} confirmText="Close" cancelText="Close" showCancel={false} size="2xl" className="backdrop-blur-none !max-w-[96vw]">
       <OnlyOfficeDocumentViewer key={artifactId} revisionId={artifactId} watchForChanges={false} height="72dvh" loadConfig={() => reportsApi.artifactViewConfig(runId, artifactId)} />
     </FormModal>
   );
@@ -41,7 +42,7 @@ function PdfArtifact({ runId, artifactId, title, onClose }: { runId: string; art
     };
   }, [runId, artifactId]);
 
-  if (url) return <PdfPreviewModal title={title} description="Read-only preview" fileUrl={url} onClose={onClose} showCancel={false} wide />;
+  if (url) return <PdfPreviewModal title={title} description={tr("Read-only preview")} fileUrl={url} onClose={onClose} showCancel={false} wide />;
   return (
     <FormModal isOpen onClose={onClose} onConfirm={onClose} title={title} confirmText="Close" cancelText="Close" showCancel={false} size="2xl" className="backdrop-blur-none !max-w-[96vw]">
       {error ? <WarningBanner variant="error" description={error} /> : <SectionLoading text="Opening the report…" />}

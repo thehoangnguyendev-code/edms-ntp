@@ -15,6 +15,7 @@ import { trainingError, trainingRecordsApi, type TrainingNumberAllocationLogRow 
 import { KIND_LABEL, KIND_REASON_LABEL, STATUS_COLOR, STATUS_LABEL, day, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 import { resettingDates, useDateRange } from "../shared/useListFilters";
 import { departmentOptions, useOwnDepartment } from "../shared/useOwnDepartment";
+import { tr } from "@/i18n";
 
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 8 }, (_v, i) => String(THIS_YEAR - i));
@@ -64,11 +65,11 @@ function TrainingNumberAllocationLog({ ownDepartmentId }: { ownDepartmentId: str
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.departmentName ?? "—" },
     { id: "date", header: "Issued On", sort: sorted("date"), cell: (r) => day(r.createdAt) },
-    { id: "number", header: "Training Number", sort: sorted("number"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.activityId}`)}>{r.trainingNumber}</button> },
+    { id: "number", header: tr("Training Number"), sort: sorted("number"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.activityId}`)}>{r.trainingNumber}</button> },
     { id: "kind", header: "Type", sort: sorted("kind"), cell: (r) => KIND_LABEL[r.kind] ?? r.kind },
-    { id: "title", header: "Training Topic", sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTopics}</div> },
+    { id: "title", header: tr("Training Topic"), sort: sorted("title"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.trainingTopics}</div> },
     { id: "document", header: "SOP", sort: sorted("document"), cell: (r) => (r.documentLabel ?? "—") },
-    { id: "sessions", header: "Number of Session", sort: sorted("sessions"), cell: (r) => r.sessions },
+    { id: "sessions", header: tr("Number of Session"), sort: sorted("sessions"), cell: (r) => r.sessions },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
     {
       id: "note",
@@ -101,7 +102,7 @@ function TrainingNumberAllocationLog({ ownDepartmentId }: { ownDepartmentId: str
       />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search Training Number, Training Topic or SOP…"
+        searchPlaceholder={tr("Search Training Number, Training Topic or SOP…")}
         search={table.searchQuery}
         onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
         filters={filters}
@@ -115,7 +116,7 @@ function TrainingNumberAllocationLog({ ownDepartmentId }: { ownDepartmentId: str
           getRowKey={(r) => r.trainingNumber}
           isLoading={table.isLoading}
 
-          emptyState={<TableEmptyState title="No Training Numbers" description="No number was issued for this department and year." />}
+          emptyState={<TableEmptyState title={tr("No Training Numbers")} description={tr("No number was issued for this department and year.")} />}
           scrollerRef={drag.scrollerRef}
           scrollProps={drag.dragEvents}
           isDragging={drag.isDragging}

@@ -23,6 +23,7 @@ import { useDebounce } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { IconInfoCircle, IconSettingsAutomation } from "@tabler/icons-react";
+import { tr, trFormat } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -124,7 +125,7 @@ export const SodConstraintFormView: React.FC = () => {
         setActive(c.active);
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: "Failed to load SoD constraint" });
+        if (!cancelled) showToast({ type: "error", message: tr("Failed to load SoD constraint") });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -224,8 +225,8 @@ export const SodConstraintFormView: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
-        <p className="text-sm">You do not have permission to manage Segregation of Duties constraints.</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
+        <p className="text-sm">{tr("You do not have permission to manage Segregation of Duties constraints.")}</p>
       </div>
     );
   }
@@ -238,22 +239,22 @@ export const SodConstraintFormView: React.FC = () => {
   const impactBlock = () => (
     <div>
       {checkingImpact ? (
-        <p className="text-sm text-slate-500">Checking who currently holds both permissions...</p>
+        <p className="text-sm text-slate-500">{tr("Checking who currently holds both permissions...")}</p>
       ) : noOneFlagged ? (
         <p className="text-sm text-slate-500">
-          No active Access Profile or user currently holds both permissions — this rule would not flag anyone today.
+          {tr("No active Access Profile or user currently holds both permissions — this rule would not flag anyone today.")}
         </p>
       ) : (
         <div className="space-y-3">
           {severity === "BLOCK" && (
             <WarningBanner variant="warning">
-              They keep their access, but no further profile can be assigned to them until the conflict is removed.
+              {tr("They keep their access, but no further profile can be assigned to them until the conflict is removed.")}
             </WarningBanner>
           )}
           {impact && impact.violatingAccessProfiles.length > 0 && (
             <div>
               <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                {impact.violatingAccessProfiles.length} Access Profile{impact.violatingAccessProfiles.length === 1 ? "" : "s"} grant both sides
+                        {trFormat("{count} Access Profiles grant both sides", { count: impact.violatingAccessProfiles.length })}
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {impact.violatingAccessProfiles.map((p) => (
@@ -265,7 +266,7 @@ export const SodConstraintFormView: React.FC = () => {
           {impact && impact.violatingUserCombinations.length > 0 && (
             <div>
               <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500">
-                {impact.violatingUserCombinations.length} user{impact.violatingUserCombinations.length === 1 ? "" : "s"} hold both via combined profiles
+                        {trFormat("{count} users hold both via combined profiles", { count: impact.violatingUserCombinations.length })}
               </p>
               <ul className="mt-1.5 divide-y divide-slate-100 rounded-lg border border-slate-200">
                 {impact.violatingUserCombinations.map((c) => (
@@ -287,13 +288,13 @@ export const SodConstraintFormView: React.FC = () => {
   const nameField = (
     <div id="sod-field-name" className="min-w-0">
       <label className={labelClass}>
-        Name <span className="text-red-500">*</span>
+        {tr("Name")} <span className="text-red-500">*</span>
       </label>
       <input
         className={cn(inputClass, shown.name && "border-red-500 focus:border-red-500 focus:ring-red-500")}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="e.g. Create vs Approve Revision"
+        placeholder={tr("e.g. Create vs Approve Revision")}
         disabled={isSystem}
         aria-invalid={Boolean(shown.name)}
       />
@@ -302,15 +303,15 @@ export const SodConstraintFormView: React.FC = () => {
   );
   const regField = (
     <div className="min-w-0">
-      <label className={labelClass}>Regulation Reference</label>
+      <label className={labelClass}>{tr("Regulation Reference")}</label>
       <input
         className={inputClass}
         value={regulationRef}
         onChange={(e) => setRegulationRef(e.target.value)}
-        placeholder="EU-GMP Chapter 4 §4.2 · 21 CFR 211.68(b)"
+        placeholder={tr("EU-GMP Chapter 4 §4.2 · 21 CFR 211.68(b)")}
         disabled={isSystem}
       />
-      <p className="mt-1.5 text-xs text-slate-500">Shown to reviewers next to every violation of this rule.</p>
+      <p className="mt-1.5 text-xs text-slate-500">{tr("Shown to reviewers next to every violation of this rule.")}</p>
     </div>
   );
   const permField = (label: string, code: string, setCode: (value: string) => void, excludeCode: string, field: "codeA" | "codeB") => (
@@ -321,8 +322,8 @@ export const SodConstraintFormView: React.FC = () => {
         onChange={(v) => setCode(String(v))}
         groups={buildGroups(excludeCode)}
         options={[]}
-        placeholder="Search and select a permission..."
-        searchPlaceholder="Search permission..."
+        placeholder={tr("Search and select a permission...")}
+        searchPlaceholder={tr("Search permission...")}
         disabled={isSystem}
         isLoading={catalogLoading}
         maxVisibleRows={8}
@@ -330,7 +331,7 @@ export const SodConstraintFormView: React.FC = () => {
       {shown[field] && <p role="alert" className="mt-1.5 text-xs text-red-600">{shown[field]}</p>}
     </div>
   );
-  const activeField = <Checkbox checked={active} onChange={setActive} label="Active" />;
+  const activeField = <Checkbox checked={active} onChange={setActive} label={tr("Active")} />;
   const profileCount = impact?.violatingAccessProfiles.length ?? 0;
   const userCount = impact?.violatingUserCombinations.length ?? 0;
   const severityCards = (
@@ -358,13 +359,13 @@ export const SodConstraintFormView: React.FC = () => {
             </span>
             <span className="mt-1.5 block text-xs leading-5 text-slate-600">
               {s === "WARN"
-                ? "Allowed, but the person is listed in SoD Violation Review."
-                : "Stops a new assignment that would give one person both permissions."}
+                ? tr("Allowed, but the person is listed in SoD Violation Review.")
+                : tr("Stops a new assignment that would give one person both permissions.")}
               {pairChosen && !checkingImpact && (profileCount > 0 || userCount > 0) && (
                 <span className="mt-1 block font-medium text-slate-700">
                   {s === "WARN"
                     ? `${profileCount} profile${profileCount === 1 ? "" : "s"} and ${userCount} user${userCount === 1 ? "" : "s"} would be listed today.`
-                    : "Those already holding both keep access; nobody new can be given both."}
+                    : tr("Those already holding both keep access; nobody new can be given both.")}
                 </span>
               )}
             </span>
@@ -376,13 +377,12 @@ export const SodConstraintFormView: React.FC = () => {
   const dupNotice =
     pairChosen && !checkingDuplicate && duplicateConstraint ? (
       <WarningBanner variant="error">
-        <span className="font-semibold">Duplicate:</span> an active constraint for this exact permission pair already exists —
-        "{duplicateConstraint.name}" ({duplicateConstraint.severity}). Edit that constraint instead of creating a second one.
+        {tr("Duplicate:")} {trFormat("an active constraint for this exact permission pair already exists — \"{name}\" ({severity}). Edit that constraint instead of creating a second one.", { name: duplicateConstraint.name, severity: duplicateConstraint.severity })}
       </WarningBanner>
     ) : null;
   const saveDisabled = saving || (isSystem && active === initial?.active);
   const cancelButton = (
-    <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">Cancel</Button>
+    <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">{tr("Cancel")}</Button>
   );
   const saveButton = (
     <Button variant="outline-emerald" size="sm" onClick={() => void handleSave()} disabled={saveDisabled} className="whitespace-nowrap">
@@ -409,7 +409,7 @@ export const SodConstraintFormView: React.FC = () => {
         }
       />
       {isSystem && (
-        <WarningBanner variant="info">This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.</WarningBanner>
+        <WarningBanner variant="info">{tr("This is a system-defined constraint. Its definition cannot be modified or deleted; it can only be activated or deactivated.")}</WarningBanner>
       )}
       {body}
       {leaveModal}
@@ -425,31 +425,31 @@ export const SodConstraintFormView: React.FC = () => {
   );
   const body = (
     <div className="space-y-4 md:space-y-6">
-      <FormSection title="1. Pick The Two Permissions" icon={<Ban className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+      <FormSection title={tr("1. Pick The Two Permissions")} icon={<Ban className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {permField("Permission A", codeA, setCodeA, codeB, "codeA")}
           {permField("Permission B", codeB, setCodeB, codeA, "codeB")}
         </div>
         {dupNotice}
       </FormSection>
-      <FormSection title="2. Who This Touches Today" icon={<Users className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+      <FormSection title={tr("2. Who This Touches Today")} icon={<Users className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
         {pairChosen ? (
           <>
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-              {statTile(profileCount, "Access Profiles grant both")}
-              {statTile(userCount, "Users hold both through combined profiles")}
+              {statTile(profileCount, tr("Access Profiles grant both"))}
+              {statTile(userCount, tr("Users hold both through combined profiles"))}
             </div>
             {impactBlock()}
           </>
         ) : (
-          <WarningBanner variant="info">Choose two different permissions to see who would conflict today.</WarningBanner>
+          <WarningBanner variant="info">{tr("Choose two different permissions to see who would conflict today.")}</WarningBanner>
         )}
       </FormSection>
-      <FormSection title="3. Decide What The System Does" icon={<IconSettingsAutomation className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
+      <FormSection title={tr("3. Decide What The System Does")} icon={<IconSettingsAutomation className="h-4 w-4" />} contentClassName="space-y-4 p-4 md:p-5">
         {severityCards}
         {activeField}
       </FormSection>
-      <FormSection title="4. Name it" icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+      <FormSection title={tr("4. Name it")} icon={<IconInfoCircle className="h-4 w-4" />} contentClassName="p-4 md:p-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {nameField}
           {regField}

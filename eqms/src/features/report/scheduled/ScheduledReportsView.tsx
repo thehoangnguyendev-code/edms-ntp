@@ -41,6 +41,7 @@ import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { IconPencilMinus, IconReplaceUser } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** A few recipients are named in the cell; when there are more, the count opens a popover with all the names. */
 const INLINE_RECIPIENTS = 2;
@@ -167,7 +168,7 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "scheduleNumber",
-                  header: "Scheduled Report Number",
+                  header: tr("Scheduled Report Number"),
                   sort: {
                     direction: sort === "scheduleNumber" ? direction : undefined,
                     onSort: () => sortBy("scheduleNumber"),
@@ -176,7 +177,7 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "name",
-                  header: "Schedule name",
+                  header: tr("Schedule name"),
                   sort: {
                     direction: sort === "name" ? direction : undefined,
                     onSort: () => sortBy("name"),
@@ -194,17 +195,17 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "owner",
-                  header: "Schedule Owner",
+                  header: tr("Schedule Owner"),
                   cell: (r) => r.ownerName ?? "—",
                 },
                 {
                   id: "recipients",
-                  header: "Recipients",
+                  header: tr("Recipients"),
                   cell: (r) => <RecipientNames names={r.recipientNames ?? []} />,
                 },
                 {
                   id: "template",
-                  header: "Report Template Number",
+                  header: tr("Report Template Number"),
                   cell: (r) => r.definitionCode,
                 },
                 {
@@ -214,7 +215,7 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "status",
-                  header: "Schedule Status",
+                  header: tr("Schedule Status"),
                   sort: {
                     direction: sort === "status" ? direction : undefined,
                     onSort: () => sortBy("status"),
@@ -232,7 +233,7 @@ export function ScheduledReportsView() {
                 },
                 {
                   id: "next",
-                  header: "Next Run At",
+                  header: tr("Next Run At"),
                   sort: {
                     direction: sort === "nextRunAt" ? direction : undefined,
                     onSort: () => sortBy("nextRunAt"),
@@ -247,7 +248,7 @@ export function ScheduledReportsView() {
                     <button
                       type="button"
                       ref={menu.getRef(r.id)}
-                      aria-label="More actions"
+                      aria-label={tr("More actions")}
                       className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
                       onClick={(event) => menu.toggle(r.id, event)}
                     >
@@ -270,7 +271,7 @@ export function ScheduledReportsView() {
               onClick={() => navigate("/report/scheduled/new")}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Schedule
+              {tr("New Schedule")}
             </Button>
           ) : undefined
         }
@@ -287,23 +288,23 @@ export function ScheduledReportsView() {
       )}
       <ReportListToolbar
             framed={false}
-            searchPlaceholder="Search schedule name…"
+            searchPlaceholder={tr("Search schedule name…")}
             search={input}
             onSearch={setInput}
             filters={[
               {
                 id: "status",
-                label: "Schedule Status",
+                label: tr("Schedule Status"),
                 value: status,
                 options: [
                   { label: "All", value: "" },
                   { label: "Active", value: "ACTIVE" },
                   { label: "Paused", value: "PAUSED" },
-                  { label: "Authorization changed", value: "SUSPENDED_AUTHORIZATION_CHANGED" },
-                  { label: "Invalid schedule", value: "SUSPENDED_INVALID_SCHEDULE" },
-                  { label: "Template not approved", value: "SUSPENDED_TEMPLATE_NOT_APPROVED" },
-                  { label: "Template disabled", value: "SUSPENDED_TEMPLATE_DISABLED" },
-                  { label: "Signature required", value: "SUSPENDED_SIGNATURE_REQUIRED" },
+                  { label: tr("Authorization changed"), value: "SUSPENDED_AUTHORIZATION_CHANGED" },
+                  { label: tr("Invalid schedule"), value: "SUSPENDED_INVALID_SCHEDULE" },
+                  { label: tr("Template not approved"), value: "SUSPENDED_TEMPLATE_NOT_APPROVED" },
+                  { label: tr("Template disabled"), value: "SUSPENDED_TEMPLATE_DISABLED" },
+                  { label: tr("Signature required"), value: "SUSPENDED_SIGNATURE_REQUIRED" },
                 ],
                 onChange: (value) => {
                   setStatus(value);
@@ -328,8 +329,8 @@ export function ScheduledReportsView() {
               }
               emptyState={
                 <TableEmptyState
-                  title="No Scheduled Reports Found"
-                  description="Create a schedule to generate reports automatically, or change your filters."
+                  title={tr("No Scheduled Reports Found")}
+                  description={tr("Create a schedule to generate reports automatically, or change your filters.")}
                 />
               }
               scrollerRef={drag.scrollerRef}
@@ -369,7 +370,7 @@ export function ScheduledReportsView() {
                   menu.close();
                 }}
               >
-                Edit Schedule
+                {tr("Edit Schedule")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={<IconReplaceUser className="h-4 w-4" />}
@@ -378,7 +379,7 @@ export function ScheduledReportsView() {
                   void openOwnerChange(row);
                 }}
               >
-                Change Owner
+                {tr("Change Owner")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 icon={
@@ -409,7 +410,7 @@ export function ScheduledReportsView() {
         onClose={() => {
           if (!ownerChange?.busy) setOwnerChange(undefined);
         }}
-        title="Change Schedule Owner"
+        title={tr("Change Schedule Owner")}
         description={`The owner of "${ownerChange?.name ?? ""}" is told when the schedule stops. Owning it does not give the right to change or run it; that stays with the creator.`}
         confirmText="Change owner"
         confirmDisabled={
@@ -419,16 +420,16 @@ export function ScheduledReportsView() {
       >
         <div className="space-y-4">
           <Select
-            label="New owner"
+            label={tr("New owner")}
             value={ownerChange?.ownerUserId ?? ""}
-            placeholder="Select a person"
+            placeholder={tr("Select a person")}
             options={(ownerChange?.options ?? []).map((c) => ({
               value: c.id,
               label: c.fullName,
             }))}
             onChange={(value) => patchOwner({ ownerUserId: String(value) })}
           />
-          <FormField label="Reason" required>
+          <FormField label={tr("Reason")} required>
             <Textarea
               rows={3}
               maxLength={1000}

@@ -24,6 +24,7 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { executedRecordApi, type ExecutedRecord } from "@/services/api/executedRecords";
 import { RecordScanPreview } from "./RecordScanPreview";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 
 
@@ -152,8 +153,8 @@ export const ExecutedRecordsView: React.FC = () => {
     },
     {
       id: "number",
-      header: "Record Number",
-      label: "Record Number",
+      header: tr("Record Number"),
+      label: tr("Record Number"),
       sort: sort("number"),
       cellClassName: TABLE_STYLES.cell27,
       // The record IS its scan: the number opens the scan (a record with no file is just text).
@@ -177,8 +178,8 @@ export const ExecutedRecordsView: React.FC = () => {
     {
       id: "document",
       sort: sort("document"),
-      header: "Document Number",
-      label: "Document Number",
+      header: tr("Document Number"),
+      label: tr("Document Number"),
       cellClassName: TABLE_STYLES.cell28,
       cell: (r) =>
         r.formDocumentId && r.formDocumentNumber ? (
@@ -199,15 +200,15 @@ export const ExecutedRecordsView: React.FC = () => {
     },
     {
       id: "documentName",
-      header: "Document Name",
-      label: "Document Name",
+      header: tr("Document Name"),
+      label: tr("Document Name"),
       cellClassName: "max-w-[260px] truncate text-slate-600",
       cell: (r) => r.formDocumentTitle || "-",
     },
     {
       id: "copy",
-      header: "Controlled Copy Number",
-      label: "Controlled Copy Number",
+      header: tr("Controlled Copy Number"),
+      label: tr("Controlled Copy Number"),
       sort: sort("copy"),
       cellClassName: "text-slate-700 whitespace-nowrap",
       cell: (r) =>
@@ -230,16 +231,16 @@ export const ExecutedRecordsView: React.FC = () => {
     { id: "recipient", header: "Recipient", label: "Recipient", sort: sort("recipient"), cellClassName: "text-slate-700 whitespace-nowrap", cell: (r) => r.filledByName ?? "-" },
     {
       id: "received",
-      header: "Received Date",
-      label: "Received Date",
+      header: tr("Received Date"),
+      label: tr("Received Date"),
       sort: sort("filled"),
       cellClassName: "text-slate-600 whitespace-nowrap",
       cell: (r) => (r.filledAt ? formatDateTime(r.filledAt) : "-"),
     },
     {
       id: "created",
-      header: "Recorded Date",
-      label: "Recorded Date",
+      header: tr("Recorded Date"),
+      label: tr("Recorded Date"),
       sort: sort("created"),
       cellClassName: "text-slate-600 whitespace-nowrap",
       cell: (r) => (r.createdAt ? formatDateTime(r.createdAt) : "-"),
@@ -254,7 +255,7 @@ export const ExecutedRecordsView: React.FC = () => {
           ref={getRef(r.id)}
           onClick={(e) => toggle(r.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -268,7 +269,7 @@ export const ExecutedRecordsView: React.FC = () => {
                   close();
                 }}
               >
-                Preview Scan
+                {tr("Preview Scan")}
               </DropdownMenuItem>
             )}
             {r.formDocumentId && (
@@ -279,7 +280,7 @@ export const ExecutedRecordsView: React.FC = () => {
                   close();
                 }}
               >
-                View Document
+                {tr("View Document")}
               </DropdownMenuItem>
             )}
           </div>
@@ -291,8 +292,8 @@ export const ExecutedRecordsView: React.FC = () => {
 
   const searchInput = (
     <FilterSearchInput
-      aria-label="Search records"
-      placeholder="Record, document or copy number..."
+      aria-label={tr("Search records")}
+      placeholder={tr("Record, document or copy number...")}
       value={searchQuery}
       onChange={setSearchQuery}
     />
@@ -302,13 +303,13 @@ export const ExecutedRecordsView: React.FC = () => {
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {isInitialLoading && <FullPageLoading text="Loading records..." />}
 
-      <PageHeader title="Records" breadcrumbItems={executedRecordsBreadcrumbs(navigateTo)} />
+      <PageHeader title={tr("Records")} breadcrumbItems={executedRecordsBreadcrumbs(navigateTo)} />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         <div className="p-4 md:p-5 flex-1 flex flex-col">
           <div className="flex flex-col w-full">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -316,20 +317,20 @@ export const ExecutedRecordsView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search records..."
+                    placeholder={tr("Search records...")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400" aria-label="Clear search">
+                    <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400" aria-label={tr("Clear search")}>
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
                 <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2 h-10">
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -339,42 +340,42 @@ export const ExecutedRecordsView: React.FC = () => {
               trailing={control}
               filters={[]}
               dates={[
-                { id: "received", label: "Received Date Range", from: receivedFrom, to: receivedTo, onFromChange: setReceivedFrom, onToChange: setReceivedTo },
-                { id: "recorded", label: "Recorded Date Range", from: recordedFrom, to: recordedTo, onFromChange: setRecordedFrom, onToChange: setRecordedTo },
+                { id: "received", label: tr("Received Date Range"), from: receivedFrom, to: receivedTo, onFromChange: setReceivedFrom, onToChange: setReceivedTo },
+                { id: "recorded", label: tr("Recorded Date Range"), from: recordedFrom, to: recordedTo, onFromChange: setRecordedFrom, onToChange: setRecordedTo },
               ]}
             >
               <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
                 <div>
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Record, document or copy number..."
+                      placeholder={tr("Record, document or copy number...")}
                       className="w-full h-9 pl-10 pr-4 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all placeholder:text-slate-400 bg-white"
                     />
                   </div>
                 </div>
                 <div>
                   <DateRangePicker
-                    label="Received Date Range"
+                    label={tr("Received Date Range")}
                     startDate={receivedFrom}
                     endDate={receivedTo}
                     onStartDateChange={setReceivedFrom}
                     onEndDateChange={setReceivedTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
                 <div>
                   <DateRangePicker
-                    label="Recorded Date Range"
+                    label={tr("Recorded Date Range")}
                     startDate={recordedFrom}
                     endDate={recordedTo}
                     onStartDateChange={setRecordedFrom}
                     onEndDateChange={setRecordedTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
                 <div className="filter-actions flex items-end gap-2">
@@ -391,34 +392,34 @@ export const ExecutedRecordsView: React.FC = () => {
               onApply={() => setIsFilterDrawerOpen(false)}
             >
               <FilterAccordionItem
-                label="Received Date Range"
+                label={tr("Received Date Range")}
                 isExpanded={expandedSections.has("received")}
                 onToggle={() => toggleSection("received")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Received Date Range"
+                    label={tr("Received Date Range")}
                     startDate={receivedFrom}
                     endDate={receivedTo}
                     onStartDateChange={setReceivedFrom}
                     onEndDateChange={setReceivedTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>
               <FilterAccordionItem
-                label="Recorded Date Range"
+                label={tr("Recorded Date Range")}
                 isExpanded={expandedSections.has("recorded")}
                 onToggle={() => toggleSection("recorded")}
               >
                 <div className="pt-2 pb-4">
                   <DateRangePicker
-                    label="Recorded Date Range"
+                    label={tr("Recorded Date Range")}
                     startDate={recordedFrom}
                     endDate={recordedTo}
                     onStartDateChange={setRecordedFrom}
                     onEndDateChange={setRecordedTo}
-                    placeholder="Select date range"
+                    placeholder={tr("Select date range")}
                   />
                 </div>
               </FilterAccordionItem>

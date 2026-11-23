@@ -55,6 +55,7 @@ import {
   TRAINING_PAGES,
   when,
 } from "../shared/trainingLabels";
+import { tr } from "@/i18n";
 
 export const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -129,7 +130,7 @@ export function TrainingRequirementListView() {
     },
     {
       id: "no",
-      header: "Request number", sort: sorted("requestNo"),
+      header: tr("Request number"), sort: sorted("requestNo"),
       cell: (r) => (
         <button
           type="button"
@@ -162,7 +163,7 @@ export function TrainingRequirementListView() {
       <button
         type="button"
         ref={menu.getRef(r.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(r.id, event)}
       >
@@ -183,7 +184,7 @@ export function TrainingRequirementListView() {
       .catch((e) =>
         showToast({
           type: "error",
-          title: "The requirement was not exported",
+          title: tr("The requirement was not exported"),
           message: trainingError(e),
         }),
       );
@@ -219,7 +220,7 @@ export function TrainingRequirementListView() {
       });
       showToast({
         type: "success",
-        title: "Requirement created",
+        title: tr("Requirement created"),
         message: created.requestNo,
       });
       setCreating(false);
@@ -227,7 +228,7 @@ export function TrainingRequirementListView() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The requirement was not created",
+        title: tr("The requirement was not created"),
         message: trainingError(e),
       });
     } finally {
@@ -244,7 +245,7 @@ export function TrainingRequirementListView() {
           canPrepare ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <IconPlus className="mr-2 h-4 w-4" />
-              New Requirement
+              {tr("New Requirement")}
             </Button>
           ) : undefined
         }
@@ -255,7 +256,7 @@ export function TrainingRequirementListView() {
         </p>
       )}
       <ReportListToolbar
-        searchPlaceholder="Search request number…"
+        searchPlaceholder={tr("Search request number…")}
         search={table.searchQuery}
         onSearch={(v) => {
           table.setSearchQuery(v);
@@ -285,8 +286,8 @@ export function TrainingRequirementListView() {
           action={action}
           emptyState={
             <TableEmptyState
-              title="No Training Requirements"
-              description="The plan of the trainings of a year appears here."
+              title={tr("No Training Requirements")}
+              description={tr("The plan of the trainings of a year appears here.")}
             />
           }
           pagination={
@@ -315,14 +316,14 @@ export function TrainingRequirementListView() {
               {
                 show: true,
                 icon: <IconInfoCircle className="h-4 w-4" />,
-                label: "View Details",
+                label: tr("View Details"),
                 run: () =>
                   navigate(`/training-management/requirements/${actionRow.id}`),
               },
               {
                 show: actionRow.actions?.edit,
                 icon: <IconPencilMinus className="h-4 w-4" />,
-                label: "Edit Training Requirement",
+                label: tr("Edit Training Requirement"),
                 run: () =>
                   navigate(
                     `/training-management/requirements/${actionRow.id}/edit`,
@@ -331,7 +332,7 @@ export function TrainingRequirementListView() {
               {
                 show: actionRow.actions?.review,
                 icon: <IconCheck className="h-4 w-4" />,
-                label: "Review Training Requirement",
+                label: tr("Review Training Requirement"),
                 run: () =>
                   navigate(
                     `/training-management/requirements/${actionRow.id}/review`,
@@ -340,7 +341,7 @@ export function TrainingRequirementListView() {
               {
                 show: actionRow.actions?.approve,
                 icon: <IconChecks className="h-4 w-4" />,
-                label: "Approve Training Requirement",
+                label: tr("Approve Training Requirement"),
                 run: () =>
                   navigate(
                     `/training-management/requirements/${actionRow.id}/approve`,
@@ -349,7 +350,7 @@ export function TrainingRequirementListView() {
               {
                 show: actionRow.actions?.track,
                 icon: <IconTag className="h-4 w-4" />,
-                label: "Follow Training Requirement",
+                label: tr("Follow Training Requirement"),
                 run: () =>
                   navigate(
                     `/training-management/requirements/${actionRow.id}/track`,
@@ -358,13 +359,13 @@ export function TrainingRequirementListView() {
               {
                 show: actionRow.actions?.print,
                 icon: <IconFileTypeDocx className="h-4 w-4" />,
-                label: "Download Word",
+                label: tr("Download Word"),
                 run: () => void download(actionRow, "docx"),
               },
               {
                 show: actionRow.actions?.print,
                 icon: <IconFileTypePdf className="h-4 w-4" />,
-                label: "Download PDF",
+                label: tr("Download PDF"),
                 run: () => void download(actionRow, "pdf"),
               },
             ]
@@ -388,15 +389,15 @@ export function TrainingRequirementListView() {
         isOpen={creating}
         onClose={() => setCreating(false)}
         onConfirm={() => void create()}
-        title="New Training Requirement"
-        description="A draft for your department. The request number is issued by the system."
+        title={tr("New Training Requirement")}
+        description={tr("A draft for your department. The request number is issued by the system.")}
         confirmText="Create draft"
         isLoading={busy}
         confirmDisabled={!year || (kind === "SOP_PERIODIC" && !reviewDone)}
         size="md"
       >
         <div className="grid gap-4">
-          <FormField label="Year" required>
+          <FormField label={tr("Year")} required>
             <Input
               type="number"
               min={2000}
@@ -405,7 +406,7 @@ export function TrainingRequirementListView() {
               onChange={(e) => setYear(e.target.value)}
             />
           </FormField>
-          <FormField label="Type" required>
+          <FormField label={tr("Type")} required>
             <Select
               value={kind}
               enableSearch={false}
@@ -417,7 +418,7 @@ export function TrainingRequirementListView() {
             />
           </FormField>
           {kind === "SOP_PERIODIC" && (
-            <FormField label="Date the review of the SOPs was completed" required hint="SOP.0003 5.3.2: the requirement is prepared and approved at the latest on the last day of that month. The due date is set from it.">
+            <FormField label={tr("Date the review of the SOPs was completed")} required hint={tr("SOP.0003 5.3.2: the requirement is prepared and approved at the latest on the last day of that month. The due date is set from it.")}>
               <TrainingDateField value={reviewDone} onChange={setReviewDone} label="" />
             </FormField>
           )}

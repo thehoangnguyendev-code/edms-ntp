@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { SectionLoading } from '@/components/ui/loading/Loading';
 import { CONFIGURATION_AUDIT_ENTITY_ID, type ConfigurationHistoryPage, CONFIGURATION_HISTORY_TYPE } from './pageTabs';
+import { tr } from "@/i18n";
 
 const AuditTrailTab = lazy(() =>
   import('@/features/documents/shared/components/AuditTrailTab').then((m) => ({ default: m.AuditTrailTab })),
@@ -13,7 +14,7 @@ const AuditTrailTab = lazy(() =>
 export const ConfigHistory: React.FC<{ page: ConfigurationHistoryPage }> = ({ page }) => (
   <div className="space-y-3">
     <Suspense fallback={<SectionLoading />}>
-      <AuditTrailTab entityId={CONFIGURATION_AUDIT_ENTITY_ID} entityType={CONFIGURATION_HISTORY_TYPE[page]} emptyMessage="No setting of this page has been changed and saved yet." />
+      <AuditTrailTab entityId={CONFIGURATION_AUDIT_ENTITY_ID} entityType={CONFIGURATION_HISTORY_TYPE[page]} emptyMessage={tr("No setting of this page has been changed and saved yet.")} />
     </Suspense>
   </div>
 );

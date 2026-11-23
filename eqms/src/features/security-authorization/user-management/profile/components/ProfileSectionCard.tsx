@@ -8,6 +8,7 @@ import type { User } from "../../types";
 import { IconPencilMinus } from "@tabler/icons-react";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { Badge } from "@/components/ui/badge/Badge";
+import { tr } from "@/i18n";
 
 // ── Shared types ───────────────────────────────────────────────────────────────
 export type SectionKey = "personal" | "work" | "account" | "education" | "expertise";
@@ -68,13 +69,13 @@ export const SectionCard: React.FC<{
     headerRight={
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         {isEditing && (
-          <Badge color="emerald" size="sm">Editing</Badge>
+          <Badge color="emerald" size="sm">{tr("Editing")}</Badge>
         )}
         {isEditing ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="xs" onClick={onReset} disabled={isResetDisabled}>Reset</Button>
-            <Button variant="outline" size="xs" onClick={onCancel}>Cancel</Button>
-            <Button variant="default" size="xs" onClick={onSave}>Save</Button>
+            <Button variant="outline" size="xs" onClick={onReset} disabled={isResetDisabled}>{tr("Reset")}</Button>
+            <Button variant="outline" size="xs" onClick={onCancel}>{tr("Cancel")}</Button>
+            <Button variant="default" size="xs" onClick={onSave}>{tr("Save")}</Button>
           </div>
         ) : onEdit && (
           <Button
@@ -85,7 +86,7 @@ export const SectionCard: React.FC<{
             className="gap-1.5 h-7 px-2.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit</span>
+            <span>{tr("Edit")}</span>
           </Button>
         )}
       </div>

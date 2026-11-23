@@ -3,6 +3,7 @@ import { defaultApprovalColumns, defaultReportMark, effectiveReportFrame, type R
 import { logoPlace, type ZoneKey } from "./ReportZonePanels";
 import { fillSample } from "./reportSampleValues";
 import { effectiveBold, legacyBold } from "./ReportTextStyleFields";
+import { tr, trFormat } from "@/i18n";
 
 const ReportMarkOverlay = lazy(() => import("./ReportMarkOverlay"));
 
@@ -196,14 +197,14 @@ export function ReportLiveSheet({
     <div style={{ marginTop: u(120), display: "grid", gap: u(14) }}>
       <div style={{ fontSize: u(22), fontWeight: 700, ...textCss(layout.coverTitleStyle, 22) }}>{fill(layout.coverTitle)}</div>
       <div style={{ fontSize: u(12), color: "#475569", ...textCss(layout.coverSubtitleStyle, 12) }}>{fill(layout.subtitle)}</div>
-      {layout.showExecutor && <div style={{ fontSize: u(11) }}>Prepared by: {fillSample("{{report.executor}}", company, page, 2)}</div>}
-      {layout.showGeneratedAt && <div style={{ fontSize: u(11) }}>Generated at (UTC+7): {fillSample("{{report.generatedAt}}", company, page, 2)}</div>}
+      {layout.showExecutor && <div style={{ fontSize: u(11) }}>{tr("Prepared by:")} {fillSample("{{report.executor}}", company, page, 2)}</div>}
+      {layout.showGeneratedAt && <div style={{ fontSize: u(11) }}>{tr("Generated at (UTC+7):")} {fillSample("{{report.generatedAt}}", company, page, 2)}</div>}
     </div>
   ) : isClosing ? (
     <div style={{ display: "grid", gap: u(12) }}>
       {frame.approval && (
         <div {...zoneProps("appr", "Approval block of the page")} style={{ ...zoneStyle("appr"), padding: u(4) }}>
-          <div style={{ fontSize: u(11), fontWeight: 600, marginBottom: u(10), ...textCss(frame.approvalStyle && { ...frame.approvalStyle, size: (frame.approvalStyle.size ?? 9) + 2 }, 11) }}>Approval</div>
+          <div style={{ fontSize: u(11), fontWeight: 600, marginBottom: u(10), ...textCss(frame.approvalStyle && { ...frame.approvalStyle, size: (frame.approvalStyle.size ?? 9) + 2 }, 11) }}>{tr("Approval")}</div>
           {(() => {
             const shown = (frame.approvalColumns?.length ? frame.approvalColumns : defaultApprovalColumns()).filter((column) => column.enabled !== false);
             const weights = [0.2, 0.26, 0.22, 0.16];
@@ -228,7 +229,7 @@ export function ReportLiveSheet({
       )}
       {frame.notes && (
         <div {...zoneProps("notes", "Notes box of the page")} style={{ ...zoneStyle("notes"), padding: u(4) }}>
-          <div style={{ fontSize: u(9), marginBottom: u(4), ...textCss(frame.notesStyle, 9) }}>Notes / Comments</div>
+          <div style={{ fontSize: u(9), marginBottom: u(4), ...textCss(frame.notesStyle, 9) }}>{tr("Notes / Comments")}</div>
           <div style={{ border: `${u(0.75)} solid #94a3b8`, height: u(frame.notesHeight) }} />
         </div>
       )}
@@ -249,7 +250,7 @@ export function ReportLiveSheet({
       )}
       {isTable && (
         <div style={{ fontSize: u(8) }}>
-          <div style={{ fontWeight: 700, marginBottom: u(2) }}>Metadata report • Page {page}</div>
+          <div style={{ fontWeight: 700, marginBottom: u(2) }}>{tr("Metadata report • Page")} {page}</div>
           {[["Number", "Name", "Status", "Department"], ...SAMPLE_ROWS].map((row, index) => (
             <div key={index} style={{ display: "grid", gridTemplateColumns: "1fr 2.4fr 0.8fr 1.2fr", gap: u(10), padding: `${u(3)} ${u(4)}`, borderBottom: `${u(index === 0 ? 0.6 : 0.25)} solid ${index === 0 ? "#64748b" : "#cbd5e1"}` }}>
               {row.map((value, column) => (
@@ -303,7 +304,7 @@ export function ReportLiveSheet({
           tabIndex={0}
           onClick={() => onSelect("wm")}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect("wm")}
-          aria-label="Watermark on the page"
+          aria-label={tr("Watermark on the page")}
           style={{ position: "absolute", left: `${mark.x}%`, top: `${mark.y}%`, transformOrigin: "left bottom", transform: `rotate(${-mark.rotation}deg) translateY(-100%)`, fontSize: u(mark.fontSize), fontWeight: 800, whiteSpace: "nowrap", color: mark.color, opacity: mark.opacity / 100, cursor: "pointer", outline: selected === "wm" ? `${u(1)} dashed #059669` : undefined }}
         >
           {layout.watermark}
@@ -315,7 +316,7 @@ export function ReportLiveSheet({
           tabIndex={0}
           onClick={() => onSelect("stamp")}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect("stamp")}
-          aria-label="Stamp on the page"
+          aria-label={tr("Stamp on the page")}
           style={{ position: "absolute", ...(stampAt ? { left: `${stampAt.x}%`, top: `${stampAt.y}%` } : { right: u(30), top: u(8) }), padding: `${u(3)} ${u(10)}`, border: `${u(1.5)} solid ${stamp?.color ?? "#059669"}`, color: stamp?.color ?? "#059669", opacity: (stamp?.opacity ?? 90) / 100, fontSize: u(10), fontWeight: 800, letterSpacing: u(1), borderRadius: u(3), cursor: "pointer", background: "rgba(255,255,255,.6)" }}
         >
           {layout.stamp}

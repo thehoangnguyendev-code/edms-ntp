@@ -17,6 +17,7 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import type { TimeLimitedUserGrant } from "../../types";
 import { TimeLimitedUserGrantFields } from "../components/TimeLimitedUserGrantFields";
 import { toTimeLimitedUserIsoInstant, toTimeLimitedUserPickerDateTime } from "../utils/timeLimitedUserDate";
+import { tr } from "@/i18n";
 
 /** Full-page editor. The server re-evaluates the grant status/window after the signed update. */
 export const TimeLimitedUserEditView: React.FC = () => {
@@ -73,11 +74,11 @@ export const TimeLimitedUserEditView: React.FC = () => {
         reason: signature.reason || reason.trim() || undefined,
         signatureToken: verified.signatureToken,
       });
-      showToast({ type: "success", title: "Time-Limited User Updated", message: `Access window for ${grantToUpdate.fullName} has been updated.` });
+      showToast({ type: "success", title: tr("Time-Limited User Updated"), message: `Access window for ${grantToUpdate.fullName} has been updated.` });
       setSignOpen(false);
       navigate(ROUTES.SECURITY.TIME_LIMITED_USERS_DETAIL(grantToUpdate.id));
     } catch (err) {
-      showToast({ type: "error", title: "Update Failed", message: extractApiMessage(err, "Unable to update the time-limited access grant.") });
+      showToast({ type: "error", title: tr("Update Failed"), message: extractApiMessage(err, "Unable to update the time-limited access grant.") });
     } finally { setSaving(false); }
   };
 
@@ -86,7 +87,7 @@ export const TimeLimitedUserEditView: React.FC = () => {
     return (
       <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
         <p className="text-sm font-medium text-amber-800">{loadError ?? "Time-limited access grant not found."}</p>
-        <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}>Back to Time-Limited Users</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}>{tr("Back to Time-Limited Users")}</Button>
       </div>
     );
   }
@@ -96,11 +97,11 @@ export const TimeLimitedUserEditView: React.FC = () => {
   return (
     <div className="flex h-full flex-col gap-6">
       <PageHeader
-        title="Edit Time-Limited User"
+        title={tr("Edit Time-Limited User")}
         breadcrumbItems={editTimeLimitedUser(go, grant.id)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(detailUrl)}>Cancel</Button>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(detailUrl)}>{tr("Cancel")}</Button>
             <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" disabled={!canSave} onClick={() => setSignOpen(true)}>{saving ? "Saving..." : "Save"}</Button>
           </div>
         }
@@ -114,30 +115,30 @@ export const TimeLimitedUserEditView: React.FC = () => {
       )}
 
       <FormSection
-        title="User Information"
-        description="The assigned account is read-only while editing its access window."
+        title={tr("User Information")}
+        description={tr("The assigned account is read-only while editing its access window.")}
         icon={<UserRound className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >
         <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Full Name</p>
+            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Full Name")}</p>
             <p className="text-xs font-medium text-slate-900 sm:text-sm">{grant.fullName}</p>
           </div>
           <div>
-            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Username</p>
+            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Username")}</p>
             <p className="text-xs text-slate-700 sm:text-sm">{grant.username}</p>
           </div>
           <div>
-            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">Email</p>
+            <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Email")}</p>
             <p className="break-words text-xs text-slate-700 sm:text-sm">{grant.email}</p>
           </div>
         </div>
       </FormSection>
 
       <FormSection
-        title="Access Window"
-        description="Changes are applied after electronic-signature confirmation."
+        title={tr("Access Window")}
+        description={tr("Changes are applied after electronic-signature confirmation.")}
         icon={<CalendarClock className="h-4 w-4" />}
         contentClassName="p-4 md:p-5"
       >

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button/Button";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
 import { reportTemplatesApi, reportError, type TemplateCriteria } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 /**
  * The CSV or XLSX file of the report, made as the report will be made and shown in the read-only OnlyOffice viewer (REPORT-OUTPUT-PREVIEW-2026-11-16). It is a working copy: the server
@@ -55,13 +56,13 @@ export function ReportFilePreview({
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-900">{format} file preview</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{format} {tr("file preview")}</h3>
         <span role="status" className="text-xs text-slate-500">
           {busy ? "Making the file…" : file ? file.fileName : ""}
         </span>
       </div>
       <p className="mb-3 text-xs text-slate-500">
-        This is a temporary copy to look at before you generate the report. It is kept until the report is complete, then removed. It is not a report and is not recorded.
+        {tr("This is a temporary copy to look at before you generate the report. It is kept until the report is complete, then removed. It is not a report and is not recorded.")}
       </p>
       {busy && <SectionLoading text="Making the preview file..." />}
       {error && (
@@ -69,7 +70,7 @@ export function ReportFilePreview({
           {error}
           <div className="mt-2">
             <Button size="sm" variant="outline" onClick={() => setRetry((n) => n + 1)}>
-              Try again
+              {tr("Try again")}
             </Button>
           </div>
         </div>

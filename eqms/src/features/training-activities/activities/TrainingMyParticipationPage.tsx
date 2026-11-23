@@ -10,6 +10,7 @@ import { myTrainingApi } from "@/services/api/myTraining";
 import { trainingActivitiesApi, trainingError, type TrainingMyParticipation } from "@/services/api/trainingActivities";
 import { day, statusChange, trainingBreadcrumbs, when } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { tr } from "@/i18n";
 
 /**
  * The screen where an employee reads the training that was given to them and confirms the reading with an electronic signature (self-reading). It needs only the permission to see one's own training and shows
@@ -33,11 +34,11 @@ export function TrainingMyParticipationPage() {
     try {
       await trainingActivitiesApi.confirmRead(participantId, signatureToken, reason);
       setSigning(false);
-      showToast({ type: "success", title: "Reading confirmed", message: "Your electronic signature was recorded." });
+      showToast({ type: "success", title: tr("Reading confirmed"), message: "Your electronic signature was recorded." });
       load();
     } catch (e) {
       setSigning(false);
-      showToast({ type: "error", title: "The reading was not confirmed", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The reading was not confirmed"), message: trainingError(e) });
       load();
     }
   };
@@ -50,36 +51,36 @@ export function TrainingMyParticipationPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={goBack}>Back</Button>} />
+      <PageHeader title={title} breadcrumbItems={crumbs} actions={<Button size="sm" variant="outline" onClick={goBack}>{tr("Back")}</Button>} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!mine && !error && <SectionLoading text="Loading…" />}
 
       {mine && (
         <>
-          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Training">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label={tr("Training")}>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-lg font-semibold text-slate-900">{mine.trainingNumber}</span>
-              {confirmed ? <Badge color="emerald">You confirmed the reading</Badge> : mine.canConfirmRead ? <Badge color="amber">Waiting for your signature</Badge> : <Badge color="slate">Not open for your signature</Badge>}
+              {confirmed ? <Badge color="emerald">{tr("You confirmed the reading")}</Badge> : mine.canConfirmRead ? <Badge color="amber">{tr("Waiting for your signature")}</Badge> : <Badge color="slate">{tr("Not open for your signature")}</Badge>}
             </div>
             <p className="mt-2 text-sm text-slate-700">{mine.trainingTopics ?? "—"}</p>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-slate-500">Due date</dt><dd className="text-slate-900">{day(mine.dueDate)}</dd></div>
-              <div><dt className="text-slate-500">Scheduled</dt><dd className="text-slate-900">{day(mine.scheduledOn)}</dd></div>
+              <div><dt className="text-slate-500">{tr("Due date")}</dt><dd className="text-slate-900">{day(mine.dueDate)}</dd></div>
+              <div><dt className="text-slate-500">{tr("Scheduled")}</dt><dd className="text-slate-900">{day(mine.scheduledOn)}</dd></div>
               {mine.documentNumber && (
                 <div className="sm:col-span-2">
-                  <dt className="text-slate-500">Document</dt>
+                  <dt className="text-slate-500">{tr("Document")}</dt>
                   <dd className="text-slate-900">{mine.documentNumber}{mine.documentName ? ` — ${mine.documentName}` : ""}{mine.revisionNumber ? ` (revision ${mine.revisionNumber})` : ""}</dd>
                 </div>
               )}
-              {confirmed && <div><dt className="text-slate-500">Confirmed on</dt><dd className="text-slate-900">{when(mine.readConfirmedAt)}</dd></div>}
+              {confirmed && <div><dt className="text-slate-500">{tr("Confirmed on")}</dt><dd className="text-slate-900">{when(mine.readConfirmedAt)}</dd></div>}
             </dl>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label="Material to read">
-            <h2 className="text-sm font-semibold text-slate-900">Material to read</h2>
+          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label={tr("Material to read")}>
+            <h2 className="text-sm font-semibold text-slate-900">{tr("Material to read")}</h2>
             {mine.revisionId && (
               <p className="mt-2 text-sm text-slate-700">
-                Read the document in Document Control:{" "}
+                {tr("Read the document in Document Control:")}{" "}
                 <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/documents/revisions/${mine.revisionId}`)}>{mine.documentNumber}</button>
               </p>
             )}
@@ -92,16 +93,16 @@ export function TrainingMyParticipationPage() {
             )}
             {files.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                {files.map((m) => <li key={m.id}>{m.title} <span className="text-slate-500">(ask the trainer for the file)</span></li>)}
+                {files.map((m) => <li key={m.id}>{m.title} <span className="text-slate-500">{tr("(ask the trainer for the file)")}</span></li>)}
               </ul>
             )}
-            {!mine.revisionId && links.length === 0 && files.length === 0 && <p className="mt-2 text-sm text-slate-600">The trainer has not attached a document or a link. Ask the trainer where the training is.</p>}
+            {!mine.revisionId && links.length === 0 && files.length === 0 && <p className="mt-2 text-sm text-slate-600">{tr("The trainer has not attached a document or a link. Ask the trainer where the training is.")}</p>}
           </section>
 
           {mine.canConfirmRead && (
-            <div className="flex justify-end"><Button onClick={() => setSigning(true)}>I have read and understood</Button></div>
+            <div className="flex justify-end"><Button onClick={() => setSigning(true)}>{tr("I have read and understood")}</Button></div>
           )}
-          {!mine.canConfirmRead && !confirmed && <p className="text-sm text-slate-600">This training is not open for your signature now: it is closed, or it is not a self-reading.</p>}
+          {!mine.canConfirmRead && !confirmed && <p className="text-sm text-slate-600">{tr("This training is not open for your signature now: it is closed, or it is not a self-reading.")}</p>}
           <ESignatureModal
             isOpen={signing}
             onClose={() => setSigning(false)}

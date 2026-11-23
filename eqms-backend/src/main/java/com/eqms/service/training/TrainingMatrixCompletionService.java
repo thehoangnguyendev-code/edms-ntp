@@ -93,11 +93,13 @@ public class TrainingMatrixCompletionService {
 
         Map<String, Object> out = new LinkedHashMap<>();
         Map<String, Object> version = jdbc.queryForList("""
-            select v.id, v.version_no from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'
+            select v.id, v.version_no, v.effective_at from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'
             """, department).stream().findFirst().orElse(null);
         out.put("hasEffectiveMatrix", version != null);
         if (version == null) return empty(out, safePage, safeLimit, safeColumnPage, safeColumnLimit);
         out.put("matrixVersionNo", version.get("version_no"));
+        out.put("matrixEffectiveAt", TrainingComplianceService.iso(version.get("effective_at")));
+        out.put("generatedAt", java.time.OffsetDateTime.now().toString());
 
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select r.id as row_id, r.row_no, r.row_group, r.annual_required, d.document_number as code, coalesce(r.topic_text, d.document_name) as title,

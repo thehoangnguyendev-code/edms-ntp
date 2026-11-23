@@ -10,6 +10,7 @@ import { metadataApi } from "@/services/api/metadata";
 import { Reviewer } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface AppUser {
     id: string;
@@ -111,8 +112,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             isOpen={isOpen}
             onClose={onClose}
             onConfirm={handleSave}
-            title="Setup Reviewers"
-            description="Select users who will review this document."
+            title={tr("Setup Reviewers")}
+            description={tr("Select users who will review this document.")}
             confirmText={`Update Reviewers (${selectedIds.length})`}
             confirmDisabled={selectedIds.length === 0}
             size="lg"
@@ -122,7 +123,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, position, or department..."
+                        placeholder={tr("Search by name, position, or department...")}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-9 pl-9 pr-4 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 transition-colors"
@@ -133,8 +134,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                 <div className="overflow-y-auto max-h-[350px] -mx-1 px-1 custom-scrollbar min-h-[150px]">
                     {isLoading ? (
                         <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                            <p className="text-sm font-semibold text-slate-900">Loading users...</p>
-                            <p className="text-xs text-slate-500 mt-1">Please wait while we load reviewer candidates</p>
+                            <p className="text-sm font-semibold text-slate-900">{tr("Loading users...")}</p>
+                            <p className="text-xs text-slate-500 mt-1">{tr("Please wait while we load reviewer candidates")}</p>
                         </div>
                     ) : filteredUsers.length > 0 ? (
                         <div className="space-y-2">
@@ -169,7 +170,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                                                 {user.fullName}
                                                 {isAlreadyAdded && (
                                                     <Badge color="slate" size="sm">
-                                                        Added
+                                                        {tr("Added")}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -187,8 +188,8 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
                             <div className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
                                 <User className="h-6 w-6 text-slate-300" />
                             </div>
-                            <p className="text-sm font-semibold text-slate-900">No users found</p>
-                            <p className="text-xs text-slate-500 mt-1">Try a different search term</p>
+                            <p className="text-sm font-semibold text-slate-900">{tr("No users found")}</p>
+                            <p className="text-xs text-slate-500 mt-1">{tr("Try a different search term")}</p>
                         </div>
                     )}
                 </div>
@@ -293,25 +294,25 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
                             <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                                 <TableMarkup.Row>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                        No.
+                                        {tr("No.")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        User
+                                        {tr("User")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Email
+                                        {tr("Email")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Position
+                                        {tr("Position")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Department
+                                        {tr("Department")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                        Sequence
+                                        {tr("Sequence")}
                                     </TableMarkup.HeaderCell>
                                     <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell11}>
-                                        Action
+                                        {tr("Action")}
                                     </TableMarkup.HeaderCell>
                                 </TableMarkup.Row>
                             </TableMarkup.Head>
@@ -365,7 +366,7 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
                                                     variant="ghost"
                                                     size="icon-sm"
                                                     className="text-slate-400 hover:text-red-500 hover:bg-red-50"
-                                                    title="Remove reviewer"
+                                                    title={tr("Remove reviewer")}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -383,7 +384,7 @@ export const ReviewersTab: React.FC<ReviewersTabProps> = ({
                     <div className="h-12 w-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 duration-200">
                         <Users className="h-6 w-6 text-slate-400" />
                     </div>
-                    <p className="text-sm font-medium text-slate-500">No Reviewers Selected</p>
+                    <p className="text-sm font-medium text-slate-500">{tr("No Reviewers Selected")}</p>
                 </div>
             )}
 

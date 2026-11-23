@@ -3,6 +3,7 @@ import { Check, Lock } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import type { Permission } from "../permission-types";
+import { tr } from "@/i18n";
 
 interface PermissionTableViewProps {
   permissions: Permission[];
@@ -41,7 +42,7 @@ export const PermissionTableView: React.FC<PermissionTableViewProps> = ({ permis
     if (showTick) {
       list.push({
         id: "granted",
-        header: <span className="sr-only">Granted</span>,
+        header: <span className="sr-only">{tr("Granted")}</span>,
         label: "Granted",
         locked: true,
         headerClassName: "w-12",
@@ -68,8 +69,8 @@ export const PermissionTableView: React.FC<PermissionTableViewProps> = ({ permis
     list.push(
       {
         id: "permission",
-        header: "Permission",
-        label: "Permission",
+        header: tr("Permission"),
+        label: tr("Permission"),
         cellClassName: "min-w-[14rem]",
         cell: (permission) => (
           <span title={isLocked(permission.id) ? lockedNotes?.get(permission.id) : permission.id} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-900">

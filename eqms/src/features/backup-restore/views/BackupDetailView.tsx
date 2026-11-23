@@ -24,6 +24,7 @@ import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, VERIFICATION_COLOR, statusLabel } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { displayDate } from "@/utils/format";
+import { tr } from "@/i18n";
 
 type MainTab = "general" | "integrity" | "stored" | "contents";
 type SubTab = "verifications" | "restoreTests";
@@ -99,27 +100,27 @@ export const BackupDetailView: React.FC = () => {
     setRehearseBusy(true);
     try {
       const created = await backupRestoreApi.requestRehearsal(backupNumber, rehearseReason.trim());
-      showToast({ type: "success", title: "Test restore requested", message: `${created.rehearsalId} is queued.` });
+      showToast({ type: "success", title: tr("Test restore requested"), message: `${created.rehearsalId} is queued.` });
       setRehearsing(false);
       setRehearseReason("");
       reload();
     } catch (e) {
-      showToast({ type: "error", title: "The test restore was not requested", message: getApiErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The test restore was not requested"), message: getApiErrorMessage(e, "The request was refused.") });
     } finally {
       setRehearseBusy(false);
     }
   };
 
-  const parent = { label: "Backup History", path: ROUTES.BACKUP_RESTORE.BACKUPS };
+  const parent = { label: tr("Backup History"), path: ROUTES.BACKUP_RESTORE.BACKUPS };
   const back = () => navigate(ROUTES.BACKUP_RESTORE.BACKUPS);
 
   if (error) {
     return (
-      <BackupRestorePage title="Backup Details" group="Backup" parent={parent} preview={false}>
-        <WarningBanner variant="error" title="Unable to open the backup" description={error} />
+      <BackupRestorePage title={tr("Backup Details")} group="Backup" parent={parent} preview={false}>
+        <WarningBanner variant="error" title={tr("Unable to open the backup")} description={error} />
         <div>
           <Button size="sm" variant="outline-emerald" onClick={back}>
-            Back to Backup History
+            {tr("Back to Backup History")}
           </Button>
         </div>
       </BackupRestorePage>
@@ -127,7 +128,7 @@ export const BackupDetailView: React.FC = () => {
   }
   if (!backup) {
     return (
-      <BackupRestorePage title="Backup Details" group="Backup" parent={parent} preview={false}>
+      <BackupRestorePage title={tr("Backup Details")} group="Backup" parent={parent} preview={false}>
         <SectionLoading minHeight="40vh" />
       </BackupRestorePage>
     );
@@ -143,14 +144,14 @@ export const BackupDetailView: React.FC = () => {
   const actionButtons = (
     <>
       <Button variant="outline-emerald" size="sm" onClick={back} className="whitespace-nowrap touch-manipulation">
-        Back
+        {tr("Back")}
       </Button>
       <Button variant="outline-emerald" size="sm" disabled={!restorable || !canVerify || verifying} onClick={() => setVerifying(true)} className="whitespace-nowrap touch-manipulation">
-        Verify Integrity
+        {tr("Verify Integrity")}
       </Button>
       {canRehearse && (
         <Button variant="outline-emerald" size="sm" disabled={!canRestore || busyRehearsal} onClick={() => setRehearsing(true)} className="whitespace-nowrap touch-manipulation">
-          Test Restore
+          {tr("Test Restore")}
         </Button>
       )}
       <Button
@@ -159,36 +160,36 @@ export const BackupDetailView: React.FC = () => {
         onClick={() => setRestoring(true)}
         className="whitespace-nowrap touch-manipulation"
       >
-        Restore
+        {tr("Restore")}
       </Button>
     </>
   );
 
   const tabs = [
-    { id: "general" as MainTab, label: "General Information" },
-    { id: "integrity" as MainTab, label: "Integrity and Retention" },
+    { id: "general" as MainTab, label: tr("General Information") },
+    { id: "integrity" as MainTab, label: tr("Integrity and Retention") },
     { id: "stored" as MainTab, label: "Stored At", count: locations.length },
     { id: "contents" as MainTab, label: "Contents", count: backup.components.length },
   ];
   const subTabs = [
-    { id: "verifications" as SubTab, label: "Verification History", count: verifications.length },
-    { id: "restoreTests" as SubTab, label: "Restore Tests", count: rehearsalTotal },
+    { id: "verifications" as SubTab, label: tr("Verification History"), count: verifications.length },
+    { id: "restoreTests" as SubTab, label: tr("Restore Tests"), count: rehearsalTotal },
   ];
 
   return (
     <BackupRestorePage
-      title="Backup Details"
+      title={tr("Backup Details")}
       group="Backup"
       parent={parent}
       preview={false}
       actions={<div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">{actionButtons}</div>}
     >
-      {backup.status === "FAILED" && <WarningBanner variant="error" title="This backup failed" description={backup.errorMessage ?? "No detail recorded."} />}
+      {backup.status === "FAILED" && <WarningBanner variant="error" title={tr("This backup failed")} description={backup.errorMessage ?? "No detail recorded."} />}
       {restorable && !verified && (
         <WarningBanner
           variant="warning"
-          title={backup.verification === "FAILED" ? "This backup did not pass its integrity check" : "This backup has not been verified"}
-          description="It cannot be used for a restore until it passes its integrity check."
+          title={backup.verification === "FAILED" ? tr("This backup did not pass its integrity check") : "This backup has not been verified"}
+          description={tr("It cannot be used for a restore until it passes its integrity check.")}
         />
       )}
 
@@ -196,16 +197,16 @@ export const BackupDetailView: React.FC = () => {
       <WorkflowProgressStepper workflow={backup.workflow} />
 
       <div className={canRestore ? "rounded-xl border border-emerald-200 bg-emerald-50 p-4 md:p-5" : "rounded-xl border border-amber-200 bg-amber-50 p-4 md:p-5"}>
-        <h3 className={canRestore ? "mb-3 text-sm font-semibold text-emerald-900" : "mb-3 text-sm font-semibold text-amber-900"}>What this means</h3>
+        <h3 className={canRestore ? "mb-3 text-sm font-semibold text-emerald-900" : "mb-3 text-sm font-semibold text-amber-900"}>{tr("What this means")}</h3>
         <ul className={canRestore ? "list-disc space-y-2 pl-5 text-xs text-emerald-800 marker:text-emerald-600 sm:text-sm" : "list-disc space-y-2 pl-5 text-xs text-amber-800 marker:text-amber-600 sm:text-sm"}>
           {canRestore ? (
-            <li>This backup passed its integrity check and can be used for a restore request.</li>
+            <li>{tr("This backup passed its integrity check and can be used for a restore request.")}</li>
           ) : (
-            <li>This backup cannot be used for a restore until it is completed and has passed its integrity check.</li>
+            <li>{tr("This backup cannot be used for a restore until it is completed and has passed its integrity check.")}</li>
           )}
-          <li>{backup.retention === "PERMANENT" ? "It is kept permanently and is never removed by age." : "Its retention period is set by the backup policy."}</li>
-          <li>The data is encrypted. It can only be opened by the people who hold the decryption key, never by the Backup Agent.</li>
-          <li>Every check on this backup is recorded in the Verification History below and in the tamper-evident ledger.</li>
+          <li>{backup.retention === "PERMANENT" ? tr("It is kept permanently and is never removed by age.") : tr("Its retention period is set by the backup policy.")}</li>
+          <li>{tr("The data is encrypted. It can only be opened by the people who hold the decryption key, never by the Backup Agent.")}</li>
+          <li>{tr("Every check on this backup is recorded in the Verification History below and in the tamper-evident ledger.")}</li>
         </ul>
       </div>
 
@@ -214,35 +215,35 @@ export const BackupDetailView: React.FC = () => {
         <div className="p-4 md:p-5">
           {activeTab === "general" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-              <ReadOnlyInput label="Backup Number" value={backup.id} />
-              <ReadOnlyInput label="Status" value={statusLabel(backup.status)} />
-              <ReadOnlyInput label="Type" value={statusLabel(backup.type)} />
-              <ReadOnlyInput label="Trigger" value={statusLabel(backup.trigger)} />
-              <ReadOnlyInput label="Requested by" value={backup.createdBy} />
-              <ReadOnlyInput label="Started" value={formatDateTime(backup.startedAt)} />
-              <ReadOnlyInput label="Duration" value={formatDuration(backup.durationSec)} />
-              <ReadOnlyInput label="Total size" value={formatBytes(backup.sizeBytes)} />
-              <ReadOnlyInput label="Database schema" value={backup.schemaVersion ? `V${backup.schemaVersion}` : "—"} />
-              {backup.changeControlRef && <ReadOnlyInput label="Change control" value={backup.changeControlRef} />}
-              {backup.errorCode && <ReadOnlyInput label="Error code" value={backup.errorCode} mono />}
-              <ReadOnlyInput label="Reason" value={backup.reason || "—"} className="md:col-span-2" />
+              <ReadOnlyInput label={tr("Backup Number")} value={backup.id} />
+              <ReadOnlyInput label={tr("Status")} value={statusLabel(backup.status)} />
+              <ReadOnlyInput label={tr("Type")} value={statusLabel(backup.type)} />
+              <ReadOnlyInput label={tr("Trigger")} value={statusLabel(backup.trigger)} />
+              <ReadOnlyInput label={tr("Requested by")} value={backup.createdBy} />
+              <ReadOnlyInput label={tr("Started")} value={formatDateTime(backup.startedAt)} />
+              <ReadOnlyInput label={tr("Duration")} value={formatDuration(backup.durationSec)} />
+              <ReadOnlyInput label={tr("Total size")} value={formatBytes(backup.sizeBytes)} />
+              <ReadOnlyInput label={tr("Database schema")} value={backup.schemaVersion ? `V${backup.schemaVersion}` : "—"} />
+              {backup.changeControlRef && <ReadOnlyInput label={tr("Change control")} value={backup.changeControlRef} />}
+              {backup.errorCode && <ReadOnlyInput label={tr("Error code")} value={backup.errorCode} mono />}
+              <ReadOnlyInput label={tr("Reason")} value={backup.reason || "—"} className="md:col-span-2" />
             </div>
           )}
 
           {activeTab === "integrity" && (
             <div className="space-y-4 md:space-y-5">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                <ReadOnlyInput label="Verification" value={statusLabel(backup.verification)} />
-                <ReadOnlyInput label="Verified" value={backup.verifiedAt ? formatDateTime(backup.verifiedAt) : "—"} />
-                <ReadOnlyInput label="Retained" value={backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? displayDate(backup.retentionUntil) : "—"} />
-                <ReadOnlyInput label="Legal hold" value={backup.legalHold ? "On hold: will not be purged" : "No"} />
+                <ReadOnlyInput label={tr("Verification")} value={statusLabel(backup.verification)} />
+                <ReadOnlyInput label={tr("Verified")} value={backup.verifiedAt ? formatDateTime(backup.verifiedAt) : "—"} />
+                <ReadOnlyInput label={tr("Retained")} value={backup.retention === "PERMANENT" ? "Permanently" : backup.retentionUntil ? displayDate(backup.retentionUntil) : "—"} />
+                <ReadOnlyInput label={tr("Legal hold")} value={backup.legalHold ? "On hold: will not be purged" : "No"} />
               </div>
             </div>
           )}
 
           {activeTab === "stored" &&
             (locations.length === 0 ? (
-              <p className="text-xs text-slate-500 lg:text-sm">No stored copy is recorded for this backup.</p>
+              <p className="text-xs text-slate-500 lg:text-sm">{tr("No stored copy is recorded for this backup.")}</p>
             ) : (
               <DataTable
                 rows={locations}
@@ -281,9 +282,9 @@ export const BackupDetailView: React.FC = () => {
               getRowKey={(row) => `${row.tier}-${row.verified_at}`}
               searchText={(row) => `${row.tier} ${statusLabel(row.result)} ${row.verified_by} ${formatDateTime(row.verified_at)}`}
               searchLabel="Search checks"
-              searchPlaceholder="Check, result or person…"
-              emptyTitle="No checks yet"
-              emptyDescription="Every check is kept; a later check never replaces an earlier one."
+              searchPlaceholder={tr("Check, result or person…")}
+              emptyTitle={tr("No checks yet")}
+              emptyDescription={tr("Every check is kept; a later check never replaces an earlier one.")}
               columns={[
                 { id: "tier", header: "Check", cell: (row) => row.tier, sortValue: (row) => row.tier },
                 { id: "result", header: "Result", cell: (row) => <Badge color={row.result === "VERIFIED" ? "emerald" : "red"}>{statusLabel(row.result)}</Badge>, sortValue: (row) => row.result },
@@ -312,13 +313,13 @@ export const BackupDetailView: React.FC = () => {
       <FormModal
         isOpen={rehearsing}
         onClose={() => setRehearsing(false)}
-        title="Test Restore"
+        title={tr("Test Restore")}
         description={`Restore ${backupNumber} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.`}
         confirmText={rehearseBusy ? "Requesting…" : "Start Test"}
         confirmDisabled={!rehearseReason.trim() || rehearseBusy}
         onConfirm={() => void requestRehearsal()}
       >
-        <FormField label="Reason" required hint="For example: annual restore test for the validation report.">
+        <FormField label={tr("Reason")} required hint={tr("For example: annual restore test for the validation report.")}>
           <Textarea rows={3} value={rehearseReason} maxLength={500} onChange={(event) => setRehearseReason(event.target.value)} />
         </FormField>
       </FormModal>

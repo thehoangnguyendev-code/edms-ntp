@@ -4,7 +4,7 @@ import { FormModal } from './FormModal';
 import { Checkbox } from '../checkbox';
 import { VisibilityOptions } from '../radio/VisibilityOptions';
 import { fetchTableExportColumns, type TableExportDataset, type TableExportFormat, type TableExportOptions } from '@/services/api/tableExport';
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 export interface TableExportModalProps {
   isOpen: boolean;
@@ -112,7 +112,7 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-slate-500">{tr("Columns")}</p>
             {!loading && !loadError && (
-              <span className="text-xs text-slate-500">{chosen.length} of {allColumns.length} columns</span>
+              <span className="text-xs text-slate-500">{trFormat("{chosen} of {total} columns", { chosen: chosen.length, total: allColumns.length })}</span>
             )}
           </div>
           {loading && <p className="py-6 text-center text-sm text-slate-500">{tr("Loading columns...")}</p>}

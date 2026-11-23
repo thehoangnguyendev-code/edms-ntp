@@ -28,11 +28,12 @@ import {
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { COMPONENT_LABEL, filesText, GATE_LABEL, MEDIUM_LABEL, POLICY_STATUS_COLOR, policyErrorMessage } from "./policyLabels";
+import { tr } from "@/i18n";
 
 const conditionState = (c: PolicyGateCondition) => {
   if (c.ok) return { label: "Met", color: "emerald" as const };
-  if (c.pending) return { label: "Checked on activation", color: "slate" as const };
-  if (c.relaxed) return { label: "Not enforced here", color: "amber" as const };
+  if (c.pending) return { label: tr("Checked on activation"), color: "slate" as const };
+  if (c.relaxed) return { label: tr("Not enforced here"), color: "amber" as const };
   return { label: "Not met", color: "red" as const };
 };
 
@@ -89,16 +90,16 @@ export const BackupPolicyDetailView: React.FC = () => {
     };
   }, [version, reloadKey]);
 
-  const parent = { label: "Backup Policy", path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
+  const parent = { label: tr("Backup Policy"), path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
   const back = () => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY);
 
   if (error) {
     return (
-      <BackupAdminLivePage title="Backup Policy Detail" parent={parent}>
-        <WarningBanner variant="error" title="Unable to open the policy version" description={error} />
+      <BackupAdminLivePage title={tr("Backup Policy Detail")} parent={parent}>
+        <WarningBanner variant="error" title={tr("Unable to open the policy version")} description={error} />
         <div>
           <Button size="sm" variant="outline-emerald" onClick={back}>
-            Back to Backup Policy
+            {tr("Back to Backup Policy")}
           </Button>
         </div>
       </BackupAdminLivePage>
@@ -106,7 +107,7 @@ export const BackupPolicyDetailView: React.FC = () => {
   }
   if (!policy) {
     return (
-      <BackupAdminLivePage title="Backup Policy Detail" parent={parent}>
+      <BackupAdminLivePage title={tr("Backup Policy Detail")} parent={parent}>
         <SectionLoading minHeight="40vh" />
       </BackupAdminLivePage>
     );
@@ -122,10 +123,10 @@ export const BackupPolicyDetailView: React.FC = () => {
     try {
       if (!data.signatureToken) throw new Error("The electronic signature could not be confirmed.");
       await backupRestoreApi.activatePolicy(version, data.signatureToken);
-      showToast({ type: "success", title: "Policy activated", message: `Version ${version} is now the running policy.` });
+      showToast({ type: "success", title: tr("Policy activated"), message: `Version ${version} is now the running policy.` });
       reload();
     } catch (e) {
-      showToast({ type: "error", title: "The policy was not activated", message: policyErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The policy was not activated"), message: policyErrorMessage(e, "The request was refused.") });
       reload();
     } finally {
       setBusy(false);
@@ -138,10 +139,10 @@ export const BackupPolicyDetailView: React.FC = () => {
       await backupRestoreApi.discardPolicy(version, discardReason.trim());
       setDiscarding(false);
       setDiscardReason("");
-      showToast({ type: "success", title: "Draft discarded", message: `Version ${version} was discarded.` });
+      showToast({ type: "success", title: tr("Draft discarded"), message: `Version ${version} was discarded.` });
       reload();
     } catch (e) {
-      showToast({ type: "error", title: "The draft was not discarded", message: policyErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The draft was not discarded"), message: policyErrorMessage(e, "The request was refused.") });
     } finally {
       setBusy(false);
     }
@@ -150,48 +151,48 @@ export const BackupPolicyDetailView: React.FC = () => {
   const actions = (
     <>
       <Button variant="outline-emerald" size="sm" onClick={back} className="whitespace-nowrap touch-manipulation">
-        Back
+        {tr("Back")}
       </Button>
       {draft && canPropose && (
         <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => setDiscarding(true)} className="whitespace-nowrap touch-manipulation">
-          Discard Draft
+          {tr("Discard Draft")}
         </Button>
       )}
       {draft && canApprove && (
         <Button size="sm" disabled={busy} onClick={() => setSigning(true)} className="whitespace-nowrap touch-manipulation">
-          Approve and Activate
+          {tr("Approve and Activate")}
         </Button>
       )}
     </>
   );
 
   return (
-    <BackupAdminLivePage title="Backup Policy Detail" parent={parent} actions={actions}>
+    <BackupAdminLivePage title={tr("Backup Policy Detail")} parent={parent} actions={actions}>
       {draft && gateBlocks && (
-        <WarningBanner variant="warning" title="This version does not meet the 3-2-1-1 rule yet" description="It cannot be activated until every condition below is met. Propose a corrected version instead." />
+        <WarningBanner variant="warning" title={tr("This version does not meet the 3-2-1-1 rule yet")} description={tr("It cannot be activated until every condition below is met. Propose a corrected version instead.")} />
       )}
       {policy.status === "DISCARDED" && (
-        <WarningBanner variant="info" title="This draft was discarded" description={`${policy.discardedBy ?? "Someone"} discarded it: ${policy.discardReason ?? "no reason recorded"}.`} />
+        <WarningBanner variant="info" title={tr("This draft was discarded")} description={`${policy.discardedBy ?? "Someone"} discarded it: ${policy.discardReason ?? "no reason recorded"}.`} />
       )}
 
-      <FormSection title="Policy Information" icon={<Info className="h-4 w-4" />}>
+      <FormSection title={tr("Policy Information")} icon={<Info className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
           <div className="space-y-3">
-            <Fact label="Version">{policy.version}</Fact>
-            <Fact label="Status">
+            <Fact label={tr("Version")}>{policy.version}</Fact>
+            <Fact label={tr("Status")}>
               <Badge color={POLICY_STATUS_COLOR[policy.status]}>{statusLabel(policy.status)}</Badge>
             </Fact>
-            <Fact label="Reason">{policy.reason || "—"}</Fact>
+            <Fact label={tr("Reason")}>{policy.reason || "—"}</Fact>
           </div>
           <div className="space-y-3">
-            <Fact label="Proposed by">{policy.proposedBy ?? "System (installed with the Backup Agent)"}</Fact>
-            <Fact label="Proposed">{formatDateTime(policy.createdAt)}</Fact>
-            <Fact label="Approved by">{policy.approvedBy ?? "—"}</Fact>
+            <Fact label={tr("Proposed by")}>{policy.proposedBy ?? "System (installed with the Backup Agent)"}</Fact>
+            <Fact label={tr("Proposed")}>{formatDateTime(policy.createdAt)}</Fact>
+            <Fact label={tr("Approved by")}>{policy.approvedBy ?? "—"}</Fact>
           </div>
           <div className="space-y-3">
-            <Fact label="Activated">{formatDateTime(policy.activatedAt)}</Fact>
+            <Fact label={tr("Activated")}>{formatDateTime(policy.activatedAt)}</Fact>
             {policy.signatureRef && (
-              <Fact label="E-signature">
+              <Fact label={tr("E-signature")}>
                 <span className="font-mono text-xs">{policy.signatureRef}</span>
               </Fact>
             )}
@@ -200,30 +201,30 @@ export const BackupPolicyDetailView: React.FC = () => {
       </FormSection>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />}>
+        <FormSection title={tr("What Is Backed Up")} icon={<ListChecks className="h-4 w-4" />}>
           <div className="space-y-3">
-            <Fact label="Components">{body.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—"}</Fact>
-            <Fact label="Database backup">{body.enabled ? `Daily at ${body.time}` : "Switched off"}</Fact>
-            <Fact label="Files backup">{filesText(body)}</Fact>
-            <Fact label="Kept">Permanently. Backups are never deleted by age.</Fact>
+            <Fact label={tr("Components")}>{body.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—"}</Fact>
+            <Fact label={tr("Database backup")}>{body.enabled ? `Daily at ${body.time}` : tr("Switched off")}</Fact>
+            <Fact label={tr("Files backup")}>{filesText(body)}</Fact>
+            <Fact label={tr("Kept")}>{tr("Permanently. Backups are never deleted by age.")}</Fact>
           </div>
         </FormSection>
 
-        <FormSection title="Backup Targets" icon={<IconServer2 className="h-4 w-4" />}>
+        <FormSection title={tr("Backup Targets")} icon={<IconServer2 className="h-4 w-4" />}>
           <DataTable
             rows={body.targets}
             getRowKey={(row) => row.code}
             columns={[
               { id: "code", header: "Target", cell: (row) => <span className="font-medium">{row.code}</span> },
               { id: "medium", header: "Medium", cell: (row) => MEDIUM_LABEL[row.medium] ?? row.medium },
-              { id: "offsite", header: "Off-site", cell: (row) => (row.offsite ? <Badge color="emerald">Yes</Badge> : "No") },
-              { id: "immutable", header: "Immutable", cell: (row) => (row.immutable ? <Badge color="emerald">Yes</Badge> : "No") },
+              { id: "offsite", header: "Off-site", cell: (row) => (row.offsite ? <Badge color="emerald">{tr("Yes")}</Badge> : "No") },
+              { id: "immutable", header: "Immutable", cell: (row) => (row.immutable ? <Badge color="emerald">{tr("Yes")}</Badge> : "No") },
             ]}
           />
           {body.manualCopy && (
             <div className="mt-4 space-y-3">
-              <Fact label="Manual copy">{body.manualCopy.description}</Fact>
-              <Fact label="Made every">{body.manualCopy.everyDays} day(s), by a person. The Backup Agent cannot see it, so it is declared, not tested.</Fact>
+              <Fact label={tr("Manual copy")}>{body.manualCopy.description}</Fact>
+              <Fact label={tr("Made every")}>{body.manualCopy.everyDays} {tr("day(s), by a person. The Backup Agent cannot see it, so it is declared, not tested.")}</Fact>
             </div>
           )}
         </FormSection>
@@ -233,10 +234,10 @@ export const BackupPolicyDetailView: React.FC = () => {
         <FormSection
           title="3-2-1-1 Rule"
           icon={<Warehouse className="h-4 w-4" />}
-          description={draft ? "As it stands now. The targets are also tested when the policy is activated." : "The result recorded when this version was activated."}
+          description={draft ? tr("As it stands now. The targets are also tested when the policy is activated.") : tr("The result recorded when this version was activated.")}
         >
           {!gate.enforced && (
-            <p className="mb-3 text-xs text-slate-500">This is a development environment, where everything runs on one machine, so the off-site condition is shown but does not block.</p>
+            <p className="mb-3 text-xs text-slate-500">{tr("This is a development environment, where everything runs on one machine, so the off-site condition is shown but does not block.")}</p>
           )}
           <GateTable gate={gate} />
         </FormSection>
@@ -256,12 +257,12 @@ export const BackupPolicyDetailView: React.FC = () => {
         isOpen={discarding}
         onClose={() => setDiscarding(false)}
         title={`Discard Version ${policy.version}`}
-        description="The draft is kept in the history as discarded. Say why it is being discarded."
+        description={tr("The draft is kept in the history as discarded. Say why it is being discarded.")}
         confirmText="Discard"
         confirmDisabled={!discardReason.trim() || busy}
         onConfirm={() => void discard()}
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea rows={3} value={discardReason} onChange={(event) => setDiscardReason(event.target.value)} />
         </FormField>
       </FormModal>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button/Button";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { reportError } from "@/services/api/reportTemplates";
+import { tr } from "@/i18n";
 
 /** Debounced server PDF; stale responses cannot replace the current draft. */
 export function RealtimeReportPreview({
@@ -53,7 +54,7 @@ export function RealtimeReportPreview({
     <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">
-          Live PDF preview
+          {tr("Live PDF preview")}
         </h3>
         <span role="status" className="text-xs text-slate-500">
           {busy ? "Updating from server…" : "Unsaved preview"}
@@ -67,7 +68,7 @@ export function RealtimeReportPreview({
             size="sm"
             onClick={() => setRetry((n) => n + 1)}
           >
-            Retry preview
+            {tr("Retry preview")}
           </Button>
         </div>
       )}

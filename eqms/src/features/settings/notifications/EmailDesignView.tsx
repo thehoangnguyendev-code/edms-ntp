@@ -30,6 +30,7 @@ import {
   type EmailDesignInput,
 } from "@/services/api/emailDesign";
 import { IconBrush } from "@tabler/icons-react";
+import { tr } from "@/i18n";
 
 const MAX_LOGO_BYTES = 250 * 1024;
 const COLOUR = /^#[0-9a-fA-F]{6}$/;
@@ -151,16 +152,16 @@ export const EmailDesignView: React.FC = () => {
     if (!/^image\/(png|jpeg|gif)$/.test(file.type)) {
       showToast({
         type: "error",
-        title: "Logo not accepted",
-        message: "Use a PNG, JPEG or GIF picture.",
+        title: tr("Logo not accepted"),
+        message: tr("Use a PNG, JPEG or GIF picture."),
       });
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
       showToast({
         type: "error",
-        title: "Logo too large",
-        message: "Use a picture under 250 KB.",
+        title: tr("Logo too large"),
+        message: tr("Use a picture under 250 KB."),
       });
       return;
     }
@@ -204,7 +205,7 @@ export const EmailDesignView: React.FC = () => {
     return (
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Email Design"
+          title={tr("Email Design")}
           breadcrumbItems={breadcrumb(navigate)}
           actions={
             <Button
@@ -212,13 +213,13 @@ export const EmailDesignView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => go(ROUTES.SETTINGS.NOTIFICATIONS)}
             >
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <WarningBanner
           variant="error"
-          title="Unable to open the email design."
+          title={tr("Unable to open the email design.")}
           description={error}
         />
       </div>
@@ -244,7 +245,7 @@ export const EmailDesignView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title="Email Design"
+        title={tr("Email Design")}
         breadcrumbItems={breadcrumb(navigate)}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -253,7 +254,7 @@ export const EmailDesignView: React.FC = () => {
               variant="outline-emerald"
               onClick={() => go(ROUTES.SETTINGS.NOTIFICATIONS)}
             >
-              Back
+              {tr("Back")}
             </Button>
             {canManage ? (
               <Button
@@ -273,21 +274,21 @@ export const EmailDesignView: React.FC = () => {
       {changedByOthers ? (
         <WarningBanner variant="warning" title={CHANGED_BY_OTHERS_TITLE} description={CHANGED_BY_OTHERS_TEXT}>
           <div className="mt-3">
-            <Button size="sm" variant="outline-emerald" onClick={() => void load()}>Reload</Button>
+            <Button size="sm" variant="outline-emerald" onClick={() => void load()}>{tr("Reload")}</Button>
           </div>
         </WarningBanner>
       ) : null}
       <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-2">
         <div className="min-w-0 self-start">
-          <FormSection title="Email Design" icon={<IconBrush className="h-4 w-4" />}>
+          <FormSection title={tr("Email Design")} icon={<IconBrush className="h-4 w-4" />}>
             <div className="space-y-5">
               <div>
-                <p className={AREA}>Header</p>
+                <p className={AREA}>{tr("Header")}</p>
                 <div className="space-y-4">
               <FormField
-                label="Logo"
+                label={tr("Logo")}
                 htmlFor="ed-logo"
-                hint="Type the text of the header, or upload a logo (PNG, JPEG or GIF under 250 KB)."
+                hint={tr("Type the text of the header, or upload a logo (PNG, JPEG or GIF under 250 KB).")}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="min-w-[14rem] flex-1">
@@ -299,8 +300,8 @@ export const EmailDesignView: React.FC = () => {
                       onChange={(e) => set("logoText", e.target.value || null)}
                       placeholder={
                         form.logoUrl
-                          ? "A logo is uploaded (remove it to type a text)"
-                          : "The text of the header, for example the name of your company"
+                          ? tr("A logo is uploaded (remove it to type a text)")
+                          : tr("The text of the header, for example the name of your company")
                       }
                     />
                   </div>
@@ -310,7 +311,7 @@ export const EmailDesignView: React.FC = () => {
                         ref={fileRef}
                         type="file"
                         accept="image/png,image/jpeg,image/gif"
-                        aria-label="Logo file"
+                        aria-label={tr("Logo file")}
                         className="sr-only"
                         onChange={(e) => void pickLogo(e.target.files?.[0])}
                       />
@@ -320,7 +321,7 @@ export const EmailDesignView: React.FC = () => {
                         onClick={() => fileRef.current?.click()}
                       >
                         <Upload className="mr-1.5 h-3.5 w-3.5" />
-                        Upload logo
+                        {tr("Upload logo")}
                       </Button>
                       {form.logoUrl ? (
                         <Button
@@ -328,7 +329,7 @@ export const EmailDesignView: React.FC = () => {
                           variant="ghost"
                           onClick={() => set("logoUrl", null)}
                         >
-                          Remove
+                          {tr("Remove")}
                         </Button>
                       ) : null}
                     </>
@@ -337,7 +338,7 @@ export const EmailDesignView: React.FC = () => {
               </FormField>
                   <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                     <Select
-                      label="Logo alignment"
+                      label={tr("Logo alignment")}
                       value={form.logoAlign}
                       disabled={!canManage}
                       enableSearch={false}
@@ -352,14 +353,14 @@ export const EmailDesignView: React.FC = () => {
                     {colour("Header Text Colour", "headerTextColor")}
                     <div>
                       <Select
-                        label="Header font"
+                        label={tr("Header font")}
                         value={form.headerFontFamily || SAME_FONT}
                         disabled={!canManage}
                         enableSearch={false}
                         onChange={(value: string) => set("headerFontFamily", value === SAME_FONT ? null : value)}
-                        options={[{ label: "Same as body", value: SAME_FONT }, ...design.fonts.map((font) => ({ label: font, value: font }))]}
+                        options={[{ label: tr("Same as body"), value: SAME_FONT }, ...design.fonts.map((font) => ({ label: font, value: font }))]}
                       />
-                      <p className="mt-1 text-2xs text-slate-500 sm:text-xs">The font of the words in the header.</p>
+                      <p className="mt-1 text-2xs text-slate-500 sm:text-xs">{tr("The font of the words in the header.")}</p>
                     </div>
                   </div>
                   ) : null}
@@ -367,7 +368,7 @@ export const EmailDesignView: React.FC = () => {
               </div>
 
               <div className="border-t border-slate-100 pt-4">
-                <p className={AREA}>Body</p>
+                <p className={AREA}>{tr("Body")}</p>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                     {colour("Body Colour", "bodyColor")}
@@ -377,7 +378,7 @@ export const EmailDesignView: React.FC = () => {
                     {colour("Button Colour", "buttonColor")}
                     <div>
                       <Select
-                        label="Font"
+                        label={tr("Font")}
                         value={form.fontFamily}
                         disabled={!canManage}
                         onChange={(value) => set("fontFamily", value)}
@@ -389,20 +390,20 @@ export const EmailDesignView: React.FC = () => {
               </div>
 
               <div className="border-t border-slate-100 pt-4">
-                <p className={AREA}>Footer</p>
+                <p className={AREA}>{tr("Footer")}</p>
                 <div className="space-y-4">
-                  <FormField label="Footer line" htmlFor="ed-footer" hint="{year} becomes the current year.">
+                  <FormField label={tr("Footer line")} htmlFor="ed-footer" hint={tr("{year} becomes the current year.")}>
                     <Input
                       id="ed-footer"
                       value={form.footerText ?? ""}
                       maxLength={500}
                       disabled={!canManage}
                       onChange={(e) => set("footerText", e.target.value)}
-                      placeholder="© {year} Company. This is an automatic message."
+                      placeholder={tr("© {year} Company. This is an automatic message.")}
                     />
                   </FormField>
                   <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-                    <FormField label="Support e-mail" htmlFor="ed-support">
+                    <FormField label={tr("Support e-mail")} htmlFor="ed-support">
                       <Input
                         id="ed-support"
                         type="email"
@@ -413,7 +414,7 @@ export const EmailDesignView: React.FC = () => {
                       />
                     </FormField>
                     <Select
-                      label="Footer alignment"
+                      label={tr("Footer alignment")}
                       value={form.footerAlign}
                       disabled={!canManage}
                       enableSearch={false}
@@ -433,11 +434,11 @@ export const EmailDesignView: React.FC = () => {
         {/* on a wide screen the preview stays in view while the form scrolls; taller than the screen, it scrolls on its own */}
         <div className={`min-w-0 self-start xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto ${SCROLL}`}>
           <FormSection
-            title="Preview"
+            title={tr("Preview")}
             icon={<Eye className="h-4 w-4" />}
             headerRight={<DeviceSwitch mobile={mobile} onChange={setMobile} />}
           >
-            <div aria-label="Preview">
+            <div aria-label={tr("Preview")}>
               {previewError ? <p role="alert" className="mb-2 text-xs text-red-600">{previewError}</p> : null}
               <EmailPreviewFrame html={html} mobile={mobile} height={400} />
             </div>

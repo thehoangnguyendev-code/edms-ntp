@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { RecipientRule } from '@/services/api/notificationPolicy';
 import type { RecipientRuleKind } from '@/services/api/notificationAdministration';
 import { RecipientPicker } from './RecipientPicker';
+import { tr } from "@/i18n";
 
 interface Props {
   kinds: RecipientRuleKind[];
@@ -23,8 +24,8 @@ export const RecipientRulesEditor: React.FC<Props> = ({ kinds, value, onChange, 
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex min-h-9 flex-wrap gap-2" aria-label="Recipients">
-        {value.length === 0 ? <span className="text-sm text-slate-500">Nobody yet. Add at least one recipient.</span> : null}
+      <div className="flex min-h-9 flex-wrap gap-2" aria-label={tr("Recipients")}>
+        {value.length === 0 ? <span className="text-sm text-slate-500">{tr("Nobody yet. Add at least one recipient.")}</span> : null}
         {value.map((rule, index) => (
           <span key={`${rule.type}-${rule.value ?? ''}-${index}`} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 py-1 pl-3 pr-1.5 text-sm text-emerald-800">
             <span className="min-w-0 truncate">{labelOf(rule)}</span>

@@ -24,6 +24,7 @@ import { trainingError, trainingLegacyApi, type TrainingLegacyRow } from "@/serv
 import { TrainingFileDropzone } from "../shared/TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
+import { tr } from "@/i18n";
 
 // FILED: the person who imported (or attached) the evidence signed it; there is no second person. VERIFIED: evidence that a person verified before that was changed (history).
 const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", FILED: "Filed", VERIFIED: "Verified" };
@@ -67,13 +68,13 @@ export function TrainingLegacyEvidenceView() {
     try {
       await trainingLegacyApi.submit(submitting.row.revisionId, signatureToken, submitting.none ? null : submitting.file, submitting.none, submitting.reason.trim() || undefined,
         submitting.none ? [] : submitting.trainees.map((p) => p.personId));
-      showToast({ type: "success", title: "Evidence filed", message: submitting.row.documentNumber });
+      showToast({ type: "success", title: tr("Evidence filed"), message: submitting.row.documentNumber });
       setSigning(false);
       setSubmitting(undefined);
       table.reload();
     } catch (e) {
       setSigning(false);
-      showToast({ type: "error", title: "The evidence was not filed", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The evidence was not filed"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -89,7 +90,7 @@ export function TrainingLegacyEvidenceView() {
       const blob = await trainingLegacyApi.view(row.evidenceId);
       setViewing({ row, url: URL.createObjectURL(blob), isPdf: blob.type === "application/pdf" });
     } catch (e) {
-      showToast({ type: "error", title: "The scan could not be opened", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The scan could not be opened"), message: trainingError(e) });
     }
   };
   const download = async (row: TrainingLegacyRow) => {
@@ -103,7 +104,7 @@ export function TrainingLegacyEvidenceView() {
       link.click();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     } catch (e) {
-      showToast({ type: "error", title: "The file could not be downloaded", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The file could not be downloaded"), message: trainingError(e) });
     }
   };
 
@@ -111,22 +112,22 @@ export function TrainingLegacyEvidenceView() {
 
   const columns: DataTableColumn<TrainingLegacyRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "paperNo", header: "Training Number", sort: sorted("paperNo"), cell: (r) => (r.paperTrainingNumber ? (r.activityId ? <Link className={LINK} to={ROUTES.TRAINING.ACTIVITY_DETAIL(r.activityId)}>{r.paperTrainingNumber}</Link> : r.paperTrainingNumber) : "—") },
-    { id: "docNumber", header: "Document Number", sort: sorted("document"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.DETAIL(r.documentId)}>{r.documentNumber}</Link> },
-    { id: "docName", header: "Document Name", sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName}</div> },
-    { id: "docRevision", header: "Document Revision", sort: sorted("revision"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId)}>{r.revisionNumber}</Link> },
-    { id: "completion", header: "Paper Training Completed On", sort: sorted("completion"), cell: (r) => day(r.completionDate) },
-    { id: "trained", header: "Persons Trained", cell: (r) => (r.traineeCount ? r.traineeCount : "—") },
+    { id: "paperNo", header: tr("Training Number"), sort: sorted("paperNo"), cell: (r) => (r.paperTrainingNumber ? (r.activityId ? <Link className={LINK} to={ROUTES.TRAINING.ACTIVITY_DETAIL(r.activityId)}>{r.paperTrainingNumber}</Link> : r.paperTrainingNumber) : "—") },
+    { id: "docNumber", header: tr("Document Number"), sort: sorted("document"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.DETAIL(r.documentId)}>{r.documentNumber}</Link> },
+    { id: "docName", header: tr("Document Name"), sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName}</div> },
+    { id: "docRevision", header: tr("Document Revision"), sort: sorted("revision"), cell: (r) => <Link className={LINK} to={ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId)}>{r.revisionNumber}</Link> },
+    { id: "completion", header: tr("Paper Training Completed On"), sort: sorted("completion"), cell: (r) => day(r.completionDate) },
+    { id: "trained", header: tr("Persons Trained"), cell: (r) => (r.traineeCount ? r.traineeCount : "—") },
     { id: "state", header: "Evidence", sort: sorted("evidence"), cell: (r) => <Badge color={STATE_COLOR[stateOf(r)]}>{STATE_LABEL[stateOf(r)]}</Badge> },
     { id: "detail", header: "Detail", sort: sorted("detail"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.notEvidenced ? `No evidence: ${r.notEvidencedReason}` : r.originalName ?? "—"}</div> },
-    { id: "by", header: "Submitted By", sort: sorted("submittedBy"), cell: (r) => r.submittedByName ?? "—" },
-    { id: "submittedOn", header: "Submitted On", sort: sorted("submittedOn"), cell: (r) => (r.submittedAt ? day(r.submittedAt) : "—") },
-    { id: "verified", header: "Verified By", sort: sorted("verifiedBy"), cell: (r) => r.verifiedByName ?? "—" },
-    { id: "verifiedOn", header: "Verified On", sort: sorted("verifiedOn"), cell: (r) => (r.verifiedAt ? day(r.verifiedAt) : "—") },
+    { id: "by", header: tr("Submitted By"), sort: sorted("submittedBy"), cell: (r) => r.submittedByName ?? "—" },
+    { id: "submittedOn", header: tr("Submitted On"), sort: sorted("submittedOn"), cell: (r) => (r.submittedAt ? day(r.submittedAt) : "—") },
+    { id: "verified", header: tr("Verified By"), sort: sorted("verifiedBy"), cell: (r) => r.verifiedByName ?? "—" },
+    { id: "verifiedOn", header: tr("Verified On"), sort: sorted("verifiedOn"), cell: (r) => (r.verifiedAt ? day(r.verifiedAt) : "—") },
   ];
   const action = {
     cell: (r: TrainingLegacyRow) => (
-      <button type="button" ref={menu.getRef(r.revisionId)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(e) => menu.toggle(r.revisionId, e)}>
+      <button type="button" ref={menu.getRef(r.revisionId)} aria-label={tr("More actions")} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(e) => menu.toggle(r.revisionId, e)}>
         <MoreVertical className="h-4 w-4" />
       </button>
     ),
@@ -142,46 +143,46 @@ export function TrainingLegacyEvidenceView() {
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.legacy.title} breadcrumbItems={trainingBreadcrumbs(navigate, "legacy")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <ReportListToolbar searchPlaceholder="Search training number, document number or name…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+      <ReportListToolbar searchPlaceholder={tr("Search training number, document number or name…")} search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([completedRange.filter, submittedRange.filter, verifiedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || completedRange.isSet || submittedRange.isSet || verifiedRange.isSet || table.searchQuery)}
         onClear={() => { setStatus(""); setDepartmentFilter(""); completedRange.clear(); submittedRange.clear(); verifiedRange.clear(); table.setCurrentPage(1); }} customControl={control}>
         <DataTable rows={table.items} getRowKey={(r) => r.revisionId} isLoading={table.isLoading} columns={columns} columnLayout={layout} action={action}
-          emptyState={<TableEmptyState title="Nothing to show" description="Documents imported from paper that required training appear here." />}
+          emptyState={<TableEmptyState title={tr("Nothing to show")} description={tr("Documents imported from paper that required training appear here.")} />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
       </ReportListToolbar>
       <PortalDropdownMenu isOpen={!!row} onClose={menu.close} position={menu.position} minWidth={220}>
         {row && (
           <div className="py-1">
-            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconPaperclip className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: false, file: null, reason: "", trainees: [] }); menu.close(); }}>Attach the scan</DropdownMenuItem>}
-            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconFileOff className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: true, file: null, reason: "", trainees: [] }); menu.close(); }}>Declare: no evidence</DropdownMenuItem>}
-            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { void viewScan(row); menu.close(); }}>View Scan</DropdownMenuItem>}
-            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download the scan</DropdownMenuItem>}
+            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconPaperclip className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: false, file: null, reason: "", trainees: [] }); menu.close(); }}>{tr("Attach the scan")}</DropdownMenuItem>}
+            {!row.evidenceId && canSubmit && <DropdownMenuItem icon={<IconFileOff className="h-4 w-4" />} onClick={() => { setSubmitting({ row, none: true, file: null, reason: "", trainees: [] }); menu.close(); }}>{tr("Declare: no evidence")}</DropdownMenuItem>}
+            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { void viewScan(row); menu.close(); }}>{tr("View Scan")}</DropdownMenuItem>}
+            {row.evidenceId && !row.notEvidenced && <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>{tr("Download the scan")}</DropdownMenuItem>}
           </div>
         )}
       </PortalDropdownMenu>
       <FormModal isOpen={!!submitting && !signing} onClose={() => setSubmitting(undefined)} onConfirm={() => setSigning(true)} isLoading={busy} confirmText="Continue to Sign" size="md"
-        title={submitting?.none ? "Declare: no evidence" : "Attach the scan of the paper record"}
-        description="You sign the evidence in the next step; nobody else verifies it. After that it is read-only, and the persons you name get their training record."
+        title={submitting?.none ? tr("Declare: no evidence") : "Attach the scan of the paper record"}
+        description={tr("You sign the evidence in the next step; nobody else verifies it. After that it is read-only, and the persons you name get their training record.")}
         confirmDisabled={!submitting || (submitting.none ? !submitting.reason.trim() : !submitting.file)}>
         {submitting && (
           <div className="grid gap-4">
-            <p className="text-sm text-slate-600">{submitting.row.documentNumber} Rev {submitting.row.revisionNumber} — {submitting.row.documentName}</p>
+              <p className="text-sm text-slate-600">{submitting.row.documentNumber} {tr("Rev")} {submitting.row.revisionNumber} — {submitting.row.documentName}</p>
             {submitting.none ? (
-              <FormField label="Why there is no evidence" required><Textarea rows={3} value={submitting.reason} onChange={(e) => setSubmitting({ ...submitting, reason: e.target.value })} /></FormField>
+              <FormField label={tr("Why there is no evidence")} required><Textarea rows={3} value={submitting.reason} onChange={(e) => setSubmitting({ ...submitting, reason: e.target.value })} /></FormField>
             ) : (
-              <TrainingFileDropzone label="Scan" required accept=".pdf" maxMb={20} hint="PDF only (max 20 MB)" file={submitting.file} onChange={(f) => setSubmitting({ ...submitting, file: f })} />
+              <TrainingFileDropzone label={tr("Scan")} required accept=".pdf" maxMb={20} hint={tr("PDF only (max 20 MB)")} file={submitting.file} onChange={(f) => setSubmitting({ ...submitting, file: f })} />
             )}
             {!submitting.none && submitting.row.paperTrainingNumber && (
               <ProposedParticipantsField
                 pending={submitting.trainees}
                 onPendingChange={(people) => setSubmitting({ ...submitting, trainees: people })}
                 labels={{
-                  title: "Persons who were trained",
-                  description: "The people who were at the paper training. They get their training record when you sign.",
+                  title: tr("Persons who were trained"),
+                  description: tr("The people who were at the paper training. They get their training record when you sign."),
                   localNotice: "A person who is no longer in the system cannot be chosen and gets no record.",
-                  emptyTitle: "Nobody chosen",
-                  emptyDescription: "Use Add Participants to choose the people who were trained.",
+                  emptyTitle: tr("Nobody chosen"),
+                  emptyDescription: tr("Use Add Participants to choose the people who were trained."),
                   modalTitle: "Persons who were trained",
                 }}
               />
@@ -190,10 +191,10 @@ export function TrainingLegacyEvidenceView() {
         )}
       </FormModal>
       {viewing && viewing.isPdf && (
-        <PdfPreviewModal title="Scan of the paper training record" description={`${viewing.row.documentNumber} Rev ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`} fileUrl={viewing.url} onClose={closeViewer} showCancel={false} />
+        <PdfPreviewModal title={tr("Scan of the paper training record")} description={`${viewing.row.documentNumber} ${tr("Rev")} ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`} fileUrl={viewing.url} onClose={closeViewer} showCancel={false} />
       )}
       {viewing && !viewing.isPdf && (
-        <FormModal isOpen onClose={closeViewer} onConfirm={closeViewer} title="Scan of the paper training record" description={`${viewing.row.documentNumber} Rev ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`}
+        <FormModal isOpen onClose={closeViewer} onConfirm={closeViewer} title={tr("Scan of the paper training record")} description={`${viewing.row.documentNumber} ${tr("Rev")} ${viewing.row.revisionNumber} — ${viewing.row.originalName ?? ""}`}
           confirmText="Close" showCancel={false} size="2xl">
           <div className="flex max-h-[68dvh] justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
             <img src={viewing.url} alt={viewing.row.originalName ?? "Scan of the paper training record"} className="h-auto max-w-full object-contain" onContextMenu={(e) => e.preventDefault()} />

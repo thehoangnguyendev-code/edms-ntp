@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, ServerCrash } from 'lucide-react';
 import { Button } from '@/components/ui/button/Button';
 import { systemHealthApi, type DependencyStatus } from '@/services/api/systemHealth';
+import { tr } from "@/i18n";
 
 const POLL_MS = 30000;
 const DISMISSED_KEY = 'eqms.serviceStatus.dismissed';
@@ -120,7 +121,7 @@ export const ServiceStatusMonitor: React.FC = () => {
                     <h3 id="service-status-title" className="text-lg font-semibold text-slate-900">
                       {down.length === 1 ? 'A service is not available' : 'Some services are not available'}
                     </h3>
-                    <p className="text-sm text-slate-500 mt-0.5">Part of the system may not work</p>
+                    <p className="text-sm text-slate-500 mt-0.5">{tr("Part of the system may not work")}</p>
                   </div>
                 </div>
 
@@ -138,7 +139,7 @@ export const ServiceStatusMonitor: React.FC = () => {
                   </ul>
                   <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium text-slate-700">Waiting for the service to come back...</span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-700">{tr("Waiting for the service to come back...")}</span>
                   </div>
                 </div>
 
@@ -146,12 +147,12 @@ export const ServiceStatusMonitor: React.FC = () => {
                   <div className="flex flex-wrap justify-end gap-2">
                     {onlyAppFiles ? (
                       <Button size="sm" variant="default" onClick={() => window.location.reload()}>
-                        Reload Page
+                        {tr("Reload Page")}
                       </Button>
                     ) : (
                       <>
                         <Button size="sm" variant="outline" disabled={checking} onClick={() => void check()}>
-                          Check Again
+                          {tr("Check Again")}
                         </Button>
                         <Button
                           size="sm"
@@ -161,7 +162,7 @@ export const ServiceStatusMonitor: React.FC = () => {
                             writeDismissed(key);
                           }}
                         >
-                          Continue Working
+                          {tr("Continue Working")}
                         </Button>
                       </>
                     )}
@@ -181,8 +182,8 @@ export const ServiceStatusMonitor: React.FC = () => {
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-900">Services Restored</p>
-                <p className="text-xs text-slate-500 mt-0.5">Everything is available again</p>
+                <p className="text-sm font-semibold text-slate-900">{tr("Services Restored")}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{tr("Everything is available again")}</p>
               </div>
             </div>
           </div>,

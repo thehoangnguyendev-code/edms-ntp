@@ -34,6 +34,7 @@ import { accessProfiles as accessProfilesBreadcrumb } from "@/components/ui/brea
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 // ── Action Dropdown ────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ const ActionDropdown: React.FC<DropdownProps> = ({
           title={loaded && !can("view") ? reason("view") : undefined}
           onClick={run(onView)}
         >
-          View Access
+          {tr("View Access")}
         </DropdownMenuItem>
         <DropdownMenuItem
           icon={<IconPencilMinus className="h-4 w-4" />}
@@ -77,7 +78,7 @@ const ActionDropdown: React.FC<DropdownProps> = ({
           title={loaded && !can("edit") ? reason("edit") : undefined}
           onClick={run(onEdit)}
         >
-          Edit Access
+          {tr("Edit Access")}
         </DropdownMenuItem>
         <DropdownMenuItem
           icon={<Copy className="h-4 w-4" />}
@@ -85,7 +86,7 @@ const ActionDropdown: React.FC<DropdownProps> = ({
           title={loaded && !can("duplicate") ? reason("duplicate") : undefined}
           onClick={run(onDuplicate)}
         >
-          Duplicate
+          {tr("Duplicate")}
         </DropdownMenuItem>
         <DropdownMenuItem
           icon={profile.active ? <IconToggleLeft className="h-4 w-4" /> : <IconToggleRight className="h-4 w-4" />}
@@ -101,7 +102,7 @@ const ActionDropdown: React.FC<DropdownProps> = ({
           title={loaded && !can("delete") ? reason("delete") : undefined}
           onClick={run(onDelete)}
         >
-          Delete
+          {tr("Delete")}
         </DropdownMenuItem>
       </div>
     </PortalDropdownMenu>
@@ -123,8 +124,8 @@ const DuplicateModal: React.FC<{
       isOpen={isOpen}
       onClose={onClose}
       onConfirm={() => name.trim() && onConfirm(name.trim())}
-      title="Duplicate Access Profile"
-      description="Enter a name for the new access profile."
+      title={tr("Duplicate Access Profile")}
+      description={tr("Enter a name for the new access profile.")}
       confirmText="Duplicate"
       cancelText="Cancel"
       showCancel
@@ -133,7 +134,7 @@ const DuplicateModal: React.FC<{
     >
       <div>
         <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">
-          Name <span className="text-red-500">*</span>
+          {tr("Name")} <span className="text-red-500">*</span>
         </label>
         <input
           autoFocus
@@ -141,7 +142,7 @@ const DuplicateModal: React.FC<{
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === "Enter" && name.trim() && onConfirm(name.trim())}
           className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
-          placeholder="New profile name"
+          placeholder={tr("New profile name")}
         />
       </div>
     </FormModal>
@@ -154,15 +155,15 @@ type SortKey = "name" | "type" | "permissionSetCount" | "assignedUserCount" | "c
 
 const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "visibility" | "status" | "action"; label: string; sortable: boolean }[] = [
   { id: "no",               label: "No.",              sortable: false },
-  { id: "name",             label: "Access Profile",   sortable: true  },
+  { id: "name",             label: tr("Access Profile"),   sortable: true  },
   { id: "type",             label: "Type",             sortable: true  },
   { id: "status",           label: "Status",           sortable: false },
-  { id: "permissionSetCount", label: "Permission Sets", sortable: true },
-  { id: "workflowRoles",   label: "Workflow Eligibility",   sortable: false },
-  { id: "visibility",      label: "Document Control Visibility", sortable: false },
-  { id: "assignedUserCount", label: "Assigned Users", sortable: true  },
-  { id: "createdAt",       label: "Created Date",     sortable: true  },
-  { id: "updatedAt",       label: "Last Updated",     sortable: true  },
+  { id: "permissionSetCount", label: tr("Permission Sets"), sortable: true },
+  { id: "workflowRoles",   label: tr("Workflow Eligibility"),   sortable: false },
+  { id: "visibility",      label: tr("Document Control Visibility"), sortable: false },
+  { id: "assignedUserCount", label: tr("Assigned Users"), sortable: true  },
+  { id: "createdAt",       label: tr("Created Date"),     sortable: true  },
+  { id: "updatedAt",       label: tr("Last Updated"),     sortable: true  },
   { id: "action",          label: "Action",           sortable: false },
 ];
 
@@ -277,7 +278,7 @@ export const AccessProfileListView: React.FC = () => {
       setTotalItems(res.totalElements ?? 0);
       setTotalPages(res.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load access profiles" });
+      showToast({ type: "error", message: tr("Failed to load access profiles") });
     } finally {
       setIsLoading(false);
     }
@@ -311,7 +312,7 @@ export const AccessProfileListView: React.FC = () => {
       setDeleteModal({ open: false, profile: null });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to delete access profile" });
+      showToast({ type: "error", message: tr("Failed to delete access profile") });
     }
   };
 
@@ -325,7 +326,7 @@ export const AccessProfileListView: React.FC = () => {
       setDuplicateModal({ open: false, profile: null });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to duplicate access profile" });
+      showToast({ type: "error", message: tr("Failed to duplicate access profile") });
     }
   };
 
@@ -337,7 +338,7 @@ export const AccessProfileListView: React.FC = () => {
       showToast({ type: "success", message: `Access profile ${profile.active ? "disabled" : "enabled"}` });
       void fetchProfiles();
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: tr("Failed to update status") });
     }
   };
 
@@ -356,14 +357,14 @@ export const AccessProfileListView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14 text-center", cellClassName: "text-center", cell: (_profile, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
     {
       id: "name",
-      header: "Access Profile",
-      label: "Access Profile",
+      header: tr("Access Profile"),
+      label: tr("Access Profile"),
       sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") },
       cell: (profile) => (
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
             <span className="truncate">{profile.name}</span>
-            {profile.testData && <Badge color="amber" size="xs">Test</Badge>}
+            {profile.testData && <Badge color="amber" size="xs">{tr("Test")}</Badge>}
           </p>
           {profile.description && <p className="text-xs text-slate-400 truncate max-w-[220px]">{profile.description}</p>}
         </div>
@@ -392,8 +393,8 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "permissionSetCount",
-      header: "Permission Sets",
-      label: "Permission Sets",
+      header: tr("Permission Sets"),
+      label: tr("Permission Sets"),
       sort: { direction: sortConfig.key === "permissionSetCount" ? sortConfig.direction : undefined, onSort: () => handleSort("permissionSetCount") },
       cell: (profile) => (
         <div className="flex items-center gap-1.5 text-slate-700">
@@ -404,8 +405,8 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "workflowRoles",
-      header: "Workflow Eligibility",
-      label: "Workflow Eligibility",
+      header: tr("Workflow Eligibility"),
+      label: tr("Workflow Eligibility"),
       cell: (profile) => (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {profile.workflowRoles.slice(0, 2).map((r) => (
@@ -418,8 +419,8 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "visibility",
-      header: "Document Control Visibility",
-      label: "Document Control Visibility",
+      header: tr("Document Control Visibility"),
+      label: tr("Document Control Visibility"),
       cell: (profile) => {
         const visibility = profile.documentControlVisibility;
         // a profile with no Document Control permission has no Document Control visibility
@@ -429,8 +430,8 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "assignedUserCount",
-      header: "Assigned Users",
-      label: "Assigned Users",
+      header: tr("Assigned Users"),
+      label: tr("Assigned Users"),
       sort: { direction: sortConfig.key === "assignedUserCount" ? sortConfig.direction : undefined, onSort: () => handleSort("assignedUserCount") },
       cell: (profile) => (
         <div className="flex items-center gap-1.5 text-slate-700">
@@ -441,16 +442,16 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "createdAt",
-      header: "Created Date",
-      label: "Created Date",
+      header: tr("Created Date"),
+      label: tr("Created Date"),
       sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") },
       cellClassName: "text-slate-600",
       cell: (profile) => (profile.createdAt ? formatDateTime(profile.createdAt) : "—"),
     },
     {
       id: "updatedAt",
-      header: "Last Updated",
-      label: "Last Updated",
+      header: tr("Last Updated"),
+      label: tr("Last Updated"),
       sort: { direction: sortConfig.key === "updatedAt" ? sortConfig.direction : undefined, onSort: () => handleSort("updatedAt") },
       cellClassName: "text-slate-600",
       cell: (profile) => (profile.updatedAt ? formatDateTime(profile.updatedAt) : "—"),
@@ -464,7 +465,7 @@ export const AccessProfileListView: React.FC = () => {
           ref={getRef(profile.id)}
           onClick={(e) => handleActionMenuToggle(profile.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -498,7 +499,7 @@ export const AccessProfileListView: React.FC = () => {
         updatedFrom: updatedFromDate || undefined, updatedTo: updatedToDate || undefined,
         sortBy: sortConfig.key, sortDir: sortConfig.direction,
       }, options);
-    } catch { showToast({ type: 'error', message: 'Export failed' }); }
+    } catch { showToast({ type: 'error', message: tr('Export failed') }); }
     finally { setIsExporting(false); }
   };
 
@@ -510,24 +511,24 @@ export const AccessProfileListView: React.FC = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="access-profiles"
-        title="Access Profiles"
+        title={tr("Access Profiles")}
         totalRecords={totalItems}
         onExport={handleExport}
       />
 
       <PageHeader
-        title="Access Profiles"
+        title={tr("Access Profiles")}
         breadcrumbItems={accessProfilesBreadcrumb()}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setIsExportOpen(true)} loading={isExporting} className="whitespace-nowrap gap-2">
               <Download className="h-4 w-4" />
-              Export
+              {tr("Export")}
             </Button>
             {canCreateProfile && (
               <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/wizard`)}>
                 <Plus className="h-4 w-4" />
-                New Access Profile
+                {tr("New Access Profile")}
               </Button>
             )}
           </>
@@ -538,16 +539,16 @@ export const AccessProfileListView: React.FC = () => {
         <div className={`rounded-xl border px-4 py-3 text-sm ${migrationHealth.usersWithoutAccessProfile > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-semibold text-slate-800">Authorization Migration Health</p>
+              <p className="font-semibold text-slate-800">{tr("Authorization Migration Health")}</p>
               <p className="mt-0.5 text-xs text-slate-600">
                 {migrationHealth.usersWithoutAccessProfile > 0
-                  ? `${migrationHealth.usersWithoutAccessProfile} active user(s) have no Access Profile and cannot access protected functions until one is assigned. Suspended and terminated accounts are not counted.`
-                  : "All active users have at least one Access Profile. Access Profiles are enforced for protected functions."}
+                  ? trFormat("{count} active users have no Access Profile and cannot access protected functions until one is assigned. Suspended and terminated accounts are not counted.", { count: migrationHealth.usersWithoutAccessProfile })
+                  : tr("All active users have at least one Access Profile. Access Profiles are enforced for protected functions.")}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <Badge color={migrationHealth.accessProfilesEnforced ? "emerald" : "amber"} size="sm">Access Profiles {migrationHealth.accessProfilesEnforced ? "enforced" : "pending"}</Badge>
-              <Badge color="slate" size="sm">{migrationHealth.usersWithProfile}/{migrationHealth.totalUsers} active users mapped</Badge>
+              <Badge color={migrationHealth.accessProfilesEnforced ? "emerald" : "amber"} size="sm">{tr("Access Profiles")} {migrationHealth.accessProfilesEnforced ? tr("enforced") : tr("pending")}</Badge>
+              <Badge color="slate" size="sm">{trFormat("{mapped}/{total} active users mapped", { mapped: migrationHealth.usersWithProfile, total: migrationHealth.totalUsers })}</Badge>
             </div>
           </div>
         </div>
@@ -564,7 +565,7 @@ export const AccessProfileListView: React.FC = () => {
               <input
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Search access profiles…"
+                placeholder={tr("Search access profiles…")}
                 className="w-full pl-9 pr-8 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
               />
               {searchQuery && (
@@ -576,7 +577,7 @@ export const AccessProfileListView: React.FC = () => {
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
 
@@ -585,13 +586,13 @@ export const AccessProfileListView: React.FC = () => {
   trailing={<div className="hidden md:block">{profileControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search access profiles…"}
+      placeholder={tr("Search access profiles…")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -628,7 +629,7 @@ export const AccessProfileListView: React.FC = () => {
   dates={[
     {
       id: "createdFromDate",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFromDate,
       to: createdToDate,
       onFromChange: (v) => {
@@ -642,7 +643,7 @@ export const AccessProfileListView: React.FC = () => {
     },
     {
       id: "updatedFromDate",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFromDate,
       to: updatedToDate,
       onFromChange: (v) => {
@@ -658,20 +659,20 @@ export const AccessProfileListView: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search access profiles…"
+                  placeholder={tr("Search access profiles…")}
                   className="w-full pl-9 pr-3 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                 />
               </div>
             </div>
             <div className="w-full">
               <Select
-                label="Type"
+                label={tr("Type")}
                 value={typeFilter}
                 onChange={v => { setTypeFilter(String(v)); setCurrentPage(1); }}
                 options={[
@@ -683,7 +684,7 @@ export const AccessProfileListView: React.FC = () => {
             </div>
             <div className="w-full">
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={v => { setStatusFilter(String(v)); setCurrentPage(1); }}
                 options={[
@@ -695,22 +696,22 @@ export const AccessProfileListView: React.FC = () => {
             </div>
             <div className="w-full">
               <DateRangePicker
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 startDate={createdFromDate}
                 endDate={createdToDate}
                 onStartDateChange={v => { setCreatedFromDate(v); setCurrentPage(1); }}
                 onEndDateChange={v => { setCreatedToDate(v); setCurrentPage(1); }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
             </div>
             <div className="w-full">
               <DateRangePicker
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 startDate={updatedFromDate}
                 endDate={updatedToDate}
                 onStartDateChange={v => { setUpdatedFromDate(v); setCurrentPage(1); }}
                 onEndDateChange={v => { setUpdatedToDate(v); setCurrentPage(1); }}
-                placeholder="Select last updated range"
+                placeholder={tr("Select last updated range")}
               />
             </div>
             <div className="filter-actions flex items-end gap-2">
@@ -727,7 +728,7 @@ export const AccessProfileListView: React.FC = () => {
             onClear={clearFilters}
             onApply={() => setIsFilterDrawerOpen(false)}
           >
-            <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+            <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
               <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                 {[
                   { label: "All", value: "ALL" },
@@ -745,7 +746,7 @@ export const AccessProfileListView: React.FC = () => {
                 ))}
               </div>
             </FilterAccordionItem>
-            <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+            <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
               <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
                 {[
                   { label: "All", value: "all"      },
@@ -763,27 +764,27 @@ export const AccessProfileListView: React.FC = () => {
                 ))}
               </div>
             </FilterAccordionItem>
-            <FilterAccordionItem label="Created Date Range" isExpanded={expandedSections.has("created")} onToggle={() => toggleSection("created")}>
+            <FilterAccordionItem label={tr("Created Date Range")} isExpanded={expandedSections.has("created")} onToggle={() => toggleSection("created")}>
               <div className="pt-2 pb-4">
                 <DateRangePicker
-                  label="Created Date Range"
+                  label={tr("Created Date Range")}
                   startDate={createdFromDate}
                   endDate={createdToDate}
                   onStartDateChange={v => { setCreatedFromDate(v); setCurrentPage(1); }}
                   onEndDateChange={v => { setCreatedToDate(v); setCurrentPage(1); }}
-                  placeholder="Select date range"
+                  placeholder={tr("Select date range")}
                 />
               </div>
             </FilterAccordionItem>
-            <FilterAccordionItem label="Last Updated Range" isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
+            <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
               <div className="pt-2 pb-4">
                 <DateRangePicker
-                  label="Last Updated Range"
+                  label={tr("Last Updated Range")}
                   startDate={updatedFromDate}
                   endDate={updatedToDate}
                   onStartDateChange={v => { setUpdatedFromDate(v); setCurrentPage(1); }}
                   onEndDateChange={v => { setUpdatedToDate(v); setCurrentPage(1); }}
-                  placeholder="Select last updated range"
+                  placeholder={tr("Select last updated range")}
                 />
               </div>
             </FilterAccordionItem>
@@ -809,8 +810,8 @@ export const AccessProfileListView: React.FC = () => {
               onRowClick={(profile) => navigateTo(`${ROUTES.SECURITY.ACCESS_PROFILES}/${profile.id}`)}
               emptyState={
                 <TableEmptyState
-                  title="No access profiles found"
-                  description={hasFilters ? "Try adjusting your search or filters." : "Create your first access profile to get started."}
+                  title={tr("No access profiles found")}
+                  description={hasFilters ? tr("Try adjusting your search or filters.") : tr("Create your first access profile to get started.")}
                 />
               }
               pagination={
@@ -840,7 +841,7 @@ export const AccessProfileListView: React.FC = () => {
         onClose={() => setDeleteModal({ open: false, profile: null })}
         onConfirm={handleDelete}
         type="warning"
-        title="Delete Access Profile"
+        title={tr("Delete Access Profile")}
         description={`Are you sure you want to delete "${deleteModal.profile?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"

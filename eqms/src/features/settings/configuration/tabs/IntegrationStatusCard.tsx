@@ -3,6 +3,7 @@ import { IconCircleCheck, IconCircleDashed, IconCircleX } from '@tabler/icons-re
 import { Badge } from '@/components/ui/badge/Badge';
 import { formatDateTime } from '@/utils/format';
 import type { IntegrationCheck, IntegrationCheckStep } from '@/services/api/settings';
+import { tr } from "@/i18n";
 
 interface IntegrationStatusCardProps {
   icon: React.ReactNode;
@@ -22,9 +23,9 @@ interface IntegrationStatusCardProps {
 }
 
 const STEP_ICON: Record<IntegrationCheckStep['status'], React.ReactNode> = {
-  OK: <IconCircleCheck className="h-4 w-4 text-emerald-600" aria-label="Passed" />,
-  FAILED: <IconCircleX className="h-4 w-4 text-red-600" aria-label="Failed" />,
-  NOT_CHECKED: <IconCircleDashed className="h-4 w-4 text-slate-400" aria-label="Not checked" />,
+  OK: <IconCircleCheck className="h-4 w-4 text-emerald-600" aria-label={tr("Passed")} />,
+  FAILED: <IconCircleX className="h-4 w-4 text-red-600" aria-label={tr("Failed")} />,
+  NOT_CHECKED: <IconCircleDashed className="h-4 w-4 text-slate-400" aria-label={tr("Not checked")} />,
 };
 
 /** The state of one integration at the top of its tab: what it is, a Test connection button, and what the last test found (it stays after the toast is gone). */
@@ -46,19 +47,19 @@ export const IntegrationStatusCard: React.FC<IntegrationStatusCardProps> = ({ ic
         {check ? (
           <>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <Badge semantic={check.success ? 'success' : 'danger'}>{check.success ? 'Last test passed' : 'Last test failed'}</Badge>
-              <span className="min-w-0 break-words text-slate-700">{check.message}</span>
+              <Badge semantic={check.success ? 'success' : 'danger'}>{check.success ? tr('Last test passed') : tr('Last test failed')}</Badge>
+              <span className="min-w-0 break-words text-slate-700">{tr(check.message)}</span>
             </div>
             <p className="mt-1 text-2xs text-slate-500 md:text-xs">{formatDateTime(check.checkedAt)}{check.checkedBy ? ` · ${check.checkedBy}` : ''}</p>
-            {anotherSetup && <p className="mt-1 text-2xs text-amber-700 md:text-xs">That test was of another setup: {check.subject}.</p>}
+            {anotherSetup && <p className="mt-1 text-2xs text-amber-700 md:text-xs">{tr("That test was of another setup:")} {check.subject}.</p>}
             {check.steps.length > 0 && (
               <ul className="mt-3 divide-y divide-slate-100">
                 {check.steps.map((step) => (
                   <li key={step.key} className="flex items-start gap-2 py-2">
                     <span className="mt-0.5 shrink-0">{STEP_ICON[step.status]}</span>
                     <div className="min-w-0">
-                      <p className={`text-sm ${step.status === 'FAILED' ? 'text-red-700' : 'text-slate-800'}`}>{step.label}</p>
-                      <p className="text-2xs text-slate-500 md:text-xs">{step.detail}</p>
+                      <p className={`text-sm ${step.status === 'FAILED' ? 'text-red-700' : 'text-slate-800'}`}>{tr(step.label)}</p>
+                      <p className="text-2xs text-slate-500 md:text-xs">{tr(step.detail)}</p>
                     </div>
                   </li>
                 ))}

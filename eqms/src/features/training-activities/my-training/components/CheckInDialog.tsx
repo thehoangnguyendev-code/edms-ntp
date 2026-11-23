@@ -7,6 +7,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { ESignatureModal } from "@/components/ui/esign-modal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingCheckInApi, trainingError } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /** The six digits in what a QR code holds: the whole address of the check-in page, or the digits alone. */
 export const codeFromScan = (text: string): string | undefined => {
@@ -97,7 +98,7 @@ function CameraScanner({ onCode, onError }: { onCode: (code: string) => void; on
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
-      <video ref={video} className="aspect-square w-full object-cover" playsInline muted aria-label="Camera view for the QR code" />
+      <video ref={video} className="aspect-square w-full object-cover" playsInline muted aria-label={tr("Camera view for the QR code")} />
     </div>
   );
 }
@@ -128,11 +129,11 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
     setBusy(true);
     try {
       const result = await trainingCheckInApi.checkIn({ code: value, signatureToken });
-      showToast({ type: "success", title: "Attendance recorded", message: result.trainingNumber });
+      showToast({ type: "success", title: tr("Attendance recorded"), message: result.trainingNumber });
       setSigning("");
       onDone(result);
     } catch (e) {
-      showToast({ type: "error", title: "Check-in failed", message: trainingError(e) });
+      showToast({ type: "error", title: tr("Check-in failed"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -159,20 +160,20 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
       meaningCode="TRAINING_ATTENDED"
       targetDetails={{ code: "Check-in", title: `Attendance with the code ${signing}`, revision: "" }}
     />
-    <FormModal isOpen={!signing} onClose={clear} onConfirm={() => confirm(code)} title="Check In" description="Scan the QR code the trainer shows, or type the six-digit code." confirmText="Confirm" cancelText="Clear" confirmDisabled={code.length !== 6 || busy} isLoading={busy} size="md">
+    <FormModal isOpen={!signing} onClose={clear} onConfirm={() => confirm(code)} title={tr("Check In")} description={tr("Scan the QR code the trainer shows, or type the six-digit code.")} confirmText="Confirm" cancelText="Clear" confirmDisabled={code.length !== 6 || busy} isLoading={busy} size="md">
       <div className="space-y-4">
         {camera ? (
           <>
             <CameraScanner onCode={scanned} onError={(message) => { setCamera(false); setCameraError(message); }} />
-            <p className="text-center text-xs text-slate-500">Point the camera at the QR code on the trainer screen.</p>
-            <Button variant="outline" className="w-full" onClick={() => setCamera(false)}><IconCameraOff className="mr-2 h-4 w-4" />Stop the camera</Button>
+            <p className="text-center text-xs text-slate-500">{tr("Point the camera at the QR code on the trainer screen.")}</p>
+            <Button variant="outline" className="w-full" onClick={() => setCamera(false)}><IconCameraOff className="mr-2 h-4 w-4" />{tr("Stop the camera")}</Button>
           </>
         ) : (
-          <Button variant="outline-emerald" className="w-full" onClick={() => { setCameraError(""); setCamera(true); }}><IconCamera className="mr-2 h-4 w-4" />Scan the QR code with the camera</Button>
+          <Button variant="outline-emerald" className="w-full" onClick={() => { setCameraError(""); setCamera(true); }}><IconCamera className="mr-2 h-4 w-4" />{tr("Scan the QR code with the camera")}</Button>
         )}
         {cameraError && <p role="alert" className="text-sm text-red-700">{cameraError}</p>}
         <div className="space-y-2">
-          <div className="text-center text-sm font-medium text-slate-700">Or type the code</div>
+          <div className="text-center text-sm font-medium text-slate-700">{tr("Or type the code")}</div>
           <OtpInput value={code} onChange={setCode} disabled={busy} autoFocus ariaLabel="Check-in code digit" />
         </div>
       </div>

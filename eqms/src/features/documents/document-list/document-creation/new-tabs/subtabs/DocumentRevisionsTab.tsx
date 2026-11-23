@@ -12,6 +12,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { type WorkspaceNavigationMode } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface DocumentRevisionsTabProps {
     revisions?: Revision[];
@@ -235,7 +236,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by revision number, name, or author..."
+                        placeholder={tr("Search by revision number, name, or author...")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full h-9 pl-10 pr-10 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
@@ -250,22 +251,22 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                         <TableMarkup.Head className="bg-slate-50 border-b border-slate-200">
                             <TableMarkup.Row>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>
-                                    No.
+                                    {tr("No.")}
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                    Revision Number
+                                    {tr("Revision Number")}
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                                    Created
+                                    {tr("Created")}
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell14}>
-                                    Opened By
+                                    {tr("Opened By")}
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                    Revision Name
+                                    {tr("Revision Name")}
                                 </TableMarkup.HeaderCell>
                                 <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell12}>
-                                    Status
+                                    {tr("Status")}
                                 </TableMarkup.HeaderCell>
                             </TableMarkup.Row>
                         </TableMarkup.Head>
@@ -317,7 +318,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                             <p className="text-sm font-medium text-slate-500">
                                                 {searchQuery
                                                     ? "No records matching your search"
-                                                    : "No records to display"}
+                                                    : tr("No records to display")}
                                             </p>
                                         </div>
                                     </TableMarkup.Cell>

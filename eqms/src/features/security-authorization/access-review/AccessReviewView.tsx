@@ -34,6 +34,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
   status === "COMPLETED" ? "emerald" : status === "CANCELLED" ? "slate" : "blue";
@@ -51,8 +52,8 @@ const textareaClass = "w-full px-3 py-2 text-sm border border-slate-200 rounded-
 
 const PAGE_TABS: TabItem[] = [
   { id: "campaigns", label: "Campaigns" },
-  { id: "shares", label: "Knowledge Shares" },
-  { id: "links", label: "Knowledge Links" },
+  { id: "shares", label: tr("Knowledge Shares") },
+  { id: "links", label: tr("Knowledge Links") },
 ];
 
 export const AccessReviewView: React.FC = () => {
@@ -259,8 +260,8 @@ export const AccessReviewView: React.FC = () => {
                     },
                     {
                       id: "campaignNumber",
-                      header: "Campaign Number",
-                      label: "Campaign Number",
+                      header: tr("Campaign Number"),
+                      label: tr("Campaign Number"),
                       sort: { direction: sortKey === "campaignNumber" ? sortDir : undefined, onSort: () => handleSort("campaignNumber") },
                       cell: (campaign) => <span className="text-xs sm:text-sm font-medium text-emerald-600 whitespace-nowrap">{campaign.campaignNumber ?? "—"}</span>,
                     },
@@ -321,15 +322,15 @@ export const AccessReviewView: React.FC = () => {
                     },
                     {
                       id: "createdAt",
-                      header: "Created Date",
-                      label: "Created Date",
+                      header: tr("Created Date"),
+                      label: tr("Created Date"),
                       sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") },
                       cell: (campaign) => formatDateTime(campaign.createdAt),
                     },
                     {
                       id: "updatedAt",
-                      header: "Last Updated",
-                      label: "Last Updated",
+                      header: tr("Last Updated"),
+                      label: tr("Last Updated"),
                       sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") },
                       cell: (campaign) => formatDateTime(campaign.updatedAt),
                     },
@@ -349,11 +350,11 @@ export const AccessReviewView: React.FC = () => {
                         <PortalDropdownMenu isOpen={openId === campaign.id} onClose={close} position={position}>
                           <div className="py-1">
                             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { close(); navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${campaign.id}`); }}>
-                              View Details
+                              {tr("View Details")}
                             </DropdownMenuItem>
                             {canManage && campaign.status === "IN_PROGRESS" && (
                               <DropdownMenuItem icon={<IconX className="h-4 w-4" />} onClick={() => { close(); setCancelTarget(campaign); }}>
-                                Cancel Campaign
+                                {tr("Cancel Campaign")}
                               </DropdownMenuItem>
                             )}
                           </div>
@@ -366,20 +367,20 @@ export const AccessReviewView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
-        title="Access Review"
+        title={tr("Access Review")}
         breadcrumbItems={accessReviewBreadcrumb(navigate)}
         actions={
           pageTab === "shares" ? (
             canView ? (
               <Button size="sm" variant="default" className="whitespace-nowrap gap-2" onClick={() => setCheckAccessOpen(true)}>
                 <UserSearch className="h-4 w-4" />
-                Check Access
+                {tr("Check Access")}
               </Button>
             ) : undefined
           ) : canManage ? (
             <Button size="sm" className="whitespace-nowrap gap-2" onClick={openCreateModal}>
               <Plus className="h-4 w-4" />
-              New Campaign
+              {tr("New Campaign")}
             </Button>
           ) : undefined
         }
@@ -387,7 +388,7 @@ export const AccessReviewView: React.FC = () => {
 
       {!canView ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
-          <TableEmptyState title="Permission denied" description="You do not have permission to view access reviews." />
+          <TableEmptyState title={tr("Permission denied")} description={tr("You do not have permission to view access reviews.")} />
         </div>
       ) : pageTab === "shares" ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col flex-1">
@@ -411,7 +412,7 @@ export const AccessReviewView: React.FC = () => {
                 <input
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search campaigns…"
+                  placeholder={tr("Search campaigns…")}
                   className="w-full pl-9 pr-8 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 />
                 {search && (
@@ -422,7 +423,7 @@ export const AccessReviewView: React.FC = () => {
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
 
@@ -431,13 +432,13 @@ export const AccessReviewView: React.FC = () => {
   trailing={<div className="hidden md:block">{campaignControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search campaigns…"}
+      placeholder={tr("Search campaigns…")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -456,7 +457,7 @@ export const AccessReviewView: React.FC = () => {
   dates={[
     {
       id: "createdFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFrom,
       to: createdTo,
       onFromChange: (value) => {
@@ -470,7 +471,7 @@ export const AccessReviewView: React.FC = () => {
     },
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -486,20 +487,20 @@ export const AccessReviewView: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <input
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                    placeholder="Search campaigns…"
+                    placeholder={tr("Search campaigns…")}
                     className="w-full pl-9 pr-3 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                   />
                 </div>
               </div>
-              <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={statusOptions} />
-              <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
-              <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
+              <Select label={tr("Status")} value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={statusOptions} />
+              <DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply />
+              <DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply />
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                 {campaignControl}
@@ -517,8 +518,8 @@ export const AccessReviewView: React.FC = () => {
                 <div className="border border-slate-200 rounded-xl py-12 bg-white">
                   <TableEmptyState
 
-                    title="No Access Review Campaigns"
-                    description="Create a campaign to snapshot and review every user's current access."
+                    title={tr("No Access Review Campaigns")}
+                    description={tr("Create a campaign to snapshot and review every user's current access.")}
                   />
                 </div>
               ) : (
@@ -561,13 +562,13 @@ export const AccessReviewView: React.FC = () => {
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Created Date Range" isExpanded={expandedFilterSections.has("createdDate")} onToggle={() => toggleFilterSection("createdDate")}>
-          <div className="pt-1 pb-4"><DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply /></div>
+        <FilterAccordionItem label={tr("Created Date Range")} isExpanded={expandedFilterSections.has("createdDate")} onToggle={() => toggleFilterSection("createdDate")}>
+          <div className="pt-1 pb-4"><DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply /></div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Last Updated Range" isExpanded={expandedFilterSections.has("updatedDate")} onToggle={() => toggleFilterSection("updatedDate")}>
-          <div className="pt-1 pb-4"><DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply /></div>
+        <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedFilterSections.has("updatedDate")} onToggle={() => toggleFilterSection("updatedDate")}>
+          <div className="pt-1 pb-4"><DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply /></div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Status" isExpanded={expandedFilterSections.has("status")} onToggle={() => toggleFilterSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedFilterSections.has("status")} onToggle={() => toggleFilterSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {statusOptions.map((opt) => (
               <button
@@ -592,33 +593,33 @@ export const AccessReviewView: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={closeCreateModal}
         onConfirm={() => void createCampaign()}
-        title="New Access Review Campaign"
-        description="Snapshots every user's current access for periodic review (EU-GMP Annex 11)."
+        title={tr("New Access Review Campaign")}
+        description={tr("Snapshots every user's current access for periodic review (EU-GMP Annex 11).")}
         confirmText="Create Campaign"
         isLoading={creating}
         size="lg"
       >
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>Name <span className="text-red-500">*</span></label>
+            <label className={labelClass}>{tr("Name")} <span className="text-red-500">*</span></label>
             <input
               className={`${inputClass}${createSubmitted && !campaignName.trim() ? " border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
               value={campaignName}
               onChange={(event) => setCampaignName(event.target.value)}
-              placeholder="Q3 2026 Periodic Access Review"
+              placeholder={tr("Q3 2026 Periodic Access Review")}
               aria-invalid={createSubmitted && !campaignName.trim()}
               autoFocus
             />
-            {createSubmitted && !campaignName.trim() && <p role="alert" className="mt-1.5 text-xs text-red-600">Enter a name for this campaign.</p>}
+            {createSubmitted && !campaignName.trim() && <p role="alert" className="mt-1.5 text-xs text-red-600">{tr("Enter a name for this campaign.")}</p>}
           </div>
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>{tr("Description")}</label>
             <textarea className={textareaClass} rows={2} value={campaignDescription} onChange={(event) => setCampaignDescription(event.target.value)} />
           </div>
           <ReviewerSelect load={settingsApi.getAccessReviewReviewers} value={reviewerUserId} onChange={setReviewerUserId} disabled={creating} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <DateTimePicker label="Review Period Start" value={reviewPeriodStart} onChange={setReviewPeriodStart} placeholder="Select start date" />
-            <DateTimePicker label="Review Period End" value={reviewPeriodEnd} onChange={setReviewPeriodEnd} placeholder="Select end date" />
+            <DateTimePicker label={tr("Review Period Start")} value={reviewPeriodStart} onChange={setReviewPeriodStart} placeholder={tr("Select start date")} />
+            <DateTimePicker label={tr("Review Period End")} value={reviewPeriodEnd} onChange={setReviewPeriodEnd} placeholder={tr("Select end date")} />
           </div>
         </div>
       </FormModal>
@@ -628,9 +629,9 @@ export const AccessReviewView: React.FC = () => {
         onClose={() => { if (!cancelling) setCancelTarget(null); }}
         onConfirm={() => void cancelCampaign()}
         type="warning"
-        title="Cancel Access Review Campaign"
+        title={tr("Cancel Access Review Campaign")}
         description={cancelTarget ? `Are you sure you want to cancel "${cancelTarget.name}"? This action cannot be undone.` : ""}
-        confirmText="Cancel Campaign"
+        confirmText={tr("Cancel Campaign")}
         cancelText="Back"
         showCancel
         isLoading={cancelling}

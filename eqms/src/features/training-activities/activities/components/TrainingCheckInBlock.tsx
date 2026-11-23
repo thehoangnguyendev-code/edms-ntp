@@ -16,6 +16,7 @@ import {
   type TrainingActivityDetail,
   type TrainingCheckInStatus,
 } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /**
  * Self check-in (PLAN-TR-001 17.7): the trainer opens the door for a held session and shows the code or the QR on the room screen. Trainees enter it and sign on their own device.
@@ -90,7 +91,7 @@ export function TrainingCheckInBlock({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The action was not done",
+        title: tr("The action was not done"),
         message: trainingError(e),
       });
     } finally {
@@ -123,12 +124,12 @@ export function TrainingCheckInBlock({
   const codeBlock = (
     <>
       <div data-reveal="code" className="text-xs text-slate-500">
-        Code changes in{" "}
+        {tr("Code changes in")}{" "}
         <span role="timer" aria-live="off" className={cn("font-semibold tabular-nums", clockColor, urgent && "text-sm")}>
           {mins}
         </span>
       </div>
-      <div data-reveal="code" className="text-3xl font-bold text-slate-900" aria-label="Check-in code">
+      <div data-reveal="code" className="text-3xl font-bold text-slate-900" aria-label={tr("Check-in code")}>
         {/^[0-9]+$/.test(state?.code ?? "") ? (
           <SlidingNumber number={Number(state?.code)} minDigits={state?.code?.length} initiallyStable className="gap-1.5 lg:gap-2" />
         ) : (
@@ -139,9 +140,9 @@ export function TrainingCheckInBlock({
   );
 
   return (
-    <section aria-label="Self check-in" className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <section aria-label={tr("Self check-in")} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
-        <h3 className="text-sm font-semibold text-slate-900">Self check-in</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{tr("Self check-in")}</h3>
         <Badge color={open ? "emerald" : "slate"} showDot>{open ? "Open" : "Closed"}</Badge>
       </div>
       <div className="flex flex-col gap-4 p-4">
@@ -149,7 +150,7 @@ export function TrainingCheckInBlock({
           <div className="flex flex-wrap gap-2">
             {held.map((s) => (
               <Button key={s.id} size="sm" variant={s.id === sessionId ? "default" : "outline"} onClick={() => setSessionId(s.id)}>
-                Session {s.sessionNo}
+                {tr("Session")} {s.sessionNo}
               </Button>
             ))}
           </div>
@@ -159,7 +160,7 @@ export function TrainingCheckInBlock({
           shown={
             <div className="flex flex-col gap-4">
               <div data-reveal="qr" className="relative mx-auto hidden w-fit overflow-hidden rounded-lg border border-slate-200 bg-white p-2.5 lg:block">
-                <QRCodeSVG value={url} size={176} aria-label="Check-in QR code" />
+                <QRCodeSVG value={url} size={176} aria-label={tr("Check-in QR code")} />
                 <span data-reveal="scan" aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 shadow-[0_0_14px_3px_rgba(16,185,129,0.55)]" />
               </div>
               <div className="lg:text-center">{codeBlock}</div>
@@ -167,7 +168,7 @@ export function TrainingCheckInBlock({
           }
           closed={
             <p className="text-xs text-slate-500">
-              Open the check-in and show the code to the room. Each trainee enters it on their own phone or computer and signs with their password. Anyone without a device is marked in the quick roll-call.
+              {tr("Open the check-in and show the code to the room. Each trainee enters it on their own phone or computer and signs with their password. Anyone without a device is marked in the quick roll-call.")}
             </p>
           }
         />
@@ -177,7 +178,7 @@ export function TrainingCheckInBlock({
               {present}
               <span className="text-sm font-normal text-slate-500"> / {people.length}</span>
             </span>
-            <span className="text-xs text-slate-500">present</span>
+            <span className="text-xs text-slate-500">{tr("present")}</span>
           </div>
           <div
             className="mt-2 flex gap-0.5 overflow-hidden rounded-full bg-slate-200"
@@ -185,44 +186,44 @@ export function TrainingCheckInBlock({
             aria-valuemin={0}
             aria-valuemax={people.length}
             aria-valuenow={present}
-            aria-label="People present in the session"
+            aria-label={tr("People present in the session")}
           >
             {present > 0 && <span className="h-1.5 bg-emerald-500" style={{ flexGrow: present }} />}
             {toMark > 0 && <span className="h-1.5 bg-slate-200" style={{ flexGrow: toMark }} />}
             {absent > 0 && <span className="h-1.5 bg-red-400" style={{ flexGrow: absent }} />}
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-emerald-500" />{present} present</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-slate-300" />{toMark} still to mark</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-red-400" />{absent} absent</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-emerald-500" />{present} {tr("present")}</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-slate-300" />{toMark} {tr("still to mark")}</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-red-400" />{absent} {tr("absent")}</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 [&>button]:w-full">
           {open ? (
             <>
-              <Button variant="default" size="sm" className="lg:hidden" onClick={() => setQrOpen(true)}>Show QR</Button>
-              <Button variant="outline" size="sm" className="hidden lg:inline-flex" loading={busy} onClick={() => void act(trainingCheckInApi.close)}>Close the check-in</Button>
+              <Button variant="default" size="sm" className="lg:hidden" onClick={() => setQrOpen(true)}>{tr("Show QR")}</Button>
+              <Button variant="outline" size="sm" className="hidden lg:inline-flex" loading={busy} onClick={() => void act(trainingCheckInApi.close)}>{tr("Close the check-in")}</Button>
             </>
           ) : (
-            <Button variant="default" size="sm" loading={busy} onClick={() => void act(trainingCheckInApi.open)}>Open the check-in</Button>
+            <Button variant="default" size="sm" loading={busy} onClick={() => void act(trainingCheckInApi.open)}>{tr("Open the check-in")}</Button>
           )}
           {footer}
         </div>
-        {footer && <p className="hidden text-xs text-slate-500 lg:block">Mark the whole room at once and sign one time, for people without a device.</p>}
+        {footer && <p className="hidden text-xs text-slate-500 lg:block">{tr("Mark the whole room at once and sign one time, for people without a device.")}</p>}
       </div>
       {qrOpen && open && (
         <Drawer
-          title="Self check-in"
+          title={tr("Self check-in")}
           onClose={() => setQrOpen(false)}
           footer={
             <Button variant="outline" size="sm" loading={busy} onClick={() => { setQrOpen(false); void act(trainingCheckInApi.close); }}>
-              Close the check-in
+              {tr("Close the check-in")}
             </Button>
           }
         >
           <div className="flex flex-col items-center gap-3 py-2 text-center">
             <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <QRCodeSVG value={url} size={220} aria-label="Check-in QR code" />
+              <QRCodeSVG value={url} size={220} aria-label={tr("Check-in QR code")} />
             </div>
             <div>{codeBlock}</div>
           </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { ParticipantSignatureFields, type ParticipantSignatureRecord } from "@/features/documents/document-revisions/shared/components/ParticipantSignatureFields";
 import type { Reviewer } from "@/features/documents/types";
+import { tr } from "@/i18n";
 
 interface RevisionWorkspaceReviewersTabProps {
   reviewers: Reviewer[];
@@ -9,7 +10,7 @@ interface RevisionWorkspaceReviewersTabProps {
 
 export const RevisionWorkspaceReviewersTab: React.FC<RevisionWorkspaceReviewersTabProps> = ({ reviewers, reviewRequirement }) => {
   if (reviewRequirement === "NONE") {
-    return <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">Review is not required for this Document Type and Sub-Type.</div>;
+    return <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">{tr("Review is not required for this Document Type and Sub-Type.")}</div>;
   }
   const items: ParticipantSignatureRecord[] = reviewers.map((reviewer, index) => ({
     label: `Reviewer ${index + 1}`,

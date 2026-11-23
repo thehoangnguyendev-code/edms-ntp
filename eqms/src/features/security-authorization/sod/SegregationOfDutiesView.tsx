@@ -37,6 +37,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 // ─── Main View ────────────────────────────────────────────────────────────────
 // Violation Scanner moved to its own screen: SodViolationReviewView.tsx (sibling to Access
@@ -55,8 +56,8 @@ const STATUS_OPTIONS: SelectOption[] = [
 ];
 
 const BASE_TABS: TabItem[] = [
-  { id: "constraints", label: "Permission Conflict Rules" },
-  { id: "document-rules", label: "Document Revision Integrity" },
+  { id: "constraints", label: tr("Permission Conflict Rules") },
+  { id: "document-rules", label: tr("Document Revision Integrity") },
 ];
 
 // The Separation Rules of every other module get one tab each (id "sep:<module key>"), named like the module in the menu.
@@ -132,9 +133,9 @@ export const SegregationOfDutiesView: React.FC = () => {
       await separation.save(data.reason, data.signatureToken);
       setShowSeparationESignModal(false);
       setIsEditingSeparation(false);
-      showToast({ type: "success", message: `${separationModuleLabel} separation rules updated.` });
+      showToast({ type: "success", message: trFormat("{module} separation rules updated.", { module: tr(separationModuleLabel) }) });
     } catch (error: any) {
-      showToast({ type: "error", message: error?.response?.data?.error?.message ?? error?.response?.data?.message ?? "Unable to update the separation rules." });
+      showToast({ type: "error", message: error?.response?.data?.error?.message ?? error?.response?.data?.message ?? tr("Unable to update the separation rules.") });
     }
   };
   const separationSignatureChanges = separation.changed.map((rule) => ({
@@ -158,7 +159,7 @@ export const SegregationOfDutiesView: React.FC = () => {
       await saveAdministration(data.reason, data.signatureToken);
       setShowDocRulesESignModal(false);
       setIsEditingDocRules(false);
-      showToast({ type: "success", message: "Document revision integrity rules updated." });
+      showToast({ type: "success", message: tr("Document revision integrity rules updated.") });
     } catch (error: any) {
       showToast({ type: "error", message: error?.response?.data?.message ?? "Unable to update revision integrity rules." });
     }
@@ -223,7 +224,7 @@ export const SegregationOfDutiesView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load SoD constraints" });
+      showToast({ type: "error", message: tr("Failed to load SoD constraints") });
     } finally {
       setLoading(false);
     }
@@ -311,8 +312,8 @@ export const SegregationOfDutiesView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell33, cell: (_c, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
     {
       id: "name",
-      header: "Constraint",
-      label: "Constraint",
+      header: tr("Constraint"),
+      label: tr("Constraint"),
       sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
       cell: (c) => (
         <>
@@ -323,8 +324,8 @@ export const SegregationOfDutiesView: React.FC = () => {
     },
     {
       id: "permissionCodeA",
-      header: "Permission A",
-      label: "Permission A",
+      header: tr("Permission A"),
+      label: tr("Permission A"),
       sort: { direction: sortKey === "permissionCodeA" ? sortDir : undefined, onSort: () => handleSort("permissionCodeA") },
       cell: (c) => (
         <>
@@ -335,8 +336,8 @@ export const SegregationOfDutiesView: React.FC = () => {
     },
     {
       id: "permissionCodeB",
-      header: "Permission B",
-      label: "Permission B",
+      header: tr("Permission B"),
+      label: tr("Permission B"),
       sort: { direction: sortKey === "permissionCodeB" ? sortDir : undefined, onSort: () => handleSort("permissionCodeB") },
       cell: (c) => (
         <>
@@ -359,11 +360,11 @@ export const SegregationOfDutiesView: React.FC = () => {
           >
             {c.severity}
           </Badge>
-          {c.system && <Badge color="blue" size="xs">System</Badge>}
+          {c.system && <Badge color="blue" size="xs">{tr("System")}</Badge>}
         </div>
       ),
     },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (c) => formatDateTime(c.updatedAt) },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cellClassName: "text-slate-600", cell: (c) => formatDateTime(c.updatedAt) },
   ];
   const sodAction: DataTableAction<SodRow> = {
     header: "Action",
@@ -373,7 +374,7 @@ export const SegregationOfDutiesView: React.FC = () => {
           ref={getRef(c.id)}
           onClick={(e) => toggle(c.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -385,14 +386,14 @@ export const SegregationOfDutiesView: React.FC = () => {
                   icon={<IconPencilMinus className="h-4 w-4" />}
                   onClick={() => { navigate(`${ROUTES.SECURITY.SOD}/${c.id}/edit`); close(); }}
                 >
-                  Edit
+                  {tr("Edit")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   icon={<IconTrash className="h-4 w-4" />}
                   onClick={() => { setDeleteTarget(c); close(); }}
                   disabled={c.system}
                 >
-                  Delete
+                  {tr("Delete")}
                 </DropdownMenuItem>
               </>
             )}
@@ -406,7 +407,7 @@ export const SegregationOfDutiesView: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6">
       <PageHeader
-        title="Segregation of Duties"
+        title={tr("Segregation of Duties")}
         breadcrumbItems={segregationOfDutiesBreadcrumb(
           navigate,
           SOD_TABS.find((tab) => tab.id === activeTab)?.label,
@@ -416,7 +417,7 @@ export const SegregationOfDutiesView: React.FC = () => {
             canManageSod ? (
               <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(`${ROUTES.SECURITY.SOD}/new`)}>
                 <Plus className="h-4 w-4" />
-                New Constraint
+                {tr("New Constraint")}
               </Button>
             ) : undefined
           ) : isSeparationTab ? (
@@ -428,18 +429,18 @@ export const SegregationOfDutiesView: React.FC = () => {
                 disabled={!canManageSeparationRules || separation.isLoading || separation.rules.length === 0}
               >
                 <IconPencilMinus className="h-4 w-4" />
-                Edit {separationModuleLabel} Rules
+                {trFormat("Edit {module} Rules", { module: tr(separationModuleLabel) })}
               </Button>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
                 <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={handleCancelSeparationEdit}>
-                  Cancel
+                  {tr("Cancel")}
                 </Button>
                 <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setShowSeparationResetModal(true)} disabled={!separation.isDirty}>
-                  Reset
+                  {tr("Reset")}
                 </Button>
                 <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setShowSeparationESignModal(true)} disabled={!separation.isDirty}>
-                  Save
+                  {tr("Save")}
                 </Button>
               </div>
             )
@@ -451,12 +452,12 @@ export const SegregationOfDutiesView: React.FC = () => {
               disabled={!canManageDocumentWorkflowRules}
             >
               <IconPencilMinus className="h-4 w-4" />
-              Edit Revision Integrity Rules
+              {tr("Edit Revision Integrity Rules")}
             </Button>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
               <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={handleCancelDocRulesEdit}>
-                Cancel
+                {tr("Cancel")}
               </Button>
               <Button
                 size="sm"
@@ -465,7 +466,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 onClick={() => setShowDocRulesResetModal(true)}
                 disabled={!isDocRulesDirty}
               >
-                Reset
+                {tr("Reset")}
               </Button>
               <Button
                 size="sm"
@@ -474,7 +475,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 onClick={() => setShowDocRulesESignModal(true)}
                 disabled={!isDocRulesDirty}
               >
-                Save
+                {tr("Save")}
               </Button>
             </div>
           )
@@ -513,7 +514,7 @@ export const SegregationOfDutiesView: React.FC = () => {
         />
       ) : !canViewSod ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
-          <TableEmptyState title="Permission denied" description="You do not have permission to view segregation-of-duties constraints." />
+          <TableEmptyState title={tr("Permission denied")} description={tr("You do not have permission to view segregation-of-duties constraints.")} />
         </div>
       ) : (
         <div className="flex flex-col gap-4 md:gap-6">
@@ -526,7 +527,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                   <input
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                    placeholder="Search constraints…"
+                    placeholder={tr("Search constraints…")}
                     className="w-full pl-9 pr-8 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                   />
                   {search && (
@@ -537,7 +538,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 </div>
                 <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
 
@@ -546,13 +547,13 @@ export const SegregationOfDutiesView: React.FC = () => {
   trailing={<div className="hidden md:block">{sodControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search constraints…"}
+      placeholder={tr("Search constraints…")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -591,7 +592,7 @@ export const SegregationOfDutiesView: React.FC = () => {
   dates={[
     {
       id: "createdFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFrom,
       to: createdTo,
       onFromChange: (value) => {
@@ -605,7 +606,7 @@ export const SegregationOfDutiesView: React.FC = () => {
     },
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -621,22 +622,22 @@ export const SegregationOfDutiesView: React.FC = () => {
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
                 <div className="w-full">
-                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       value={search}
                       onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                      placeholder="Search constraints…"
+                      placeholder={tr("Search constraints…")}
                       className="w-full pl-9 pr-3 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                     />
                   </div>
                 </div>
-                <Select label="Severity" value={severityFilter} onChange={(v) => { setSeverityFilter(String(v)); setCurrentPage(1); }} options={severityOptions} />
-                <Select label="Type" value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} />
-                <Select label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} />
-                <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
-                <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
+                <Select label={tr("Severity")} value={severityFilter} onChange={(v) => { setSeverityFilter(String(v)); setCurrentPage(1); }} options={severityOptions} />
+                <Select label={tr("Type")} value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} />
+                <Select label={tr("Status")} value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={STATUS_OPTIONS} />
+                <DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply />
+                <DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply />
                 <div className="filter-actions flex items-end gap-2">
                   <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
                   {sodControl}
@@ -663,8 +664,8 @@ export const SegregationOfDutiesView: React.FC = () => {
                 rowClassName={(c) => (c.active ? "" : "opacity-50")}
                 emptyState={
                   <TableEmptyState
-                    title="No SoD Constraints"
-                    description={hasFilters ? "Try adjusting your search or filters." : "No Segregation of Duties constraints have been defined yet."}
+                    title={tr("No SoD Constraints")}
+                    description={hasFilters ? tr("Try adjusting your search or filters.") : "No Segregation of Duties constraints have been defined yet."}
                   />
                 }
                 pagination={
@@ -699,13 +700,13 @@ export const SegregationOfDutiesView: React.FC = () => {
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Created Date Range" isExpanded={expandedSections.has("createdDate")} onToggle={() => toggleSection("createdDate")}>
-          <div className="pt-1 pb-4"><DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply /></div>
+        <FilterAccordionItem label={tr("Created Date Range")} isExpanded={expandedSections.has("createdDate")} onToggle={() => toggleSection("createdDate")}>
+          <div className="pt-1 pb-4"><DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply /></div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Last Updated Range" isExpanded={expandedSections.has("updatedDate")} onToggle={() => toggleSection("updatedDate")}>
-          <div className="pt-1 pb-4"><DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply /></div>
+        <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedSections.has("updatedDate")} onToggle={() => toggleSection("updatedDate")}>
+          <div className="pt-1 pb-4"><DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply /></div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Severity" isExpanded={expandedSections.has("severity")} onToggle={() => toggleSection("severity")}>
+        <FilterAccordionItem label={tr("Severity")} isExpanded={expandedSections.has("severity")} onToggle={() => toggleSection("severity")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {severityOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setSeverityFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(severityFilter === opt.value)}>
@@ -715,7 +716,7 @@ export const SegregationOfDutiesView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+        <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {TYPE_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setTypeFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(typeFilter === opt.value)}>
@@ -725,7 +726,7 @@ export const SegregationOfDutiesView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setStatusFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(statusFilter === opt.value)}>
@@ -742,7 +743,7 @@ export const SegregationOfDutiesView: React.FC = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
         type="warning"
-        title="Delete SoD Constraint"
+        title={tr("Delete SoD Constraint")}
         description={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ""}
         confirmText="Delete"
         cancelText="Cancel"
@@ -755,12 +756,12 @@ export const SegregationOfDutiesView: React.FC = () => {
         onConfirm={handleDocRulesReset}
         mode="discard"
         currentPageTitle="Document Revision Integrity Rules"
-        title="Discard Unsaved Changes?"
+        title={tr("Discard Unsaved Changes?")}
         primaryActionLabel="Discard changes"
-        secondaryActionLabel="Keep editing"
+        secondaryActionLabel={tr("Keep editing")}
         description={
           <div className="text-sm text-slate-600">
-            All unsaved changes to document revision integrity rules will be lost.
+            {tr("All unsaved changes to document revision integrity rules will be lost.")}
           </div>
         }
       />
@@ -770,18 +771,18 @@ export const SegregationOfDutiesView: React.FC = () => {
         onClose={() => setShowSeparationResetModal(false)}
         onConfirm={handleSeparationReset}
         mode="discard"
-        currentPageTitle={`${separationModuleLabel} Separation Rules`}
-        title="Discard Unsaved Changes?"
+        currentPageTitle={trFormat("{module} Separation Rules", { module: tr(separationModuleLabel) })}
+        title={tr("Discard Unsaved Changes?")}
         primaryActionLabel="Discard changes"
-        secondaryActionLabel="Keep editing"
-        description={<div className="text-sm text-slate-600">All unsaved changes to these separation rules will be lost.</div>}
+        secondaryActionLabel={tr("Keep editing")}
+        description={<div className="text-sm text-slate-600">{tr("All unsaved changes to these separation rules will be lost.")}</div>}
       />
 
       <ESignatureModal
         isOpen={showSeparationESignModal}
         onClose={() => setShowSeparationESignModal(false)}
         onConfirm={handleSeparationSave}
-        actionTitle={`Update ${separationModuleLabel} Separation Rules`}
+        actionTitle={trFormat("Update {module} Separation Rules", { module: tr(separationModuleLabel) })}
         changes={separationSignatureChanges}
       />
 

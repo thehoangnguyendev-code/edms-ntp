@@ -21,6 +21,7 @@ import { useControlledCopyPreviewAvailability } from "./useControlledCopyPreview
 import logo from "@/assets/images/logo_nobg.png";
 import { IconFiles } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
+import { tr } from "@/i18n";
 
 type PreviewManifest = {
   id: string;
@@ -63,26 +64,26 @@ const describeUnavailableCopy = (
   reason?: string | null,
 ): { title: string; tone: "danger" | "warning" } => {
   if ((status || "").toUpperCase() === "CLOSED_CANCELLED") {
-    return { title: "This controlled copy request was cancelled", tone: "warning" };
+    return { title: tr("This controlled copy request was cancelled"), tone: "warning" };
   }
   switch ((reason || status || "").toUpperCase()) {
     case "EXPIRED":
-      return { title: "This controlled copy has expired", tone: "warning" };
+      return { title: tr("This controlled copy has expired"), tone: "warning" };
     case "RECALLED":
-      return { title: "This controlled copy was recalled", tone: "danger" };
+      return { title: tr("This controlled copy was recalled"), tone: "danger" };
     case "NEW_REVISION_PUBLISHED":
-      return { title: "This controlled copy was replaced by a newer revision", tone: "warning" };
+      return { title: tr("This controlled copy was replaced by a newer revision"), tone: "warning" };
     case "REVISION_OBSOLETED":
     case "DOCUMENT_OBSOLETED":
-      return { title: "This document is now obsolete", tone: "danger" };
+      return { title: tr("This document is now obsolete"), tone: "danger" };
     case "LOST":
-      return { title: "This controlled copy was reported lost", tone: "danger" };
+      return { title: tr("This controlled copy was reported lost"), tone: "danger" };
     case "DAMAGED":
-      return { title: "This controlled copy was reported damaged", tone: "danger" };
+      return { title: tr("This controlled copy was reported damaged"), tone: "danger" };
     case "DESTROYED":
-      return { title: "This controlled copy was destroyed", tone: "danger" };
+      return { title: tr("This controlled copy was destroyed"), tone: "danger" };
     default:
-      return { title: "This controlled copy is no longer available", tone: "danger" };
+      return { title: tr("This controlled copy is no longer available"), tone: "danger" };
   }
 };
 
@@ -385,22 +386,21 @@ export const ControlledCopyPreviewView: React.FC = () => {
             <Clock className="h-7 w-7 text-amber-600" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-semibold text-slate-900">Your viewing session has ended</h1>
+            <h1 className="text-xl font-semibold text-slate-900">{tr("Your viewing session has ended")}</h1>
             <p className="text-sm text-slate-700 mt-2">
-              For security, a controlled copy can only be kept open for a limited time. The document has been closed on this
-              page.
+              {tr("For security, a controlled copy can only be kept open for a limited time. The document has been closed on this page.")}
             </p>
           </div>
           <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-700 space-y-2">
-            <p className="font-semibold text-slate-800">To view it again:</p>
+            <p className="font-semibold text-slate-800">{tr("To view it again:")}</p>
             <ol className="list-decimal pl-5 space-y-1">
-              <li>Open the distribution email you received for this controlled copy.</li>
-              <li>Click the link in the email.</li>
-              <li>Enter the password that is included in the same email.</li>
+              <li>{tr("Open the distribution email you received for this controlled copy.")}</li>
+              <li>{tr("Click the link in the email.")}</li>
+              <li>{tr("Enter the password that is included in the same email.")}</li>
             </ol>
           </div>
           <p className="text-center text-2xs sm:text-xs text-slate-400">
-            If you cannot find the email, contact Document Control.
+            {tr("If you cannot find the email, contact Document Control.")}
           </p>
         </div>
       </div>
@@ -425,13 +425,12 @@ export const ControlledCopyPreviewView: React.FC = () => {
             compact
           >
             <div className="w-full rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left text-xs sm:text-sm text-slate-600 space-y-1">
-              <p className="font-semibold text-slate-800">This copy must no longer be used.</p>
+              <p className="font-semibold text-slate-800">{tr("This copy must no longer be used.")}</p>
               <p>
-                The document you were viewing has been closed on this page. Do not rely on any printed or saved version of
-                it. Contact Document Control if you need the current version.
+                {tr("The document you were viewing has been closed on this page. Do not rely on any printed or saved version of it. Contact Document Control if you need the current version.")}
               </p>
             </div>
-            <p className="text-2xs sm:text-xs text-slate-400">Updated {displayDateTime(unavailable.at)}</p>
+            <p className="text-2xs sm:text-xs text-slate-400">{tr("Updated")} {displayDateTime(unavailable.at)}</p>
           </DocumentStateMessage>
         </div>
       </div>
@@ -444,7 +443,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
         <div className="max-w-lg w-full bg-white border border-slate-200 rounded-xl shadow-sm p-6">
           <DocumentStateMessage
             variant="no-access"
-            title="Access Denied"
+            title={tr("Access Denied")}
             description={manifestError}
             compact
           />
@@ -465,11 +464,10 @@ export const ControlledCopyPreviewView: React.FC = () => {
           </div>
           <div className="text-center">
             <h1 className="text-lg font-semibold text-slate-900">
-              Password Required
+              {tr("Password Required")}
             </h1>
             <p className="text-sm text-slate-600 mt-2">
-              Enter the preview password from the distribution email to open
-              this controlled copy.
+              {tr("Enter the preview password from the distribution email to open this controlled copy.")}
             </p>
           </div>
           <div className="space-y-1.5">
@@ -481,7 +479,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
             </label> */}
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs sm:text-sm font-medium text-slate-700">
-                Preview Password
+                {tr("Preview Password")}
               </span>
             </div>
             <div className="relative">
@@ -494,7 +492,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
                   setPasswordInput(e.target.value);
                   setPasswordSubmitError(null);
                 }}
-                placeholder="Enter password..."
+                placeholder={tr("Enter password...")}
                 className="w-full h-10 px-3 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               />
               <button
@@ -519,7 +517,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
             className="w-full"
             disabled={isSubmittingPassword || !passwordInput.trim()}
           >
-            {isSubmittingPassword ? "Verifying..." : "Open Preview"}
+            {isSubmittingPassword ? "Verifying..." : tr("Open Preview")}
           </Button>
         </form>
       </div>
@@ -578,7 +576,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
               onClick={() => void downloadOnceFromServer()}
               disabled={isActionRunning}
             >
-              <Download className="h-4 w-4 mr-1.5" /> Download
+              <Download className="h-4 w-4 mr-1.5" /> {tr("Download")}
             </Button>
           )}
           {printOnce && allowPrint && (
@@ -588,7 +586,7 @@ export const ControlledCopyPreviewView: React.FC = () => {
               onClick={() => void printOnceFromServer()}
               disabled={isActionRunning}
             >
-              <Printer className="h-4 w-4 mr-1.5" /> Print
+              <Printer className="h-4 w-4 mr-1.5" /> {tr("Print")}
             </Button>
           )}
           {actionError && (
@@ -605,14 +603,14 @@ export const ControlledCopyPreviewView: React.FC = () => {
             {fileErrorState === "no-access" ? (
               <DocumentStateMessage
                 variant="no-access"
-                title="You can no longer open this controlled copy"
-                description="Access to it was withdrawn or it is no longer valid. Contact Document Control if you need the current version."
+                title={tr("You can no longer open this controlled copy")}
+                description={tr("Access to it was withdrawn or it is no longer valid. Contact Document Control if you need the current version.")}
               />
             ) : (
               <DocumentStateMessage
                 variant="no-document"
-                title="Unable to load this controlled copy's preview"
-                description="The document could not be found or opened. Please try again later."
+                title={tr("Unable to load this controlled copy's preview")}
+                description={tr("The document could not be found or opened. Please try again later.")}
               />
             )}
           </div>

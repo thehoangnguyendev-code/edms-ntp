@@ -16,6 +16,7 @@ import type {
   WorkflowActorTypeOption,
 } from "../types";
 import { IconUserQuestion } from "@tabler/icons-react";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * The same policy, four ways to fill it in. The four layouts only change how the fields are arranged: they read and write the one form
@@ -91,7 +92,7 @@ const fieldOptions = (props: PolicyRuleLayoutProps, field: IdentityField): Selec
     case "workflowKey": return props.workflowOptions;
     case "objectType": return props.objectTypeOptions;
     case "actionCode": return props.actionOptions;
-    default: return props.fromStatusOptions.length > 0 ? [{ label: "Select status", value: "" }, ...props.fromStatusOptions] : [];
+    default: return props.fromStatusOptions.length > 0 ? [{ label: tr("Select status"), value: "" }, ...props.fromStatusOptions] : [];
   }
 };
 
@@ -142,8 +143,8 @@ const IdentityGrid: React.FC<{ props: PolicyRuleLayoutProps; fields: IdentityFie
             options={options}
             disabled={needsWorkflow || (field === "fromStatus" && options.length === 0)}
           />
-          {needsWorkflow && <p className="mt-1 text-2xs text-slate-400">Select a workflow first.</p>}
-          {field === "fromStatus" && !needsWorkflow && options.length === 0 && <p className="mt-1 text-2xs text-slate-400">Select an action first.</p>}
+          {needsWorkflow && <p className="mt-1 text-2xs text-slate-400">{tr("Select a workflow first.")}</p>}
+          {field === "fromStatus" && !needsWorkflow && options.length === 0 && <p className="mt-1 text-2xs text-slate-400">{tr("Select an action first.")}</p>}
         </div>
       );
     })}
@@ -155,7 +156,7 @@ const actorsText = (props: PolicyRuleLayoutProps) => {
   const labels = props.form.actors
     .filter((actor) => actor.actorType !== "PERMISSION")
     .map((actor) => props.allowedActorTypes.find((type) => type.value === actor.actorType)?.label ?? prettify(actor.actorType));
-  return [...new Set(labels)].join(" or ");
+  return [...new Set(labels)].join(` ${tr("or")} `);
 };
 
 /** The rule in one sentence, as far as it is filled in. */
@@ -165,8 +166,8 @@ export const describePolicy = (props: PolicyRuleLayoutProps): string => {
   const status = form.fromStatus ? prettify(form.fromStatus) : "…";
   const action = form.actionCode ? optionLabel(props.actionOptions, form.actionCode) : "…";
   const permission = form.requiredPermissionCode || "…";
-  const who = !showsActors(props) ? "" : form.actors.length === 0 ? "and is …" : actorsText(props) ? `and is ${actorsText(props)}` : "";
-  return `When a ${object} is in ${status}, “${action}” may be done by someone who holds ${permission}${who ? ` ${who}` : ""}.`;
+  const who = !showsActors(props) ? "" : form.actors.length === 0 ? `${tr("and is")} …` : actorsText(props) ? `${tr("and is")} ${actorsText(props)}` : "";
+  return trFormat("When a {object} is in {status}, “{action}” may be done by someone who holds {permission}{who}.", { object, status, action, permission, who: who ? ` ${who}` : "" });
 };
 
 /** Another active policy for the same action, status and document type: what the owner should know before saving a second one. */
@@ -183,15 +184,15 @@ const ConflictNote: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => 
   if (!other) return null;
   return (
     <WarningBanner variant="warning">
-      A policy already exists for this action and status (priority {other.priority}, permission {other.requiredPermissionCode}).
-      {props.mode === "create" ? " Edit that policy instead, or give this one a document type or a different priority." : ""}
+      {trFormat("A policy already exists for this action and status (priority {priority}, permission {permission}).", { priority: other.priority, permission: other.requiredPermissionCode })}
+      {props.mode === "create" ? ` ${tr("Edit that policy instead, or give this one a document type or a different priority.")}` : ""}
     </WarningBanner>
   );
 };
 
 const SentenceCard: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => (
   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">This policy says</p>
+    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{tr("This policy says")}</p>
     <p className="mt-1 text-sm leading-relaxed text-slate-700">{describePolicy(props)}</p>
   </div>
 );
@@ -207,18 +208,18 @@ const WhoBlock: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => (
 
 const SentenceLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => (
   <div className="flex flex-col gap-4 md:gap-6">
-    <FormSection title="Rule" icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+    <FormSection title={tr("Rule")} icon={<Info className="h-4 w-4" />} contentClassName="p-4 md:p-5">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-3 text-sm leading-9 text-slate-700">
-          In <InlineField props={props} field="moduleKey" />, workflow <InlineField props={props} field="workflowKey" />, for a{" "}
-          <InlineField props={props} field="objectType" />, the action <InlineField props={props} field="actionCode" /> may be done when it is in{" "}
-          <InlineField props={props} field="fromStatus" width="w-44" /> by someone who holds the permission{showsActors(props) ? " and is one of the actors below" : ""}.
+          {tr("In")} <InlineField props={props} field="moduleKey" />{tr(", workflow")} <InlineField props={props} field="workflowKey" />{tr(", for a")}{" "}
+          <InlineField props={props} field="objectType" />{tr(", the action")} <InlineField props={props} field="actionCode" /> {tr("may be done when it is in")}{" "}
+          <InlineField props={props} field="fromStatus" width="w-44" /> {tr("by someone who holds the permission")}{showsActors(props) ? tr(" and is one of the actors below") : ""}.
         </div>
         <SentenceCard props={props} />
         <ConflictNote props={props} />
       </div>
     </FormSection>
-    <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title="Who may do it" contentClassName="p-4 md:p-5"><WhoBlock props={props} /></FormSection>
+    <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title={tr("Who may do it")} contentClassName="p-4 md:p-5"><WhoBlock props={props} /></FormSection>
     {props.optionsSection}
   </div>
 );
@@ -244,31 +245,31 @@ const StepsLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => {
         onStepClick={(index) => { if (index <= step || stepReady.slice(0, index).every(Boolean)) setStep(index); }}
       />
       {step === 0 && (
-        <FormSection title="What is this policy for?" contentClassName="p-4 md:p-5">
-          <p className="mb-4 text-xs text-slate-500">Choose in order: each list shows only what fits the one before it.</p>
+        <FormSection title={tr("What is this policy for?")} contentClassName="p-4 md:p-5">
+          <p className="mb-4 text-xs text-slate-500">{tr("Choose in order: each list shows only what fits the one before it.")}</p>
           <IdentityGrid props={props} fields={["moduleKey", "workflowKey", "objectType", "actionCode", "fromStatus"]} />
         </FormSection>
       )}
       {step === 1 && (
-        <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title="Who may do it?" contentClassName="p-4 md:p-5">
-          <p className="mb-4 text-xs text-slate-500">{showsActors(props) ? <>The person must hold the permission <b>and</b> be one of the actors.</> : "The person must hold the permission, and the relations of the record and its state decide the rest."}</p>
+        <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title={tr("Who may do it?")} contentClassName="p-4 md:p-5">
+            <p className="mb-4 text-xs text-slate-500">{showsActors(props) ? <>{tr("The person must hold the permission")} <b>{tr("and")}</b> {tr("be one of the actors.")}</> : tr("The person must hold the permission, and the relations of the record and its state decide the rest.")}</p>
           <WhoBlock props={props} />
         </FormSection>
       )}
       {step === 2 && props.optionsSection}
       {step === 3 && (
-        <FormSection title="Review" contentClassName="p-4 md:p-5">
+        <FormSection title={tr("Review")} contentClassName="p-4 md:p-5">
           <div className="space-y-4">
             <SentenceCard props={props} />
             <ConflictNote props={props} />
-            <p className="text-xs text-slate-500">Use the save button at the top of the page to save the policy.</p>
+            <p className="text-xs text-slate-500">{tr("Use the save button at the top of the page to save the policy.")}</p>
           </div>
         </FormSection>
       )}
       <div className="flex items-center justify-between gap-3">
-        <Button variant="outline-emerald" size="sm" disabled={step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</Button>
+        <Button variant="outline-emerald" size="sm" disabled={step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))}>{tr("Back")}</Button>
         <span className="text-xs text-slate-500">{hint}</span>
-        <Button variant="outline-emerald" size="sm" disabled={step === STEPS.length - 1 || !stepReady[step]} onClick={() => setStep((current) => Math.min(STEPS.length - 1, current + 1))}>Next</Button>
+        <Button variant="outline-emerald" size="sm" disabled={step === STEPS.length - 1 || !stepReady[step]} onClick={() => setStep((current) => Math.min(STEPS.length - 1, current + 1))}>{tr("Next")}</Button>
       </div>
     </div>
   );
@@ -299,22 +300,22 @@ const MatrixLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => 
   };
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <FormSection title="Which action, from which status" contentClassName="p-4 md:p-5">
+      <FormSection title={tr("Which action, from which status")} contentClassName="p-4 md:p-5">
         <div className="space-y-4">
           <IdentityGrid props={props} fields={["moduleKey", "workflowKey", "objectType"]} />
           {!form.objectType ? (
-            <p className="text-xs text-slate-500">Choose the module, the workflow and the object type: the actions and the statuses of that object appear as a table.</p>
+            <p className="text-xs text-slate-500">{tr("Choose the module, the workflow and the object type: the actions and the statuses of that object appear as a table.")}</p>
           ) : (
             <>
               <p className="text-xs text-slate-500">
                 {identityLocked ? "The action and the status of an existing policy cannot be changed." : "Click the cell where the action starts. "}
-                <span className="inline-flex items-center gap-1 align-middle"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" /> a policy already exists there</span>
+                <span className="inline-flex items-center gap-1 align-middle"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" /> {tr("a policy already exists there")}</span>
               </p>
               <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <TableMarkup.Root className="w-full text-xs sm:text-sm">
                   <TableMarkup.Head className="bg-slate-50">
                     <TableMarkup.Row>
-                      <TableMarkup.HeaderCell className={cn(TABLE_STYLES.headerCell7, "border-r border-slate-200 text-left")}>Action</TableMarkup.HeaderCell>
+                      <TableMarkup.HeaderCell className={cn(TABLE_STYLES.headerCell7, "border-r border-slate-200 text-left")}>{tr("Action")}</TableMarkup.HeaderCell>
                       {statuses.map((status) => (
                         <TableMarkup.HeaderCell key={status} className={cn(TABLE_STYLES.headerCell7, "whitespace-nowrap text-center")}>{prettify(status)}</TableMarkup.HeaderCell>
                       ))}
@@ -322,7 +323,7 @@ const MatrixLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => 
                   </TableMarkup.Head>
                   <TableMarkup.Body className="divide-y divide-slate-100">
                     {actions.length === 0 && (
-                      <TableMarkup.Row><TableMarkup.Cell colSpan={statuses.length + 1} className="px-4 py-6 text-center text-slate-500">This object has no action to configure.</TableMarkup.Cell></TableMarkup.Row>
+                      <TableMarkup.Row><TableMarkup.Cell colSpan={statuses.length + 1} className="px-4 py-6 text-center text-slate-500">{tr("This object has no action to configure.")}</TableMarkup.Cell></TableMarkup.Row>
                     )}
                     {actions.map((action) => (
                       <TableMarkup.Row key={action.value}>
@@ -384,12 +385,12 @@ interface WhoTemplate {
 }
 
 const WHO_TEMPLATES: WhoTemplate[] = [
-  { id: "PERMISSION", title: "Anyone with the permission", description: "Whoever holds the required permission may do it.", actorType: "PERMISSION" },
-  { id: "OWNER", title: "Only the owner", description: "The permission, and being the owner of the record.", actorType: "OWNER" },
-  { id: "AUTHOR", title: "Only the author", description: "The permission, and being the author of the record.", actorType: "AUTHOR" },
-  { id: "ASSIGNED_REVIEWER", title: "The assigned reviewer", description: "The permission, and being the reviewer named on the record.", actorType: "ASSIGNED_REVIEWER" },
-  { id: "ASSIGNED_APPROVER", title: "The assigned approver", description: "The permission, and being the approver named on the record.", actorType: "ASSIGNED_APPROVER" },
-  { id: "RECIPIENT", title: "The recipient", description: "The permission, and being the recipient of the record.", actorType: "RECIPIENT" },
+  { id: "PERMISSION", title: tr("Anyone with the permission"), description: tr("Whoever holds the required permission may do it."), actorType: "PERMISSION" },
+  { id: "OWNER", title: tr("Only the owner"), description: tr("The permission, and being the owner of the record."), actorType: "OWNER" },
+  { id: "AUTHOR", title: tr("Only the author"), description: tr("The permission, and being the author of the record."), actorType: "AUTHOR" },
+  { id: "ASSIGNED_REVIEWER", title: tr("The assigned reviewer"), description: tr("The permission, and being the reviewer named on the record."), actorType: "ASSIGNED_REVIEWER" },
+  { id: "ASSIGNED_APPROVER", title: tr("The assigned approver"), description: tr("The permission, and being the approver named on the record."), actorType: "ASSIGNED_APPROVER" },
+  { id: "RECIPIENT", title: tr("The recipient"), description: tr("The permission, and being the recipient of the record."), actorType: "RECIPIENT" },
 ];
 
 const TemplatesLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => {
@@ -416,12 +417,12 @@ const TemplatesLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) 
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="grid gap-4 md:gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-4 md:gap-6">
-          <FormSection title="Which action, when" contentClassName="p-4 md:p-5">
+          <FormSection title={tr("Which action, when")} contentClassName="p-4 md:p-5">
             <IdentityGrid props={props} fields={["moduleKey", "workflowKey", "objectType", "actionCode", "fromStatus"]} />
           </FormSection>
-          <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title="Who may do it" contentClassName="p-4 md:p-5">
+          <FormSection icon={<IconUserQuestion className="h-4 w-4" />} title={tr("Who may do it")} contentClassName="p-4 md:p-5">
             <div className="space-y-4">
-              {showsActors(props) && offered.length === 0 && <p className="text-xs text-slate-500">Choose an action first: the choices depend on it.</p>}
+              {showsActors(props) && offered.length === 0 && <p className="text-xs text-slate-500">{tr("Choose an action first: the choices depend on it.")}</p>}
               {showsActors(props) && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {offered.map((template) => {
                   const active = !showCustom && activeId === template.actorType;
@@ -444,8 +445,8 @@ const TemplatesLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) 
                   onClick={() => setCustom(true)}
                   className={cn("rounded-xl border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500", showCustom ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300")}
                 >
-                  <span className="block text-sm font-semibold text-slate-800">Custom</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">Choose the actors one by one (several, or with a code).</span>
+                  <span className="block text-sm font-semibold text-slate-800">{tr("Custom")}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{tr("Choose the actors one by one (several, or with a code).")}</span>
                 </button>
               </div>}
               {showsActors(props) && showCustom && <div>{props.actorsField}</div>}

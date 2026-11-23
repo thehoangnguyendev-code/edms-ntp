@@ -4,6 +4,7 @@ import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import type { TrainingActivityDetail } from "@/services/api/trainingActivities";
 import { Textarea } from "../../shared/TrainingFields";
+import { tr, trFormat } from "@/i18n";
 
 export type AssessmentFormKind = "TEST" | "CHECKLIST" | "BOTH" | "NONE";
 
@@ -44,19 +45,19 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
   let tone = INFO;
   if (!rules) return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
   if (isMaterials) {
-    if (supplementary) text = "This is a supplementary training: it keeps the material of the training it supplements, so nothing has to be added.";
-    else if (external) text = "An external training needs no material of its own; add one if it helps.";
-    else if (visitor) text = "A visitor is instructed by the department: no material is needed; add one if it helps.";
-    else if (exempt) text = "Training Materials are not required for this training.";
-    else if (rules.materialsSource === "DOCUMENT") text = `This training is on ${activity.documentLabel ?? "a document"}: the approved document is the material. Add slides or other material below if you want.`;
-    else if (missingHere && canExempt) { text = "Required before the content is reviewed: a file or a link."; tone = WARN; }
-  } else if (supplementary) text = "This is a supplementary training: it uses the test of the training it supplements.";
-  else if (external) text = "An external training has no test of its own; keep the certificate or the proof of attendance as evidence.";
-  else if (visitor) text = "A visitor needs no test.";
-  else if (exempt) text = "No test or checklist is required for this training.";
-  else if (kind === "NONE") text = "No test or checklist is required: no session of this training is assessed by one (observation or reading confirmation).";
-  else if (rules.onlineTest && (kind === "TEST" || kind === "BOTH")) text = "The test is written in the system (Test in the system), so no test file is needed; a file can still be added.";
-  else if (missingHere && required && canExempt) { text = `Required before the content is reviewed: the ${FORM_NAME[kind]} (APD.0009).`; tone = WARN; }
+    if (supplementary) text = tr("This is a supplementary training: it keeps the material of the training it supplements, so nothing has to be added.");
+    else if (external) text = tr("An external training needs no material of its own; add one if it helps.");
+    else if (visitor) text = tr("A visitor is instructed by the department: no material is needed; add one if it helps.");
+    else if (exempt) text = tr("Training Materials are not required for this training.");
+    else if (rules.materialsSource === "DOCUMENT") text = trFormat("This training is on {document}: the approved document is the material. Add slides or other material below if you want.", { document: activity.documentLabel ?? tr("a document") });
+    else if (missingHere && canExempt) { text = tr("Required before the content is reviewed: a file or a link."); tone = WARN; }
+  } else if (supplementary) text = tr("This is a supplementary training: it uses the test of the training it supplements.");
+  else if (external) text = tr("An external training has no test of its own; keep the certificate or the proof of attendance as evidence.");
+  else if (visitor) text = tr("A visitor needs no test.");
+  else if (exempt) text = tr("No test or checklist is required for this training.");
+  else if (kind === "NONE") text = tr("No test or checklist is required: no session of this training is assessed by one (observation or reading confirmation).");
+  else if (rules.onlineTest && (kind === "TEST" || kind === "BOTH")) text = tr("The test is written in the system (Test in the system), so no test file is needed; a file can still be added.");
+  else if (missingHere && required && canExempt) { text = trFormat("Required before the content is reviewed: the {form} (APD.0009).", { form: tr(FORM_NAME[kind]) }); tone = WARN; }
   return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
 }
 
@@ -91,11 +92,11 @@ export function ContentRulesPanel({ activity, part, canExempt, onExempt }: {
         <div>
           {exempt ? (
             <Button size="sm" variant="outline" onClick={() => void toggle(false)}>
-              Require {isMaterials ? "materials" : "the form"} again
+              {tr("Require")} {isMaterials ? tr("materials") : tr("the form")} {tr("again")}
             </Button>
           ) : (
             <Button size="sm" variant="outline" onClick={() => { setReason(""); setAsking(true); }}>
-              {isMaterials ? "Training Materials are not required…" : "An assessment form is not required…"}
+              {isMaterials ? tr("Training Materials are not required…") : tr("An assessment form is not required…")}
             </Button>
           )}
         </div>
@@ -104,13 +105,13 @@ export function ContentRulesPanel({ activity, part, canExempt, onExempt }: {
         isOpen={asking}
         onClose={() => setAsking(false)}
         onConfirm={async () => { if (await toggle(true, reason.trim())) setAsking(false); }}
-        title={isMaterials ? "Training Materials not required" : "Assessment form not required"}
-        description="The reason stays on the record and in the Audit Trail. It can be set only until the content is reviewed."
+        title={isMaterials ? tr("Training Materials not required") : tr("Assessment form not required")}
+        description={tr("The reason stays on the record and in the Audit Trail. It can be set only until the content is reviewed.")}
         confirmText="Save"
         confirmDisabled={!reason.trim()}
         size="md"
       >
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
         </FormField>
       </FormModal>

@@ -4,6 +4,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { documentApi } from "@/services/api/documents";
 import { TransferPicker } from "../shared/TransferPicker";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** A training that is required: a Training Topic as it was written (kind TOPIC, the text is the title) or a SOP of Document Control (kind DOCUMENT, with its id). */
 export interface PickedTraining { kind: "TOPIC" | "DOCUMENT"; id: string; code: string; title: string; status?: string | null }
@@ -19,7 +20,7 @@ const statusOf = (status?: string | null) => (status ?? "effective").toString().
 
 const badge = (p: PickedTraining) => p.kind === "DOCUMENT"
   ? <StatusBadge status={statusOf(p.status)} size="xs" className="mt-0.5 shrink-0" />
-  : <span className="mt-0.5 shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">Training Topic</span>;
+  : <span className="mt-0.5 shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{tr("Training Topic")}</span>;
 
 /**
  * Other trainings that the person must have completed before the Work Position is given (SOP.0003 5.3.8), besides the ones the matrix requires for it: a SOP of Document Control, or a Training

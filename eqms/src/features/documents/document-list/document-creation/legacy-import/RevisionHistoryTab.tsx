@@ -4,6 +4,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { cn } from "@/components/ui/utils";
 import { CONFIRM_THRESHOLD, FIELD_HINT, FIELD_INPUT, FIELD_LABEL } from "./legacyImportModel";
 import { RevisionSectionCard, type RevisionSectionCardProps } from "./RevisionSectionCard";
+import { tr, trFormat } from "@/i18n";
 
 type SectionCardShared = Omit<RevisionSectionCardProps, "section" | "index" | "sectionCount">;
 
@@ -34,7 +35,7 @@ export const RevisionHistoryTab: React.FC<RevisionHistoryTabProps> = ({
   <div className="space-y-4 md:space-y-5">
     <div>
       <label className={FIELD_LABEL}>
-        Most Recent Revision Number
+        {tr("Most Recent Revision Number")}
         <span className="text-red-500 ml-1">*</span>
       </label>
       <div className="mt-1.5 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -64,9 +65,7 @@ export const RevisionHistoryTab: React.FC<RevisionHistoryTabProps> = ({
         </Button>
       </div>
       <p className={FIELD_HINT}>
-        Default Revision Number Format is set
-        to {isTwoPartRevisionSeed ? "X.Y" : "X.Y.Z"} in System Administration &gt; Document Administration &gt;
-        Document Properties.
+        {trFormat("Default Revision Number Format is set to {format} in System Administration > Document Administration > Document Properties.", { format: isTwoPartRevisionSeed ? "X.Y" : "X.Y.Z" })}
       </p>
     </div>
 
@@ -74,7 +73,7 @@ export const RevisionHistoryTab: React.FC<RevisionHistoryTabProps> = ({
       <WarningBanner
         variant="warning"
         title={`This will create ${sections.length} revisions`}
-        description="Double-check the Revision Number is correct before continuing."
+        description={tr("Double-check the Revision Number is correct before continuing.")}
       />
     )}
 
@@ -93,8 +92,7 @@ export const RevisionHistoryTab: React.FC<RevisionHistoryTabProps> = ({
 
     {sections.length === 0 && (
       <p className="text-sm text-slate-500 text-center py-6">
-        No revision sections yet — enter a Revision Number above and click
-        "Generate Sections".
+        {tr("No revision sections yet — enter a Revision Number above and click \"Generate Sections\".")}
       </p>
     )}
 
@@ -107,8 +105,7 @@ export const RevisionHistoryTab: React.FC<RevisionHistoryTabProps> = ({
           onChange={(e) => setBulkConfirmed(e.target.checked)}
         />
         <span>
-          I confirm I want to create {sections.length} revisions for this
-          document.
+          {trFormat("I confirm I want to create {count} revisions for this document.", { count: sections.length })}
         </span>
       </label>
     )}

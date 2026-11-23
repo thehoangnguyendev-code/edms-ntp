@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button/Button";
 import { usePermissions } from "@/hooks/usePermissions";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { ReportNameFormatsTab } from "./ReportNameFormatsTab";
+import { tr } from "@/i18n";
 
 /**
  * Report Name Formats administration (REPORT-NAME-FORMAT-2026-10-14): the rules that give report templates their names. Laid out like the Document
@@ -19,13 +20,13 @@ export const ReportNameFormatsView: React.FC = () => {
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
-        title="Report Name Formats"
+        title={tr("Report Name Formats")}
         breadcrumbItems={reportBreadcrumbs(navigate, "Report Name Formats", true)}
         actions={
           canManage ? (
             <Button size="sm" onClick={() => navigate("/settings/report-name-formats/new")} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4" />
-              New Report Name Format
+              {tr("New Report Name Format")}
             </Button>
           ) : undefined
         }

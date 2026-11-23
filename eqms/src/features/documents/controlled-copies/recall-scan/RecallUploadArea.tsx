@@ -5,6 +5,7 @@ import { cn } from "@/components/ui/utils";
 import { MAX_RECALL_FILE_BYTES, MAX_RECALL_SCANS, RECALL_SCAN_ACCEPT } from "@/services/api/controlledCopyRecallBatches";
 import { RecallScanPanel, type RecallQueuedFile, type RecallScanProgress } from "./RecallScanPanel";
 import { formatBytes } from "./recallFormat";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * Where scans are chosen and sent: the drop area, the list of chosen files and the buttons. While the codes are read, the card gives up a third of the width to the left and
@@ -41,12 +42,11 @@ export const RecallUploadArea: React.FC<{
       >
         {!inDialog && (
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <ScanLine className="h-4 w-4 text-emerald-600" /> Upload scans of returned paper copies
+            <ScanLine className="h-4 w-4 text-emerald-600" /> {tr("Upload scans of returned paper copies")}
           </h2>
         )}
         <p className={cn("text-xs text-slate-500", !inDialog && "mt-1")}>
-          Choose up to {maxFiles} {maxFiles === 1 ? "scan" : "scans"} (PDF only, {formatBytes(MAX_RECALL_FILE_BYTES)} each), one file per paper copy. Each file is checked for viruses, its QR
-          code is read and matched to a controlled copy. Nothing is recalled until you have reviewed the list and signed.
+          {trFormat("Choose up to {max} scans (PDF only, {size} each), one file per paper copy. Each file is checked for viruses, its QR code is read and matched to a controlled copy. Nothing is recalled until you have reviewed the list and signed.", { max: maxFiles, size: formatBytes(MAX_RECALL_FILE_BYTES) })}
         </p>
 
         <div
@@ -67,7 +67,7 @@ export const RecallUploadArea: React.FC<{
           )}
         >
           <FileUp className="h-6 w-6 text-slate-400" />
-          <p className="text-sm text-slate-600">Drop the scans here, or</p>
+          <p className="text-sm text-slate-600">{tr("Drop the scans here, or")}</p>
           <Button
             size="sm"
             variant="outline-emerald"
@@ -77,7 +77,7 @@ export const RecallUploadArea: React.FC<{
               fileInput.current?.click();
             }}
           >
-            Choose Files
+            {tr("Choose Files")}
           </Button>
           <input
             ref={fileInput}
@@ -97,7 +97,7 @@ export const RecallUploadArea: React.FC<{
         {selected.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-medium text-slate-700">
-              {selected.length} of {maxFiles} files chosen · {formatBytes(selectedBytes)}
+                {trFormat("{selected} of {max} files chosen · {size}", { selected: selected.length, max: maxFiles, size: formatBytes(selectedBytes) })}
             </p>
             <ul className="mt-2 max-h-56 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200">
               {selected.map((file, index) => (
@@ -114,10 +114,10 @@ export const RecallUploadArea: React.FC<{
             </ul>
             <div className="mt-3 flex justify-end gap-2">
               <Button size="sm" variant="outline" disabled={busy} onClick={onClear}>
-                Clear
+                {tr("Clear")}
               </Button>
               <Button size="sm" variant="outline-emerald" disabled={busy} onClick={onUpload}>
-                Read Codes and Review
+                {tr("Read Codes and Review")}
               </Button>
             </div>
           </div>

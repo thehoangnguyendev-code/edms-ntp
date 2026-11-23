@@ -27,6 +27,7 @@ import {
 import { REVISION_STATUS, whenText } from "./ReportTemplateRevisions";
 import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
 import { ReadonlyField } from "../shared/ReadonlyField";
+import { tr } from "@/i18n";
 
 type FieldRow = ReportTemplate["fields"][number];
 type ScopeRow = NonNullable<ReportTemplate["roleScopes"]>[number];
@@ -112,7 +113,7 @@ export function ReportTemplateRevisionPage({
   const from = (location.state as { from?: string } | null)?.from;
   const parent = inAdministration
     ? reportRevisionParent(from, navigate, ROUTES.REPORT.TEMPLATE_REVISIONS)
-    : { label: "Report Details", onClick: () => navigate(templatePath) };
+    : { label: tr("Report Details"), onClick: () => navigate(templatePath) };
   const title = "Revision Details";
 
   const fieldColumns: DataTableColumn<FieldRow>[] = [
@@ -148,7 +149,7 @@ export function ReportTemplateRevisionPage({
     { id: "role", header: "Role", cell: (row) => row.roleName ?? "—" },
     {
       id: "scope",
-      header: "Data scope",
+      header: tr("Data scope"),
       cell: (row) => SCOPE_LABEL[row.scope] ?? row.scope,
     },
   ];
@@ -182,14 +183,14 @@ export function ReportTemplateRevisionPage({
   // The same tab layout as the Report Template Details and the Document details.
   const tabs = useMemo<TabItem[]>(() => {
     const list: TabItem[] = [
-      { id: "general", label: "General Information" },
+      { id: "general", label: tr("General Information") },
       { id: "changes", label: "Changes", count: comparison?.changes.length },
       { id: "fields", label: "Fields", count: content?.fields?.length },
     ];
     if (inAdministration)
       list.push({
         id: "scopes",
-        label: "Role Scopes",
+        label: tr("Role Scopes"),
         count: content?.roleScopes?.length ?? 0,
       });
     return list;
@@ -241,23 +242,23 @@ export function ReportTemplateRevisionPage({
               {shownTab === "general" && (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <ReadonlyField
-                    label="Created Time"
+                    label={tr("Created Time")}
                     value={whenText(detail.createdAt)}
                   />
                   <ReadonlyField
-                    label="Last Updated By"
+                    label={tr("Last Updated By")}
                     value={detail.lastChangedByName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Report Template Name"
+                    label={tr("Report Template Name")}
                     value={content?.displayName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Report Template Number"
+                    label={tr("Report Template Number")}
                     value={detail.definitionCode}
                   />
                   <ReadonlyField
-                    label="Report Template Revision"
+                    label={tr("Report Template Revision")}
                     value={reportRevisionLabel(detail.revision, detail.status)}
                   />
                   <ReadonlyField
@@ -265,15 +266,15 @@ export function ReportTemplateRevisionPage({
                     value={status?.label ?? detail.status}
                   />
                   <ReadonlyField
-                    label="Report Type"
+                    label={tr("Report Type")}
                     value={humanize(content?.sourceCode)}
                   />
                   <ReadonlyField
-                    label="Output Formats"
+                    label={tr("Output Formats")}
                     value={content?.allowedFormats?.join(" · ") ?? "—"}
                   />
                   <ReadonlyField
-                    label="Page Orientation"
+                    label={tr("Page Orientation")}
                     value={
                       content?.layout?.orientation === "PORTRAIT"
                         ? "Portrait"
@@ -282,25 +283,25 @@ export function ReportTemplateRevisionPage({
                   />
                   <div className="flex items-center gap-3">
                     <label className="text-xs font-medium text-slate-700 sm:text-sm">
-                      Used For GMP Decisions?
+                      {tr("Used For GMP Decisions?")}
                     </label>
                     <Checkbox
                       id="gmpUse"
                       checked={Boolean(content?.gmpUse)}
                       disabled
-                      aria-label="Used for GMP decisions"
+                      aria-label={tr("Used for GMP decisions")}
                     />
                   </div>
                   <ReadonlyField
-                    label="Created By"
+                    label={tr("Created By")}
                     value={detail.createdByName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Submitted By"
+                    label={tr("Submitted By")}
                     value={detail.submittedByName ?? "—"}
                   />
                   <ReadonlyField
-                    label="Submitted On"
+                    label={tr("Submitted On")}
                     value={whenText(detail.submittedAt)}
                   />
                   <ReadonlyField
@@ -308,11 +309,11 @@ export function ReportTemplateRevisionPage({
                     value={detail.approvalComment ?? "—"}
                   />
                   <ReadonlyField
-                    label="Approved By"
-                    value={detail.approvalBasis === "NOT_REQUIRED" ? "Not required (in force when saved, under the earlier rule)" : (detail.approvedByName ?? "—")}
+                    label={tr("Approved By")}
+                    value={detail.approvalBasis === "NOT_REQUIRED" ? tr("Not required (in force when saved, under the earlier rule)") : (detail.approvedByName ?? "—")}
                   />
                   <ReadonlyField
-                    label={detail.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : "Approved On"}
+                    label={detail.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : tr("Approved On")}
                     value={whenText(detail.approvalBasis === "NOT_REQUIRED" ? detail.effectiveAt : detail.approvedAt)}
                   />
                   <ReadonlyField
@@ -340,7 +341,7 @@ export function ReportTemplateRevisionPage({
                       htmlFor="report-revision-reason"
                       className="text-xs font-medium text-slate-700 sm:text-sm"
                     >
-                      Reason For The Change
+                      {tr("Reason For The Change")}
                     </label>
                     <textarea
                       id="report-revision-reason"
@@ -355,7 +356,7 @@ export function ReportTemplateRevisionPage({
                       htmlFor="report-revision-description"
                       className="text-xs font-medium text-slate-700 sm:text-sm"
                     >
-                      Description
+                      {tr("Description")}
                     </label>
                     <textarea
                       id="report-revision-description"
@@ -374,8 +375,8 @@ export function ReportTemplateRevisionPage({
                       label="Compare with"
                       value={withRevision}
                       options={[
-                        { value: "previous", label: "Previous revision" },
-                        { value: "effective", label: "Effective revision" },
+                        { value: "previous", label: tr("Previous revision") },
+                        { value: "effective", label: tr("Effective revision") },
                         ...others.map((number) => ({
                           value: String(number),
                           label: reportRevisionLabel(number),
@@ -387,7 +388,7 @@ export function ReportTemplateRevisionPage({
                   <p className="mb-3 text-sm text-slate-600">
                     {comparison?.comparedWith != null
                       ? `What changed from ${reportRevisionLabel(comparison.comparedWith)} to ${reportRevisionLabel(detail.revision, detail.status)}.`
-                      : "This is the first revision."}
+                      : tr("This is the first revision.")}
                   </p>
                   <DataTable
                     rows={comparison?.changes ?? []}
@@ -397,11 +398,11 @@ export function ReportTemplateRevisionPage({
                     columns={changeColumns}
                     emptyState={
                       <TableEmptyState
-                        title="No changes"
+                        title={tr("No changes")}
                         description={
                           comparison?.comparedWith != null
-                            ? "This revision has the same content as the one before it."
-                            : "There is no earlier revision to compare with."
+                            ? tr("This revision has the same content as the one before it.")
+                            : tr("There is no earlier revision to compare with.")
                         }
                       />
                     }
@@ -416,7 +417,7 @@ export function ReportTemplateRevisionPage({
                   emptyState={
                     <TableEmptyState
                       title="No fields"
-                      description="This revision has no fields."
+                      description={tr("This revision has no fields.")}
                     />
                   }
                 />
@@ -429,7 +430,7 @@ export function ReportTemplateRevisionPage({
                   emptyState={
                     <TableEmptyState
                       title="No role scopes"
-                      description="No role may run this revision."
+                      description={tr("No role may run this revision.")}
                     />
                   }
                 />

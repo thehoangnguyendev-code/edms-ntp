@@ -18,6 +18,7 @@ import { RevisionTableView, TableColumn, useRevisionColumnLayout } from "@/featu
 import type { Revision } from "./types";
 import { formatRevisionDocumentDisplayLabel } from "@/features/documents/shared/documentDisplay";
 import { getStatusBadgeColor } from "@/utils/status";
+import { tr } from "@/i18n";
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -26,23 +27,23 @@ type ViewType = "review" | "approval";
 
 const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "no", label: "No.", visible: true, order: 0, locked: true },
-  { id: "documentNumber", label: "Document Number", visible: true, order: 1 },
-  { id: "revisionNumber", label: "Revision Number", visible: true, order: 2 },
+  { id: "documentNumber", label: tr("Document Number"), visible: true, order: 1 },
+  { id: "revisionNumber", label: tr("Revision Number"), visible: true, order: 2 },
   { id: "created", label: "Created", visible: true, order: 3 },
   { id: "openedBy", label: "Opened By", visible: true, order: 4 },
-  { id: "revisionName", label: "Revision Name", visible: true, order: 5 },
+  { id: "revisionName", label: tr("Revision Name"), visible: true, order: 5 },
   { id: "state", label: "Status", visible: true, order: 6 },
-  { id: "documentName", label: "Document Name", visible: true, order: 7 },
-  { id: "type", label: "Document Type", visible: true, order: 8 },
-  { id: "relatedDocuments", label: "Related Document", visible: true, order: 9 },
-  { id: "correlatedDocuments", label: "Correlated Document", visible: true, order: 10 },
+  { id: "documentName", label: tr("Document Name"), visible: true, order: 7 },
+  { id: "type", label: tr("Document Type"), visible: true, order: 8 },
+  { id: "relatedDocuments", label: tr("Related Document"), visible: true, order: 9 },
+  { id: "correlatedDocuments", label: tr("Correlated Document"), visible: true, order: 10 },
   { id: "template", label: "Template", visible: true, order: 11 },
-  { id: "businessUnit", label: "Business Unit", visible: true, order: 12 },
+  { id: "businessUnit", label: tr("Business Unit"), visible: true, order: 12 },
   { id: "department", label: "Department", visible: true, order: 13 },
   { id: "author", label: "Author", visible: true, order: 14 },
-  { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
-  { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
-  { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
+  { id: "effectiveDate", label: tr("Effective Date"), visible: true, order: 15 },
+  { id: "validUntil", label: tr("Valid Until"), visible: true, order: 16 },
+  { id: "trainingNumber", label: tr("Training Number"), visible: true, order: 17 },
   { id: "action", label: "Action", visible: true, order: 18, locked: true },
 ];
 
@@ -162,11 +163,11 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
       case "type":
         return revision.type;
       case "relatedDocuments":
-        return revision.hasRelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-600 font-medium">No</span>;
+        return revision.hasRelatedDocuments ? <span className="text-emerald-600 font-medium">{tr("Yes")}</span> : <span className="text-slate-600 font-medium">{tr("No")}</span>;
       case "correlatedDocuments":
-        return revision.hasCorrelatedDocuments ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-600 font-medium">No</span>;
+        return revision.hasCorrelatedDocuments ? <span className="text-emerald-600 font-medium">{tr("Yes")}</span> : <span className="text-slate-600 font-medium">{tr("No")}</span>;
       case "template":
-        return revision.isTemplate ? <span className="text-emerald-600 font-medium">Yes</span> : <span className="text-slate-600 font-medium">No</span>;
+        return revision.isTemplate ? <span className="text-emerald-600 font-medium">{tr("Yes")}</span> : <span className="text-slate-600 font-medium">{tr("No")}</span>;
       case "businessUnit":
         return revision.businessUnit;
       case "department":
@@ -201,7 +202,7 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="revisions"
-        title="Revisions"
+        title={tr("Revisions")}
         totalRecords={totalItems}
         onExport={exportRevisions}
       />
@@ -220,12 +221,12 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
             {isExporting ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
-                Exporting...
+                {tr("Exporting...")}
               </>
             ) : (
               <>
                 <Download className="h-4 w-4" />
-                Export
+                {tr("Export")}
               </>
             )}
           </Button>

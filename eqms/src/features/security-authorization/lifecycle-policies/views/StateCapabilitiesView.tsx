@@ -28,6 +28,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr } from "@/i18n";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -192,8 +193,8 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
-        <p className="text-sm">You do not have permission to view Workflow Authorization policies.</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
+        <p className="text-sm">{tr("You do not have permission to view Workflow Authorization policies.")}</p>
       </div>
     );
   }
@@ -201,7 +202,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
   const pageActions = canManage ? (
     <Button size="sm" className="whitespace-nowrap gap-2" onClick={() => navigate(`${BASE_PATH}/new`)}>
       <Plus className="h-4 w-4" />
-      New State Policy
+      {tr("New State Policy")}
     </Button>
   ) : undefined;
 
@@ -210,13 +211,13 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-10", cell: (_p, idx) => (currentPage - 1) * itemsPerPage + idx + 1 },
     {
       id: "capability",
-      header: "Capability",
-      label: "Capability",
+      header: tr("Capability"),
+      label: tr("Capability"),
       sort: { direction: sortKey === "capability" ? sortDir : undefined, onSort: () => handleSort("capability") },
       cell: (p) => (
         <>
           <span className="font-medium text-slate-800">{p.capabilityCode.replace(/_/g, " ")}</span>
-          {!p.active && <Badge color="slate" size="xs" className="ml-2">Inactive</Badge>}
+          {!p.active && <Badge color="slate" size="xs" className="ml-2">{tr("Inactive")}</Badge>}
         </>
       ),
     },
@@ -225,27 +226,27 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
       header: "Status",
       label: "Status",
       sort: { direction: sortKey === "status" ? sortDir : undefined, onSort: () => handleSort("status") },
-      cell: (p) => (p.statusCode ? statusText(p.statusLabel, p.statusCode) : <span className="text-slate-400 italic">Any status</span>),
+      cell: (p) => (p.statusCode ? statusText(p.statusLabel, p.statusCode) : <span className="text-slate-400 italic">{tr("Any status")}</span>),
     },
     {
       id: "documentType",
-      header: "Document Type",
-      label: "Document Type",
-      cell: (p) => p.documentTypeName ?? <span className="text-slate-400 italic">All types</span>,
+      header: tr("Document Type"),
+      label: tr("Document Type"),
+      cell: (p) => p.documentTypeName ?? <span className="text-slate-400 italic">{tr("All types")}</span>,
     },
     {
       id: "actorScope",
-      header: "Actor Scope",
-      label: "Actor Scope",
+      header: tr("Actor Scope"),
+      label: tr("Actor Scope"),
       sort: { direction: sortKey === "actorScope" ? sortDir : undefined, onSort: () => handleSort("actorScope") },
       cell: (p) => <Badge color={p.actorScope === "ANY" ? "blue" : "emerald"} size="sm">{p.actorScope}</Badge>,
     },
     {
       id: "requiredPermission",
-      header: "Required Permission",
-      label: "Required Permission",
+      header: tr("Required Permission"),
+      label: tr("Required Permission"),
       cell: (p) =>
-        p.requiredPermissionCode ? <span className="text-slate-600">{p.requiredPermissionCode}</span> : <span className="text-slate-400 italic">None</span>,
+        p.requiredPermissionCode ? <span className="text-slate-600">{p.requiredPermissionCode}</span> : <span className="text-slate-400 italic">{tr("None")}</span>,
     },
     { id: "priority", header: "Priority", label: "Priority", sort: { direction: sortKey === "priority" ? sortDir : undefined, onSort: () => handleSort("priority") }, cell: (p) => p.priority },
     {
@@ -255,8 +256,8 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
       sort: { direction: sortKey === "type" ? sortDir : undefined, onSort: () => handleSort("type") },
       cell: (p) => <Badge color={p.system ? "blue" : "slate"} size="sm">{p.system ? "System" : "Custom"}</Badge>,
     },
-    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (p) => formatDateTime(p.createdAt) },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (p) => formatDateTime(p.updatedAt) },
+    { id: "createdAt", header: tr("Created Date"), label: tr("Created Date"), sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (p) => formatDateTime(p.createdAt) },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (p) => formatDateTime(p.updatedAt) },
   ];
   const stateAction: DataTableAction<StateRow> = {
     header: "Action",
@@ -266,7 +267,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
           ref={getRef(p.id)}
           onClick={(e) => toggle(p.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
         </button>
@@ -278,14 +279,14 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
                   icon={<IconPencilMinus className="h-4 w-4" />}
                   onClick={() => { navigate(`${BASE_PATH}/${p.id}/edit`); close(); }}
                 >
-                  Edit Capability
+                  {tr("Edit Capability")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   icon={<IconTrash className="h-4 w-4" />}
                   onClick={() => { setDeleteTarget(p); close(); }}
                   disabled={p.system}
                 >
-                  Delete Capability
+                  {tr("Delete Capability")}
                 </DropdownMenuItem>
               </>
             )}
@@ -300,18 +301,15 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     <div className="flex flex-col h-full gap-4 md:gap-6">
       {!embedded && (
         <PageHeader
-          title="State Capabilities"
+          title={tr("State Capabilities")}
           breadcrumbItems={workflowAuthorizationBreadcrumb(navigate, "State Capabilities")}
           actions={pageActions}
         />
       )}
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-        State policies control who can <b>view, preview, or download</b> a revision at each lifecycle status —
-        separate from workflow action policies which control transitions (submit/review/approve).
-        System policies enforce strict participant visibility and can be deactivated but not deleted.
-        <b> Document Control only:</b> these rules apply to revisions. Training, Reports and the other modules have no state capabilities —
-        who can act there is set in Transition Policies and who sees records on the Access Profile.
+        {tr("State policies control who can")} <b>{tr("view, preview, or download")}</b> {tr("a revision at each lifecycle status — separate from workflow action policies which control transitions (submit/review/approve). System policies enforce strict participant visibility and can be deactivated but not deleted.")}
+        <b> {tr("Document Control only:")}</b> {tr("these rules apply to revisions. Training, Reports and the other modules have no state capabilities — who can act there is set in Transition Policies and who sees records on the Access Profile.")}
       </div>
 
       <div className="w-full overflow-hidden flex flex-col">
@@ -324,7 +322,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                placeholder="Search state policies…"
+                placeholder={tr("Search state policies…")}
                 className="w-full pl-9 pr-8 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
               />
               {search && (
@@ -335,7 +333,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
 
@@ -344,20 +342,20 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
   trailing={<div className="hidden md:block">{stateControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search state policies…"}
+      placeholder={tr("Search state policies…")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
   filters={[
     {
       id: "capabilityFilter",
-      label: "Capability",
+      label: tr("Capability"),
       value: String(capabilityFilter),
       options: capabilityOptions,
       onChange: (v) => {
@@ -367,7 +365,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     },
     {
       id: "scopeFilter",
-      label: "Actor Scope",
+      label: tr("Actor Scope"),
       value: String(scopeFilter),
       options: scopeOptions,
       onChange: (v) => {
@@ -399,7 +397,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
   dates={[
     {
       id: "createdFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFrom,
       to: createdTo,
       onFromChange: (v) => {
@@ -413,7 +411,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
     },
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (v) => {
@@ -429,23 +427,23 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div className="w-full">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search state policies…"
+                  placeholder={tr("Search state policies…")}
                   className="w-full pl-9 pr-3 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                 />
               </div>
             </div>
-            <Select label="Capability" value={capabilityFilter} onChange={(v) => { setCapabilityFilter(String(v)); setCurrentPage(1); }} options={capabilityOptions} />
-            <Select label="Actor Scope" value={scopeFilter} onChange={(v) => { setScopeFilter(String(v)); setCurrentPage(1); }} options={scopeOptions} />
-            <Select label="Type" value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} />
-            <Select label="Status" value={activeFilter} onChange={(v) => { setActiveFilter(String(v)); setCurrentPage(1); }} options={ACTIVE_OPTIONS} />
-            <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
-            <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(v) => { setUpdatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setUpdatedTo(v); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
+            <Select label={tr("Capability")} value={capabilityFilter} onChange={(v) => { setCapabilityFilter(String(v)); setCurrentPage(1); }} options={capabilityOptions} />
+            <Select label={tr("Actor Scope")} value={scopeFilter} onChange={(v) => { setScopeFilter(String(v)); setCurrentPage(1); }} options={scopeOptions} />
+            <Select label={tr("Type")} value={typeFilter} onChange={(v) => { setTypeFilter(String(v)); setCurrentPage(1); }} options={TYPE_OPTIONS} />
+            <Select label={tr("Status")} value={activeFilter} onChange={(v) => { setActiveFilter(String(v)); setCurrentPage(1); }} options={ACTIVE_OPTIONS} />
+            <DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply />
+            <DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(v) => { setUpdatedFrom(v); setCurrentPage(1); }} onEndDateChange={(v) => { setUpdatedTo(v); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply />
             <div className="filter-actions flex items-end gap-2">
               <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
               {stateControl}
@@ -471,8 +469,8 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
               rowClassName={(p) => (p.active ? "" : "opacity-50")}
               emptyState={
                 <TableEmptyState
-                  title="No State Policies"
-                  description={hasFilters ? "Try adjusting your search or filters." : "No lifecycle state policies have been defined yet."}
+                  title={tr("No State Policies")}
+                  description={hasFilters ? tr("Try adjusting your search or filters.") : "No lifecycle state policies have been defined yet."}
                 />
               }
               pagination={
@@ -503,7 +501,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Capability" isExpanded={expandedSections.has("capability")} onToggle={() => toggleSection("capability")}>
+        <FilterAccordionItem label={tr("Capability")} isExpanded={expandedSections.has("capability")} onToggle={() => toggleSection("capability")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {capabilityOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setCapabilityFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(capabilityFilter === opt.value)}>
@@ -513,7 +511,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Actor Scope" isExpanded={expandedSections.has("scope")} onToggle={() => toggleSection("scope")}>
+        <FilterAccordionItem label={tr("Actor Scope")} isExpanded={expandedSections.has("scope")} onToggle={() => toggleSection("scope")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {scopeOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setScopeFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(scopeFilter === opt.value)}>
@@ -523,7 +521,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+        <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {TYPE_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setTypeFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(typeFilter === opt.value)}>
@@ -533,7 +531,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {ACTIVE_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setActiveFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(activeFilter === opt.value)}>
@@ -550,7 +548,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
         type="warning"
-        title="Delete State Policy"
+        title={tr("Delete State Policy")}
         description={
           deleteTarget
             ? `Are you sure you want to delete the "${deleteTarget.capabilityCode}" policy for ${deleteTarget.statusCode ?? "any status"}? This action cannot be undone.`

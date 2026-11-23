@@ -4,6 +4,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { trainingError, trainingLegacyApi, type TrainingLegacyPerson } from "@/services/api/trainingActivities";
+import { tr } from "@/i18n";
 
 /**
  * "Persons Trained" of a historical activity (Legacy Import): the persons who were at the paper training and the signatories of the revisions that are users of the system. Their training
@@ -41,7 +42,7 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
 
   const columns: DataTableColumn<TrainingLegacyPerson>[] = [
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (page - 1) * limit + i + 1 },
-    { id: "code", header: "Employee ID", cell: (r) => r.employeeCode ?? "—" },
+    { id: "code", header: tr("Employee ID"), cell: (r) => r.employeeCode ?? "—" },
     { id: "name", header: "Full Name", cell: (r) => <span className="font-medium">{r.fullName}</span> },
     { id: "department", header: "Department", cell: (r) => r.department ?? "—" },
     { id: "position", header: "Position", cell: (r) => r.position ?? "—" },
@@ -52,7 +53,7 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
     },
     {
       id: "record",
-      header: "Training Record",
+      header: tr("Training Record"),
       cell: (r) => (
         <Badge color={r.recordWritten ? "emerald" : r.recordVoided ? "red" : "amber"}>{r.recordWritten ? "Written" : r.recordVoided ? "Voided" : "Not written"}</Badge>
       ),
@@ -62,7 +63,7 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-slate-800">Persons who were trained on paper{total ? ` (${total})` : ""}</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{tr("Persons who were trained on paper")}{total ? ` (${total})` : ""}</h3>
         <p className="text-xs text-slate-500">
           {status
             ? "The evidence is filed: the training records of these persons are written."
@@ -80,7 +81,7 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
         isLoading={loading}
 
         columns={columns}
-        emptyState={<TableEmptyState title="Nobody named" description="No person was named with the paper record of this training." />}
+        emptyState={<TableEmptyState title={tr("Nobody named")} description={tr("No person was named with the paper record of this training.")} />}
         pagination={
           total > 0 ? (
             <TablePagination

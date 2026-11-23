@@ -20,6 +20,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingActivitiesApi, trainingError, trainingExportsApi, type TrainingPerson, type TrainingRecordExport } from "@/services/api/trainingActivities";
 import { day, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
+import { tr } from "@/i18n";
 
 const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" };
 const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
@@ -68,11 +69,11 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
     setBusy(true);
     try {
       await trainingExportsApi.create({ personUserId: personId, reason: reason.trim(), approverUserId: approverId, signatureToken });
-      showToast({ type: "success", title: "Export prepared", message: "It waits for the approver." });
+      showToast({ type: "success", title: tr("Export prepared"), message: "It waits for the approver." });
       setSignNew(false); setCreating(false); setPersonId(""); setApproverId(""); setReason("");
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The export was not prepared", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The export was not prepared"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -82,11 +83,11 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
     setBusy(true);
     try {
       await trainingExportsApi.approve(signApprove.id, token);
-      showToast({ type: "success", title: "Export approved", message: "The PDF was generated." });
+      showToast({ type: "success", title: tr("Export approved"), message: "The PDF was generated." });
       setSignApprove(undefined);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The approval failed", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The approval failed"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -99,7 +100,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
       setRejecting(undefined);
       table.reload();
     } catch (e) {
-      showToast({ type: "error", title: "The rejection failed", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The rejection failed"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -114,7 +115,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
       link.click();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     } catch (e) {
-      showToast({ type: "error", title: "The file could not be downloaded", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The file could not be downloaded"), message: trainingError(e) });
     }
   };
 
@@ -122,21 +123,21 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
 
   const columns: DataTableColumn<TrainingRecordExport>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "employeeCode", header: tr("Employee ID"), sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
     { id: "name", header: "Full Name", sort: sorted("employee"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} /> },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</Badge> },
     { id: "reason", header: "Reason", sort: sorted("reason"), cell: (r) => <div className="max-w-60 whitespace-normal">{r.rejectReason ?? r.reason}</div> },
-    { id: "prepared", header: "Prepared By", sort: sorted("preparedBy"), cell: (r) => r.preparedByName },
-    { id: "requested", header: "Requested On", sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
-    { id: "approved", header: "Approved By", sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
+    { id: "prepared", header: tr("Prepared By"), sort: sorted("preparedBy"), cell: (r) => r.preparedByName },
+    { id: "requested", header: tr("Requested On"), sort: sorted("createdAt"), cell: (r) => day(r.createdAt) },
+    { id: "approved", header: tr("Approved By"), sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
     { id: "records", header: "Records", sort: sorted("records"), cell: (r) => r.recordCount ?? "—" },
-    { id: "generated", header: "Generated On", sort: sorted("generated"), cell: (r) => when(r.generatedAt) },
+    { id: "generated", header: tr("Generated On"), sort: sorted("generated"), cell: (r) => when(r.generatedAt) },
     { id: "sha", header: "SHA-256", cell: (r) => (r.sha256 ? <span className="block max-w-[21rem] whitespace-normal break-all font-mono text-xs">{r.sha256}</span> : "—") },
   ];
   const action = {
     cell: (r: TrainingRecordExport) =>
       r.canApprove || r.canDownload ? (
-        <button type="button" ref={menu.getRef(r.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(e) => menu.toggle(r.id, e)}>
+        <button type="button" ref={menu.getRef(r.id)} aria-label={tr("More actions")} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(e) => menu.toggle(r.id, e)}>
           <MoreVertical className="h-4 w-4" />
         </button>
       ) : null,
@@ -151,39 +152,39 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
   return (
     <div className="space-y-4">
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <ReportListToolbar searchPlaceholder="Search employee, code or reason…" search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+      <ReportListToolbar searchPlaceholder={tr("Search employee, code or reason…")} search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([requestedRange.filter, generatedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || requestedRange.isSet || generatedRange.isSet || table.searchQuery)}
         onClear={() => { setStatus(""); setDepartmentFilter(""); requestedRange.clear(); generatedRange.clear(); table.setCurrentPage(1); }} customControl={control} framed={false} flush>
         <DataTable rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading} columns={columns} columnLayout={layout} action={action}
-          emptyState={<TableEmptyState title="No Exports" description="Prepare an export of a personal training record to have it approved." />}
+          emptyState={<TableEmptyState title={tr("No Exports")} description={tr("Prepare an export of a personal training record to have it approved.")} />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined} />
       </ReportListToolbar>
       <PortalDropdownMenu isOpen={!!row} onClose={menu.close} position={menu.position} minWidth={200}>
         {row && (
           <div className="py-1">
-            {row.canDownload && <DropdownMenuItem icon={<IconFileDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>Download PDF</DropdownMenuItem>}
-            {row.canApprove && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSignApprove(row); menu.close(); }}>Complete Approval</DropdownMenuItem>}
-            {row.canApprove && <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setRejecting({ id: row.id, reason: "" }); menu.close(); }}>Reject</DropdownMenuItem>}
+            {row.canDownload && <DropdownMenuItem icon={<IconFileDownload className="h-4 w-4" />} onClick={() => { void download(row); menu.close(); }}>{tr("Download PDF")}</DropdownMenuItem>}
+            {row.canApprove && <DropdownMenuItem icon={<IconCheck className="h-4 w-4" />} onClick={() => { setSignApprove(row); menu.close(); }}>{tr("Complete Approval")}</DropdownMenuItem>}
+            {row.canApprove && <DropdownMenuItem icon={<IconBan className="h-4 w-4" />} onClick={() => { setRejecting({ id: row.id, reason: "" }); menu.close(); }}>{tr("Reject")}</DropdownMenuItem>}
           </div>
         )}
       </PortalDropdownMenu>
-      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title="Prepare an Export" description="You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment."
+      <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title={tr("Prepare an Export")} description={tr("You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment.")}
         confirmText="Continue to Signature" confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
         <div className="grid gap-4">
-          <FormField label="Employee" required><Select value={personId} onChange={(v) => { setPersonId(v); setApproverId(""); }} options={people} onSearch={searchPeople} placeholder="Search by name" /></FormField>
-          <FormField label="Reason for the export" required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
-          <FormField label="Who approves" required>
-            {personId && approvers.length === 0 ? <p className="text-sm text-amber-700">No eligible approver was found.</p> : <Select value={approverId} onChange={setApproverId} options={approvers.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} placeholder="Choose" />}
+          <FormField label={tr("Employee")} required><Select value={personId} onChange={(v) => { setPersonId(v); setApproverId(""); }} options={people} onSearch={searchPeople} placeholder={tr("Search by name")} /></FormField>
+          <FormField label={tr("Reason for the export")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+          <FormField label={tr("Who approves")} required>
+            {personId && approvers.length === 0 ? <p className="text-sm text-amber-700">{tr("No eligible approver was found.")}</p> : <Select value={approverId} onChange={setApproverId} options={approvers.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} placeholder={tr("Choose")} />}
           </FormField>
         </div>
       </FormModal>
       <ESignatureModal isOpen={signNew} onClose={() => setSignNew(false)} onConfirm={async (d: { signatureToken: string }) => create(d.signatureToken)} actionTitle="Prepare Training Record Export" changes={statusChange("New", "Pending Approval")}
-        meaningDisplayName="Training Record Prepared" meaningCode="TRAINING_RECORD_PREPARED" targetDetails={{ code: "APD.0014", title: "Personal training record", revision: "" }} />
+        meaningDisplayName="Training Record Prepared" meaningCode="TRAINING_RECORD_PREPARED" targetDetails={{ code: "APD.0014", title: tr("Personal training record"), revision: "" }} />
       <ESignatureModal isOpen={!!signApprove} onClose={() => setSignApprove(undefined)} onConfirm={async (d: { signatureToken: string }) => approve(d.signatureToken)} actionTitle="Complete Approval of the Training Record Export" changes={statusChange("Pending Approval", "Approved")}
-        meaningDisplayName="Training Record Approved" meaningCode="TRAINING_RECORD_APPROVED" targetDetails={{ code: signApprove?.fullName ?? "", title: "Personal training record", revision: "" }} />
-      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title="Reject Export" confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
-        <FormField label="Reason" required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
+        meaningDisplayName="Training Record Approved" meaningCode="TRAINING_RECORD_APPROVED" targetDetails={{ code: signApprove?.fullName ?? "", title: tr("Personal training record"), revision: "" }} />
+      <FormModal isOpen={!!rejecting} onClose={() => setRejecting(undefined)} onConfirm={() => void reject()} title={tr("Reject Export")} confirmText="Reject" confirmVariant="destructive" isLoading={busy} confirmDisabled={!rejecting?.reason.trim()} size="md">
+        <FormField label={tr("Reason")} required><Textarea rows={3} value={rejecting?.reason ?? ""} onChange={(e) => rejecting && setRejecting({ ...rejecting, reason: e.target.value })} /></FormField>
       </FormModal>
     </div>
   );

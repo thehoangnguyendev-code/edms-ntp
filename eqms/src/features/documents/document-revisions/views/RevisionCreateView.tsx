@@ -70,6 +70,7 @@ import {
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
+import { tr } from "@/i18n";
 
 type TabType =
   | "general"
@@ -659,7 +660,7 @@ const RevisionCreateViewContent: React.FC = () => {
       await documentApi.resolveRevisionReviewComment(revisionDisplay.id, commentId, resolutionNote);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to resolve comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to resolve comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
 
@@ -675,7 +676,7 @@ const RevisionCreateViewContent: React.FC = () => {
       }
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to send reply", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to send reply"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
 
@@ -685,7 +686,7 @@ const RevisionCreateViewContent: React.FC = () => {
       await documentApi.deleteRevisionReviewComment(revisionDisplay.id, commentId, reason);
       await loadReviewComments();
     } catch (error) {
-      showToast({ type: "error", title: "Unable to delete comment", message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
+      showToast({ type: "error", title: tr("Unable to delete comment"), message: (error as any)?.response?.data?.message || "Please try again.", duration: 3000 });
     }
   };
   const handleEditReviewComment = async (commentId: string, content: string) => { if (revisionDisplay?.id) { await documentApi.updateRevisionReviewComment(revisionDisplay.id, commentId, content); await loadReviewComments(); } };
@@ -727,15 +728,15 @@ const RevisionCreateViewContent: React.FC = () => {
   const lifecycleSteps = useWorkflowSteps().revision;
   const workflow = revisionRecord?.workflow;
   const tabs: TabItem[] = [
-    { id: "general", label: "General Information" },
-    { id: "workingNotes", label: "Working Notes" },
-    { id: "infoFromDocument", label: "Information from Document" },
-    { id: "training", label: "Training Information" },
+    { id: "general", label: tr("General Information") },
+    { id: "workingNotes", label: tr("Working Notes") },
+    { id: "infoFromDocument", label: tr("Information from Document") },
+    { id: "training", label: tr("Training Information") },
     { id: "reviewers", label: "Reviewers" },
     { id: "approvers", label: "Approvers" },
     { id: "document", label: "Document" },
-    { id: "signatures", label: "Signatures" },
-    { id: "audit", label: "Audit Trail" },
+    { id: "signatures", label: tr("Signatures") },
+    { id: "audit", label: tr("Audit Trail") },
   ];
 
   // An Upgrade intentionally starts without a source. The Author must upload a
@@ -801,14 +802,14 @@ const RevisionCreateViewContent: React.FC = () => {
       await loadReviewComments();
       showToast({
         type: "success",
-        title: "File replaced",
-        message: "The revision file has been updated.",
+        title: tr("File replaced"),
+        message: tr("The revision file has been updated."),
         duration: 3000,
       });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message: (error as any)?.response?.data?.message || "Unable to replace the revision file.",
         duration: 3000,
       });
@@ -1073,15 +1074,15 @@ const RevisionCreateViewContent: React.FC = () => {
         if (wasCurrentUserTheAuthor) {
           showToast({
             type: "warning",
-            title: "You are no longer the Author",
+            title: tr("You are no longer the Author"),
             message: `${live.author || "Someone else"} was assigned as the Author of this revision. You can no longer edit or submit it.`,
             duration: 6000,
           });
         } else if (live.editingStatus === "COMPLETED" || live.sourceLocked) {
           showToast({
             type: "success",
-            title: "Author completed editing",
-            message: "The revision is ready to submit for review.",
+            title: tr("Author completed editing"),
+            message: tr("The revision is ready to submit for review."),
             duration: 4000,
           });
         }
@@ -1164,8 +1165,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not ready",
-        message: "Upload the revision file first before adding working notes.",
+        title: tr("Revision not ready"),
+        message: tr("Upload the revision file first before adding working notes."),
       });
       return;
     }
@@ -1179,7 +1180,7 @@ const RevisionCreateViewContent: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
+        title: tr("Unable to add note"),
         message:
           (error as any)?.response?.data?.message ||
           "Working note could not be saved.",
@@ -1197,7 +1198,7 @@ const RevisionCreateViewContent: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
+        title: tr("Unable to delete note"),
         message:
           (error as any)?.response?.data?.message ||
           "Working note could not be deleted.",
@@ -1216,9 +1217,9 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!parentDocumentId) {
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message:
-          "The source document is missing, so the revision cannot be created.",
+          tr("The source document is missing, so the revision cannot be created."),
       });
       return;
     }
@@ -1264,8 +1265,8 @@ const RevisionCreateViewContent: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Revision uploaded",
-        message: "The revision file has been created successfully.",
+        title: tr("Revision uploaded"),
+        message: tr("The revision file has been created successfully."),
         duration: 3000,
       });
       setShowUploadModal(false);
@@ -1273,7 +1274,7 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to upload revision", error);
       showToast({
         type: "error",
-        title: "Upload failed",
+        title: tr("Upload failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -1289,8 +1290,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not created",
-        message: "Please upload the revision file first before saving.",
+        title: tr("Revision not created"),
+        message: tr("Please upload the revision file first before saving."),
       });
       return;
     }
@@ -1300,15 +1301,15 @@ const RevisionCreateViewContent: React.FC = () => {
       await persistRevision(revisionDisplay.id);
       showToast({
         type: "success",
-        title: "Draft saved",
-        message: "Revision draft has been saved successfully.",
+        title: tr("Draft saved"),
+        message: tr("Revision draft has been saved successfully."),
         duration: 3000,
       });
     } catch (error) {
       console.error("Failed to save revision draft", error);
       showToast({
         type: "error",
-        title: "Save failed",
+        title: tr("Save failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -1333,8 +1334,8 @@ const RevisionCreateViewContent: React.FC = () => {
       setShowSubmitForReviewModal(false);
       showToast({
         type: "success",
-        title: "Submitted for review",
-        message: "The revision has been submitted and is now pending review.",
+        title: tr("Submitted for review"),
+        message: tr("The revision has been submitted and is now pending review."),
         duration: 3000,
       });
 
@@ -1359,7 +1360,7 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to submit revision for review", error);
       showToast({
         type: "error",
-        title: "Submit for review failed",
+        title: tr("Submit for review failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -1382,9 +1383,9 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!revisionDisplay?.id) {
       showToast({
         type: "warning",
-        title: "Revision not ready",
+        title: tr("Revision not ready"),
         message:
-          "Upload the revision file before opening the publishing workspace.",
+          tr("Upload the revision file before opening the publishing workspace."),
       });
       return;
     }
@@ -1410,7 +1411,7 @@ const RevisionCreateViewContent: React.FC = () => {
 
       showToast({
         type: "success",
-        title: "Publishing workspace opened",
+        title: tr("Publishing workspace opened"),
         message: `Revision ${displayValue(nextRevision.documentNumber)} ${displayValue(nextRevision.revisionNumber)} is ready for review packaging.`,
         duration: 3000,
       });
@@ -1481,7 +1482,7 @@ const RevisionCreateViewContent: React.FC = () => {
       console.error("Failed to open publishing workspace", error);
       showToast({
         type: "error",
-        title: "Open workspace failed",
+        title: tr("Open workspace failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           (error as any)?.response?.data?.message ||
@@ -1497,8 +1498,8 @@ const RevisionCreateViewContent: React.FC = () => {
     if (!parentDocumentId) {
       showToast({
         type: "error",
-        title: "Cannot upload",
-        message: "The parent document information is missing.",
+        title: tr("Cannot upload"),
+        message: tr("The parent document information is missing."),
       });
       return;
     }
@@ -1518,7 +1519,7 @@ const RevisionCreateViewContent: React.FC = () => {
   const onlineEditorActions = (
     <Button onClick={handleOpenEditFileOnline} size="sm" variant="outline-emerald"
       className="gap-2">
-      Edit File Online
+      {tr("Edit File Online")}
     </Button>
   );
 
@@ -1531,7 +1532,7 @@ const RevisionCreateViewContent: React.FC = () => {
           variant="outline-emerald"
           className="whitespace-nowrap gap-2"
         >
-          Upload Revision
+          {tr("Upload Revision")}
         </Button>
       ) : (
         <>
@@ -1543,7 +1544,7 @@ const RevisionCreateViewContent: React.FC = () => {
               disabled={isSaving}
               className="whitespace-nowrap gap-2"
             >
-              Save
+              {tr("Save")}
             </Button>
           )}
           {canEditOnline && onlineEditorActions}
@@ -1573,7 +1574,7 @@ const RevisionCreateViewContent: React.FC = () => {
               {isSubmittingForReview ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
-              Submit for Review
+              {tr("Submit for Review")}
             </Button>
           )}
 
@@ -1588,7 +1589,7 @@ const RevisionCreateViewContent: React.FC = () => {
               {isOpeningWorkspace ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
-              Open Publishing Workspace
+              {tr("Open Publishing Workspace")}
             </Button>
           )}
         </>
@@ -1659,7 +1660,7 @@ const RevisionCreateViewContent: React.FC = () => {
 
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Revision Create"
+          title={tr("Revision Create")}
           breadcrumbItems={createRevision(navigate, revisionBreadcrumbFrom)}
           actions={
             <>
@@ -1669,7 +1670,7 @@ const RevisionCreateViewContent: React.FC = () => {
                 variant="outline-emerald"
                 className="whitespace-nowrap gap-2"
               >
-                Back
+                {tr("Back")}
               </Button>
               {headerActions}
             </>
@@ -1677,9 +1678,9 @@ const RevisionCreateViewContent: React.FC = () => {
         />
         {isRejectedRework && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p className="font-semibold">Revision returned for rework</p>
+            <p className="font-semibold">{tr("Revision returned for rework")}</p>
             <p className="mt-1 text-amber-800">
-              Review feedback is available in the Document tab. Update the source working copy, then select Submit for Review, which locks the revised source for the next review round.
+              {tr("Review feedback is available in the Document tab. Update the source working copy, then select Submit for Review, which locks the revised source for the next review round.")}
             </p>
           </div>
         )}
@@ -1693,8 +1694,7 @@ const RevisionCreateViewContent: React.FC = () => {
 
       {!revisionDisplay?.id && (
         <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-800">
-          Upload the revision file first to create the draft revision record.
-          After that, you can save the draft and open the publishing workspace.
+          {tr("Upload the revision file first to create the draft revision record. After that, you can save the draft and open the publishing workspace.")}
         </div>
       )}
 
@@ -1765,9 +1765,9 @@ const RevisionCreateViewContent: React.FC = () => {
             <>
               {isEditable && reviewComments.length > 0 && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm mb-3 text-emerald-900">
-                  <p className="font-semibold">Review feedback — Round {currentReviewRound}</p>
+                  <p className="font-semibold">{tr("Review feedback — Round")} {currentReviewRound}</p>
                   <p className="mt-1 text-emerald-800">
-                    This view retains the revision PDF and all Reviewer/Approver comments while you update the source working copy.
+                    {tr("This view retains the revision PDF and all Reviewer/Approver comments while you update the source working copy.")}
                   </p>
                 </div>
               )}
@@ -1799,7 +1799,7 @@ const RevisionCreateViewContent: React.FC = () => {
             <AuditTrailTab
               entityId={revisionDisplay?.id || undefined}
               entityType="Revision"
-              emptyMessage="No audit trail records available for this revision."
+              emptyMessage={tr("No audit trail records available for this revision.")}
             />
           )}
         </div>
@@ -1812,7 +1812,7 @@ const RevisionCreateViewContent: React.FC = () => {
           variant="outline-emerald"
           className="whitespace-nowrap"
         >
-          Back
+          {tr("Back")}
         </Button>
         {!revisionDisplay?.id ? (
           <Button
@@ -1821,7 +1821,7 @@ const RevisionCreateViewContent: React.FC = () => {
             variant="outline-emerald"
             className="whitespace-nowrap gap-2"
           >
-            Upload Revision
+            {tr("Upload Revision")}
           </Button>
         ) : (
           <>
@@ -1833,7 +1833,7 @@ const RevisionCreateViewContent: React.FC = () => {
                 disabled={isSaving}
                 className="whitespace-nowrap gap-2"
               >
-                Save
+                {tr("Save")}
               </Button>
             )}
             {canEditOnline && onlineEditorActions}
@@ -1862,7 +1862,7 @@ const RevisionCreateViewContent: React.FC = () => {
                 {isSubmittingForReview ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
-                Submit for Review
+                {tr("Submit for Review")}
               </Button>
             )}
             {canOpenPublishingWorkspace && (
@@ -1876,7 +1876,7 @@ const RevisionCreateViewContent: React.FC = () => {
                 {isOpeningWorkspace ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
-                Open Publishing Workspace
+                {tr("Open Publishing Workspace")}
               </Button>
             )}
           </>
@@ -1885,7 +1885,7 @@ const RevisionCreateViewContent: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav
-          tabs={[{ id: "originalDocument", label: "Document Master" }]}
+          tabs={[{ id: "originalDocument", label: tr("Document Master") }]}
           activeTab="originalDocument"
           onChange={() => {}}
         />

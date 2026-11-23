@@ -4,9 +4,11 @@ import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import type { SeparationRule } from "@/services/api";
 import { inSentence, statusText } from "../shared/humanizeCode";
+import { tr, trFormat } from "@/i18n";
 
 /** The rule as one plain sentence, e.g. "The author of the version cannot approve template". */
-export const separationRuleSentence = (rule: SeparationRule) => `The ${inSentence(rule.relationLabel)} cannot ${inSentence(rule.actionLabel)}`;
+export const separationRuleSentence = (rule: SeparationRule) =>
+  trFormat("The {relation} cannot {action}", { relation: inSentence(tr(rule.relationLabel)), action: inSentence(tr(rule.actionLabel)) });
 
 // ── Separation Rules panel (presentational) ─────────────────────────────────
 // One tab per module, laid out exactly like Document Revision Integrity: a title and a short explanation, then one tick box per rule with its sentence and a line saying what it means.
@@ -31,19 +33,18 @@ export const SeparationRulesPanel: React.FC<{
 
   return (
     <div>
-      {isLoading && <FullPageLoading text="Loading separation rules..." />}
+      {isLoading && <FullPageLoading text={tr("Loading separation rules...")} />}
       <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-800">{moduleLabel} Separation Rules</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{tr(moduleLabel)} {tr("Separation Rules")}</h3>
         <p className="text-xs text-slate-500 mt-0.5">
-          Tick a rule to stop the same person from doing two jobs on the same record, for example writing something and then approving it. Untick it to allow that. A ticked rule applies
-          to everyone, including administrators.
+          {tr("Tick a rule to stop the same person from doing two jobs on the same record, for example writing something and then approving it. Untick it to allow that. A ticked rule applies to everyone, including administrators.")}
         </p>
       </div>
 
       <div className="space-y-2">
         {groups.map(([workflow, items]) => (
           <div key={workflow}>
-            {groups.length > 1 && <p className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{workflow}</p>}
+            {groups.length > 1 && <p className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{tr(workflow)}</p>}
             {items.map((rule) => (
               <label key={rule.id} className="flex items-start gap-3 py-2 transition-colors group cursor-pointer">
                 <Checkbox
@@ -55,9 +56,9 @@ export const SeparationRulesPanel: React.FC<{
                 <span className="min-w-0">
                   <span className="block text-xs sm:text-sm text-slate-700 group-hover:text-emerald-600 transition-colors font-medium">{separationRuleSentence(rule)}</span>
                   <span className="mt-0.5 block text-2xs sm:text-xs leading-5 text-slate-500">
-                    {rule.description ? `${rule.description} ` : ""}
-                    {rule.fromStatus && rule.fromStatus !== "ANY" ? `Applies when the record is "${statusText(rule.fromStatusLabel, rule.fromStatus)}".` : "Applies at any stage."}
-                    {!rule.policyActive ? " This step's policy is switched off, so the rule has no effect for now." : ""}
+                    {rule.description ? `${tr(rule.description)} ` : ""}
+                    {rule.fromStatus && rule.fromStatus !== "ANY" ? trFormat("Applies when the record is \"{status}\".", { status: tr(statusText(rule.fromStatusLabel, rule.fromStatus)) }) : tr("Applies at any stage.")}
+                    {!rule.policyActive ? ` ${tr("This step's policy is switched off, so the rule has no effect for now.")}` : ""}
                   </span>
                 </span>
               </label>
@@ -66,12 +67,11 @@ export const SeparationRulesPanel: React.FC<{
         ))}
         {!isLoading && rules.length === 0 && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:text-sm text-slate-600">
-            {failed ? "The separation rules could not be loaded. You may not have permission to view them." : `There are no separation rules for ${moduleLabel}.`}
+            {failed ? tr("The separation rules could not be loaded. You may not have permission to view them.") : trFormat("There are no separation rules for {module}.", { module: tr(moduleLabel) })}
           </div>
         )}
         <WarningBanner variant="success">
-          These rules are enforced by the server. Saving needs a reason and an electronic signature, and is recorded in the audit trail. A change applies from the next action; work that is already
-          done is not undone.
+          {tr("These rules are enforced by the server. Saving needs a reason and an electronic signature, and is recorded in the audit trail. A change applies from the next action; work that is already done is not undone.")}
         </WarningBanner>
       </div>
     </div>

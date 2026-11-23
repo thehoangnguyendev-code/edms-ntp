@@ -30,6 +30,7 @@ import {
 } from "@/services/api/trainingActivities";
 import { TokenCheckBadge } from "./TokenCheckBadge";
 import { Collapsible } from "@/components/ui/collapsible";
+import { tr, trFormat } from "@/i18n";
 
 const STATUS_LABEL = { ENABLED: "Enabled", DISABLED: "Disabled" } as const;
 /** The code of the form as Document Control writes it: APD.0024 with the revision 2.0.0 is APD.0024.02. */
@@ -136,7 +137,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
     let created: TrainingFormTemplate | undefined;
     const ok = await run(async () => {
       created = await trainingFormTemplatesApi.upload(upload.file as File, { code, title: detail.title, versionLabel: upload.versionLabel.trim(), remark: upload.remark.trim() || undefined });
-    }, { title: "Template uploaded", message: "Read the check below. It is used only after you enable it." }, "The template was not uploaded");
+    }, { title: tr("Template uploaded"), message: "Read the check below. It is used only after you enable it." }, "The template was not uploaded");
     if (ok) {
       setUploadOpen(false);
       setUpload({ file: null, versionLabel: "", remark: "" });
@@ -149,7 +150,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
       if (kind === "starter") saveBlob(await trainingAnnexApi.starter(code), `${code}-tokenized-starter.docx`);
       else if (selected) saveBlob(await trainingFormTemplatesApi.download(selected.id), selected.originalName);
     } catch (e) {
-      showToast({ type: "error", title: "The file was not downloaded", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The file was not downloaded"), message: trainingError(e) });
     }
   };
   const copy = async (token: string) => {
@@ -157,7 +158,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
       await navigator.clipboard.writeText(token);
       showToast({ type: "success", title: "Copied", message: token });
     } catch {
-      showToast({ type: "error", title: "Could not copy", message: token });
+      showToast({ type: "error", title: tr("Could not copy"), message: token });
     }
   };
 
@@ -168,25 +169,25 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
   const problems = selected?.checkProblems ? selected.checkProblems.split("\n") : [];
   const token = (n: string) => `{{${n}}}`;
   const Chip = ({ text }: { text: string }) => (
-    <button type="button" title="Click to copy" onClick={() => void copy(text)} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800 hover:bg-emerald-100">{text}</button>
+    <button type="button" title={tr("Click to copy")} onClick={() => void copy(text)} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800 hover:bg-emerald-100">{text}</button>
   );
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader
-        title={editing ? "Edit Training Annex" : "Training Annex Details"}
-        breadcrumbItems={trainingAnnexDetail(navigate, code, editing ? "Edit Training Annex" : "Training Annex Details")}
+        title={editing ? tr("Edit Training Annex") : "Training Annex Details"}
+        breadcrumbItems={trainingAnnexDetail(navigate, code, editing ? tr("Edit Training Annex") : "Training Annex Details")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX)}>Back</Button>
-            {checked && detail.starterAvailable && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => void download("starter")}><IconDownload className="h-4 w-4" />Download Starter File</Button>}
-            {canManage && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => setUploadOpen(true)}><IconPlus className="h-4 w-4" />Upload Template</Button>}
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX)}>{tr("Back")}</Button>
+            {checked && detail.starterAvailable && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => void download("starter")}><IconDownload className="h-4 w-4" />{tr("Download Starter File")}</Button>}
+            {canManage && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => setUploadOpen(true)}><IconPlus className="h-4 w-4" />{tr("Upload Template")}</Button>}
           </div>
         )}
       />
 
       {editing && (
-        <ol className="grid gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 sm:grid-cols-2 xl:grid-cols-5" aria-label="How to update this form">
+        <ol className="grid gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 sm:grid-cols-2 xl:grid-cols-5" aria-label={tr("How to update this form")}>
           {[
             ["1", "Download the starter file", "It holds the form with its tokens."],
             ["2", "Change it in Word", "Keep the tokens; change the wording and the look."],
@@ -194,20 +195,20 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
             ["4", "Read Check and Preview", "Fix the Word file if the check finds a problem."],
             ["5", "Enable it from the list", "Enable Training Annex, with your signature."],
           ].map(([n, title, hint]) => (
-            <li key={n} className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">{n}</span><span><span className="font-medium">{title}</span><br /><span className="text-xs text-emerald-800">{hint}</span></span></li>
+            <li key={n} className="flex gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">{n}</span><span><span className="font-medium">{tr(title)}</span><br /><span className="text-xs text-emerald-800">{tr(hint)}</span></span></li>
           ))}
         </ol>
       )}
 
       <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
         <div className="space-y-4">
-          <FormSection title="Template" icon={<Layers3 className="h-4 w-4" />}>
+          <FormSection title={tr("Template")} icon={<Layers3 className="h-4 w-4" />}>
             {detail.templates.length === 0 ? (
-              <p className="text-sm text-slate-600">No template is uploaded for this form. {checked ? "Download the starter file, write your wording around the tokens in Word, and upload it." : "Upload the Word file of the form."}</p>
+              <p className="text-sm text-slate-600">{tr("No template is uploaded for this form.")} {checked ? tr("Download the starter file, write your wording around the tokens in Word, and upload it.") : tr("Upload the Word file of the form.")}</p>
             ) : (
               <div className="space-y-3">
-                <FormField label="Version">
-                  <Select value={selectedId} options={versionOptions} onChange={(v) => setSelectedId(String(v))} aria-label="Template version" />
+                <FormField label={tr("Version")}>
+                  <Select value={selectedId} options={versionOptions} onChange={(v) => setSelectedId(String(v))} aria-label={tr("Template version")} />
                 </FormField>
                 {selected && (
                   <>
@@ -241,19 +242,19 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
                     </ol>
                     {selected.disableReason && (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                        <p className="text-xs font-medium text-amber-800">Reason for disabling</p>
+                        <p className="text-xs font-medium text-amber-800">{tr("Reason for disabling")}</p>
                         <p className="mt-0.5 text-sm text-amber-900">{selected.disableReason}</p>
                       </div>
                     )}
                     {selected.remark && (
                       <div>
-                        <p className="text-xs font-medium text-slate-500">Remark</p>
+                        <p className="text-xs font-medium text-slate-500">{tr("Remark")}</p>
                         <p className="mt-0.5 text-sm text-slate-800">{selected.remark}</p>
                       </div>
                     )}
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline-emerald" className="gap-2" onClick={() => setViewing(true)}><IconEye className="h-4 w-4" />View File</Button>
-                      <Button size="sm" variant="outline-emerald" className="gap-2" onClick={() => void download("template")}><IconDownload className="h-4 w-4" />Download</Button>
+                      <Button size="sm" variant="outline-emerald" className="gap-2" onClick={() => setViewing(true)}><IconEye className="h-4 w-4" />{tr("View File")}</Button>
+                      <Button size="sm" variant="outline-emerald" className="gap-2" onClick={() => void download("template")}><IconDownload className="h-4 w-4" />{tr("Download")}</Button>
                     </div>
                   </>
                 )}
@@ -262,7 +263,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
           </FormSection>
 
           {detail.templates.length > 1 && (
-            <FormSection title="All Versions" icon={<Layers3 className="h-4 w-4" />}>
+            <FormSection title={tr("All Versions")} icon={<Layers3 className="h-4 w-4" />}>
               <ul className="divide-y divide-slate-100">
                 {detail.templates.map((t) => (
                   <li key={t.id}>
@@ -277,34 +278,34 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
           )}
 
           {selected && (
-            <Fold title="Check" icon={<SearchCheck className="h-4 w-4" />} open={open.check} onToggle={() => toggle("check")}>
+            <Fold title={tr("Check")} icon={<SearchCheck className="h-4 w-4" />} open={open.check} onToggle={() => toggle("check")}>
               {selected.tokenMode === "TOKENS" && problems.length === 0 && (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                  <p className="text-sm font-medium text-emerald-900">The file agrees with the form</p>
-                  <p className="mt-0.5 text-xs text-emerald-800">All required tokens are present, none is unknown and every marker is closed. This version can be enabled from the list.</p>
+                  <p className="text-sm font-medium text-emerald-900">{tr("The file agrees with the form")}</p>
+                  <p className="mt-0.5 text-xs text-emerald-800">{tr("All required tokens are present, none is unknown and every marker is closed. This version can be enabled from the list.")}</p>
                 </div>
               )}
               {selected.tokenMode === "TOKENS" && problems.length > 0 && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                  <p className="text-sm font-medium text-red-900">{problems.length} {problems.length === 1 ? "problem" : "problems"} to fix</p>
-                  <p className="mt-0.5 text-xs text-red-800">This version cannot be enabled until these are fixed in the Word file. Upload the corrected file as a new version.</p>
+                  <p className="text-sm font-medium text-red-900">{problems.length} {problems.length === 1 ? "problem" : "problems"} {tr("to fix")}</p>
+                  <p className="mt-0.5 text-xs text-red-800">{tr("This version cannot be enabled until these are fixed in the Word file. Upload the corrected file as a new version.")}</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-800">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
                 </div>
               )}
               {selected.tokenMode === "LEGACY" && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <p className="text-sm font-medium text-amber-900">Earlier template, tokens not checked</p>
-                  <p className="mt-0.5 text-xs text-amber-800">The system finds each place by the words printed in the form, so a changed wording can leave a place empty. It keeps working. To get the check and the preview, download the starter file and upload a version written with tokens.</p>
+                  <p className="text-sm font-medium text-amber-900">{tr("Earlier template, tokens not checked")}</p>
+                  <p className="mt-0.5 text-xs text-amber-800">{tr("The system finds each place by the words printed in the form, so a changed wording can leave a place empty. It keeps working. To get the check and the preview, download the starter file and upload a version written with tokens.")}</p>
                 </div>
               )}
-              {selected.tokenMode === "NOT_APPLICABLE" && <p className="text-sm text-slate-600">This form is built by the assessment builder. Its Word file has no tokens to check.</p>}
-              {selected.checkedAt && <p className="mt-2 text-xs text-slate-500">Checked {when(selected.checkedAt)}</p>}
+              {selected.tokenMode === "NOT_APPLICABLE" && <p className="text-sm text-slate-600">{tr("This form is built by the assessment builder. Its Word file has no tokens to check.")}</p>}
+              {selected.checkedAt && <p className="mt-2 text-xs text-slate-500">{tr("Checked")} {when(selected.checkedAt)}</p>}
             </Fold>
           )}
 
           {checked && (
-            <Fold title="Electronic Signatures" icon={<PenLine className="h-4 w-4" />} open={open.signatures} onToggle={() => toggle("signatures")}>
-              <p className="mb-3 text-xs text-slate-600">Each slot is filled when its stage is reached, in the order below. Every signature is written the same way as in any document: the name, “Electronically” and the meaning, then the date and time.</p>
+            <Fold title={tr("Electronic Signatures")} icon={<PenLine className="h-4 w-4" />} open={open.signatures} onToggle={() => toggle("signatures")}>
+              <p className="mb-3 text-xs text-slate-600">{tr("Each slot is filled when its stage is reached, in the order below. Every signature is written the same way as in any document: the name, “Electronically” and the meaning, then the date and time.")}</p>
               <ol className="space-y-2">
                 {contract.slots.map((s, i) => (
                   <li key={s.name} className="rounded-lg border border-slate-200 p-3">
@@ -323,20 +324,20 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
           )}
 
           {checked && (
-            <Fold title="Tokens for the Word File" icon={<ListChecks className="h-4 w-4" />} open={open.tokens} onToggle={() => toggle("tokens")}>
+            <Fold title={tr("Tokens for the Word File")} icon={<ListChecks className="h-4 w-4" />} open={open.tokens} onToggle={() => toggle("tokens")}>
               <div className="space-y-3 text-xs text-slate-600">
-                <p>Write a token where a value goes; click one to copy it. Lines that only describe the form (notes, history of revisions) go between <Chip text="{{#OMIT}}" /> and <Chip text="{{/OMIT}}" />. A table row that holds the tokens of a list is repeated for each item.</p>
-                <div><p className="mb-1 font-medium text-slate-800">Facts</p><div className="flex flex-wrap gap-1.5">{[...contract.scalars, "FORM_CODE", "FORM_REVISION", "GENERATED_AT"].map((n) => <Chip key={n} text={token(n)} />)}</div></div>
-                {contract.checks.length > 0 && <div><p className="mb-1 font-medium text-slate-800">Boxes</p><div className="flex flex-wrap gap-1.5">{contract.checks.map((n) => <Chip key={n} text={token(`CHECK:${n}`)} />)}</div></div>}
+                <p>{tr("Write a token where a value goes; click one to copy it. Lines that only describe the form (notes, history of revisions) go between")} <Chip text="{{#OMIT}}" /> {tr("and")} <Chip text="{{/OMIT}}" />. {tr("A table row that holds the tokens of a list is repeated for each item.")}</p>
+                <div><p className="mb-1 font-medium text-slate-800">{tr("Facts")}</p><div className="flex flex-wrap gap-1.5">{[...contract.scalars, "FORM_CODE", "FORM_REVISION", "GENERATED_AT"].map((n) => <Chip key={n} text={token(n)} />)}</div></div>
+                {contract.checks.length > 0 && <div><p className="mb-1 font-medium text-slate-800">{tr("Boxes")}</p><div className="flex flex-wrap gap-1.5">{contract.checks.map((n) => <Chip key={n} text={token(`CHECK:${n}`)} />)}</div></div>}
                 {contract.groups.map((g) => (
                   <div key={g.name}>
-                    <p className="mb-1 font-medium text-slate-800">{g.name}{g.repeatsBlock ? <span className="font-normal text-slate-500"> (a block repeated for each item)</span> : ""}</p>
+                    <p className="mb-1 font-medium text-slate-800">{g.name}{g.repeatsBlock ? <span className="font-normal text-slate-500"> {tr("(a block repeated for each item)")}</span> : ""}</p>
                     <div className="flex flex-wrap gap-1.5">{g.fields.map((f) => <Chip key={f} text={token(`${g.name}.${f}`)} />)}</div>
                   </div>
                 ))}
-                {contract.cases.length > 0 && <div><p className="mb-1 font-medium text-slate-800">Cases (the block stays only when the case applies)</p><div className="flex flex-wrap gap-1.5">{contract.cases.map((n) => <Chip key={n} text={token(`#CASE:${n}`)} />)}</div></div>}
-                {contract.blocks.length > 0 && <div><p className="mb-1 font-medium text-slate-800">Drawn by the system</p><div className="flex flex-wrap gap-1.5">{contract.blocks.map((n) => <Chip key={n} text={token(`BLOCK:${n}`)} />)}</div></div>}
-                <div><p className="mb-1 font-medium text-slate-800">Signatures</p><div className="flex flex-wrap gap-1.5">{contract.slots.map((s) => <Chip key={s.name} text={token(`SIGNATURE:${s.name}`)} />)}</div></div>
+                {contract.cases.length > 0 && <div><p className="mb-1 font-medium text-slate-800">{tr("Cases (the block stays only when the case applies)")}</p><div className="flex flex-wrap gap-1.5">{contract.cases.map((n) => <Chip key={n} text={token(`#CASE:${n}`)} />)}</div></div>}
+                {contract.blocks.length > 0 && <div><p className="mb-1 font-medium text-slate-800">{tr("Drawn by the system")}</p><div className="flex flex-wrap gap-1.5">{contract.blocks.map((n) => <Chip key={n} text={token(`BLOCK:${n}`)} />)}</div></div>}
+                <div><p className="mb-1 font-medium text-slate-800">{tr("Signatures")}</p><div className="flex flex-wrap gap-1.5">{contract.slots.map((s) => <Chip key={s.name} text={token(`SIGNATURE:${s.name}`)} />)}</div></div>
               </div>
             </Fold>
           )}
@@ -344,9 +345,9 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
 
         <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
           <FormSection
-            title="Preview with Sample Data"
+            title={tr("Preview with Sample Data")}
             icon={<IconFileTypePdf className="h-4 w-4" />}
-            headerRight={selected?.tokenMode === "TOKENS" && !problems.length ? <Button size="sm" variant="outline-emerald" className="gap-2" disabled={previewLoading} onClick={() => void makePreview(selected)}><IconRefresh className="h-4 w-4" />Regenerate</Button> : undefined}
+            headerRight={selected?.tokenMode === "TOKENS" && !problems.length ? <Button size="sm" variant="outline-emerald" className="gap-2" disabled={previewLoading} onClick={() => void makePreview(selected)}><IconRefresh className="h-4 w-4" />{tr("Regenerate")}</Button> : undefined}
           >
             {previewUrl ? (
               <div className="overflow-hiddenx bg-white shadow-sm">
@@ -355,12 +356,12 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
             ) : (
               <div className="flex min-h-[420px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center text-sm text-slate-500">
                 {previewLoading ? <SectionLoading text="Making the preview…" /> : previewError ? <span role="alert" className="text-red-700">{previewError}</span>
-                  : !selected ? "Upload a template to see it filled with sample data."
-                  : selected.tokenMode !== "TOKENS" ? "Only a template written with tokens can be previewed. Download the starter file and upload a version written with tokens."
-                  : "This version does not agree with the form, so it cannot be previewed. Fix the problems in Check."}
+                  : !selected ? tr("Upload a template to see it filled with sample data.")
+                  : selected.tokenMode !== "TOKENS" ? tr("Only a template written with tokens can be previewed. Download the starter file and upload a version written with tokens.")
+                  : tr("This version does not agree with the form, so it cannot be previewed. Fix the problems in Check.")}
               </div>
             )}
-            <p className="mt-2 text-xs text-slate-500">Invented data, marked as not a record. It is not stored and cannot be downloaded or printed.</p>
+            <p className="mt-2 text-xs text-slate-500">{tr("Invented data, marked as not a record. It is not stored and cannot be downloaded or printed.")}</p>
           </FormSection>
         </div>
       </div>
@@ -372,12 +373,12 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
       )}
       {editing && uploadOpen && (
         <FormModal isOpen onClose={() => setUploadOpen(false)} onConfirm={() => void doUpload()} title={`Upload a Template of ${code}`} confirmText="Upload" isLoading={busy} confirmDisabled={!upload.file || !/^\d{1,3}(\.\d{1,3}){0,2}$/.test(upload.versionLabel.trim())} size="lg"
-          description="The Word file is uploaded Disabled and checked at once. It is used only after you enable it with your signature.">
+          description={tr("The Word file is uploaded Disabled and checked at once. It is used only after you enable it with your signature.")}>
           <div className="grid grid-cols-1 gap-4">
-            <TrainingFileDropzone label="Word file (.docx)" required accept=".docx" maxMb={20} hint="The form with its tokens written in" file={upload.file} onChange={(f) => setUpload({ ...upload, file: f })} />
-            <FormField label="Revision Number" required><Input value={upload.versionLabel} maxLength={20} placeholder="For example 2.0.0" onChange={(e) => setUpload({ ...upload, versionLabel: e.target.value })} /></FormField>
-            <p className="text-xs text-slate-600">The revision in force of this form in Document Control. The form is written with the code {fullCode(code, upload.versionLabel)}.</p>
-            <FormField label="Remark"><Textarea rows={2} value={upload.remark} onChange={(e) => setUpload({ ...upload, remark: e.target.value })} /></FormField>
+            <TrainingFileDropzone label={tr("Word file (.docx)")} required accept=".docx" maxMb={20} hint={tr("The form with its tokens written in")} file={upload.file} onChange={(f) => setUpload({ ...upload, file: f })} />
+            <FormField label={tr("Revision Number")} required><Input value={upload.versionLabel} maxLength={20} placeholder={tr("For example 2.0.0")} onChange={(e) => setUpload({ ...upload, versionLabel: e.target.value })} /></FormField>
+              <p className="text-xs text-slate-600">{trFormat("The revision in force of this form in Document Control. The form is written with the code {code}.", { code: fullCode(code, upload.versionLabel) })}</p>
+            <FormField label={tr("Remark")}><Textarea rows={2} value={upload.remark} onChange={(e) => setUpload({ ...upload, remark: e.target.value })} /></FormField>
           </div>
         </FormModal>
       )}

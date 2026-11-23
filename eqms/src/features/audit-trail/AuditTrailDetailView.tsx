@@ -21,6 +21,7 @@ import { objectHistoryPath } from "./utils/objectHistory";
 import { CHANGE_KIND_LABEL, expandChange, formatAuditField, isBlank, isTechnicalField, type ChangeRow } from "./utils/changeRows";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { Collapsible } from "@/components/ui/collapsible";
+import { tr, trFormat } from "@/i18n";
 
 /** One label and value of a card, in a <dl>: the label is muted, the value stands out. */
 const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -217,15 +218,15 @@ export const AuditTrailDetailView: React.FC<{
   const isDestroyAction = r ? isControlledCopyDestroyAction(r) : false;
 
   const destructionDetails = isDestroyAction && r ? [
-    { label: "Document Number", value: getMetadataValue(r.metadata, "controlledCopyNumber", "copyNumber", "objectCode", "entityLabel", "entityName") },
+    { label: tr("Document Number"), value: getMetadataValue(r.metadata, "controlledCopyNumber", "copyNumber", "objectCode", "entityLabel", "entityName") },
     { label: "Document", value: getMetadataValue(r.metadata, "documentNumber", "document_number", "documentDisplayLabel", "documentName") },
     { label: "Revision", value: getMetadataValue(r.metadata, "revisionNumber", "revision_number", "revisionName") },
-    { label: "Destruction Type", value: getMetadataValue(r.metadata, "destructionType", "destruction_type") },
-    { label: "Destruction Method", value: getMetadataValue(r.metadata, "destructionMethod", "destruction_method") },
-    { label: "Destroy Reason", value: getMetadataValue(r.metadata, "destroyReason", "destroy_reason", "reason") || reason },
+    { label: tr("Destruction Type"), value: getMetadataValue(r.metadata, "destructionType", "destruction_type") },
+    { label: tr("Destruction Method"), value: getMetadataValue(r.metadata, "destructionMethod", "destruction_method") },
+    { label: tr("Destroy Reason"), value: getMetadataValue(r.metadata, "destroyReason", "destroy_reason", "reason") || reason },
     { label: "Witness", value: getMetadataValue(r.metadata, "witnessName", "witnessedBy", "witnessed_by") },
-    { label: "Destroyed By", value: getMetadataValue(r.metadata, "destroyedBy", "destroyed_by") || r.user?.fullName || r.fullName },
-    { label: "Destroyed At", value: getMetadataValue(r.metadata, "destroyedAt", "destroyed_at") || r.timestamp },
+    { label: tr("Destroyed By"), value: getMetadataValue(r.metadata, "destroyedBy", "destroyed_by") || r.user?.fullName || r.fullName },
+    { label: tr("Destroyed At"), value: getMetadataValue(r.metadata, "destroyedAt", "destroyed_at") || r.timestamp },
   ].filter((item) => item.value && item.value !== "-" && item.value !== reason) : [];
 
   const evidenceFiles = isDestroyAction && Array.isArray(r?.metadata?.evidenceFiles) ? r.metadata.evidenceFiles : [];
@@ -270,10 +271,10 @@ export const AuditTrailDetailView: React.FC<{
     technicalItems.push({ label: "Record ID", value: r.id });
     if (r.entityId) technicalItems.push({ label: "Entity ID", value: r.entityId });
     if (r.severity) technicalItems.push({ label: "Severity", value: r.severity });
-    technicalItems.push({ label: "IP Address", value: r.ipAddress || "-" });
-    if (r.userAgent || r.device) technicalItems.push({ label: "Client Device / Agent", value: r.device || r.userAgent });
+    technicalItems.push({ label: tr("IP Address"), value: r.ipAddress || "-" });
+    if (r.userAgent || r.device) technicalItems.push({ label: tr("Client Device / Agent"), value: r.device || r.userAgent });
     if (r.progressDurationSeconds !== undefined && r.progressDurationSeconds !== null) {
-      technicalItems.push({ label: "Processing Duration", value: formatProcessingDuration(r.progressDurationSeconds) });
+      technicalItems.push({ label: tr("Processing Duration"), value: formatProcessingDuration(r.progressDurationSeconds) });
     }
     for (const row of technicalChanges.flatMap(expandChange)) {
       const after = isBlank(row.newValue) ? "(cleared)" : formatAuditChangeValue(row.valueField, row.newValue);
@@ -299,16 +300,16 @@ export const AuditTrailDetailView: React.FC<{
   return (
     <div className="w-full min-w-0 space-y-5 md:space-y-6">
       <PageHeader
-        title="Audit Trail Detail"
+        title={tr("Audit Trail Detail")}
         breadcrumbItems={auditTrailDetail(navigate)}
         actions={
           <div className="flex items-center gap-2">
             <Button onClick={handleBack} size="sm" variant="outline-emerald" className="whitespace-nowrap">
-              Back
+              {tr("Back")}
             </Button>
             <Button onClick={() => setIsExportModalOpen(true)} size="sm" variant="outline" className="gap-2 whitespace-nowrap">
               <Download className="h-4 w-4" />
-              Export
+              {tr("Export")}
             </Button>
           </div>
         }
@@ -341,12 +342,12 @@ export const AuditTrailDetailView: React.FC<{
                 </div>
                 <div className="hidden shrink-0 flex-wrap justify-end gap-1.5 sm:flex">
                   <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
-                  {isSigned && <Badge color="emerald" size="sm">Signed</Badge>}
+                  {isSigned && <Badge color="emerald" size="sm">{tr("Signed")}</Badge>}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5 sm:hidden">
                 <Badge color="slate" size="sm">{moduleLabel || "General"}</Badge>
-                {isSigned && <Badge color="emerald" size="sm">Signed</Badge>}
+                {isSigned && <Badge color="emerald" size="sm">{tr("Signed")}</Badge>}
               </div>
               <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 sm:text-sm">
                 <span className="tabular-nums">{formatDateTime(r.timestamp) || "-"}</span>
@@ -359,22 +360,22 @@ export const AuditTrailDetailView: React.FC<{
               </p>
               {/* The four words the Audit Trail list shows, so this screen can be matched with the line that was opened. */}
               <dl className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                <DetailItem label="Module" value={moduleLabel || "General"} />
-                <DetailItem label="Object Type" value={recordObjectType} />
+                <DetailItem label={tr("Module")} value={moduleLabel || "General"} />
+                <DetailItem label={tr("Object Type")} value={recordObjectType} />
                 <DetailItem
-                  label="Object Code"
+                  label={tr("Object Code")}
                   value={
                     <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <span className="font-mono">{recordObjectCode}</span>
                       {r.entityId && recordObjectCode !== "-" && (
                         <button type="button" onClick={() => navigate(objectHistoryPath(r.entityId as string, recordObjectCode))} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline">
-                          View all records of this object
+                          {tr("View all records of this object")}
                         </button>
                       )}
                     </span>
                   }
                 />
-                <DetailItem label="Action" value={recordAction} />
+                <DetailItem label={tr("Action")} value={recordAction} />
               </dl>
               {description && description !== entityLabel && changeRows.length === 0 && permissionChanges.length === 0 && (
                 <p className="mt-3 break-words border-t border-slate-100 pt-3 text-xs text-slate-600 sm:text-sm">{description}</p>
@@ -383,7 +384,7 @@ export const AuditTrailDetailView: React.FC<{
 
             {changeRows.length > 0 && (
               <FormSection
-                title="What changed"
+                title={tr("What changed")}
                 contentClassName="p-0"
                 headerRight={changeRows.length > 0 ? <span className="text-xs text-slate-400">{changeRows.length} {changeRows.length === 1 ? "field" : "fields"}</span> : undefined}
               >
@@ -392,11 +393,11 @@ export const AuditTrailDetailView: React.FC<{
                     <TableMarkup.Root className="w-full">
                       <TableMarkup.Head className="border-b border-slate-200 bg-slate-50/90">
                         <TableMarkup.Row>
-                          <TableMarkup.HeaderCell className={cn(hasBefore ? "w-[28%]" : "w-[40%]", "px-3 py-2.5 sm:px-4 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs")}>Field</TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className={cn(hasBefore ? "w-[28%]" : "w-[40%]", "px-3 py-2.5 sm:px-4 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs")}>{tr("Field")}</TableMarkup.HeaderCell>
                           {hasBefore && (
-                            <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:text-xs">Before</TableMarkup.HeaderCell>
+                            <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:text-xs">{tr("Before")}</TableMarkup.HeaderCell>
                           )}
-                          <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">After</TableMarkup.HeaderCell>
+                          <TableMarkup.HeaderCell className="px-3 py-2.5 text-left sm:px-4 text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">{tr("After")}</TableMarkup.HeaderCell>
                         </TableMarkup.Row>
                       </TableMarkup.Head>
                       <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
@@ -426,7 +427,7 @@ export const AuditTrailDetailView: React.FC<{
 
             {/* Signed: the reason is in the signature card below. Unsigned: only when the person typed one. */}
             {!isSigned && reason && (
-              <FormSection title="Why" contentClassName="px-4 py-4 md:px-5">
+              <FormSection title={tr("Why")} contentClassName="px-4 py-4 md:px-5">
                 <div className="space-y-1 border-l-[3px] border-emerald-300 pl-3">
                   {reason.split("; ").map((segment, index) => (
                     <p key={index} className="whitespace-pre-wrap break-words text-sm text-slate-800">{segment}</p>
@@ -436,13 +437,13 @@ export const AuditTrailDetailView: React.FC<{
             )}
 
             {permissionChanges.length > 0 && (
-              <FormSection title="Permission changes" contentClassName="p-0" headerRight={<span className="text-xs text-slate-400">{permissionChanges.length}</span>}>
+              <FormSection title={tr("Permission changes")} contentClassName="p-0" headerRight={<span className="text-xs text-slate-400">{permissionChanges.length}</span>}>
                 <div className="overflow-x-auto">
                   <TableMarkup.Root className="w-full min-w-[360px]">
                     <TableMarkup.Head className="border-b border-slate-200 bg-slate-50/90">
                       <TableMarkup.Row>
-                        <TableMarkup.HeaderCell className="w-32 px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs">Change</TableMarkup.HeaderCell>
-                        <TableMarkup.HeaderCell className="px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">Permission</TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className="w-32 px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:px-5 md:text-xs">{tr("Change")}</TableMarkup.HeaderCell>
+                        <TableMarkup.HeaderCell className="px-4 py-2.5 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500 md:pr-5 md:text-xs">{tr("Permission")}</TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>
                     <TableMarkup.Body className="divide-y divide-slate-100 bg-white">
@@ -466,7 +467,7 @@ export const AuditTrailDetailView: React.FC<{
             )}
 
             {isDestroyAction && destructionDetails.length > 0 && (
-              <FormSection title="Controlled Copy Destruction Record" icon={<AlertTriangle className="h-4 w-4 text-red-500" />}>
+              <FormSection title={tr("Controlled Copy Destruction Record")} icon={<AlertTriangle className="h-4 w-4 text-red-500" />}>
                 <div className="space-y-3">
                   <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {destructionDetails.map((item) => (
@@ -478,7 +479,7 @@ export const AuditTrailDetailView: React.FC<{
                   </dl>
                   {evidenceCount > 0 && (
                     <div className="border-t border-slate-100 pt-2">
-                      <span className="mb-2 block text-xs font-semibold text-slate-700">Evidence Files ({evidenceCount})</span>
+                      <span className="mb-2 block text-xs font-semibold text-slate-700">{trFormat("Evidence Files ({count})", { count: evidenceCount })}</span>
                       <div className="flex flex-wrap gap-2">
                         {evidenceFiles.map((file: any, index: number) => (
                           <Badge key={file.id || file.fileName || index} color="rose" size="sm">
@@ -495,20 +496,20 @@ export const AuditTrailDetailView: React.FC<{
             <FormSection title={isSigned ? "Signature and user" : "User"} contentClassName="p-0">
               <dl className="space-y-3 px-4 py-4 md:px-5">
                 {isSigned && reason && (
-                  <DetailItem label="Reason" value={<span className="whitespace-pre-wrap">{reason}</span>} />
+                  <DetailItem label={tr("Reason")} value={<span className="whitespace-pre-wrap">{reason}</span>} />
                 )}
                 {isSigned && r.signatureId && (
-                  <DetailItem label="Signature ID" value={<span className="font-mono text-xs" title={`Full UUID: ${r.signatureId}`}>{formatSignatureId(r.signatureId)}</span>} />
+                  <DetailItem label={tr("Signature ID")} value={<span className="font-mono text-xs" title={`Full UUID: ${r.signatureId}`}>{formatSignatureId(r.signatureId)}</span>} />
                 )}
                 <DetailItem
-                  label="User"
+                  label={tr("User")}
                   value={<span className="inline-flex flex-wrap items-baseline gap-x-2"><span>{userName}</span>{userCodeNode}</span>}
                 />
                 {userEmail && (
-                  <DetailItem label="Email" value={<a href={`mailto:${userEmail}`} className="text-emerald-600 hover:text-emerald-700 hover:underline">{userEmail}</a>} />
+                  <DetailItem label={tr("Email")} value={<a href={`mailto:${userEmail}`} className="text-emerald-600 hover:text-emerald-700 hover:underline">{userEmail}</a>} />
                 )}
-                <DetailItem label="Position" value={r.user?.position || "-"} />
-                <DetailItem label="Department" value={r.user?.department || "-"} />
+                <DetailItem label={tr("Position")} value={r.user?.position || "-"} />
+                <DetailItem label={tr("Department")} value={r.user?.department || "-"} />
               </dl>
               {/* IP address, device, identifiers: needed by an investigator, not by every reader. */}
               <div className="border-t border-slate-100">
@@ -518,9 +519,9 @@ export const AuditTrailDetailView: React.FC<{
                   aria-expanded={showTechnical}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-xs text-slate-500 transition-colors hover:bg-slate-50 sm:text-sm md:px-5"
                 >
-                  <span>Technical details <span className="text-slate-400">· IP address, device, record ID, file internals</span></span>
+                  <span>{tr("Technical details")} <span className="text-slate-400">· {tr("IP address, device, record ID, file internals")}</span></span>
                   <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-emerald-600">
-                    {showTechnical ? "Hide" : "Show"}
+                    {showTechnical ? tr("Hide") : tr("Show")}
                     <ChevronDown className={cn("h-4 w-4 transition-transform", showTechnical && "rotate-180")} />
                   </span>
                 </button>

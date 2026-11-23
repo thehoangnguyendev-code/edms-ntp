@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -8,9 +9,9 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 type View = "test" | "key" | "both";
 
 const TABS: TabItem[] = [
-  { id: "test", label: "Test Paper" },
-  { id: "key", label: "Answer Key" },
-  { id: "both", label: "Side by Side" },
+  { id: "test", label: tr("Test Paper") },
+  { id: "key", label: tr("Answer Key") },
+  { id: "both", label: tr("Side by Side") },
 ];
 /** A phone is too narrow for two pages beside each other: it has the two papers as tabs, without Side by Side. */
 const PHONE_TABS = TABS.filter((t) => t.id !== "both");

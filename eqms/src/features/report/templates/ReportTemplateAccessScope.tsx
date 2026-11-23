@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Select } from "@/components/ui/select/Select";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -12,8 +13,8 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 const SCOPES: { value: MetadataScope; label: string }[] = [
   { value: "PERSONAL", label: "Personal" },
   { value: "DEPARTMENT", label: "Department" },
-  { value: "BUSINESS_UNIT", label: "Business Unit" },
-  { value: "SYSTEM", label: "Entire system" },
+  { value: "BUSINESS_UNIT", label: tr("Business Unit") },
+  { value: "SYSTEM", label: tr("Entire system") },
 ];
 const SCOPE_LABEL: Record<string, string> = Object.fromEntries(SCOPES.map((scope) => [scope.value, scope.label]));
 
@@ -81,14 +82,14 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
     { id: "no", header: "No.", locked: true, cell: (_row, index) => (page - 1) * limit + index + 1 },
     {
       id: "name",
-      header: "Access Profile",
+      header: tr("Access Profile"),
       sort: sortOf("name"),
       cell: (row) => <span className="font-medium text-slate-900">{row.name}</span>,
     },
     { id: "code", header: "Code", sort: sortOf("code"), cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">{row.code}</code> },
     {
       id: "scope",
-      header: "Data scope",
+      header: tr("Data scope"),
       sort: sortOf("scope"),
       cell: (row) =>
         editable ? (
@@ -166,12 +167,12 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
         filters={[
           {
             id: "assignment",
-            label: "Assignment",
+            label: tr("Assignment"),
             value: assignment,
             options: [
               { label: "All", value: "ALL" },
-              { label: "With access", value: "ASSIGNED" },
-              { label: "Without access", value: "UNASSIGNED" },
+              { label: tr("With access"), value: "ASSIGNED" },
+              { label: tr("Without access"), value: "UNASSIGNED" },
             ],
             onChange: (value) => {
               setAssignment(value);
@@ -180,7 +181,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
           },
           {
             id: "scope",
-            label: "Data scope",
+            label: tr("Data scope"),
             value: scope,
             options: [{ label: "All", value: "" }, ...scopeChoices],
             onChange: (value) => {

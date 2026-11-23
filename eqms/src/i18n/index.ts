@@ -8,5 +8,5 @@ export {
   readLastLanguage,
   writeLastLanguage,
 } from './language';
-export { translate, translateLabel, tr, setCatalogLanguage, VI_MESSAGES, VI_LABELS } from './catalog';
+export { translate, translateLabel, tr, trFormat, setCatalogLanguage, VI_MESSAGES, VI_LABELS } from './catalog';
 export type { ApplicationLanguage } from '@/config/localization';

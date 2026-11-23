@@ -16,6 +16,7 @@ import { useServerTable } from "@/features/settings/shared/hooks/useServerTable"
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingFilesApi, type TrainingPaperEvidence } from "@/services/api/trainingActivities";
 import { day, saveBlob, when } from "./trainingLabels";
+import { tr } from "@/i18n";
 
 const KIND_LABEL: Record<string, string> = { ATTENDANCE_SHEET: "Attendance sheet", ASSESSMENT: "Test or checklist", CERTIFICATE: "Certificate", OTHER: "Other" };
 const size = (bytes: number) => (bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
@@ -56,7 +57,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       const blob = await trainingFilesApi.personEvidenceFile(personId, activityId, evidence.id, true);
       setShowing({ evidence, url: URL.createObjectURL(blob) });
     } catch (e) {
-      showToast({ type: "error", title: "The file could not be opened", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The file could not be opened"), message: trainingError(e) });
     } finally {
       setBusy(false);
     }
@@ -65,7 +66,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
     try {
       saveBlob(await trainingFilesApi.personEvidenceFile(personId, activityId, evidence.id, false), evidence.originalName);
     } catch (e) {
-      showToast({ type: "error", title: "The file could not be downloaded", message: trainingError(e) });
+      showToast({ type: "error", title: tr("The file could not be downloaded"), message: trainingError(e) });
     }
   }, [personId, activityId, showToast]);
 
@@ -98,13 +99,13 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       id: "received",
       header: "Checked",
       sort: sorted("receivedAt"),
-      cell: (e) => (e.receivedAt ? <Badge color="emerald" title={`${e.receivedByName}, ${when(e.receivedAt)}`}>Checked</Badge> : <Badge color="amber">Not yet</Badge>),
+      cell: (e) => (e.receivedAt ? <Badge color="emerald" title={`${e.receivedByName}, ${when(e.receivedAt)}`}>{tr("Checked")}</Badge> : <Badge color="amber">{tr("Not yet")}</Badge>),
     },
   ];
   // The last column is the pinned Action column with the menu of the row, as in the other tables.
   const action = {
     cell: (e: TrainingPaperEvidence) => (
-      <button type="button" ref={menu.getRef(e.id)} aria-label="More actions" className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(e.id, event)}>
+      <button type="button" ref={menu.getRef(e.id)} aria-label={tr("More actions")} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8" onClick={(event) => menu.toggle(e.id, event)}>
         <MoreVertical className="h-4 w-4" />
       </button>
     ),
@@ -120,7 +121,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       showCancel={false}
       size="2xl"
       className="max-w-5xl backdrop-blur-none"
-      footerExtra={<Button size="sm" variant="outline" onClick={() => void save(showing.evidence)}>Download</Button>}
+      footerExtra={<Button size="sm" variant="outline" onClick={() => void save(showing.evidence)}>{tr("Download")}</Button>}
     >
       {showing.evidence.contentType === WORD ? (
         <OnlyOfficeDocumentViewer key={showing.evidence.id} revisionId={showing.evidence.id} watchForChanges={false} height="68dvh"
@@ -145,10 +146,10 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
     >
       <div className="space-y-4">
         <FilterSearchInput
-          aria-label="Search"
+          aria-label={tr("Search")}
           value={table.searchQuery}
           onChange={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
-          placeholder="Search file, form or person"
+          placeholder={tr("Search file, form or person")}
           debounceMs={0}
         />
         <DataTable
@@ -156,7 +157,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
           getRowKey={(e) => e.id}
           isLoading={table.isLoading}
 
-          emptyState={<TableEmptyState title="No scanned file" description="A test done in the system, or a record written before the files were kept, has none." />}
+          emptyState={<TableEmptyState title={tr("No scanned file")} description={tr("A test done in the system, or a record written before the files were kept, has none.")} />}
           columns={columns}
           action={action}
           pagination={
@@ -171,11 +172,11 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
           <div className="py-1">
             {canShow(actionRow) && (
               <DropdownMenuItem icon={<IconEye className="h-4 w-4" />} onClick={() => { const row = actionRow; menu.close(); void show(row); }}>
-                View
+                {tr("View")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem icon={<IconDownload className="h-4 w-4" />} onClick={() => { const row = actionRow; menu.close(); void save(row); }}>
-              Download
+              {tr("Download")}
             </DropdownMenuItem>
           </div>
         )}

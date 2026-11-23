@@ -7,6 +7,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { trainingProposalApi, type TrainingGroup, type TrainingPerson } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const ALL = "";
 /** One grid for the header and every row, so the columns line up: tick, name, employee ID, position. */
@@ -83,28 +84,28 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
-          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search by name or employee ID…" aria-label="Search people"
+          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={tr("Search by name or employee ID…")} aria-label={tr("Search people")}
           className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
-        {search && <button type="button" onClick={() => { setSearch(""); setPage(1); }} aria-label="Clear search" className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>}
+        {search && <button type="button" onClick={() => { setSearch(""); setPage(1); }} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Select aria-label="Business Unit" value={unit} onChange={(value) => { setUnit(value); setPage(1); }} options={options(units, "All Business Units")} enableSearch />
-        <Select aria-label="Department" value={department} onChange={(value) => { setDepartment(value); setPage(1); }} options={options(departments, "All Departments")} enableSearch />
+        <Select aria-label={tr("Business Unit")} value={unit} onChange={(value) => { setUnit(value); setPage(1); }} options={options(units, "All Business Units")} enableSearch />
+        <Select aria-label={tr("Department")} value={department} onChange={(value) => { setDepartment(value); setPage(1); }} options={options(departments, "All Departments")} enableSearch />
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div ref={scrollerRef} {...dragEvents} className={`max-h-[340px] overflow-auto ${isDragging ? "cursor-grabbing select-none" : "cursor-grab"}`}>
           <div className="min-w-[640px] sm:min-w-0">
           <div className={`${ROW} sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500`}>
-            <label aria-label="Select all shown" className="flex"><Checkbox checked={allShown} onChange={toggleAllShown} disabled={people.length === 0} /></label>
-            <span>Full Name{people.length > 0 ? ` (${people.length})` : ""}</span>
-            <span>Employee ID</span>
-            <span className="hidden sm:block">Department</span>
-            <span className="hidden sm:block">Position</span>
+            <label aria-label={tr("Select all shown")} className="flex"><Checkbox checked={allShown} onChange={toggleAllShown} disabled={people.length === 0} /></label>
+            <span>{tr("Full Name")}{people.length > 0 ? ` (${people.length})` : ""}</span>
+            <span>{tr("Employee ID")}</span>
+            <span className="hidden sm:block">{tr("Department")}</span>
+            <span className="hidden sm:block">{tr("Position")}</span>
           </div>
           <div className="divide-y divide-slate-100">
-          {loading && people.length === 0 && <p className="p-4 text-sm text-slate-500">Loading…</p>}
-          {!loading && people.length === 0 && <p className="p-4 text-sm text-slate-500">Nobody matches. Change the Business Unit, the Department or the search.</p>}
+          {loading && people.length === 0 && <p className="p-4 text-sm text-slate-500">{tr("Loading…")}</p>}
+          {!loading && people.length === 0 && <p className="p-4 text-sm text-slate-500">{tr("Nobody matches. Change the Business Unit, the Department or the search.")}</p>}
           {people.map((p) => {
             return (
               <label key={p.id} className={`${ROW} cursor-pointer text-sm hover:bg-emerald-50/50`}>
@@ -122,7 +123,7 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
           </div>
           </div>
         </div>
-        <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">{chosen.size} selected</div>
+        <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">{chosen.size} {tr("selected")}</div>
         <TablePagination currentPage={page} totalPages={Math.max(1, totalPages)} totalItems={total} itemsPerPage={20} onPageChange={setPage} />
       </div>
     </div>

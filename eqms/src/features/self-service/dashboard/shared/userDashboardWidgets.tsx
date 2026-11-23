@@ -6,6 +6,7 @@ import { Card, CardHeader, GrowthColumns, KpiStrip } from './dashboardUi';
 import type { DashboardResource } from './useDashboardResource';
 import type { DashboardWidget } from './DashboardWidgets';
 import type { DashboardSummary } from '@/services/api/dashboard';
+import { tr } from "@/i18n";
 
 const dash = '—';
 
@@ -30,29 +31,29 @@ export function userDashboardWidgets(summary: DashboardResource<DashboardSummary
   const defaultVisible = inLibraryOnly ? false : undefined;
 
   return [
-    { id: 'user-pending-actions', label: 'My pending actions', width: 'half', defaultVisible, content: <><KpiStrip label="My pending actions" className="!grid-cols-1" cells={[{
-          title: 'My Pending Actions',
+    { id: 'user-pending-actions', label: tr('My pending actions'), width: 'half', defaultVisible, content: <><KpiStrip label={tr("My pending actions")} className="!grid-cols-1" cells={[{
+          title: tr('My Pending Actions'),
           accent: '#34d399',
           value: s ? s.myPendingTasks : dash,
           chip: s && awaitingAction ? `${share(s.myPendingTasks, awaitingAction)}% of awaiting` : undefined,
           footValue: s ? (awaitingAction ?? 0) : dash,
           footLabel: 'Awaiting review or approval',
         }]} />{error('Totals could not be loaded.')}</> },
-    { id: 'user-pending-review', label: 'Pending review', width: 'half', defaultVisible, content: <><KpiStrip label="Pending review" className="!grid-cols-1" cells={[stage(s?.pendingReview, '#10b981', 'Pending Review')]} />{error('Pending review could not be loaded.')}</> },
-    { id: 'user-pending-approval', label: 'Pending approval', width: 'half', defaultVisible, content: <><KpiStrip label="Pending approval" className="!grid-cols-1" cells={[stage(s?.pendingApproval, '#059669', 'Pending Approval')]} />{error('Pending approval could not be loaded.')}</> },
-    { id: 'user-effective-documents', label: 'Effective documents', width: 'half', defaultVisible, content: <><KpiStrip label="Effective documents" className="!grid-cols-1" cells={[{
-          title: 'Effective documents',
+    { id: 'user-pending-review', label: tr('Pending review'), width: 'half', defaultVisible, content: <><KpiStrip label={tr("Pending review")} className="!grid-cols-1" cells={[stage(s?.pendingReview, '#10b981', 'Pending Review')]} />{error('Pending review could not be loaded.')}</> },
+    { id: 'user-pending-approval', label: tr('Pending approval'), width: 'half', defaultVisible, content: <><KpiStrip label={tr("Pending approval")} className="!grid-cols-1" cells={[stage(s?.pendingApproval, '#059669', 'Pending Approval')]} />{error('Pending approval could not be loaded.')}</> },
+    { id: 'user-effective-documents', label: tr('Effective documents'), width: 'half', defaultVisible, content: <><KpiStrip label={tr("Effective documents")} className="!grid-cols-1" cells={[{
+          title: tr('Effective documents'),
           accent: '#6ee7b7',
           value: s ? s.totalEffectiveDocuments : dash,
           chip: effectiveShare === undefined ? undefined : `${effectiveShare}% of all`,
           footValue: s ? s.totalDocuments : dash,
           footLabel: 'Total documents',
         }]} />{error('Effective documents could not be loaded.')}</> },
-    { id: 'user-pending-training', label: 'Pending training', width: 'half', defaultVisible, content: <><KpiStrip label="Pending training" className="!grid-cols-1" cells={[stage(s?.pendingTraining, '#14b8a6', 'Pending Training')]} />{error('Pending training could not be loaded.')}</> },
+    { id: 'user-pending-training', label: tr('Pending training'), width: 'half', defaultVisible, content: <><KpiStrip label={tr("Pending training")} className="!grid-cols-1" cells={[stage(s?.pendingTraining, '#14b8a6', 'Pending Training')]} />{error('Pending training could not be loaded.')}</> },
 
-    { id: 'document-activity', label: 'Document activity', width: 'half', defaultVisible, content: <DocumentActivityPanel /> },
-    { id: 'workflow-pipeline', label: 'Workflow pipeline', width: 'half', defaultVisible, content: <Card aria-label="Workflow pipeline">
-        <CardHeader title="Workflow pipeline" subtitle={s ? `${openItems.toLocaleString()} revisions in review, approval or training` : 'Revisions waiting in each stage'} />
+    { id: 'document-activity', label: tr('Document activity'), width: 'half', defaultVisible, content: <DocumentActivityPanel /> },
+    { id: 'workflow-pipeline', label: tr('Workflow pipeline'), width: 'half', defaultVisible, content: <Card aria-label={tr("Workflow pipeline")}>
+        <CardHeader title={tr("Workflow pipeline")} subtitle={s ? `${openItems.toLocaleString()} revisions in review, approval or training` : 'Revisions waiting in each stage'} />
         {s ? (
           <GrowthColumns
             columns={[
@@ -66,6 +67,6 @@ export function userDashboardWidgets(summary: DashboardResource<DashboardSummary
         )}
       </Card> },
 
-    { id: 'my-documents', label: 'My documents', width: 'half', defaultVisible, content: <MyDocumentsPanel /> },
+    { id: 'my-documents', label: tr('My documents'), width: 'half', defaultVisible, content: <MyDocumentsPanel /> },
   ];
 }

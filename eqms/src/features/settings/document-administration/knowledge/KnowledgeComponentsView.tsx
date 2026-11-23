@@ -27,14 +27,15 @@ import { knowledgeApi, type KnowledgeComponent } from "@/services/api/knowledge"
 import { formatDateTime } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const COLUMNS = [
   { key: "name", label: "Name" },
-  { key: "sourceField", label: "Source Field" },
+  { key: "sourceField", label: tr("Source Field") },
   { key: "usedByHierarchies", label: "Used By" },
   { key: "active", label: "Status" },
-  { key: "updatedAt", label: "Last Updated" },
-  { key: "updatedBy", label: "Updated By" },
+  { key: "updatedAt", label: tr("Last Updated") },
+  { key: "updatedBy", label: tr("Updated By") },
 ] as const;
 
 const STATUS_OPTIONS = [
@@ -87,7 +88,7 @@ export const KnowledgeComponentsView: React.FC = () => {
       setTotal(result.pagination.total);
       setTotalPages(result.pagination.totalPages);
     } catch (error) {
-      showToast({ type: "error", title: "Failed to load", message: errorMessage(error, "Unable to load the components.") });
+      showToast({ type: "error", title: tr("Failed to load"), message: errorMessage(error, "Unable to load the components.") });
     } finally {
       setLoading(false);
     }
@@ -112,12 +113,12 @@ export const KnowledgeComponentsView: React.FC = () => {
     if (!deleteTarget) return;
     try {
       await knowledgeApi.deleteComponent(deleteTarget.id);
-      showToast({ type: "success", title: "Component deleted", message: `"${deleteTarget.name}" was deleted.` });
+      showToast({ type: "success", title: tr("Component deleted"), message: `"${deleteTarget.name}" was deleted.` });
       setDeleteTarget(null);
       await load();
     } catch (error) {
       setDeleteTarget(null);
-      showToast({ type: "error", title: "Could not delete", message: errorMessage(error, "Unable to delete the component.") });
+      showToast({ type: "error", title: tr("Could not delete"), message: errorMessage(error, "Unable to delete the component.") });
     }
   };
 
@@ -130,14 +131,14 @@ export const KnowledgeComponentsView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell29, cellClassName: "text-center text-slate-500 font-medium", cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     { id: "name", header: "Name", label: "Name", sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") }, cellClassName: "text-slate-700", cell: (row) => (<>
       <span className="font-medium text-emerald-600 cursor-pointer hover:underline" onClick={() => navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS_EDIT(row.id))}>{row.name}</span>
-      {row.systemDefined && <Badge size="sm" color="blue" className="ml-2">System</Badge>}
+      {row.systemDefined && <Badge size="sm" color="blue" className="ml-2">{tr("System")}</Badge>}
       {row.description && <div className="text-xs text-slate-500 max-w-md truncate" title={row.description}>{row.description}</div>}
     </>) },
     { id: "sourceLabel", header: "Source", label: "Source", cell: (row) => row.sourceLabel },
     { id: "usedByHierarchies", header: "Used By", label: "Used By", cell: (row) => `${row.usedByHierarchies} ${row.usedByHierarchies === 1 ? "hierarchy" : "hierarchies"}` },
     { id: "active", header: "Status", label: "Status", sort: { direction: sortKey === "active" ? sortDir : undefined, onSort: () => handleSort("active") }, cell: (row) => <Badge size="sm" color={flagColor(row.active)} pill>{row.active ? "Active" : "Inactive"}</Badge> },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (row) => (row.updatedAt ? formatDateTime(row.updatedAt) : "-") },
-    { id: "updatedByName", header: "Updated By", label: "Updated By", cell: (row) => row.updatedByName || "-" },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (row) => (row.updatedAt ? formatDateTime(row.updatedAt) : "-") },
+    { id: "updatedByName", header: tr("Updated By"), label: tr("Updated By"), cell: (row) => row.updatedByName || "-" },
   ];
   const componentAction: DataTableAction<ComponentRow> = {
     header: "Action",
@@ -153,12 +154,12 @@ export const KnowledgeComponentsView: React.FC = () => {
   return (
     <div className="space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
-        title="Knowledge Category Components"
+        title={tr("Knowledge Category Components")}
         breadcrumbItems={knowledgeComponents(navigate)}
         actions={canManage ? (
           <Button size="sm" className="flex items-center gap-2 whitespace-nowrap" onClick={() => navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS_NEW)}>
             <Plus className="h-4 w-4" />
-            New
+            {tr("New")}
           </Button>
         ) : undefined}
       />
@@ -167,12 +168,12 @@ export const KnowledgeComponentsView: React.FC = () => {
         <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><Search className="h-4 w-4 text-slate-400" /></div>
                   <input
-                    type="text" placeholder="Search by name, source or description..." value={search}
+                    type="text" placeholder={tr("Search by name, source or description...")} value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-colors placeholder:text-slate-400"
                   />
@@ -182,7 +183,7 @@ export const KnowledgeComponentsView: React.FC = () => {
                 </div>
                 <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -191,13 +192,13 @@ export const KnowledgeComponentsView: React.FC = () => {
   trailing={<div className="hidden md:block">{componentControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setPage(1);
       }}
-      placeholder={"Search by name, source or description..."}
+      placeholder={tr("Search by name, source or description...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -216,7 +217,7 @@ export const KnowledgeComponentsView: React.FC = () => {
   dates={[
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -232,11 +233,11 @@ export const KnowledgeComponentsView: React.FC = () => {
 >
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
-                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">Search</label>
+                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">{tr("Search")}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-slate-400" /></div>
                   <input
-                    type="text" placeholder="Search by name, source or description..." value={search}
+                    type="text" placeholder={tr("Search by name, source or description...")} value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     className="block w-full pl-10 pr-10 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
                   />
@@ -245,12 +246,12 @@ export const KnowledgeComponentsView: React.FC = () => {
                   )}
                 </div>
               </div>
-              <Select label="Status" value={status} onChange={(value) => { setStatus(String(value)); setPage(1); }} options={STATUS_OPTIONS} />
+              <Select label={tr("Status")} value={status} onChange={(value) => { setStatus(String(value)); setPage(1); }} options={STATUS_OPTIONS} />
               <DateRangePicker
-                label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo}
+                label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo}
                 onStartDateChange={(value) => { setUpdatedFrom(value); setPage(1); }}
                 onEndDateChange={(value) => { setUpdatedTo(value); setPage(1); }}
-                placeholder="Select date range" autoApply
+                placeholder={tr("Select date range")} autoApply
               />
               <div className="filter-actions flex items-end gap-2">
                 <ClearFiltersButton onClearSearch={() => setSearch("")} onClear={clearFilters} disabled={!hasFilters} />
@@ -286,7 +287,7 @@ export const KnowledgeComponentsView: React.FC = () => {
                 />
               </>
             ) : (
-              <TableEmptyState title="No Components Found" description="We couldn't find any components matching your filters. Try adjusting your search criteria." />
+              <TableEmptyState title={tr("No Components Found")} description={tr("We couldn't find any components matching your filters. Try adjusting your search criteria.")} />
             )}
           </div>
         </div>
@@ -297,7 +298,7 @@ export const KnowledgeComponentsView: React.FC = () => {
           <div className="py-1 whitespace-nowrap">
             <button onClick={() => { close(); navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS_EDIT(menuRow.id)); }} className={menuItemClass}>
               <Pencil className="h-4 w-4 flex-shrink-0" />
-              <span className="font-medium text-slate-500">{canManage ? "Edit Component" : "View Component"}</span>
+              <span className="font-medium text-slate-500">{canManage ? tr("Edit Component") : "View Component"}</span>
             </button>
             {canManage && (
               <button
@@ -306,7 +307,7 @@ export const KnowledgeComponentsView: React.FC = () => {
                 title={deleteBlockedReason(menuRow)}
                 className={cn(menuItemClass, deleteBlockedReason(menuRow) && menuItemDisabledClass)}>
                 <Trash2 className="h-4 w-4 flex-shrink-0" />
-                <span className="font-medium text-slate-500">Delete Component</span>
+                <span className="font-medium text-slate-500">{tr("Delete Component")}</span>
               </button>
             )}
           </div>
@@ -315,13 +316,13 @@ export const KnowledgeComponentsView: React.FC = () => {
 
       <AlertModal
         isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void confirmDelete()} type="warning"
-        title="Delete Component"
+        title={tr("Delete Component")}
         description={`Delete "${deleteTarget?.name ?? ""}"? This is recorded in the Audit Trail and cannot be undone.`}
         confirmText="Yes, Delete" cancelText="Cancel" showCancel
       />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <button key={opt.value} onClick={() => { setStatus(opt.value); setPage(1); }} className={optionClass(status === opt.value)}>
@@ -331,12 +332,12 @@ export const KnowledgeComponentsView: React.FC = () => {
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Last Updated Range" isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
+        <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedSections.has("updated")} onToggle={() => toggleSection("updated")}>
           <div className="pt-2 pb-4">
             <DateRangePicker label="" startDate={updatedFrom} endDate={updatedTo}
               onStartDateChange={(value) => { setUpdatedFrom(value); setPage(1); }}
               onEndDateChange={(value) => { setUpdatedTo(value); setPage(1); }}
-              placeholder="Select date range" autoApply />
+              placeholder={tr("Select date range")} autoApply />
           </div>
         </FilterAccordionItem>
       </FilterDrawer>

@@ -66,6 +66,7 @@ import { formatDateTime } from "@/utils";
 import { Shield } from "lucide-react";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { tr } from "@/i18n";
 
 // --- Types ---
 type TabType =
@@ -577,9 +578,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision || !canRequestControlledCopy) {
       showToast({
         type: "error",
-        title: "Controlled copy request unavailable",
+        title: tr("Controlled copy request unavailable"),
         message:
-          "Request Controlled Copy is available only when the revision is Effective and the document master is Active.",
+          tr("Request Controlled Copy is available only when the revision is Effective and the document master is Active."),
         duration: 3000,
       });
       return;
@@ -604,9 +605,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     if (!currentRevision || !canCancelCurrentRevision) {
       showToast({
         type: "error",
-        title: "Cancel unavailable",
+        title: tr("Cancel unavailable"),
         message:
-          "Cancel Revision is only available while the revision is in Draft.",
+          tr("Cancel Revision is only available while the revision is in Draft."),
         duration: 3000,
       });
       return;
@@ -659,7 +660,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       setCancelReasonError("");
       showToast({
         type: "success",
-        title: "Revision cancelled",
+        title: tr("Revision cancelled"),
         message:
           updated.message ||
           "The revision has been moved to Closed - Cancelled.",
@@ -668,7 +669,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Cancel failed",
+        title: tr("Cancel failed"),
         message:
           (error as any)?.response?.data?.error?.message ||
           "Unable to cancel revision.",
@@ -732,7 +733,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       const queued = await documentApi.regenerateRevisionSnapshot(currentRevision.id);
       setRevision({ ...queued, signatures: queued.signatures || [] });
       await reloadRevisionPreview(queued);
-      showToast({ type: "success", title: "Regeneration Started", message: "The PDF is being regenerated and will update automatically." });
+      showToast({ type: "success", title: tr("Regeneration Started"), message: "The PDF is being regenerated and will update automatically." });
       pollSnapshotInBackground({
         detail: queued,
         fetchLive: () => documentApi.getRevisionByIdSnapshot(currentRevision.id, { force: true }),
@@ -742,7 +743,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         },
       });
     } catch {
-      showToast({ type: "error", title: "Regenerate Failed", message: "Failed to regenerate the PDF." });
+      showToast({ type: "error", title: tr("Regenerate Failed"), message: "Failed to regenerate the PDF." });
     } finally {
       setIsRegeneratingPdf(false);
     }
@@ -763,8 +764,8 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       await reloadRevisionPreview(rawDetail);
       showToast({
         type: "success",
-        title: "Publish successful",
-        message: "Revision has been published successfully.",
+        title: tr("Publish successful"),
+        message: tr("Revision has been published successfully."),
       });
 
       // The published PDF regeneration round-trip can take 15-20s (two Microsoft Graph
@@ -792,7 +793,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         console.error("Failed to publish revision", error);
         showToast({
           type: "error",
-          title: "Publish failed",
+          title: tr("Publish failed"),
           message:
             responseData?.error?.message ||
             responseData?.message ||
@@ -824,7 +825,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to add note",
+        title: tr("Unable to add note"),
         message:
           (error as any)?.response?.data?.message ||
           "Working note could not be saved.",
@@ -853,7 +854,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
     } catch (error) {
       showToast({
         type: "error",
-        title: "Unable to delete note",
+        title: tr("Unable to delete note"),
         message:
           (error as any)?.response?.data?.message ||
           "Working note could not be deleted.",
@@ -963,15 +964,15 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   }, [revisionId, reloadRevisionPreview, loadReviewComments]);
 
   const tabs = [
-    { id: "general" as TabType, label: "General Information" },
-    { id: "workingNotes" as TabType, label: "Working Notes" },
-    { id: "infoFromDocument" as TabType, label: "Information from Document" },
-    { id: "training" as TabType, label: "Training Information" },
+    { id: "general" as TabType, label: tr("General Information") },
+    { id: "workingNotes" as TabType, label: tr("Working Notes") },
+    { id: "infoFromDocument" as TabType, label: tr("Information from Document") },
+    { id: "training" as TabType, label: tr("Training Information") },
     { id: "reviewers" as TabType, label: "Reviewers" },
     { id: "approvers" as TabType, label: "Approvers" },
     { id: "document" as TabType, label: "Document" },
-    { id: "signatures" as TabType, label: "Signatures" },
-    { id: "audit" as TabType, label: "Audit Trail" },
+    { id: "signatures" as TabType, label: tr("Signatures") },
+    { id: "audit" as TabType, label: tr("Audit Trail") },
   ];
 
   return (
@@ -1038,14 +1039,14 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onConfirm={() => setShowWarningModal(false)}
-        title="Cannot Publish Yet"
+        title={tr("Cannot Publish Yet")}
         type="warning"
         confirmText="OK"
         showCancel={false}
         description={
           <div className="space-y-3">
             <p className="font-semibold text-slate-900">
-              One or more Related Documents are not yet Ready for Publishing:
+              {tr("One or more Related Documents are not yet Ready for Publishing:")}
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {nonEffectiveDocs.map((doc, idx) => (
@@ -1058,7 +1059,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Bring the listed document(s) to Ready for Publishing first, then publish again.
+              {tr("Bring the listed document(s) to Ready for Publishing first, then publish again.")}
             </p>
           </div>
         }
@@ -1071,14 +1072,14 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         isOpen={showBatchPublishConfirmModal}
         onClose={() => setShowBatchPublishConfirmModal(false)}
         onConfirm={handleBatchPublishConfirm}
-        title="Publish Together With Related Documents"
+        title={tr("Publish Together With Related Documents")}
         type="warning"
         confirmText="Continue to Sign"
         cancelText="Cancel"
         description={
           <div className="space-y-3">
             <p className="font-semibold text-slate-900">
-              Publishing this document will also publish the following Related Document(s):
+              {tr("Publishing this document will also publish the following Related Document(s):")}
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {(currentRevision?.relatedDocumentsPublishingTogether ?? []).map((label) => (
@@ -1086,7 +1087,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              All of the above will become Effective at the same time, in this single action.
+              {tr("All of the above will become Effective at the same time, in this single action.")}
             </p>
           </div>
         }
@@ -1101,7 +1102,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       {/* Header: Title + Breadcrumb + Actions */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title="Revision Details"
+          title={tr("Revision Details")}
           breadcrumbItems={revisionDetail(
             navigateTo,
             state?.workspaceState?.from ||
@@ -1116,7 +1117,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                 variant="outline-emerald"
                 className="whitespace-nowrap gap-2"
               >
-                Back
+                {tr("Back")}
               </Button>
               {trainingActivityId && (
                 <Button
@@ -1125,7 +1126,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   variant="outline-emerald"
                   className="whitespace-nowrap"
                 >
-                  Training Details
+                  {tr("Training Details")}
                 </Button>
               )}
               {canCancelCurrentRevision && (
@@ -1135,7 +1136,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   className="whitespace-nowrap gap-2"
                   onClick={handleCancelRevision}
                 >
-                  Cancel
+                  {tr("Cancel")}
                 </Button>
               )}
               {!isTemplateRevision && (canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
@@ -1145,7 +1146,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   className="whitespace-nowrap gap-2"
                   onClick={handleOpenPublishingWorkspace}
                 >
-                  Open Publishing Template
+                  {tr("Open Publishing Template")}
                 </Button>
               )}
               {isTemplateRevision && isReadyForPublishing && canPublishCurrentRevision && (
@@ -1155,7 +1156,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   className="whitespace-nowrap gap-2"
                   onClick={handlePublishClick}
                 >
-                  Publish
+                  {tr("Publish")}
                 </Button>
               )}
               {canRequestControlledCopy && (
@@ -1165,7 +1166,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                   className="whitespace-nowrap gap-2"
                   onClick={handleRequestControlledCopy}
                 >
-                  Request Controlled Copy
+                  {tr("Request Controlled Copy")}
                 </Button>
               )}
             </>
@@ -1327,7 +1328,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
               records={auditTrailRows.length > 0 ? auditTrailRows : undefined}
               entityId={currentRevision?.id || ""}
               entityType="Revision"
-              emptyMessage="No audit trail records available for this revision"
+              emptyMessage={tr("No audit trail records available for this revision")}
             />
           )}
         </div>
@@ -1341,7 +1342,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
           variant="outline-emerald"
           className="whitespace-nowrap gap-2"
         >
-          Back
+          {tr("Back")}
         </Button>
         {trainingActivityId && (
           <Button
@@ -1350,7 +1351,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             variant="outline-emerald"
             className="whitespace-nowrap"
           >
-            Training Details
+            {tr("Training Details")}
           </Button>
         )}
         {canCancelCurrentRevision && (
@@ -1360,7 +1361,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handleCancelRevision}
           >
-            Cancel
+            {tr("Cancel")}
           </Button>
         )}
         {!isTemplateRevision && (canOpenPublishingWorkspace || (isReadyForPublishing && canPublishCurrentRevision)) && (
@@ -1370,7 +1371,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handleOpenPublishingWorkspace}
           >
-            Open Publishing Template
+            {tr("Open Publishing Template")}
           </Button>
         )}
         {isTemplateRevision && isReadyForPublishing && canPublishCurrentRevision && (
@@ -1380,7 +1381,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handlePublishClick}
           >
-            Publish
+            {tr("Publish")}
           </Button>
         )}
         {canRequestControlledCopy && (
@@ -1390,7 +1391,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
             className="whitespace-nowrap gap-2"
             onClick={handleRequestControlledCopy}
           >
-            Request Controlled Copy
+            {tr("Request Controlled Copy")}
           </Button>
         )}
       </div>
@@ -1398,7 +1399,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       {/* Sub-tab: Document Master */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav
-          tabs={[{ id: "originalDocument", label: "Document Master" }]}
+          tabs={[{ id: "originalDocument", label: tr("Document Master") }]}
           activeTab="originalDocument"
           onChange={() => {}}
           layoutId="revision-detail-original-tab"
@@ -1419,9 +1420,9 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
           setCancelReasonError("");
         }}
         onConfirm={handleCancelConfirm}
-        title="Cancel Revision"
-        description="Cancelling is available only for a Draft revision. It moves this revision to Closed - Cancelled and does not change the Document Master."
-        confirmText="Cancel Revision"
+        title={tr("Cancel Revision")}
+        description={tr("Cancelling is available only for a Draft revision. It moves this revision to Closed - Cancelled and does not change the Document Master.")}
+        confirmText={tr("Cancel Revision")}
         cancelText="Keep Working"
         confirmVariant="destructive"
         isLoading={isCancelSubmitting}
@@ -1431,7 +1432,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         <div className="space-y-3">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Activity Summary <span className="text-red-500">*</span>
+              {tr("Activity Summary")} <span className="text-red-500">*</span>
             </label>
             <textarea
               value={cancelReason}
@@ -1439,7 +1440,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
                 setCancelReason(e.target.value);
                 setCancelReasonError("");
               }}
-              placeholder="Enter the reason for cancelling this revision..."
+              placeholder={tr("Enter the reason for cancelling this revision...")}
               rows={4}
               className={cn(
                 "w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition-colors resize-none",

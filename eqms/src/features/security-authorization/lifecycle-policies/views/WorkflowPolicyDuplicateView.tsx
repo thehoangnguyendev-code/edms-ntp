@@ -18,6 +18,7 @@ import { lifecyclePoliciesSubPage } from "@/components/ui/breadcrumb/breadcrumbs
 import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicy } from "../types";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr, trFormat } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -81,11 +82,11 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         changeReason: changeReason || undefined,
         signatureToken: sig.signatureToken,
       });
-      showToast({ type: "success", title: "Policy Duplicated", message: "Policy duplicated as inactive." });
+      showToast({ type: "success", title: tr("Policy Duplicated"), message: "Policy duplicated as inactive." });
       leaveAfterSave();
     } catch (err) {
       const { message } = extractApiError(err);
-      showToast({ type: "error", title: "Save Failed", message });
+      showToast({ type: "error", title: tr("Save Failed"), message });
     } finally {
       setSaving(false);
     }
@@ -99,8 +100,8 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
-        <p className="text-sm">You do not have permission to manage Workflow Authorization policies.</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
+        <p className="text-sm">{tr("You do not have permission to manage Workflow Authorization policies.")}</p>
       </div>
     );
   }
@@ -109,14 +110,14 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Duplicate Policy"
+          title={tr("Duplicate Policy")}
           breadcrumbItems={lifecyclePoliciesSubPage(go, "Transition Policies", "Duplicate Policy")}
-          actions={<Button variant="outline-emerald" size="sm" onClick={handleBack}>Back</Button>}
+          actions={<Button variant="outline-emerald" size="sm" onClick={handleBack}>{tr("Back")}</Button>}
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex flex-col items-center text-center gap-3">
           <Copy className="h-12 w-12 text-slate-300" />
-          <p className="text-sm font-medium text-slate-700">Source policy not found</p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={handleBack}>Back to Workflow Authorization</Button>
+          <p className="text-sm font-medium text-slate-700">{tr("Source policy not found")}</p>
+          <Button variant="outline" size="sm" className="mt-2" onClick={handleBack}>{tr("Back to Workflow Authorization")}</Button>
         </div>
       </div>
     );
@@ -126,12 +127,12 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
     <div className="flex flex-col gap-4 md:gap-6">
       {signatureModal}
       <PageHeader
-        title="Duplicate Policy"
+        title={tr("Duplicate Policy")}
         breadcrumbItems={lifecyclePoliciesSubPage(go, "Transition Policies", "Duplicate Policy")}
         actions={
           <>
             <Button variant="outline-emerald" size="sm" onClick={handleBack} className="whitespace-nowrap">
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button size="sm" variant="outline-emerald" onClick={() => void handleSave()} disabled={saving} className="whitespace-nowrap">
               {saving ? "Saving…" : "Duplicate"}
@@ -141,11 +142,10 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
       />
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">
-        The duplicated policy will be created as <b>inactive</b> so it can be reviewed and configured before enabling.
-        Use "Edit Policy" afterwards to adjust its permission, actors, or scope.
+        {tr("The duplicated policy will be created as")} <b>{tr("inactive")}</b> {tr("so it can be reviewed and configured before enabling. Use \"Edit Policy\" afterwards to adjust its permission, actors, or scope.")}
       </div>
 
-      <FormSection title="Source Policy" icon={<Copy className="h-4 w-4" />} description="Read-only summary of the policy being duplicated." contentClassName="p-4 md:p-5">
+      <FormSection title={tr("Source Policy")} icon={<Copy className="h-4 w-4" />} description={tr("Read-only summary of the policy being duplicated.")} contentClassName="p-4 md:p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {readOnlyField("Module", policy.moduleLabel ?? policy.moduleKey)}
           {readOnlyField("Workflow", policy.workflowLabel ?? policy.workflowKey)}
@@ -157,10 +157,10 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
           {readOnlyField("Priority", String(policy.priority))}
         </div>
         <div className="mt-4">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Actors</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Actors")}</label>
           <div className="flex flex-wrap gap-1.5">
             {policy.actors.length === 0 ? (
-              <span className="text-sm text-slate-400">(none)</span>
+              <span className="text-sm text-slate-400">{tr("(none)")}</span>
             ) : (
               policy.actors.map((a, i) => (
                 <Badge key={i} color="slate" size="sm">
@@ -173,14 +173,14 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         </div>
       </FormSection>
 
-      <FormSection title="New Policy" icon={<FilePlus className="h-4 w-4" />} contentClassName="p-4 md:p-5">
+      <FormSection title={tr("New Policy")} icon={<FilePlus className="h-4 w-4" />} contentClassName="p-4 md:p-5">
         <div>
-          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Change Reason</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Change Reason")}</label>
           <input
             type="text"
             value={changeReason}
             onChange={(e) => setChangeReason(e.target.value)}
-            placeholder="Optional reason for this duplication..."
+            placeholder={tr("Optional reason for this duplication...")}
             className="h-9 w-full border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>

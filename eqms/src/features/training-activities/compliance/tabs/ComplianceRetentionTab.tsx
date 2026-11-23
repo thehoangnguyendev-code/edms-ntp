@@ -9,6 +9,7 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { trainingError, trainingFollowUpApi, type TrainingRetentionRow } from "@/services/api/trainingActivities";
 import { TrainingPersonName } from "../../shared/TrainingPersonName";
 import { day } from "../../shared/trainingLabels";
+import { tr, trFormat } from "@/i18n";
 
 const STATE_LABEL: Record<string, string> = { RETAINED: "Kept", ENDED: "Retention ended" };
 
@@ -32,11 +33,11 @@ export function ComplianceRetentionTab({ departmentId, departmentFilter }: { dep
 
   const columns: DataTableColumn<TrainingRetentionRow>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
-    { id: "employeeCode", header: "Employee ID", sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
+    { id: "employeeCode", header: tr("Employee ID"), sort: sorted("employeeCode"), cell: (r) => r.employeeCode ?? "—" },
     { id: "name", header: "Full Name", sort: sorted("fullName"), cell: (r) => <TrainingPersonName fullName={r.fullName} avatar={r.avatar} /> },
     { id: "position", header: "Position", sort: sorted("position"), cell: (r) => r.position ?? "—" },
     { id: "left", header: "Left On", sort: sorted("terminationDate"), cell: (r) => day(r.terminationDate) },
-    { id: "until", header: "Kept Until", sort: sorted("retainedUntil"), cell: (r) => day(r.retainedUntil) },
+    { id: "until", header: tr("Kept Until"), sort: sorted("retainedUntil"), cell: (r) => day(r.retainedUntil) },
     { id: "records", header: "Records", sort: sorted("records"), cell: (r) => r.records },
     { id: "state", header: "Status", cell: (r) => <Badge color={r.ended ? "amber" : "emerald"}>{r.ended ? STATE_LABEL.ENDED : STATE_LABEL.RETAINED}</Badge> },
   ];
@@ -49,11 +50,11 @@ export function ComplianceRetentionTab({ departmentId, departmentFilter }: { dep
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-500">
-        Records of people who have left are kept {years ?? "…"} years after the day they left. A record whose retention has ended is only marked here; it is not deleted, and disposing of it follows a separate procedure with its own approval.
+          {trFormat("Records of people who have left are kept {years} years after the day they left. A record whose retention has ended is only marked here; it is not deleted, and disposing of it follows a separate procedure with its own approval.", { years: years ?? "…" })}
       </p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <ReportListToolbar
-        searchPlaceholder="Search employee…"
+        searchPlaceholder={tr("Search employee…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={[]} hasActiveFilters={Boolean(state || table.searchQuery)}
@@ -63,7 +64,7 @@ export function ComplianceRetentionTab({ departmentId, departmentFilter }: { dep
         <DataTable
           rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
           columns={columns} columnLayout={layout}
-          emptyState={<TableEmptyState title="Nobody has left" description="No person of the department who has left has training records." />}
+          emptyState={<TableEmptyState title={tr("Nobody has left")} description={tr("No person of the department who has left has training records.")} />}
           pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
         />
       </ReportListToolbar>

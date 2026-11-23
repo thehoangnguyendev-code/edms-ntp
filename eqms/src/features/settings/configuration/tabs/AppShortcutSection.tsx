@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button/Button";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { useToast } from "@/components/ui/toast/Toast";
 import type { GeneralConfig } from "../types";
+import { tr, trFormat } from "@/i18n";
 
 export const APP_ICON_MIN_SIDE = 512;
 export const APP_ICON_MAX_BYTES = 3 * 1024 * 1024;
@@ -35,12 +36,12 @@ export const appIconProblem = (
   size?: { width: number; height: number },
 ): string | null => {
   if (file.type !== "image/png" && file.type !== "image/jpeg")
-    return "Use a PNG or JPEG image.";
+    return tr("Use a PNG or JPEG image.");
   if (file.size > APP_ICON_MAX_BYTES)
-    return `The icon must be smaller than ${Math.round(APP_ICON_MAX_BYTES / 1024 / 1024)} MB.`;
+    return trFormat("The icon must be smaller than {size} MB.", { size: Math.round(APP_ICON_MAX_BYTES / 1024 / 1024) });
   if (size) {
     if (size.width < APP_ICON_MIN_SIDE || size.height < APP_ICON_MIN_SIDE)
-      return `The icon must be at least ${APP_ICON_MIN_SIDE} x ${APP_ICON_MIN_SIDE} pixels (this one is ${size.width} x ${size.height}).`;
+      return trFormat("The icon must be at least {min} x {min} pixels (this one is {width} x {height}).", { min: APP_ICON_MIN_SIDE, width: size.width, height: size.height });
     if (
       Math.max(size.width, size.height) >
       2 * Math.min(size.width, size.height)
@@ -107,21 +108,21 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
     if (!file) return;
     const early = appIconProblem(file);
     if (early) {
-      showToast({ type: "error", title: "Invalid icon", message: early });
+      showToast({ type: "error", title: tr("Invalid icon"), message: early });
       return;
     }
     try {
       const dataUrl = await readAsDataUrl(file);
       const problem = appIconProblem(file, await measure(dataUrl));
       if (problem) {
-        showToast({ type: "error", title: "Invalid icon", message: problem });
+        showToast({ type: "error", title: tr("Invalid icon"), message: problem });
         return;
       }
       onChange({ ...config, appIcon: dataUrl });
     } catch (error) {
       showToast({
         type: "error",
-        title: "Invalid icon",
+        title: tr("Invalid icon"),
         message:
           error instanceof Error
             ? error.message
@@ -136,13 +137,13 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
       data-testid="app-shortcut-section"
     >
       <h3 className="mb-3 text-sm font-semibold text-slate-900">
-        Mobile App Shortcut (Home Screen)
+        {tr("Mobile App Shortcut (Home Screen)")}
       </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-              Shortcut Icon
+              {tr("Shortcut Icon")}
             </label>
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
               <div
@@ -162,7 +163,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                   variant="outline-emerald"
                   onClick={() => input.current?.click()}
                 >
-                  Upload Icon
+                  {tr("Upload Icon")}
                 </Button>
                 {icon && (
                   <Button
@@ -171,13 +172,13 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                     variant="ghost"
                     onClick={() => onChange({ ...config, appIcon: "" })}
                   >
-                    Reset
+                    {tr("Reset")}
                   </Button>
                 )}
               </div>
               {!icon && (
                 <span className="text-xs text-slate-500">
-                  Built-in icon in use
+                  {tr("Built-in icon in use")}
                 </span>
               )}
             </div>
@@ -186,16 +187,14 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
               type="file"
               accept="image/png,image/jpeg"
               className="hidden"
-              aria-label="Upload shortcut icon"
+              aria-label={tr("Upload shortcut icon")}
               onChange={(e) => {
                 void pick(e.target.files?.[0]);
                 e.currentTarget.value = "";
               }}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Square PNG or JPEG, at least {APP_ICON_MIN_SIDE} x{" "}
-              {APP_ICON_MIN_SIDE} pixels, max 3 MB. Keep the logo away from the
-              edges: Android crops it to a circle or a rounded shape.
+              {trFormat("Square PNG or JPEG, at least {min} x {min} pixels, max 3 MB. Keep the logo away from the edges: Android crops it to a circle or a rounded shape.", { min: APP_ICON_MIN_SIDE })}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -204,7 +203,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                 htmlFor="app-short-name"
                 className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize"
               >
-                Shortcut Label
+                {tr("Shortcut Label")}
               </label>
               <input
                 id="app-short-name"
@@ -226,13 +225,12 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                 )}
               />
               <p className="mt-1 text-xs text-slate-500">
-                Under the icon, up to {APP_SHORT_NAME_MAX} characters. Empty
-                uses the display name.
+                {trFormat("Under the icon, up to {count} characters. Empty uses the display name.", { count: APP_SHORT_NAME_MAX })}
               </p>
             </div>
             <div>
               <span className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-                Icon Background
+                {tr("Icon Background")}
               </span>
               <ColorPickerInput
                 value={background}
@@ -241,8 +239,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                 }
               />
               <p className="mt-1 text-xs text-slate-500">
-                Behind the logo. Needed for a transparent logo: iOS would show
-                black.
+                {tr("Behind the logo. Needed for a transparent logo: iOS would show black.")}
               </p>
             </div>
           </div>
@@ -250,7 +247,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
 
         <div>
           <span className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5">
-            Preview on a phone
+            {tr("Preview on a phone")}
           </span>
           <div className="flex items-start justify-center gap-6 rounded-xl bg-gradient-to-br from-slate-700 via-slate-600 to-emerald-700 p-5">
             <Tile
@@ -274,10 +271,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
           >
             <div className="space-y-1">
               <p>
-                A shortcut that is already on a phone is kept by the phone
-                itself: Android refreshes it by itself the next time it checks
-                (usually within a few days), while an iPhone keeps the old icon
-                until the shortcut is removed and added again.
+                {tr("A shortcut that is already on a phone is kept by the phone itself: Android refreshes it by itself the next time it checks (usually within a few days), while an iPhone keeps the old icon until the shortcut is removed and added again.")}
               </p>
             </div>
           </div>

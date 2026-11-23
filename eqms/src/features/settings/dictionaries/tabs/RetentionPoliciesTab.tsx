@@ -26,6 +26,7 @@ import { useDictionaryServerTable } from "../hooks/useDictionaryServerTable";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
+import { tr } from "@/i18n";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -156,7 +157,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       setShowToggleModal(false);
       showToast({
         type: "error",
-        title: "Retention Policy Status Update Failed",
+        title: tr("Retention Policy Status Update Failed"),
         message: extractApiMessage(error, "Unable to update retention policy status."),
       });
     } finally {
@@ -179,7 +180,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       reload();
       showToast({
         type: "success",
-        title: "Retention Policy Deleted",
+        title: tr("Retention Policy Deleted"),
         message: `Retention policy "${selectedItem.name}" has been deleted successfully.`,
       });
       setSelectedItem(null);
@@ -187,7 +188,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
       setShowDeleteModal(false);
       showToast({
         type: "error",
-        title: "Retention Policy Delete Failed",
+        title: tr("Retention Policy Delete Failed"),
         message: extractApiMessage(error, "Unable to delete retention policy."),
       });
     } finally {
@@ -223,14 +224,14 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
   type Row = (typeof items)[number];
   const retentionColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Retention Policy Name", label: "Retention Policy Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+    { id: "name", header: tr("Retention Policy Name"), label: tr("Retention Policy Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
-    { id: "modifiedDate", header: "Modified Date", label: "Modified Date", cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const retentionAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: retentionLayout, control: retentionControl } = useCustomColumnLayout("retention", retentionColumns, retentionAction);
 
@@ -238,13 +239,13 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
     <div className="compact-filter-stack flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search retention policies..."
+                placeholder={tr("Search retention policies...")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -266,7 +267,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
@@ -275,13 +276,13 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
   trailing={<div className="hidden md:block">{retentionControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search retention policies..."}
+      placeholder={tr("Search retention policies...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -304,7 +305,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
   dates={[
     {
       id: "modifiedFromDate",
-      label: "Modified Date Range",
+      label: tr("Modified Date Range"),
       from: modifiedFromDate,
       to: modifiedToDate,
       onFromChange: (v) => {
@@ -321,12 +322,12 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
 <div className="hidden md:flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full">
-              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search retention policies..."
+                  placeholder={tr("Search retention policies...")}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -339,7 +340,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
 
             <div className="w-full">
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={(value) => {
                   setStatusFilter(value as "All" | "Active" | "Inactive");
@@ -350,13 +351,13 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
                   { label: "Active", value: "Active" },
                   { label: "Inactive", value: "Inactive" },
                 ]}
-                placeholder="All"
+                placeholder={tr("All")}
               />
             </div>
 
             <div className="w-full">
               <DateRangePicker
-                label="Modified Date Range"
+                label={tr("Modified Date Range")}
                 startDate={modifiedFromDate}
                 endDate={modifiedToDate}
                 onStartDateChange={(v) => {
@@ -367,7 +368,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
                   setModifiedToDate(v);
                   setCurrentPage(1);
                 }}
-                placeholder="Select range"
+                placeholder={tr("Select range")}
               />
             </div>
             <div className="filter-actions flex items-end gap-2">
@@ -388,7 +389,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
           action={retentionAction}
           emptyState={
             <TableEmptyState
-  title="No retention policies found" description="Try adjusting your search" />
+  title={tr("No retention policies found")} description={tr("Try adjusting your search")} />
           }
           pagination={
             totalItems > 0 ? (
@@ -411,7 +412,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit</span>
+            <span>{tr("Edit")}</span>
           </button>
           <button
             onClick={(e) => {
@@ -424,12 +425,12 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
             {items.find((current) => current.id === openDropdownId)?.isActive ? (
               <>
                 <IconToggleLeft className="h-3.5 w-3.5" />
-                <span>Disable</span>
+                <span>{tr("Disable")}</span>
               </>
             ) : (
               <>
                 <IconToggleRight className="h-3.5 w-3.5" />
-                <span>Enable</span>
+                <span>{tr("Enable")}</span>
               </>
             )}
           </button>
@@ -442,7 +443,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
+            <span>{tr("Delete")}</span>
           </button>
         </div>
       </PortalDropdownMenu>
@@ -467,14 +468,14 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
         }}
         onConfirm={handleConfirmDelete}
         type="warning"
-        title="Delete Retention Policy?"
+        title={tr("Delete Retention Policy?")}
         description={
           <div className="space-y-3">
-            <p>Are you sure you want to delete <strong>{selectedItem?.name}</strong>?</p>
+            <p>{tr("Are you sure you want to delete")} <strong>{selectedItem?.name}</strong>?</p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This action cannot be undone.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This action cannot be undone.")}
               </p>
             </div>
           </div>
@@ -493,22 +494,22 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
         }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Retention Policy?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Retention Policy?")}`}
         description={
           <div className="space-y-3">
             <p>
-              Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"}{" "}
+              {tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")}{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> This change will take effect immediately.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("This change will take effect immediately.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel
@@ -530,7 +531,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[
               { label: "All", value: "All" },
@@ -552,7 +553,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem label="Modified Date Range" isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
+        <FilterAccordionItem label={tr("Modified Date Range")} isExpanded={expandedSections.has("date")} onToggle={() => toggleSection("date")}>
           <div className="pt-2 pb-4">
             <DateRangePicker
               label=""
@@ -566,7 +567,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
                 setModifiedToDate(v);
                 setCurrentPage(1);
               }}
-              placeholder="Select range"
+              placeholder={tr("Select range")}
             />
           </div>
         </FilterAccordionItem>
@@ -622,45 +623,45 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
   };
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Retention Policy`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? tr("Edit") : tr("New")} ${tr("Retention Policy")}`} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Retention Policy Name<span className="text-red-500 ml-1">*</span>
+            {tr("Retention Policy Name")}<span className="text-red-500 ml-1">*</span>
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter retention policy name"
+            placeholder={tr("Enter retention policy name")}
             required
             disabled={isSaving}
           />
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Retention period (days)</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Retention period (days)")}</label>
           <input
             type="number"
             min={1}
             value={formData.retentionDays ?? ""}
             onChange={(e) => setFormData({ ...formData, retentionDays: e.target.value === "" ? null : Number(e.target.value) })}
             className="w-full h-9 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Leave blank for permanent retention"
+            placeholder={tr("Leave blank for permanent retention")}
             disabled={isSaving}
           />
-          <p className="mt-1 text-xs text-slate-500">Leave blank only when the policy is intended to retain records permanently.</p>
+          <p className="mt-1 text-xs text-slate-500">{tr("Leave blank only when the policy is intended to retain records permanently.")}</p>
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Description</label>
+          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Description")}</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="Enter description (optional)"
+            placeholder={tr("Enter description (optional)")}
             disabled={isSaving}
           />
         </div>
@@ -670,7 +671,7 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
             id="isActive ret-policy"
             checked={formData.isActive}
             onChange={(checked) => setFormData({ ...formData, isActive: checked })}
-            label="Active"
+            label={tr("Active")}
             disabled={isSaving}
           />
         </div>

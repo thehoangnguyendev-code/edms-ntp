@@ -39,7 +39,7 @@ class TrainingActivityListFiltersTest {
         when(access.allDepartments(actor)).thenReturn(true);
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of());
-        service = new TrainingActivityService(jdbc, access, null, null, null, null, null, null, null, null, null, null, com.eqms.service.authorization.TestGuards.allowingTraining());
+        service = new TrainingActivityService(jdbc, access, null, null, null, null, null, null, null, null, null, null, com.eqms.service.authorization.TestGuards.allowingTraining(), null);
     }
 
     private String pageSql(String sortBy, ListFilters filters) {

@@ -14,6 +14,7 @@ import { useBarWipe } from '@/hooks/useBarFill';
 import { formatDate, formatDateTime } from '@/utils/format';
 import type { StoragePolicyController, StoragePolicyValue } from '../useStoragePolicyDraft';
 import { dailySeries, forecastOf, growthByPart, growthOf, jumpsOf, measurementsToCsv, withinDays, type Forecast, type Jump, type UsageSnapshot } from './storageUsage';
+import { tr, trFormat } from "@/i18n";
 
 export { growthOf };
 
@@ -27,7 +28,7 @@ const signedSize = (bytes: number) => `${bytes < 0 ? '−' : '+'}${size(Math.abs
 
 const RANGES: TabItem[] = [{ id: '7', label: '7 days' }, { id: '30', label: '30 days' }, { id: '90', label: '90 days' }];
 const VIEWS: TabItem[] = [{ id: 'chart', label: 'Chart' }, { id: 'table', label: 'Table' }];
-const PARTS: TabItem[] = [{ id: 'byDomain', label: 'By storage domain' }, { id: 'byFileType', label: 'By file type' }];
+const PARTS: TabItem[] = [{ id: 'byDomain', label: tr('By storage domain') }, { id: 'byFileType', label: tr('By file type') }];
 const JUMPS_LABEL = 'Biggest jumps';
 const FORECAST_LABEL = 'Estimate at the current growth';
 
@@ -66,7 +67,7 @@ const historyConfiguration = (snapshots: UsageSnapshot[], policy: StoragePolicyV
     type: 'line',
     data: {
       datasets: [
-        { label: 'Object-version size', data: ordered.map((snapshot) => ({ x: at(snapshot), y: snapshot.totalBytes })), borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.12)', fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+        { label: tr('Object-version size'), data: ordered.map((snapshot) => ({ x: at(snapshot), y: snapshot.totalBytes })), borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.12)', fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
         ...(budget ? [
           reference(`Budget ${size(budget)}`, budget, '#475569', []),
           reference(`Warning at ${policy?.warningPercent}%`, budget * ((policy?.warningPercent ?? 100) / 100), '#d97706', [5, 4]),
@@ -155,10 +156,10 @@ const PolicyFields = ({ policy, columns }: { policy: StoragePolicyController; co
   if (!draft) return null;
   return (
     <div className={`grid grid-cols-1 gap-4 ${columns}`}>
-      <FormField label="Budget (GB)" error={policy.errors.budget} hint="A target chosen by the administrator, not the disk capacity.">
-        <Input type="number" min="0" step="any" value={draft.budget} placeholder="Not configured" error={Boolean(policy.errors.budget)} onChange={(event) => policy.setDraft({ ...draft, budget: event.target.value })} />
+      <FormField label={tr("Budget (GB)")} error={policy.errors.budget} hint={tr("A target chosen by the administrator, not the disk capacity.")}>
+        <Input type="number" min="0" step="any" value={draft.budget} placeholder={tr("Not configured")} error={Boolean(policy.errors.budget)} onChange={(event) => policy.setDraft({ ...draft, budget: event.target.value })} />
       </FormField>
-      <FormField label="Warning threshold (%)" error={policy.errors.threshold} hint="Administrators are notified when a measurement reaches it.">
+      <FormField label={tr("Warning threshold (%)")} error={policy.errors.threshold} hint={tr("Administrators are notified when a measurement reaches it.")}>
         <Input type="number" min="1" max="100" step="1" value={draft.threshold} error={Boolean(policy.errors.threshold)} onChange={(event) => policy.setDraft({ ...draft, threshold: event.target.value })} />
       </FormField>
     </div>
@@ -192,13 +193,13 @@ const GrowthPanel = ({ snapshots }: { snapshots: UsageSnapshot[] }) => {
     <section className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 md:px-5">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">What grew</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{tr("What grew")}</h3>
           <p className="text-xs text-slate-500">{formatDate(oldest.measuredAt)} → {formatDate(newest.measuredAt)} · {signedSize(total)}</p>
         </div>
         <TabNav tabs={PARTS} activeTab={part} onChange={(id) => setPart(id as 'byDomain' | 'byFileType')} variant="pill" ariaLabel="Group the growth by" className="!w-auto" />
       </div>
       {rows.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-slate-500 md:px-5">Nothing grew in this period.</p>
+        <p className="px-4 py-6 text-sm text-slate-500 md:px-5">{tr("Nothing grew in this period.")}</p>
       ) : (
         <ul className="divide-y divide-slate-100 px-4 md:px-5">
           {rows.map((row) => (
@@ -211,7 +212,7 @@ const GrowthPanel = ({ snapshots }: { snapshots: UsageSnapshot[] }) => {
           ))}
         </ul>
       )}
-      {unchanged > 0 && <p className="border-t border-slate-100 px-4 py-2.5 text-xs text-slate-500 md:px-5">{unchanged} with no growth in this period.</p>}
+      {unchanged > 0 && <p className="border-t border-slate-100 px-4 py-2.5 text-xs text-slate-500 md:px-5">{trFormat("{count} with no growth in this period.", { count: unchanged })}</p>}
     </section>
   );
 };
@@ -224,9 +225,9 @@ const MeasurementsTable = ({ snapshots }: { snapshots: UsageSnapshot[] }) => {
       <TableMarkup.Root className="w-full text-left">
         <TableMarkup.Head className="sticky top-0 bg-slate-50">
           <TableMarkup.Row>
-            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">Measured</TableMarkup.HeaderCell>
-            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">Size</TableMarkup.HeaderCell>
-            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">Change</TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">{tr("Measured")}</TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">{tr("Size")}</TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell scope="col" className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wide text-slate-500 md:text-xs">{tr("Change")}</TableMarkup.HeaderCell>
           </TableMarkup.Row>
         </TableMarkup.Head>
         <TableMarkup.Body className="divide-y divide-slate-100">
@@ -296,16 +297,16 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
       <div className="grid place-items-center gap-3 py-16 text-center">
         <span className="grid h-10 w-10 place-items-center rounded-full bg-red-50 text-red-600"><IconAlertCircle className="h-5 w-5" /></span>
         <div>
-          <p role="alert" className="text-sm font-medium text-slate-900">Unable to load storage measurements.</p>
-          <p className="mt-1 text-sm text-slate-500">Check the connection and try again.</p>
+          <p role="alert" className="text-sm font-medium text-slate-900">{tr("Unable to load storage measurements.")}</p>
+          <p className="mt-1 text-sm text-slate-500">{tr("Check the connection and try again.")}</p>
         </div>
-        <Button type="button" size="sm" variant="outline-emerald" onClick={() => { setAttempt((value) => value + 1); policy.retry(); }}>Try again</Button>
+        <Button type="button" size="sm" variant="outline-emerald" onClick={() => { setAttempt((value) => value + 1); policy.retry(); }}>{tr("Try again")}</Button>
       </div>
     );
   }
   if (!snapshots || !policy.draft) {
     return (
-      <div className="space-y-4 md:space-y-6" aria-busy="true" aria-label="Loading storage measurements">
+      <div className="space-y-4 md:space-y-6" aria-busy="true" aria-label={tr("Loading storage measurements")}>
         <div className="grid gap-4 md:gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"><Block className="h-80" /><Block className="h-64" /></div>
         <Block className="h-56" />
       </div>
@@ -314,9 +315,9 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
 
   const notices = (
     <>
-      {status?.scanState?.lastResult === 'FAILED' && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">The latest scan failed. Values below are from the last successful scan and may be out of date.</p>}
-      {status?.scanState?.stale && status.scanState.lastResult !== 'FAILED' && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">No recent successful scan is available. Displayed values may be out of date.</p>}
-      {status?.warning === true && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">The last successful measurement reached the configured warning threshold. Check its timestamp below.</p>}
+      {status?.scanState?.lastResult === 'FAILED' && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{tr("The latest scan failed. Values below are from the last successful scan and may be out of date.")}</p>}
+      {status?.scanState?.stale && status.scanState.lastResult !== 'FAILED' && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{tr("No recent successful scan is available. Displayed values may be out of date.")}</p>}
+      {status?.warning === true && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{tr("The last successful measurement reached the configured warning threshold. Check its timestamp below.")}</p>}
     </>
   );
 
@@ -325,13 +326,13 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
       <div className="space-y-4 md:space-y-6">
         {notices}
         <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Storage policy</h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Storage policy")}</h3>
           <PolicyFields policy={policy} columns="md:grid-cols-2" />
         </section>
         <div className="grid place-items-center gap-2 rounded-xl border border-dashed border-slate-200 py-14 text-center">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500"><IconDatabase className="h-5 w-5" /></span>
-          <p className="text-sm font-medium text-slate-900">No successful measurement is available yet</p>
-          <p className="max-w-sm text-sm text-slate-500">The first measurement of the MinIO buckets appears here once the scheduled scan has run.</p>
+          <p className="text-sm font-medium text-slate-900">{tr("No successful measurement is available yet")}</p>
+          <p className="max-w-sm text-sm text-slate-500">{tr("The first measurement of the MinIO buckets appears here once the scheduled scan has run.")}</p>
         </div>
       </div>
     );
@@ -347,12 +348,12 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
         <section className="rounded-xl border border-slate-200 bg-white">
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4 md:px-5 md:pt-5">
             <div>
-              <p className="text-xs text-slate-500">Object-version size · MinIO buckets; local and NAS files are not included</p>
+              <p className="text-xs text-slate-500">{tr("Object-version size · MinIO buckets; local and NAS files are not included")}</p>
               <p className="mt-0.5 text-3xl font-semibold leading-none text-slate-900">{size(latest.totalBytes)}</p>
             </div>
             {growth && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                <IconTrendingUp className="h-3.5 w-3.5" />{signedSize(growth.delta)} in {Math.round(growth.days)} days
+                <IconTrendingUp className="h-3.5 w-3.5" />{trFormat("{size} in {days} days", { size: signedSize(growth.delta), days: Math.round(growth.days) })}
               </span>
             )}
           </div>
@@ -370,22 +371,22 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
             ) : history ? (
               <div className="h-60 w-full"><ChartCanvas config={history} ariaLabel="Object-version size over the chosen period" /></div>
             ) : (
-              <p className="py-10 text-center text-sm text-slate-500">The history appears after a second measurement in this period.</p>
+              <p className="py-10 text-center text-sm text-slate-500">{tr("The history appears after a second measurement in this period.")}</p>
             )}
           </div>
           <div className="mt-3 grid grid-cols-1 divide-y divide-slate-100 border-t border-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">Object versions</p><p className="font-semibold text-slate-900">{latest.objectVersions.toLocaleString()}</p></div>
-            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">Growth a day</p><p className="font-semibold text-slate-900">{growth ? signedSize(growth.perDay) : '—'}</p></div>
-            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">Last measurement</p><p className="font-semibold text-slate-900">{formatDateTime(latest.measuredAt)}</p></div>
+            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">{tr("Object versions")}</p><p className="font-semibold text-slate-900">{latest.objectVersions.toLocaleString()}</p></div>
+            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">{tr("Growth a day")}</p><p className="font-semibold text-slate-900">{growth ? signedSize(growth.perDay) : '—'}</p></div>
+            <div className="px-4 py-3 md:px-5"><p className="text-xs text-slate-500">{tr("Last measurement")}</p><p className="font-semibold text-slate-900">{formatDateTime(latest.measuredAt)}</p></div>
           </div>
         </section>
 
         <section className="self-start rounded-xl border border-slate-200 bg-white p-4 md:p-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Storage policy</h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Storage policy")}</h3>
           <PolicyFields policy={policy} columns="md:grid-cols-1" />
           <div className="mt-4 border-t border-slate-100 pt-4">
             {usedPercent === null || !budgetBytes ? (
-              <p className="text-sm text-slate-500">No budget set. Enter one to draw it on the chart and see the days left.</p>
+              <p className="text-sm text-slate-500">{tr("No budget set. Enter one to draw it on the chart and see the days left.")}</p>
             ) : (
               <>
                 <div className="mb-3">
@@ -397,14 +398,14 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
                   </p>
                 </div>
                 <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-slate-600">Used of the budget ({size(budgetBytes)})</span>
+                  <span className="text-slate-600">{trFormat("Used of the budget ({size})", { size: size(budgetBytes) })}</span>
                   <span className={`font-semibold ${overWarning ? 'text-amber-700' : 'text-slate-900'}`}>{usedPercent.toFixed(1)}%</span>
                 </div>
-                <div role="progressbar" aria-label="Storage used of the budget" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(usedPercent))} className="relative mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div role="progressbar" aria-label={tr("Storage used of the budget")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(usedPercent))} className="relative mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
                   <BarFill className={`h-full rounded-full ${overWarning ? 'bg-amber-500' : 'bg-emerald-500'}`} percent={Math.min(100, usedPercent)} />
                   <div className="absolute inset-y-0 w-0.5 bg-slate-500" style={{ left: `${warningPercent}%` }} title={`Warning at ${warningPercent}%`} />
                 </div>
-                {daysLeft !== null && <p className="mt-2 text-sm text-slate-700">About <strong>{daysLeft.toLocaleString()} days</strong> left at this rate{forecast ? ` (around ${formatDate(new Date(forecast.reachesAt))}, an estimate)` : ''}.</p>}
+                {daysLeft !== null && <p className="mt-2 text-sm text-slate-700">{tr("About")} <strong>{daysLeft.toLocaleString()} {tr("days")}</strong> {tr("left at this rate")}{forecast ? trFormat(" (around {date}, an estimate)", { date: formatDate(new Date(forecast.reachesAt)) }) : ""}.</p>}
               </>
             )}
           </div>
@@ -415,8 +416,8 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5">
         <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-          <Composition title="By storage domain" values={latest.byDomain} total={latest.totalBytes} />
-          <Composition title="By file type" values={latest.byFileType} total={latest.totalBytes} />
+          <Composition title={tr("By storage domain")} values={latest.byDomain} total={latest.totalBytes} />
+          <Composition title={tr("By file type")} values={latest.byFileType} total={latest.totalBytes} />
         </div>
       </section>
     </div>

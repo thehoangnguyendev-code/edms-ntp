@@ -43,6 +43,7 @@ import type {
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
+import { tr } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -150,7 +151,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", title: "Load Failed", message: "Failed to load policies." });
+      showToast({ type: "error", title: tr("Load Failed"), message: "Failed to load policies." });
     } finally {
       setLoading(false);
     }
@@ -199,7 +200,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 
   const docTypeOptions: SelectOption[] = useMemo(() => [
     { label: "All", value: "ALL" },
-    { label: "Global only", value: "GLOBAL" },
+    { label: tr("Global only"), value: "GLOBAL" },
     ...(options?.documentTypes ?? []).map((d) => ({ label: d.name, value: d.id })),
   ], [options]);
 
@@ -238,7 +239,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     setActionLoading(true);
     try {
       await workflowActionPolicyApi.deactivatePolicy(deactivateTarget.id, sig);
-      showToast({ type: "success", title: "Deactivated", message: "Policy deactivated." });
+      showToast({ type: "success", title: tr("Deactivated"), message: "Policy deactivated." });
       void loadData();
     } catch (err) {
       showToast({ type: "error", title: "Failed", message: extractApiError(err).message });
@@ -255,7 +256,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     setActionLoading(true);
     try {
       await workflowActionPolicyApi.resetToDefault(resetTarget.id, sig);
-      showToast({ type: "success", title: "Reset", message: "Policy reset to system default." });
+      showToast({ type: "success", title: "Reset", message: tr("Policy reset to system default.") });
       void loadData();
     } catch (err) {
       showToast({ type: "error", title: "Failed", message: extractApiError(err).message });
@@ -270,8 +271,8 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
         <Shield className="h-12 w-12 text-slate-300" />
-        <p className="text-lg font-semibold">Access Denied</p>
-        <p className="text-sm">You do not have permission to view Workflow Authorization policies.</p>
+        <p className="text-lg font-semibold">{tr("Access Denied")}</p>
+        <p className="text-sm">{tr("You do not have permission to view Workflow Authorization policies.")}</p>
       </div>
     );
   }
@@ -294,7 +295,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         className="whitespace-nowrap gap-2"
       >
         <GitBranch className="h-4 w-4" />
-        Workflow Roles
+        {tr("Workflow Roles")}
       </Button>
       <Button
         variant="outline"
@@ -303,7 +304,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         className="whitespace-nowrap gap-2"
       >
         <Shield className="h-4 w-4" />
-        Engine Diagnostics
+        {tr("Engine Diagnostics")}
       </Button>
       <Button
         variant="outline"
@@ -313,7 +314,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         disabled={loading}
       >
         <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-        Refresh
+        {tr("Refresh")}
       </Button>
       {canManage && (
         <Button
@@ -322,7 +323,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
           className="whitespace-nowrap gap-2"
         >
           <Plus className="h-4 w-4" />
-          New Policy
+          {tr("New Policy")}
         </Button>
       )}
     </>
@@ -353,20 +354,20 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             <div className="font-semibold text-slate-900">{statusText(policy.actionLabel, policy.actionCode)}</div>
             <div className="text-2xs text-slate-400">{policy.actionCode}</div>
           </div>
-          {otherWarnings(policy).length > 0 && <Badge color="amber" size="sm">Warning</Badge>}
+          {otherWarnings(policy).length > 0 && <Badge color="amber" size="sm">{tr("Warning")}</Badge>}
         </div>
       ),
     },
-    { id: "fromStatus", header: "From Status", label: "From Status", sort: { direction: sortKey === "fromStatus" ? sortDir : undefined, onSort: () => handleSort("fromStatus") }, cell: (policy) => statusText(policy.fromStatusLabel, policy.fromStatus) },
+    { id: "fromStatus", header: tr("From Status"), label: tr("From Status"), sort: { direction: sortKey === "fromStatus" ? sortDir : undefined, onSort: () => handleSort("fromStatus") }, cell: (policy) => statusText(policy.fromStatusLabel, policy.fromStatus) },
     {
       id: "documentTypeName",
-      header: "Document Type",
-      label: "Document Type",
+      header: tr("Document Type"),
+      label: tr("Document Type"),
       sort: { direction: sortKey === "documentTypeName" ? sortDir : undefined, onSort: () => handleSort("documentTypeName") },
       cell: (policy) =>
-        policy.documentTypeName ? <Badge color="purple" size="sm">{policy.documentTypeName}</Badge> : <span className="text-slate-400 italic">Global</span>,
+        policy.documentTypeName ? <Badge color="purple" size="sm">{policy.documentTypeName}</Badge> : <span className="text-slate-400 italic">{tr("Global")}</span>,
     },
-    { id: "requiredPermissionCode", header: "Permission", label: "Permission", sort: { direction: sortKey === "requiredPermissionCode" ? sortDir : undefined, onSort: () => handleSort("requiredPermissionCode") }, cell: (policy) => policy.requiredPermissionCode },
+    { id: "requiredPermissionCode", header: tr("Permission"), label: tr("Permission"), sort: { direction: sortKey === "requiredPermissionCode" ? sortDir : undefined, onSort: () => handleSort("requiredPermissionCode") }, cell: (policy) => policy.requiredPermissionCode },
     { id: "priority", header: "Priority", label: "Priority", sort: { direction: sortKey === "priority" ? sortDir : undefined, onSort: () => handleSort("priority") }, cell: (policy) => policy.priority },
     {
       id: "active",
@@ -382,15 +383,15 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
       sort: { direction: sortKey === "system" ? sortDir : undefined, onSort: () => handleSort("system") },
       cell: (policy) => <Badge color={policy.system ? "blue" : "slate"} size="sm">{policy.system ? "System" : "Custom"}</Badge>,
     },
-    { id: "createdAt", header: "Created Date", label: "Created Date", sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (policy) => (policy.createdAt ? formatDateTime(policy.createdAt) : "—") },
-    { id: "updatedAt", header: "Last Updated", label: "Last Updated", sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (policy) => (policy.updatedAt ? formatDateTime(policy.updatedAt) : "—") },
+    { id: "createdAt", header: tr("Created Date"), label: tr("Created Date"), sort: { direction: sortKey === "createdAt" ? sortDir : undefined, onSort: () => handleSort("createdAt") }, cell: (policy) => (policy.createdAt ? formatDateTime(policy.createdAt) : "—") },
+    { id: "updatedAt", header: tr("Last Updated"), label: tr("Last Updated"), sort: { direction: sortKey === "updatedAt" ? sortDir : undefined, onSort: () => handleSort("updatedAt") }, cell: (policy) => (policy.updatedAt ? formatDateTime(policy.updatedAt) : "—") },
     {
       id: "actors",
       header: "Actors",
       label: "Actors",
       cell: (policy) =>
         policy.actors.length === 0 ? (
-          <span className="text-slate-400 italic">none</span>
+          <span className="text-slate-400 italic">{tr("none")}</span>
         ) : (
           <ul className="space-y-1 text-left">
             {policy.actors.map((a, index) => (
@@ -403,11 +404,11 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     },
     {
       id: "relations",
-      header: "Relations (New)",
-      label: "Relations (New)",
+      header: tr("Relations (New)"),
+      label: tr("Relations (New)"),
       cell: (policy) =>
         (policy.relations ?? []).length === 0 ? (
-          <span className="text-amber-600 italic text-xs sm:text-sm">none</span>
+          <span className="text-amber-600 italic text-xs sm:text-sm">{tr("none")}</span>
         ) : (
           <ul className="space-y-1 text-left">
             {(policy.relations ?? []).map((r) => (
@@ -429,7 +430,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ref={getRef(policy.id)}
             onClick={(e) => toggle(policy.id, e)}
             className="inline-flex items-center justify-center h-7 w-7 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="More actions"
+            aria-label={tr("More actions")}
           >
             <MoreVertical className="h-3.5 w-3.5 text-slate-600" />
           </button>
@@ -439,7 +440,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                 icon={<IconInfoCircle className="h-4 w-4" />}
                 onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}`); close(); }}
               >
-                View Details
+                {tr("View Details")}
               </DropdownMenuItem>
               {canManage && (
                 <>
@@ -447,26 +448,26 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                     icon={<IconPencilMinus className="h-4 w-4" />}
                     onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit`); close(); }}
                   >
-                    Edit Transition
+                    {tr("Edit Transition")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     icon={<IconPencilMinus className="h-4 w-4" />}
                     onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/edit?mode=override`); close(); }}
                   >
-                    Create Override
+                    {tr("Create Override")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     icon={<Copy className="h-4 w-4" />}
                     onClick={() => { navigateTo(`${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/${policy.id}/duplicate`); close(); }}
                   >
-                    Duplicate
+                    {tr("Duplicate")}
                   </DropdownMenuItem>
                   {!policy.active ? (
                     <DropdownMenuItem
                       icon={<IconToggleRight className="h-4 w-4 text-slate-400" />}
                       onClick={() => { setActivateTarget(policy); close(); }}
                     >
-                      Activate
+                      {tr("Activate")}
                     </DropdownMenuItem>
                   ) : (
                     policy.deactivatable !== false && (
@@ -474,7 +475,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                         icon={<IconToggleLeft className="h-4 w-4 text-slate-400" />}
                         onClick={() => { setDeactivateTarget(policy); close(); }}
                       >
-                        Deactivate
+                        {tr("Deactivate")}
                       </DropdownMenuItem>
                     )
                   )}
@@ -483,7 +484,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                       icon={<RefreshCw className="h-4 w-4" />}
                       onClick={() => { setResetTarget(policy); close(); }}
                     >
-                      Reset Default
+                      {tr("Reset Default")}
                     </DropdownMenuItem>
                   )}
                 </>
@@ -502,7 +503,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 
       {!embedded && (
         <PageHeader
-          title="Transition Policies"
+          title={tr("Transition Policies")}
           breadcrumbItems={workflowAuthorizationBreadcrumb(navigate, "Transition Policies")}
           actions={pageActions}
         />
@@ -510,7 +511,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 
       {optionsError && (
         <WarningBanner variant="warning">
-          Unable to load workflow authorization options. Some dropdowns may be empty. Please refresh or contact system administrator.
+          {tr("Unable to load workflow authorization options. Some dropdowns may be empty. Please refresh or contact system administrator.")}
         </WarningBanner>
       )}
 
@@ -526,7 +527,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                 </div>
                 <input
                   type="text"
-                  placeholder="Search policies..."
+                  placeholder={tr("Search policies...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-9 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm placeholder:text-slate-400"
@@ -538,7 +539,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
                 )}
               </div>
               <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
-                <IconFilter2 className="h-4 w-4" />Filters
+                <IconFilter2 className="h-4 w-4" />{tr("Filters")}
               </Button>
             </div>
           </div>
@@ -548,13 +549,13 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   trailing={<div className="hidden md:block">{policyControl}</div>}
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={search}
       onChange={(e) => {
         setSearch(e.target.value);
         setCurrentPage(1);
       }}
-      placeholder={"Search policies..."}
+      placeholder={tr("Search policies...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
@@ -581,7 +582,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     },
     {
       id: "statusFilter",
-      label: "From Status",
+      label: tr("From Status"),
       value: String(statusFilter),
       options: fromStatusOptions,
       onChange: (v) => {
@@ -591,7 +592,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     },
     {
       id: "docTypeFilter",
-      label: "Document Type",
+      label: tr("Document Type"),
       value: String(docTypeFilter),
       options: docTypeOptions,
       onChange: (v) => {
@@ -631,7 +632,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   dates={[
     {
       id: "createdFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: createdFrom,
       to: createdTo,
       onFromChange: (value) => {
@@ -645,7 +646,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     },
     {
       id: "updatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: updatedFrom,
       to: updatedTo,
       onFromChange: (value) => {
@@ -661,26 +662,26 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
 >
 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end pb-4 md:pb-5">
             <div>
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search policies..."
+                  placeholder={tr("Search policies...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                   className="block w-full pl-10 pr-3 h-9 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm placeholder:text-slate-400"
                 />
               </div>
             </div>
-            <Select label="Workflow" value={workflowFilter} onChange={(v) => { setWorkflowFilter(String(v)); setCurrentPage(1); }} options={workflowFilterOptions} />
-            <Select label="Action" value={actionFilter} onChange={(v) => { setActionFilter(String(v)); setCurrentPage(1); }} options={actionOptions} />
-            <Select label="From Status" value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={fromStatusOptions} />
-            <Select label="Document Type" value={docTypeFilter} onChange={(v) => { setDocTypeFilter(String(v)); setCurrentPage(1); }} options={docTypeOptions} />
+            <Select label={tr("Workflow")} value={workflowFilter} onChange={(v) => { setWorkflowFilter(String(v)); setCurrentPage(1); }} options={workflowFilterOptions} />
+            <Select label={tr("Action")} value={actionFilter} onChange={(v) => { setActionFilter(String(v)); setCurrentPage(1); }} options={actionOptions} />
+            <Select label={tr("From Status")} value={statusFilter} onChange={(v) => { setStatusFilter(String(v)); setCurrentPage(1); }} options={fromStatusOptions} />
+            <Select label={tr("Document Type")} value={docTypeFilter} onChange={(v) => { setDocTypeFilter(String(v)); setCurrentPage(1); }} options={docTypeOptions} />
             <Select
-              label="Active"
+              label={tr("Active")}
               value={activeFilter}
               onChange={(v) => { setActiveFilter(String(v)); setCurrentPage(1); }}
               options={[
@@ -690,7 +691,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               ]}
             />
             <Select
-              label="Type"
+              label={tr("Type")}
               value={systemFilter}
               onChange={(v) => { setSystemFilter(String(v)); setCurrentPage(1); }}
               options={[
@@ -700,21 +701,21 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               ]}
             />
             <DateRangePicker
-              label="Created Date Range"
+              label={tr("Created Date Range")}
               startDate={createdFrom}
               endDate={createdTo}
               onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }}
               onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }}
-              placeholder="Select created date range"
+              placeholder={tr("Select created date range")}
               autoApply
             />
             <DateRangePicker
-              label="Last Updated Range"
+              label={tr("Last Updated Range")}
               startDate={updatedFrom}
               endDate={updatedTo}
               onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }}
               onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }}
-              placeholder="Select last updated range"
+              placeholder={tr("Select last updated range")}
               autoApply
             />
             <div className="filter-actions flex items-end gap-2">
@@ -743,11 +744,11 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
               isDragging={isDragging}
               emptyState={
                 <TableEmptyState
-                  title="No Workflow Authorization Policies Found"
+                  title={tr("No Workflow Authorization Policies Found")}
                   description={
                     hasFilters
-                      ? "No policies match your filters. Try adjusting your search criteria."
-                      : "No policies found. Use 'New Policy' to create a custom policy, or check backend seed data."
+                      ? tr("No policies match your filters. Try adjusting your search criteria.")
+                      : tr("No policies found. Use 'New Policy' to create a custom policy, or check backend seed data.")
                   }
                 />
               }
@@ -779,17 +780,17 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         onClear={clearFilters}
         onApply={() => setIsFilterDrawerOpen(false)}
       >
-        <FilterAccordionItem label="Created Date Range" isExpanded={expandedSections.has("createdDate")} onToggle={() => toggleSection("createdDate")}>
+        <FilterAccordionItem label={tr("Created Date Range")} isExpanded={expandedSections.has("createdDate")} onToggle={() => toggleSection("createdDate")}>
           <div className="pt-1 pb-4">
-            <DateRangePicker label="Created Date Range" startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder="Select created date range" autoApply />
+            <DateRangePicker label={tr("Created Date Range")} startDate={createdFrom} endDate={createdTo} onStartDateChange={(value) => { setCreatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setCreatedTo(value); setCurrentPage(1); }} placeholder={tr("Select created date range")} autoApply />
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Last Updated Range" isExpanded={expandedSections.has("updatedDate")} onToggle={() => toggleSection("updatedDate")}>
+        <FilterAccordionItem label={tr("Last Updated Range")} isExpanded={expandedSections.has("updatedDate")} onToggle={() => toggleSection("updatedDate")}>
           <div className="pt-1 pb-4">
-            <DateRangePicker label="Last Updated Range" startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder="Select last updated range" autoApply />
+            <DateRangePicker label={tr("Last Updated Range")} startDate={updatedFrom} endDate={updatedTo} onStartDateChange={(value) => { setUpdatedFrom(value); setCurrentPage(1); }} onEndDateChange={(value) => { setUpdatedTo(value); setCurrentPage(1); }} placeholder={tr("Select last updated range")} autoApply />
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Workflow" isExpanded={expandedSections.has("workflow")} onToggle={() => toggleSection("workflow")}>
+        <FilterAccordionItem label={tr("Workflow")} isExpanded={expandedSections.has("workflow")} onToggle={() => toggleSection("workflow")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {workflowFilterOptions.map((opt) => (
               <button
@@ -808,7 +809,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Action" isExpanded={expandedSections.has("action")} onToggle={() => toggleSection("action")}>
+        <FilterAccordionItem label={tr("Action")} isExpanded={expandedSections.has("action")} onToggle={() => toggleSection("action")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {actionOptions.map((opt) => (
               <button
@@ -827,7 +828,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="From Status" isExpanded={expandedSections.has("fromStatus")} onToggle={() => toggleSection("fromStatus")}>
+        <FilterAccordionItem label={tr("From Status")} isExpanded={expandedSections.has("fromStatus")} onToggle={() => toggleSection("fromStatus")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {fromStatusOptions.map((opt) => (
               <button
@@ -846,7 +847,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Document Type" isExpanded={expandedSections.has("docType")} onToggle={() => toggleSection("docType")}>
+        <FilterAccordionItem label={tr("Document Type")} isExpanded={expandedSections.has("docType")} onToggle={() => toggleSection("docType")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {docTypeOptions.map((opt) => (
               <button
@@ -865,7 +866,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Active" isExpanded={expandedSections.has("active")} onToggle={() => toggleSection("active")}>
+        <FilterAccordionItem label={tr("Active")} isExpanded={expandedSections.has("active")} onToggle={() => toggleSection("active")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "ALL" }, { label: "Active", value: "ACTIVE" }, { label: "Inactive", value: "INACTIVE" }].map((opt) => (
               <button
@@ -884,7 +885,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
             ))}
           </div>
         </FilterAccordionItem>
-        <FilterAccordionItem label="Type" isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
+        <FilterAccordionItem label={tr("Type")} isExpanded={expandedSections.has("type")} onToggle={() => toggleSection("type")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "ALL" }, { label: "System", value: "SYSTEM" }, { label: "Custom", value: "CUSTOM" }].map((opt) => (
               <button
@@ -912,7 +913,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         onClose={() => setActivateTarget(null)}
         onConfirm={() => void handleActivate()}
         type="info"
-        title="Activate Policy"
+        title={tr("Activate Policy")}
         description={`Activate policy for "${activateTarget?.actionLabel ?? activateTarget?.actionCode}"?`}
         confirmText="Activate"
         cancelText="Cancel"
@@ -926,9 +927,9 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         onClose={() => setDeactivateTarget(null)}
         onConfirm={() => void handleDeactivate()}
         type="warning"
-        title="Deactivate Policy"
+        title={tr("Deactivate Policy")}
         description={`${deactivateTarget && decidesAlone(deactivateTarget) ? "This policy is the only decision about who may do this action (the old checks in the service were removed). With it inactive nobody can do the action from this state, whatever their permissions." : "Deactivating this policy may cause the action to be denied when no other active policy matches."}\n\nAre you sure you want to deactivate "${deactivateTarget?.actionLabel ?? deactivateTarget?.actionCode}"?`}
-        confirmText="Deactivate"
+        confirmText={tr("Deactivate")}
         cancelText="Cancel"
         showCancel
         isLoading={actionLoading}
@@ -940,7 +941,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
         onClose={() => setResetTarget(null)}
         onConfirm={() => void handleReset()}
         type="warning"
-        title="Reset to System Default"
+        title={tr("Reset to System Default")}
         description={`This will restore the system default permission, actors, priority, active flag, description, and global document type scope for "${resetTarget?.actionLabel ?? resetTarget?.actionCode}".`}
         confirmText="Reset"
         cancelText="Cancel"

@@ -32,16 +32,17 @@ import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } 
 import { moduleVisibilityBadges } from "../shared/moduleVisibility";
 import { AccessProfilePermissionSetModal } from "./tabs/AccessProfilePermissionSetModal";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
+import { tr } from "@/i18n";
 
 type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "users" | "audit";
 
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
-  { id: "users", label: "Assigned Users" },
+  { id: "users", label: tr("Assigned Users") },
   { id: "permissions", label: "Permissions" },
-  { id: "permission-sets", label: "Shared Permission Sets (Advanced)" },
-  { id: "workflow", label: "Workflow Eligibility (Advanced)" },
-  { id: "audit", label: "Audit Trail" },
+  { id: "permission-sets", label: tr("Shared Permission Sets (Advanced)") },
+  { id: "workflow", label: tr("Workflow Eligibility (Advanced)") },
+  { id: "audit", label: tr("Audit Trail") },
 ];
 
 export type AssignKind = "permissionSets" | "workflowRoles" | "users";
@@ -272,9 +273,9 @@ export const AccessProfileDetailView: React.FC = () => {
       setChanges(EMPTY_CHANGES);
       setManagedDraft(null);
       setReloadKey((k) => k + 1);
-      showToast({ type: "info", message: "Loaded the latest configuration — please re-apply your changes." });
+      showToast({ type: "info", message: tr("Loaded the latest configuration — please re-apply your changes.") });
     } catch {
-      showToast({ type: "error", message: "Failed to reload profile" });
+      showToast({ type: "error", message: tr("Failed to reload profile") });
     }
   };
 
@@ -286,7 +287,7 @@ export const AccessProfileDetailView: React.FC = () => {
       showToast({ type: "success", message: "Access profile deleted" });
       navigate(ROUTES.SECURITY.ACCESS_PROFILES);
     } catch {
-      showToast({ type: "error", message: "Failed to delete access profile" });
+      showToast({ type: "error", message: tr("Failed to delete access profile") });
     }
     setDeleteModal(false);
   };
@@ -302,7 +303,7 @@ export const AccessProfileDetailView: React.FC = () => {
       setCapabilities(caps);
       showToast({ type: "success", message: `Profile ${updated.active ? "enabled" : "disabled"}` });
     } catch {
-      showToast({ type: "error", message: "Failed to update status" });
+      showToast({ type: "error", message: tr("Failed to update status") });
     }
   };
 
@@ -316,9 +317,9 @@ export const AccessProfileDetailView: React.FC = () => {
   const dashboardStats = useMemo<{ icon: React.ReactNode; value: number | "All"; label: string; tab: TabId }[]>(() => {
     if (!profile) return [];
     return [
-      { icon: <KeyRound className="h-4 w-4" />, value: profile.permissionSets.filter((set) => set.code !== `ROLE_${profile.code}`).length, label: "Permission Sets", tab: "permission-sets" },
-      { icon: <IconArrowsShuffle className="h-4 w-4" />, value: profile.workflowRoles.length, label: "Workflow Eligibility", tab: "workflow" },
-      { icon: <Users className="h-4 w-4" />, value: assignedUserIds.length, label: "Assigned Users", tab: "users" },
+      { icon: <KeyRound className="h-4 w-4" />, value: profile.permissionSets.filter((set) => set.code !== `ROLE_${profile.code}`).length, label: tr("Permission Sets"), tab: "permission-sets" },
+      { icon: <IconArrowsShuffle className="h-4 w-4" />, value: profile.workflowRoles.length, label: tr("Workflow Eligibility"), tab: "workflow" },
+      { icon: <Users className="h-4 w-4" />, value: assignedUserIds.length, label: tr("Assigned Users"), tab: "users" },
     ];
   }, [profile, assignedUserIds.length]);
 
@@ -336,7 +337,7 @@ export const AccessProfileDetailView: React.FC = () => {
               size="sm"
               onClick={() => navigateBack(go, location.state as never, ROUTES.SECURITY.ACCESS_PROFILES)}
             >
-              Back
+              {tr("Back")}
             </Button>
             {!isEditing && (
               <>
@@ -347,7 +348,7 @@ export const AccessProfileDetailView: React.FC = () => {
                   title={!can("edit") ? reason("edit") : undefined}
                   onClick={() => setIsEditing(true)}
                 >
-                  Edit Access Profile
+                  {tr("Edit Access Profile")}
                 </Button>
                 <Button
                   variant="outline-emerald"
@@ -366,7 +367,7 @@ export const AccessProfileDetailView: React.FC = () => {
                   className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300 disabled:text-slate-400 disabled:border-slate-200 disabled:hover:bg-white"
                   onClick={() => setDeleteModal(true)}
                 >
-                  Delete
+                  {tr("Delete")}
                 </Button>
               </>
             )}
@@ -378,7 +379,7 @@ export const AccessProfileDetailView: React.FC = () => {
                     size="sm"
                     onClick={() => { resetEdits(); setIsEditing(false); }}
                   >
-                    Cancel
+                    {tr("Cancel")}
                   </Button>
                 )}
                 <Button
@@ -397,7 +398,7 @@ export const AccessProfileDetailView: React.FC = () => {
       />
 
       {profile && (
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label="Access Profile summary">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label={tr("Access Profile summary")}>
           <div className="flex items-start gap-3 p-4 md:gap-4 md:p-5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600" aria-hidden="true">
               <ShieldCheck className="h-5 w-5" />
@@ -448,15 +449,14 @@ export const AccessProfileDetailView: React.FC = () => {
 
       {isEditing && profile?.system && (
         <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5 text-xs text-purple-800">
-          Editing a system access profile. Changes still require electronic signature confirmation on Save
-          and are recorded in the Audit Trail as a system profile override.
+          {tr("Editing a system access profile. Changes still require electronic signature confirmation on Save and are recorded in the Audit Trail as a system profile override.")}
         </div>
       )}
 
       {isEditing && hasChanges && (
         <WarningBanner variant="warning">
-          Unsaved changes: {generalDirty ? "general information; " : ""}{managedDirty ? "direct permissions; " : ""}{assignmentsDirty ? "assignments; " : ""}
-          click <b>Save</b> to review and confirm all changes with one electronic signature.
+          {tr("Unsaved changes:")} {generalDirty ? `${tr("general information;")} ` : ""}{managedDirty ? `${tr("direct permissions;")} ` : ""}{assignmentsDirty ? `${tr("assignments;")} ` : ""}
+          {tr("click")} <b>{tr("Save")}</b> {tr("to review and confirm all changes with one electronic signature.")}
         </WarningBanner>
       )}
 
@@ -525,14 +525,14 @@ export const AccessProfileDetailView: React.FC = () => {
         onClose={() => setImpactModal(false)}
         onConfirm={() => { setImpactModal(false); void performSave(); }}
         type="warning"
-        title="Review Access Impact"
+        title={tr("Review Access Impact")}
         description={
           <div className="space-y-2 text-left">
-            <p>Access Profile changes are applied immediately after electronic signature.</p>
+            <p>{tr("Access Profile changes are applied immediately after electronic signature.")}</p>
             <ul className="list-disc pl-5 space-y-1">
               {impactItems.map((item) => <li key={item}>{item}</li>)}
             </ul>
-            <p className="text-xs text-slate-500">Document participants remain assigned per revision; this change does not assign anyone as an Author, Reviewer or Approver.</p>
+            <p className="text-xs text-slate-500">{tr("Document participants remain assigned per revision; this change does not assign anyone as an Author, Reviewer or Approver.")}</p>
           </div>
         }
         confirmText="Continue to E-Sign"
@@ -544,8 +544,8 @@ export const AccessProfileDetailView: React.FC = () => {
         onClose={() => setConflictModal(false)}
         onConfirm={handleConflictReload}
         type="warning"
-        title="Configuration Changed"
-        description="This Access Profile was modified by another administrator while you were editing. Reload to see the latest configuration — your unsaved changes will need to be re-applied."
+        title={tr("Configuration Changed")}
+        description={tr("This Access Profile was modified by another administrator while you were editing. Reload to see the latest configuration — your unsaved changes will need to be re-applied.")}
         confirmText="Reload"
         cancelText="Keep Editing"
         showCancel
@@ -555,7 +555,7 @@ export const AccessProfileDetailView: React.FC = () => {
         onClose={() => setDeleteModal(false)}
         onConfirm={handleDelete}
         type="warning"
-        title="Delete Access Profile"
+        title={tr("Delete Access Profile")}
         description={`Are you sure you want to delete "${profile?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"

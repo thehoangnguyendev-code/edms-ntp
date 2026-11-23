@@ -54,6 +54,7 @@ import {
 import { useTrainingBack } from "../shared/useTrainingBack";
 
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 type Dialog = "exception" | "cancel" | undefined;
 interface SignRequest {
@@ -77,8 +78,8 @@ function DutiesTable({ duties }: { duties: TrainingJobDuty[] }) {
       <TableMarkup.Root className="w-full border-collapse text-sm">
         <TableMarkup.Head>
           <TableMarkup.Row className="bg-slate-50 text-left">
-            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Trách nhiệm / <span className="italic">Responsibility</span></TableMarkup.HeaderCell>
-            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">Mô tả công việc / <span className="italic">Job description</span></TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">{tr("Trách nhiệm /")} <span className="italic">{tr("Responsibility")}</span></TableMarkup.HeaderCell>
+            <TableMarkup.HeaderCell className="w-1/2 border border-slate-200 px-3 py-2 font-semibold">{tr("Mô tả công việc /")} <span className="italic">{tr("Job description")}</span></TableMarkup.HeaderCell>
           </TableMarkup.Row>
         </TableMarkup.Head>
         <TableMarkup.Body>
@@ -155,7 +156,7 @@ export function TrainingJobDetailPage() {
     } catch (e) {
       showToast({
         type: "error",
-        title: "The action was not done",
+        title: tr("The action was not done"),
         message: trainingError(e),
       });
       return false;
@@ -185,11 +186,11 @@ export function TrainingJobDetailPage() {
   const caps = job.capabilities;
   const body = () => ({ ...form, duties, version: job.version, requiredTopics: pickedIds(required).topics, requiredDocumentIds: pickedIds(required).documentIds });
   const tabs: TabItem[] = [
-    { id: "overview", label: "General Information" },
+    { id: "overview", label: tr("General Information") },
     { id: "duties", label: "Duties", count: duties.length },
-    { id: "matrix", label: "Matrix Check" },
-    { id: "signatures", label: "Signatures" },
-    { id: "audit", label: "Audit Trail" },
+    { id: "matrix", label: tr("Matrix Check") },
+    { id: "signatures", label: tr("Signatures") },
+    { id: "audit", label: tr("Audit Trail") },
   ];
   const eligibility = job.eligibility;
   // The Signatures tab reads like the one of a document: "<Action> By" and "<Action> On (Date - Time)", read-only. The exception is shown only when one was asked for.
@@ -225,7 +226,7 @@ export function TrainingJobDetailPage() {
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
     {
       id: "title",
-      header: "Required training",
+      header: tr("Required training"),
       cell: (i) => (
         <div className="max-w-80 whitespace-normal">
           {i.code ? `${i.code} — ` : ""}
@@ -238,17 +239,17 @@ export function TrainingJobDetailPage() {
       header: "Annual",
       cell: (i) => (i.annualRequired ? "Yes" : "No"),
     },
-    { id: "role", header: "Work Position", cell: (i) => i.jobRoleName ?? "—" },
-    { id: "source", header: "Required by", cell: (i) => (i.source === "CHOSEN" ? "Ticked for this assignment" : i.source === "FACTORY" ? "All employees (Quality Assurance)" : "Matrix") },
-    { id: "last", header: "Last trained", cell: (i) => day(i.lastDone) },
+    { id: "role", header: tr("Work Position"), cell: (i) => i.jobRoleName ?? "—" },
+    { id: "source", header: tr("Required by"), cell: (i) => (i.source === "CHOSEN" ? "Ticked for this assignment" : i.source === "FACTORY" ? "All employees (Quality Assurance)" : "Matrix") },
+    { id: "last", header: tr("Last trained"), cell: (i) => day(i.lastDone) },
     {
       id: "status",
       header: "Status",
       cell: (i) =>
         i.lastDone ? (
-          <Badge color="emerald">Trained</Badge>
+          <Badge color="emerald">{tr("Trained")}</Badge>
         ) : (
-          <Badge color="red">Not trained</Badge>
+          <Badge color="red">{tr("Not trained")}</Badge>
         ),
     },
   ];
@@ -270,7 +271,7 @@ export function TrainingJobDetailPage() {
             )
           }
         >
-          Save Draft
+          {tr("Save Draft")}
         </Button>
       )}
       {caps.requestException && (
@@ -280,7 +281,7 @@ export function TrainingJobDetailPage() {
           className="whitespace-nowrap"
           onClick={() => setDialog("exception")}
         >
-          Request Exception
+          {tr("Request Exception")}
         </Button>
       )}
       {caps.approveException && (
@@ -290,7 +291,7 @@ export function TrainingJobDetailPage() {
           className="whitespace-nowrap"
           onClick={() =>
             setSign({
-              title: "Complete Approval of the Exception",
+              title: tr("Complete Approval of the Exception"),
               code: "TRAINING_JOB_EXCEPTION_APPROVED",
               name: "Job Assignment Exception Approved",
               changes: statusChange(
@@ -302,7 +303,7 @@ export function TrainingJobDetailPage() {
             })
           }
         >
-          Complete Approval
+          {tr("Complete Approval")}
         </Button>
       )}
       {caps.submit && (
@@ -313,7 +314,7 @@ export function TrainingJobDetailPage() {
           disabled={dirty}
           onClick={() =>
             setSign({
-              title: "Assign Job",
+              title: tr("Assign Job"),
               code: "TRAINING_JOB_ASSIGNED",
               name: "Job Assigned",
               changes: statusChange("Draft", "Pending Employee Acceptance"),
@@ -321,7 +322,7 @@ export function TrainingJobDetailPage() {
             })
           }
         >
-          Sign and Send
+          {tr("Sign and Send")}
         </Button>
       )}
       {caps.accept && (
@@ -331,7 +332,7 @@ export function TrainingJobDetailPage() {
           className="whitespace-nowrap"
           onClick={() =>
             setSign({
-              title: "Accept Job Assignment",
+              title: tr("Accept Job Assignment"),
               code: "TRAINING_JOB_ACCEPTED",
               name: "Job Accepted",
               changes: statusChange("Pending Employee Acceptance", "Effective"),
@@ -339,7 +340,7 @@ export function TrainingJobDetailPage() {
             })
           }
         >
-          Accept
+          {tr("Accept")}
         </Button>
       )}
       {caps.cancel && (
@@ -357,7 +358,7 @@ export function TrainingJobDetailPage() {
       )}
       {job.status !== "CANCELLED" && (
         <FormDownloadButtons
-          label="The job assignment"
+          label={tr("The job assignment")}
           load={(format) => trainingFormsApi.jobAssignment(job.id, format)}
           fileName={(format) =>
             `APD.0024-${job.personName}-${job.issueNo}.${format}`
@@ -371,7 +372,7 @@ export function TrainingJobDetailPage() {
           className="whitespace-nowrap"
           onClick={() => setDialog("cancel")}
         >
-          Cancel
+          {tr("Cancel")}
         </Button>
       )}
     </>
@@ -397,7 +398,7 @@ export function TrainingJobDetailPage() {
                 ? [
                     {
                       id: "copies",
-                      label: "Copies Sent To Departments",
+                      label: tr("Copies Sent To Departments"),
                       node: (
                         <TrainingCopyBlock
                           type="job-assignment"
@@ -415,31 +416,31 @@ export function TrainingJobDetailPage() {
         {tab === "overview" && (
           <div className="space-y-6">
             <ReadonlyGrid>
-              <ReadonlyField label="Employee" value={job.personName} />
-              <ReadonlyField label={(job.roles?.length ?? 0) > 1 ? "Work Positions" : "Work Position"} wide>
+              <ReadonlyField label={tr("Employee")} value={job.personName} />
+              <ReadonlyField label={(job.roles?.length ?? 0) > 1 ? tr("Work Positions") : tr("Work Position")} wide>
                 <div className="min-h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2"><WorkPositionsPreview assignmentId={job.id} personName={job.personName} positions={job.roles} fallback={job.positionName} limit={4} /></div>
               </ReadonlyField>
-              <ReadonlyField label="Department" value={job.departmentName} />
+              <ReadonlyField label={tr("Department")} value={job.departmentName} />
               <ReadonlyField
-                label="Type"
+                label={tr("Type")}
                 value={
                   job.caseType === "INITIAL"
                     ? "Initial"
                     : `Change (from ${job.previousPositionName ?? "—"})`
                 }
               />
-              <ReadonlyField label="Issue" value={String(job.issueNo)} />
-              <ReadonlyField label="Effective" value={day(job.effectiveAt)} />
+              <ReadonlyField label={tr("Issue")} value={String(job.issueNo)} />
+              <ReadonlyField label={tr("Effective")} value={day(job.effectiveAt)} />
               {job.assignorTitle && (
                 <ReadonlyField
-                  label="Assigned by (title)"
+                  label={tr("Assigned by (title)")}
                   value={job.assignorTitle}
                   wide
                 />
               )}
               {job.cancelReason && (
                 <ReadonlyField
-                  label="Reason for cancelling"
+                  label={tr("Reason for cancelling")}
                   value={job.cancelReason}
                   wide
                 />
@@ -466,7 +467,7 @@ export function TrainingJobDetailPage() {
                   />
                 </FormField>
               ))}
-              <FormField label="Jurisdiction">
+              <FormField label={tr("Jurisdiction")}>
                 <Input
                   value={form.jurisdiction}
                   disabled={!editable}
@@ -479,7 +480,7 @@ export function TrainingJobDetailPage() {
               {(job.caseType === "CHANGE" || form.changeReason) && (
                 <div className="md:col-span-2">
                   <FormField
-                    label="Reason for the change"
+                    label={tr("Reason for the change")}
                     required={job.caseType === "CHANGE"}
                   >
                     <Textarea
@@ -500,7 +501,7 @@ export function TrainingJobDetailPage() {
 
         {tab === "duties" && (
           <TabBlock
-            title="Duties"
+            title={tr("Duties")}
             action={
               editable ? (
                 <Button
@@ -514,29 +515,29 @@ export function TrainingJobDetailPage() {
                     setDirty(true);
                   }}
                 >
-                  Add duty
+                  {tr("Add duty")}
                 </Button>
               ) : undefined
             }
           >
             {duties.length === 0 ? (
-              <p className="p-4 text-sm text-slate-500">No duty yet.</p>
+              <p className="p-4 text-sm text-slate-500">{tr("No duty yet.")}</p>
             ) : editable ? (
               <div className="divide-y divide-slate-100">
-                <p className="p-3 text-xs text-slate-600">Part 4 of the form APD.0024. Write the Vietnamese text and, under it, the English one: the Word file has the English in italic under the Vietnamese. One box can hold several lines (one paragraph for each line).</p>
+                <p className="p-3 text-xs text-slate-600">{tr("Part 4 of the form APD.0024. Write the Vietnamese text and, under it, the English one: the Word file has the English in italic under the Vietnamese. One box can hold several lines (one paragraph for each line).")}</p>
                 {duties.map((d, i) => {
                   const set = (patch: Partial<TrainingJobDuty>) => { setDuties(duties.map((x, k) => (k === i ? { ...x, ...patch } : x))); setDirty(true); };
                   return (
                     <div key={i} className="space-y-3 p-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-slate-900">Duty {i + 1}</h4>
-                        <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => { setDuties(duties.filter((_x, k) => k !== i)); setDirty(true); }}>Remove</button>
+                        <h4 className="text-sm font-semibold text-slate-900">{tr("Duty")} {i + 1}</h4>
+                        <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => { setDuties(duties.filter((_x, k) => k !== i)); setDirty(true); }}>{tr("Remove")}</button>
                       </div>
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <FormField label="Responsibility (Vietnamese)" required><Textarea rows={4} maxLength={2000} value={d.responsibility} onChange={(e) => set({ responsibility: e.target.value })} /></FormField>
-                        <FormField label="Responsibility (English)"><Textarea rows={4} maxLength={2000} value={d.responsibilityEn ?? ""} onChange={(e) => set({ responsibilityEn: e.target.value })} /></FormField>
-                        <FormField label="Job description (Vietnamese)"><Textarea rows={4} maxLength={4000} value={d.description ?? ""} onChange={(e) => set({ description: e.target.value })} /></FormField>
-                        <FormField label="Job description (English)"><Textarea rows={4} maxLength={4000} value={d.descriptionEn ?? ""} onChange={(e) => set({ descriptionEn: e.target.value })} /></FormField>
+                        <FormField label={tr("Responsibility (Vietnamese)")} required><Textarea rows={4} maxLength={2000} value={d.responsibility} onChange={(e) => set({ responsibility: e.target.value })} /></FormField>
+                        <FormField label={tr("Responsibility (English)")}><Textarea rows={4} maxLength={2000} value={d.responsibilityEn ?? ""} onChange={(e) => set({ responsibilityEn: e.target.value })} /></FormField>
+                        <FormField label={tr("Job description (Vietnamese)")}><Textarea rows={4} maxLength={4000} value={d.description ?? ""} onChange={(e) => set({ description: e.target.value })} /></FormField>
+                        <FormField label={tr("Job description (English)")}><Textarea rows={4} maxLength={4000} value={d.descriptionEn ?? ""} onChange={(e) => set({ descriptionEn: e.target.value })} /></FormField>
                       </div>
                     </div>
                   );
@@ -551,37 +552,33 @@ export function TrainingJobDetailPage() {
         {tab === "matrix" && (
           <div className="space-y-4">
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-800">Other trainings required before the Work Position is given</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{tr("Other trainings required before the Work Position is given")}</h3>
               <RequiredTrainingsField value={required} disabled={!editable} onChange={(next) => { setRequired(next); setDirty(true); }} />
-              {editable && <p className="text-xs text-slate-600">Save the draft to check them against the training records of the person.</p>}
+              {editable && <p className="text-xs text-slate-600">{tr("Save the draft to check them against the training records of the person.")}</p>}
             </div>
             {(eligibility?.openSuspensions ?? 0) > 0 && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-                The work of this person is suspended after a failed assessment (
-                {eligibility?.openSuspensions}). It is a flag only: the
-                assignment is not blocked. See Training Compliance, Work
-                suspensions.
+                {tr("The work of this person is suspended after a failed assessment (")}{eligibility?.openSuspensions}{tr("). It is a flag only: the assignment is not blocked. See Training Compliance, Work suspensions.")}
               </p>
             )}
             {eligibility ? (
               <TabBlock
-                title="Training required by the matrix"
+                title={tr("Training required by the matrix")}
                 action={
                   eligibility.matrixMissing ? (
-                    <Badge color="amber">No effective matrix</Badge>
+                    <Badge color="amber">{tr("No effective matrix")}</Badge>
                   ) : eligibility.complete ? (
-                    <Badge color="emerald">Complete</Badge>
+                    <Badge color="emerald">{tr("Complete")}</Badge>
                   ) : (
                     <Badge color="red">
-                      {eligibility.missingCount} not trained
+                      {eligibility.missingCount} {tr("not trained")}
                     </Badge>
                   )
                 }
               >
                 {eligibility.matrixMissing ? (
                   <p className="p-4 text-sm text-amber-700">
-                    The department has no effective matrix. An exception is
-                    needed to go ahead.
+                    {tr("The department has no effective matrix. An exception is needed to go ahead.")}
                   </p>
                 ) : (
                   <DataTable
@@ -590,7 +587,7 @@ export function TrainingJobDetailPage() {
                     columns={itemColumns}
                     emptyState={
                       <p className="p-4 text-sm text-slate-500">
-                        The matrix requires no training for this Work Position.
+                        {tr("The matrix requires no training for this Work Position.")}
                       </p>
                     }
                   />
@@ -598,18 +595,18 @@ export function TrainingJobDetailPage() {
               </TabBlock>
             ) : (
               <p className="text-sm text-slate-500">
-                No matrix check for this assignment.
+                {tr("No matrix check for this assignment.")}
               </p>
             )}
             {job.exceptionReason && (
               <ReadonlyGrid>
                 <ReadonlyField
-                  label="Exception reason"
+                  label={tr("Exception reason")}
                   value={job.exceptionReason}
                   wide
                 />
                 <ReadonlyField
-                  label="Exception status"
+                  label={tr("Exception status")}
                   value={
                     job.exceptionApprovedBy
                       ? "Approved"
@@ -705,15 +702,15 @@ function ReasonDialog({
       isOpen={open}
       onClose={onClose}
       onConfirm={() => onSave(reason.trim())}
-      title="Cancel Job Assignment"
-      description="The reason stays in the record."
+      title={tr("Cancel Job Assignment")}
+      description={tr("The reason stays in the record.")}
       confirmText="Cancel assignment"
       confirmVariant="destructive"
       isLoading={busy}
       confirmDisabled={!reason.trim()}
       size="md"
     >
-      <FormField label="Reason" required>
+      <FormField label={tr("Reason")} required>
         <Textarea
           rows={3}
           value={reason}
@@ -759,15 +756,15 @@ function ExceptionDialog({
       isOpen
       onClose={onClose}
       onConfirm={() => onSave(reason.trim(), id)}
-      title="Request an Exception"
-      description="The person goes ahead before the training is complete only if the person you choose approves, with a signature."
+      title={tr("Request an Exception")}
+      description={tr("The person goes ahead before the training is complete only if the person you choose approves, with a signature.")}
       confirmText="Request"
       isLoading={busy}
       confirmDisabled={!reason.trim() || !id}
       size="md"
     >
       <div className="grid gap-4">
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea
             rows={3}
             value={reason}
@@ -776,11 +773,11 @@ function ExceptionDialog({
         </FormField>
         {loaded && people.length === 0 ? (
           <p className="text-sm text-amber-700">
-            No eligible approver was found.
+            {tr("No eligible approver was found.")}
           </p>
         ) : (
           <Select
-            label="Approver"
+            label={tr("Approver")}
             value={id}
             onChange={setId}
             options={people.map((p) => ({
@@ -788,7 +785,7 @@ function ExceptionDialog({
               value: p.id,
             }))}
             onSearch={search}
-            placeholder="Search by name"
+            placeholder={tr("Search by name")}
           />
         )}
       </div>

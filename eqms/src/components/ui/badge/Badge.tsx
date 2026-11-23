@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '@/i18n';
+import { useLanguage, tr } from "@/i18n";
 import { cn } from '../utils';
 import { displayNode } from '@/utils/machineText';
 
@@ -180,15 +180,15 @@ export type StatusType =
 
 const DOC_STATUS_MAP: Record<StatusType, { label: string; color: BadgeColor }> = {
   draft: { label: 'Draft', color: 'slate' },
-  pendingReview: { label: 'Pending Review', color: 'amber' },
-  pendingApproval: { label: 'Pending Approval', color: 'blue' },
+  pendingReview: { label: tr('Pending Review'), color: 'amber' },
+  pendingApproval: { label: tr('Pending Approval'), color: 'blue' },
   approved: { label: 'Approved', color: 'emerald' },
   rejected: { label: 'Rejected', color: 'red' },
   current: { label: 'Current', color: 'blue' },
   blocked: { label: 'Blocked', color: 'red' },
-  inProgress: { label: 'In Progress', color: 'amber' },
-  pendingTraining: { label: 'Pending Training', color: 'purple' },
-  readyForPublishing: { label: 'Ready for Publishing', color: 'indigo' },
+  inProgress: { label: tr('In Progress'), color: 'amber' },
+  pendingTraining: { label: tr('Pending Training'), color: 'purple' },
+  readyForPublishing: { label: tr('Ready for Publishing'), color: 'indigo' },
   published: { label: 'Published', color: 'emerald' },
   effective: { label: 'Effective', color: 'emerald' },
   active: { label: 'Active', color: 'emerald' },
@@ -196,25 +196,25 @@ const DOC_STATUS_MAP: Record<StatusType, { label: string; color: BadgeColor }> =
   obsolete: { label: 'Obsoleted', color: 'amber' },
   completed: { label: 'Completed', color: 'emerald' },
   cancelled: { label: 'Cancelled', color: 'red' },
-  closedCancelled: { label: 'Closed - Cancelled', color: 'red' },
+  closedCancelled: { label: tr('Closed - Cancelled'), color: 'red' },
 
   // --- Normalization & Raw Mapping Aliases ---
-  'closed-cancelled': { label: 'Closed - Cancelled', color: 'red' },
-  closedcancelled: { label: 'Closed - Cancelled', color: 'red' },
-  'closed - cancelled': { label: 'Closed - Cancelled', color: 'red' },
-  'readyfordistribution': { label: 'Ready for Distribution', color: 'blue' },
-  'ready-for-distribution': { label: 'Ready for Distribution', color: 'blue' },
-  'ready for distribution': { label: 'Ready for Distribution', color: 'blue' },
+  'closed-cancelled': { label: tr('Closed - Cancelled'), color: 'red' },
+  closedcancelled: { label: tr('Closed - Cancelled'), color: 'red' },
+  'closed - cancelled': { label: tr('Closed - Cancelled'), color: 'red' },
+  'readyfordistribution': { label: tr('Ready for Distribution'), color: 'blue' },
+  'ready-for-distribution': { label: tr('Ready for Distribution'), color: 'blue' },
+  'ready for distribution': { label: tr('Ready for Distribution'), color: 'blue' },
   'distributed': { label: 'Distributed', color: 'emerald' },
   'obsoleted': { label: 'Obsoleted', color: 'amber' },
-  'pendingreview': { label: 'Pending Review', color: 'amber' },
-  'pendingapproval': { label: 'Pending Approval', color: 'blue' },
-  'pendingtraining': { label: 'Pending Training', color: 'purple' },
-  'readyforpublishing': { label: 'Ready for Publishing', color: 'indigo' },
-  'pending review': { label: 'Pending Review', color: 'amber' },
-  'pending approval': { label: 'Pending Approval', color: 'blue' },
-  'pending training': { label: 'Pending Training', color: 'purple' },
-  'ready for publishing': { label: 'Ready for Publishing', color: 'indigo' },
+  'pendingreview': { label: tr('Pending Review'), color: 'amber' },
+  'pendingapproval': { label: tr('Pending Approval'), color: 'blue' },
+  'pendingtraining': { label: tr('Pending Training'), color: 'purple' },
+  'readyforpublishing': { label: tr('Ready for Publishing'), color: 'indigo' },
+  'pending review': { label: tr('Pending Review'), color: 'amber' },
+  'pending approval': { label: tr('Pending Approval'), color: 'blue' },
+  'pending training': { label: tr('Pending Training'), color: 'purple' },
+  'ready for publishing': { label: tr('Ready for Publishing'), color: 'indigo' },
 };
 
 export interface StatusBadgeProps {

@@ -55,7 +55,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { CustomColumnDrawer, useStickyPinnedColumns, useTableColumnPreferences } from "@/components/ui/table";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBranding } from "@/components/branding/BrandLogo";
-import { useLanguage } from "@/i18n";
+import { useLanguage, tr } from "@/i18n";
 
 // --- Main Component ---
 
@@ -226,10 +226,10 @@ export const UserManagementView: React.FC = () => {
       columns={columns}
       fixedColumns={[{ id: "action", label: "Action" }]}
       onApply={async (next) => {
-        if (!(await saveColumns(next))) showToast({ type: "error", title: "Column layout not saved", message: "The server did not accept the change. Please try again." });
+        if (!(await saveColumns(next))) showToast({ type: "error", title: tr("Column layout not saved"), message: "The server did not accept the change. Please try again." });
       }}
       onReset={async () => {
-        if (!(await resetColumns())) showToast({ type: "error", title: "Column layout not reset", message: "The server did not accept the change. Please try again." });
+        if (!(await resetColumns())) showToast({ type: "error", title: tr("Column layout not reset"), message: "The server did not accept the change. Please try again." });
       }}
       allowPin={isDesktop}
     />
@@ -374,13 +374,13 @@ export const UserManagementView: React.FC = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="users"
-        title="Users"
+        title={tr("Users")}
         totalRecords={totalItems}
         onExport={exportUsers}
       />
 
       <PageHeader
-        title="User Management"
+        title={tr("User Management")}
         breadcrumbItems={userManagement()}
         actions={
           <>
@@ -391,7 +391,7 @@ export const UserManagementView: React.FC = () => {
               onClick={() => setIsExportOpen(true)}
             >
               <Download className="h-4 w-4" />
-              Export
+              {tr("Export")}
             </Button>
             <Button
               size="sm"
@@ -399,7 +399,7 @@ export const UserManagementView: React.FC = () => {
               onClick={() => navigateTo(USER_MANAGEMENT_ROUTES.ADD)}
             >
               <Plus className="h-4 w-4" />
-              Add User
+              {tr("Add User")}
             </Button>
           </>
         }
@@ -412,7 +412,7 @@ export const UserManagementView: React.FC = () => {
           <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
             <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">
               <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
@@ -421,7 +421,7 @@ export const UserManagementView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by name, username, email..."
+                    placeholder={tr("Search by name, username, email...")}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -447,7 +447,7 @@ export const UserManagementView: React.FC = () => {
                   className="whitespace-nowrap gap-2"
                 >
                   <IconFilter2 className="h-4 w-4" />
-                  Filters
+                  {tr("Filters")}
                 </Button>
               </div>
             </div>
@@ -456,19 +456,19 @@ export const UserManagementView: React.FC = () => {
   trailing={<div className="hidden md:block">{customizeDrawer}</div>}
   search={
     <FilterSearchInput
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(value) => {
         setSearchQuery(value);
         setCurrentPage(1);
       }}
-      placeholder={"Search by name, username, email..."}
+      placeholder={tr("Search by name, username, email...")}
     />
   }
   filters={[
     {
       id: "roleFilter",
-      label: "Access Profile",
+      label: tr("Access Profile"),
       value: String(roleFilter),
       options: [{ label: "All", value: "All" }, ...lookupAccessProfiles],
       onChange: (value) => setRoleFilter(value as UserRoleLabel | "All"),
@@ -482,7 +482,7 @@ export const UserManagementView: React.FC = () => {
     },
     {
       id: "businessUnitFilter",
-      label: "Business Unit",
+      label: tr("Business Unit"),
       value: String(businessUnitFilter),
       resetOnChange: { departmentFilter: "All" },
       options: [{ label: "All", value: "All" }, ...lookupBusinessUnits],
@@ -522,7 +522,7 @@ export const UserManagementView: React.FC = () => {
   dates={[
     {
       id: "dateFrom",
-      label: "Created Date Range",
+      label: tr("Created Date Range"),
       from: dateFrom,
       to: dateTo,
       onFromChange: (value) => setDateFrom(toApiDate(value)),
@@ -532,7 +532,7 @@ export const UserManagementView: React.FC = () => {
     },
     {
       id: "lastUpdatedFrom",
-      label: "Last Updated Range",
+      label: tr("Last Updated Range"),
       from: lastUpdatedFrom,
       to: lastUpdatedTo,
       onFromChange: (value) => setLastUpdatedFrom(toApiDate(value)),
@@ -542,7 +542,7 @@ export const UserManagementView: React.FC = () => {
     },
     {
       id: "suspendFrom",
-      label: "Suspended Until Range",
+      label: tr("Suspended Until Range"),
       from: suspendFrom,
       to: suspendTo,
       onFromChange: (value) => setSuspendFrom(toApiDate(value)),
@@ -552,7 +552,7 @@ export const UserManagementView: React.FC = () => {
     },
     {
       id: "terminateFrom",
-      label: "Termination Date Range",
+      label: tr("Termination Date Range"),
       from: terminateFrom,
       to: terminateTo,
       onFromChange: (value) => setTerminateFrom(toApiDate(value)),
@@ -565,7 +565,7 @@ export const UserManagementView: React.FC = () => {
 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="w-full">
                 <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block transition-colors capitalize">
-                  Search
+                  {tr("Search")}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
@@ -573,7 +573,7 @@ export const UserManagementView: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by name, username, email..."
+                    placeholder={tr("Search by name, username, email...")}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -593,7 +593,7 @@ export const UserManagementView: React.FC = () => {
               </div>
 
               <Select
-                label="Access Profile"
+                label={tr("Access Profile")}
                 value={roleFilter}
                 onChange={(value) => setRoleFilter(value as UserRoleLabel | "All")}
                 options={[
@@ -604,7 +604,7 @@ export const UserManagementView: React.FC = () => {
 
               {/* Status Filter */}
               <Select
-                label="Status"
+                label={tr("Status")}
                 value={statusFilter}
                 onChange={(value) =>
                   setStatusFilter(value as UserStatus | "All")
@@ -617,7 +617,7 @@ export const UserManagementView: React.FC = () => {
 
               {/* Business Unit Filter */}
               <Select
-                label="Business Unit"
+                label={tr("Business Unit")}
                 value={businessUnitFilter}
                 onChange={(value) => {
                   setBusinessUnitFilter(value);
@@ -631,7 +631,7 @@ export const UserManagementView: React.FC = () => {
 
               {/* Department Filter */}
               <Select
-                label="Department"
+                label={tr("Department")}
                 value={departmentFilter}
                 onChange={setDepartmentFilter}
                 options={availableDepartments.map((dept) => ({
@@ -642,19 +642,19 @@ export const UserManagementView: React.FC = () => {
 
               {/* Position Filter */}
               <Select
-                label="Position"
+                label={tr("Position")}
                 value={positionFilter}
                 onChange={(value) => setPositionFilter(value)}
                 options={[
                   { label: "All", value: "" },
                   ...lookupPositions,
                 ]}
-                placeholder="All"
+                placeholder={tr("All")}
               />
 
               {/* Created Date Range Filter */}
               <DateRangePicker
-                label="Created Date Range"
+                label={tr("Created Date Range")}
                 startDate={dateFrom}
                 endDate={dateTo}
                 onStartDateChange={(value) => setDateFrom(toApiDate(value))}
@@ -667,11 +667,11 @@ export const UserManagementView: React.FC = () => {
                   )
                 }
                 applyLoading={isDateFilterApplying}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               <DateRangePicker
-                label="Last Updated Range"
+                label={tr("Last Updated Range")}
                 startDate={lastUpdatedFrom}
                 endDate={lastUpdatedTo}
                 onStartDateChange={(value) =>
@@ -686,12 +686,12 @@ export const UserManagementView: React.FC = () => {
                   )
                 }
                 applyLoading={isDateFilterApplying}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               {/* Suspended Until Range Filter */}
               <DateRangePicker
-                label="Suspended Until Range"
+                label={tr("Suspended Until Range")}
                 startDate={suspendFrom}
                 endDate={suspendTo}
                 onStartDateChange={(value) => setSuspendFrom(toApiDate(value))}
@@ -704,12 +704,12 @@ export const UserManagementView: React.FC = () => {
                   )
                 }
                 applyLoading={isDateFilterApplying}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               {/* Termination Date Range Filter */}
               <DateRangePicker
-                label="Termination Date Range"
+                label={tr("Termination Date Range")}
                 startDate={terminateFrom}
                 endDate={terminateTo}
                 onStartDateChange={(value) =>
@@ -724,7 +724,7 @@ export const UserManagementView: React.FC = () => {
                   )
                 }
                 applyLoading={isDateFilterApplying}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
               />
 
               <div className="filter-actions flex items-end gap-2">
@@ -756,7 +756,7 @@ export const UserManagementView: React.FC = () => {
                   ref={attachScroller}
                     tabIndex={0}
                     role="region"
-                    aria-label="Users table scroll area"
+                    aria-label={tr("Users table scroll area")}
                   className={cn(
                     "flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 hover:scrollbar-thumb-slate-400",
                     isDragging ? "cursor-grabbing select-none" : "cursor-grab",
@@ -818,7 +818,7 @@ export const UserManagementView: React.FC = () => {
                           );
                         })}
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell24}>
-                          Action
+                          {tr("Action")}
                         </TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>
@@ -894,17 +894,22 @@ export const UserManagementView: React.FC = () => {
                                       : user.status}
                                   </Badge>
                                 )}
-                                {col.id === "status" && user.inactive && (
-                                  <Badge size="sm" color="amber" pill className="mt-1 block w-fit px-1.5 text-2xs" title={`No sign-in for ${user.inactiveDays} days. A flag only: the account is not suspended.`}>
-                                    Inactive
-                                  </Badge>
+                                {col.id === "lastLogin" && (
+                                  <span className={user.inactive ? "text-amber-700" : "text-slate-700"} title={user.inactive ? tr("Still Active: this is only a reminder that the account has not been used for a long time.") : undefined}>
+                                    {user.lastLogin && user.lastLogin !== "Never" ? user.lastLogin : tr("Never signed in")}
+                                    {typeof user.inactiveDays === "number" && (
+                                      <span className="block text-2xs text-slate-500">
+                                        {user.inactiveDays === 0 ? tr("Signed in today") : `${user.inactiveDays} ${tr("days since the last sign-in")}`}
+                                      </span>
+                                    )}
+                                  </span>
                                 )}
                                 {col.id === "role" && (() => {
                                   const profiles = user.accessProfileNames ?? [];
                                   if (profiles.length === 0) {
                                     return (
-                                      <Badge size="sm" color="amber" title="No Access Profile assigned -- this user cannot use any permission-gated function until one is granted.">
-                                        Unassigned
+                                      <Badge size="sm" color="amber" title={tr("No Access Profile assigned -- this user cannot use any permission-gated function until one is granted.")}>
+                                        {tr("Unassigned")}
                                       </Badge>
                                     );
                                   }
@@ -984,6 +989,7 @@ export const UserManagementView: React.FC = () => {
                                   "suspendedUntil",
                                   "terminationDate",
                                   "lastUpdated",
+                                  "lastLogin",
                                 ].includes(col.id) && (
                                   <span className="text-slate-700">
                                     {String(user[col.id as keyof User] ?? "")}
@@ -1034,8 +1040,8 @@ export const UserManagementView: React.FC = () => {
               <SkeletonTable rows={10} columns={8} />
             ) : (
               <TableEmptyState
-                title="No Users Found"
-                description="We couldn't find any users matching your filters. Try adjusting your search criteria."
+                title={tr("No Users Found")}
+                description={tr("We couldn't find any users matching your filters. Try adjusting your search criteria.")}
               />
             )}
           </div>
@@ -1044,7 +1050,7 @@ export const UserManagementView: React.FC = () => {
 
       {/* Status Legend */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full p-4 md:p-5">
-        <p className="text-xs sm:text-sm font-medium text-slate-700 mb-3">Account Status Meaning</p>
+        <p className="text-xs sm:text-sm font-medium text-slate-700 mb-3">{tr("Account Status Meaning")}</p>
         <div className="flex flex-col gap-2.5">
           {(Object.keys(USER_STATUS_DESCRIPTIONS) as UserStatus[]).map((status) => (
             <div key={status} className="flex items-start gap-2">
@@ -1136,7 +1142,7 @@ export const UserManagementView: React.FC = () => {
         }
         onConfirm={confirmReinstate}
         type="confirm"
-        title="Reinstate User"
+        title={tr("Reinstate User")}
         description={`Are you sure you want to reinstate ${reinstateModal.userName}? Their account will be set to Active.`}
         confirmText="Yes, Reinstate"
         cancelText="Cancel"
@@ -1165,7 +1171,7 @@ export const UserManagementView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Access Profile"
+          label={tr("Access Profile")}
           isExpanded={expandedSections.has("role")}
           onToggle={() => toggleSection("role")}
         >
@@ -1191,7 +1197,7 @@ export const UserManagementView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Position"
+          label={tr("Position")}
           isExpanded={expandedSections.has("position")}
           onToggle={() => toggleSection("position")}
         >
@@ -1217,7 +1223,7 @@ export const UserManagementView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Status"
+          label={tr("Status")}
           isExpanded={expandedSections.has("status")}
           onToggle={() => toggleSection("status")}
         >
@@ -1243,7 +1249,7 @@ export const UserManagementView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Business Unit"
+          label={tr("Business Unit")}
           isExpanded={expandedSections.has("businessUnit")}
           onToggle={() => toggleSection("businessUnit")}
         >
@@ -1275,7 +1281,7 @@ export const UserManagementView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Department"
+          label={tr("Department")}
           isExpanded={expandedSections.has("department")}
           onToggle={() => toggleSection("department")}
         >
@@ -1299,7 +1305,7 @@ export const UserManagementView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Created Date Range"
+          label={tr("Created Date Range")}
           isExpanded={expandedSections.has("createdDate")}
           onToggle={() => toggleSection("createdDate")}
         >
@@ -1324,13 +1330,13 @@ export const UserManagementView: React.FC = () => {
                 )
               }
               applyLoading={isDateFilterApplying}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Last Updated Range"
+          label={tr("Last Updated Range")}
           isExpanded={expandedSections.has("lastUpdated")}
           onToggle={() => toggleSection("lastUpdated")}
         >
@@ -1351,13 +1357,13 @@ export const UserManagementView: React.FC = () => {
                 )
               }
               applyLoading={isDateFilterApplying}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Suspended Until Range"
+          label={tr("Suspended Until Range")}
           isExpanded={expandedSections.has("suspendDate")}
           onToggle={() => toggleSection("suspendDate")}
         >
@@ -1382,13 +1388,13 @@ export const UserManagementView: React.FC = () => {
                 )
               }
               applyLoading={isDateFilterApplying}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Termination Date Range"
+          label={tr("Termination Date Range")}
           isExpanded={expandedSections.has("terminationDate")}
           onToggle={() => toggleSection("terminationDate")}
         >
@@ -1413,7 +1419,7 @@ export const UserManagementView: React.FC = () => {
                 )
               }
               applyLoading={isDateFilterApplying}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
             />
           </div>
         </FilterAccordionItem>
@@ -1484,7 +1490,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
           className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
         >
           <UserPen className="h-4 w-4 flex-shrink-0" />
-          <span className="font-medium text-slate-500">View/Edit Profile</span>
+          <span className="font-medium text-slate-500">{tr("View/Edit Profile")}</span>
         </button>
         {!isTerminated && (
           <button
@@ -1502,7 +1508,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
             )}
           >
             <KeyRound className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Reset Password</span>
+            <span className="font-medium text-slate-500">{tr("Reset Password")}</span>
           </button>
         )}
         {!isTerminated && can("resetMfa") && (
@@ -1514,7 +1520,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
             <SmartphoneNfc className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Reset MFA</span>
+            <span className="font-medium text-slate-500">{tr("Reset MFA")}</span>
           </button>
         )}
 
@@ -1534,7 +1540,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
             )}
           >
             <PauseCircle className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Suspend Account</span>
+            <span className="font-medium text-slate-500">{tr("Suspend Account")}</span>
           </button>
         )}
         {!isTerminated && (
@@ -1554,7 +1560,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
           >
             <IconUserX className="h-4 w-4 flex-shrink-0" />
             <span className="font-medium text-slate-500">
-              Terminate Account
+              {tr("Terminate Account")}
             </span>
           </button>
         )}
@@ -1574,7 +1580,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
             )}
           >
             <RotateCcw className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Reinstate User</span>
+            <span className="font-medium text-slate-500">{tr("Reinstate User")}</span>
           </button>
         )}
         {user.accountLocked && (
@@ -1593,7 +1599,7 @@ const UserActionMenu: React.FC<UserActionMenuProps> = ({
             )}
           >
             <LockOpen className="h-4 w-4 flex-shrink-0" />
-            <span className="font-medium text-slate-500">Unlock Account</span>
+            <span className="font-medium text-slate-500">{tr("Unlock Account")}</span>
           </button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React from "react";
 import { CalendarClock, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -14,7 +15,7 @@ const SEVERITY: Record<
   AnnouncementSeverity,
   { label: string; badge: "blue" | "amber" | "red"; accent: string; tile: string; Icon: React.ElementType }
 > = {
-  INFO: { label: "Information", badge: "blue", accent: "bg-blue-500", tile: "bg-blue-50 text-blue-600 ring-blue-100", Icon: Info },
+  INFO: { label: tr("Information"), badge: "blue", accent: "bg-blue-500", tile: "bg-blue-50 text-blue-600 ring-blue-100", Icon: Info },
   WARNING: { label: "Warning", badge: "amber", accent: "bg-amber-500", tile: "bg-amber-50 text-amber-600 ring-amber-100", Icon: TriangleAlert },
   CRITICAL: { label: "Critical", badge: "red", accent: "bg-red-500", tile: "bg-red-50 text-red-600 ring-red-100", Icon: OctagonAlert },
 };

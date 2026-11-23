@@ -8,6 +8,7 @@ import { cn } from "@/components/ui/utils";
 import { useServerPagedList, type ServerPage } from "@/features/documents/shared/useServerPagedList";
 import { SortableTh, nextSort, type SortDirection } from "@/features/documents/document-detail/tabs/subtabs/components/SortableTh";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 /** One column of the revisions table. `sortKey` is the key the server sorts by; `hideOnPhone` hides the column below the md breakpoint. */
 export interface RevisionColumn<T> {
@@ -74,7 +75,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
           <input
             type="text"
             placeholder={searchPlaceholder}
-            aria-label="Search the revisions"
+            aria-label={tr("Search the revisions")}
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             className="h-9 w-full rounded-lg border border-slate-200 pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -85,7 +86,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
             <TableMarkup.Root className="w-full">
               <TableMarkup.Head className="border-b border-slate-200 bg-slate-50">
                 <TableMarkup.Row>
-                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>No.</TableMarkup.HeaderCell>
+                  <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell10}>{tr("No.")}</TableMarkup.HeaderCell>
                   {columns.map((c) => (
                     <SortableTh key={c.sortKey} label={c.header} sortKey={c.sortKey} activeKey={sort.key} direction={sort.direction} onSort={handleSort} className={c.hideOnPhone ? "hidden md:table-cell" : undefined} />
                   ))}
@@ -93,7 +94,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
               </TableMarkup.Head>
               <TableMarkup.Body className="divide-y divide-slate-200 bg-white">
                 {loading && !hasLoadedOnce ? (
-                  <TableMarkup.Row><TableMarkup.Cell colSpan={span} className="py-12 text-center text-sm text-slate-500">Loading...</TableMarkup.Cell></TableMarkup.Row>
+                  <TableMarkup.Row><TableMarkup.Cell colSpan={span} className="py-12 text-center text-sm text-slate-500">{tr("Loading...")}</TableMarkup.Cell></TableMarkup.Row>
                 ) : error ? (
                   <TableMarkup.Row><TableMarkup.Cell colSpan={span} className="py-12 text-center text-sm font-medium text-slate-500">{error}</TableMarkup.Cell></TableMarkup.Row>
                 ) : items.length > 0 ? (
@@ -110,7 +111,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
                 ) : (
                   <TableMarkup.Row>
                     <TableMarkup.Cell colSpan={span} className="py-12 text-center">
-                      <TableEmptyState title={debouncedSearch ? "No records matching your search" : "No records to display"} />
+                      <TableEmptyState title={debouncedSearch ? "No records matching your search" : tr("No records to display")} />
                     </TableMarkup.Cell>
                   </TableMarkup.Row>
                 )}
@@ -146,7 +147,7 @@ export function RevisionLink({ label, current, onOpen }: { label: string; curren
       >
         {label}
       </button>
-      {current && <span className="ml-2 text-2xs font-medium uppercase tracking-wide text-slate-400">Viewing</span>}
+      {current && <span className="ml-2 text-2xs font-medium uppercase tracking-wide text-slate-400">{tr("Viewing")}</span>}
     </>
   );
 }

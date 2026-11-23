@@ -9,6 +9,7 @@ import {
 } from "@embedpdf/react-pdf-viewer";
 import { Loader2 } from "lucide-react";
 import { useDocumentPreviewSettings } from "../useDocumentPreviewSettings";
+import { tr } from "@/i18n";
 
 interface DocumentPdfViewerProps {
   fileUrl: string;
@@ -208,7 +209,7 @@ export const DocumentPdfViewer: React.FC<DocumentPdfViewerProps> = ({
           <div className="w-full max-w-[320px] rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg">
             <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-              Loading preview...
+              {tr("Loading preview...")}
             </div>
           </div>
         </div>

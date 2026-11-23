@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/utils";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { ProposedParticipantsField, type ProposedPerson } from "@/features/training-activities/shared/ProposedParticipantsField";
 import type { TrainingLink } from "@/services/api/trainingLinks";
+import { tr, trFormat } from "@/i18n";
 
 interface TrainingConfig {
     isRequired: boolean;
@@ -104,7 +105,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
             <div className="flex items-center justify-between font-semibold text-slate-900">
                 <Checkbox
                     id="requires-training"
-                    label="Requires Training?"
+                    label={tr("Requires Training?")}
                     checked={config.isRequired}
                     onChange={handleCheckboxChange}
                     disabled={isReadOnly}
@@ -117,14 +118,14 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                         <div>
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                                    Training Period (Days) {!isReadOnly && <span className="text-red-500">*</span>}
+                                    {tr("Training Period (Days)")} {!isReadOnly && <span className="text-red-500">*</span>}
                                 </label>
                                 <Input
                                     type="number"
                                     min={1}
                                     value={config.trainingPeriodDays ?? ""}
                                     disabled={isReadOnly}
-                                    placeholder="Enter number of days"
+                                    placeholder={tr("Enter number of days")}
                                     onChange={(e) => {
                                         const raw = e.target.value;
                                         const parsed = raw.trim() === "" ? null : parseInt(raw, 10);
@@ -138,7 +139,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                             </div>
                             {validationError?.trainingPeriodDays && (config.trainingPeriodDays ?? 0) < 1 && (
                                 <p className="text-xs text-red-600 mt-1.5 font-medium">
-                                    Please enter a valid training period in days
+                                    {tr("Please enter a valid training period in days")}
                                 </p>
                             )}
                         </div>
@@ -146,10 +147,10 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     {numberEntryMode === "MANUAL" && !isReadOnly && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <ManualNumberField
-                                label="Training Number"
-                                placeholder="For example TRN/DC/26-014"
+                                label={tr("Training Number")}
+                                placeholder={tr("For example TRN/DC/26-014")}
                                 savedNumber={hasNumber ? trainingLink?.trainingNumber ?? "" : ""}
-                                blockedReason={!departmentId && !hasNumber ? "Choose the Department first: its code is part of the Training Number." : null}
+                                blockedReason={!departmentId && !hasNumber ? tr("Choose the Department first: its code is part of the Training Number.") : null}
                                 formatHint="TRN/<department code>/<YY>-<NNN>, the department that organizes the training"
                                 runCheck={async (typed) => {
                                     const answer = await numberEntryApi.checkTrainingNumber({
@@ -180,7 +181,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     <div>
                         <div className="flex flex-col gap-1.5">
                             <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                                Reason for skipping training {!isReadOnly && <span className="text-red-500">*</span>}
+                                {tr("Reason for skipping training")} {!isReadOnly && <span className="text-red-500">*</span>}
                             </label>
                             <Textarea
                                 value={config.reasonForSkippingTraining}
@@ -190,7 +191,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                                     reasonForSkippingTraining: e.target.value,
                                 })}
                                 rows={3}
-                                placeholder="Provide a reason for skipping training..."
+                                placeholder={tr("Provide a reason for skipping training...")}
                                 disabled={isReadOnly}
                                 className={cn(
                                     validationError?.reasonForSkippingTraining &&
@@ -201,7 +202,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                         </div>
                         {validationError?.reasonForSkippingTraining && !config.reasonForSkippingTraining.trim() && (
                             <p className="text-xs text-red-600 mt-1.5 font-medium">
-                                Please provide a reason for skipping training
+                                {tr("Please provide a reason for skipping training")}
                             </p>
                         )}
                     </div>
@@ -209,7 +210,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     {!isReadOnly && (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
                             <p className="text-xs text-amber-800 leading-relaxed">
-                                If training is not required, you must provide a valid reason. This will be recorded in the document history for audit purposes.
+                                {tr("If training is not required, you must provide a valid reason. This will be recorded in the document history for audit purposes.")}
                             </p>
                         </div>
                     )}
@@ -223,11 +224,10 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                     applyCheckbox(false);
                 }}
                 type="warning"
-                title="Remove Training from This Revision?"
+                title={tr("Remove Training from This Revision?")}
                 description={
                     <p className="text-sm text-slate-600">
-                        Training Number <strong>{trainingLink?.trainingNumber}</strong> will be cancelled when you save the document. A cancelled number is never used again. If you
-                        tick Requires Training later, a new Training Number is issued.
+                        {tr("Training Number")} <strong>{trainingLink?.trainingNumber}</strong> {tr("will be cancelled when you save the document. A cancelled number is never used again. If you tick Requires Training later, a new Training Number is issued.")}
                     </p>
                 }
                 confirmText="Remove training"

@@ -41,6 +41,7 @@ import {
 } from "@tabler/icons-react";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const DECISIONS: {
   value: AccessReviewItem["decision"];
@@ -53,16 +54,16 @@ const DECISIONS: {
 ];
 
 const ITEM_COLUMNS: { key: string; label: string; sortable: boolean }[] = [
-  { key: "employeeCode", label: "Employee ID", sortable: true },
+  { key: "employeeCode", label: tr("Employee ID"), sortable: true },
   { key: "fullName", label: "User", sortable: true },
   { key: "username", label: "User Name", sortable: true },
   { key: "userStatus", label: "Status", sortable: true },
-  { key: "accessProfiles", label: "Access Profiles", sortable: true },
+  { key: "accessProfiles", label: tr("Access Profiles"), sortable: true },
   { key: "permissionCount", label: "Permissions", sortable: true },
-  { key: "lastSignIn", label: "Last Sign-in", sortable: false },
+  { key: "lastSignIn", label: tr("Last Sign-in"), sortable: false },
   { key: "mfa", label: "MFA", sortable: false },
-  { key: "timeLimited", label: "Time-limited Until", sortable: false },
-  { key: "sod", label: "SoD Conflicts", sortable: false },
+  { key: "timeLimited", label: tr("Time-limited Until"), sortable: false },
+  { key: "sod", label: tr("SoD Conflicts"), sortable: false },
   { key: "flags", label: "Flags", sortable: false },
   { key: "decision", label: "Decision", sortable: true },
   { key: "decidedAt", label: "Decided", sortable: true },
@@ -117,10 +118,10 @@ const DecisionModal: React.FC<{
       title={`${label} Access for ${item.fullName ?? item.username}`}
       description={
         decision === "CONFIRMED"
-          ? "Confirm that this user's current access is appropriate."
+          ? tr("Confirm that this user's current access is appropriate.")
           : decision === "MODIFY_REQUESTED"
-            ? "Flag this user's access for modification."
-            : "Flag this user's access for revocation."
+            ? tr("Flag this user's access for modification.")
+            : tr("Flag this user's access for revocation.")
       }
       confirmText={label}
       cancelText="Cancel"
@@ -133,10 +134,10 @@ const DecisionModal: React.FC<{
     >
       <div>
         <label className={labelClass}>
-          Note{" "}
+          {tr("Note")}{" "}
           {decision !== "CONFIRMED" && (
             <span className="font-normal text-slate-400 text-xs">
-              (optional)
+              {tr("(optional)")}
             </span>
           )}
         </label>
@@ -145,7 +146,7 @@ const DecisionModal: React.FC<{
           rows={2}
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Reviewer note…"
+          placeholder={tr("Reviewer note…")}
         />
       </div>
     </FormModal>
@@ -210,7 +211,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       setItemTotal(page.pagination?.total ?? 0);
       setItemTotalPages(page.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load campaign" });
+      showToast({ type: "error", message: tr("Failed to load campaign") });
     } finally {
       setLoading(false);
     }
@@ -307,7 +308,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       );
       showToast({
         type: "success",
-        message: "Access review completed and signed",
+        message: tr("Access review completed and signed"),
       });
       setDetail(updated);
       await load();
@@ -341,8 +342,8 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell34, cellClassName: "text-center text-slate-500 font-medium", cell: (_item, idx) => (itemPage - 1) * itemPageSize + idx + 1 },
     {
       id: "employeeCode",
-      header: "Employee ID",
-      label: "Employee ID",
+      header: tr("Employee ID"),
+      label: tr("Employee ID"),
       sort: { direction: sortKey === "employeeCode" ? sortDir : undefined, onSort: () => handleSort("employeeCode") },
       cellClassName: (item) => cn("font-medium", item.userId ? "text-emerald-600" : "text-slate-400"),
       cell: (item) => (
@@ -380,13 +381,13 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     },
     {
       id: "accessProfiles",
-      header: "Access Profiles",
-      label: "Access Profiles",
+      header: tr("Access Profiles"),
+      label: tr("Access Profiles"),
       sort: { direction: sortKey === "accessProfiles" ? sortDir : undefined, onSort: () => handleSort("accessProfiles") },
       cellClassName: "text-slate-700",
       cell: (item) => (
         <span title={item.accessProfiles ?? undefined}>
-          {item.accessProfiles || <span className="italic text-slate-400">None</span>}
+          {item.accessProfiles || <span className="italic text-slate-400">{tr("None")}</span>}
         </span>
       ),
     },
@@ -400,16 +401,16 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     },
     {
       id: "lastSignIn",
-      header: "Last Sign-in",
-      label: "Last Sign-in",
+      header: tr("Last Sign-in"),
+      label: tr("Last Sign-in"),
       cellClassName: "text-slate-700",
       cell: (item) =>
         item.inactiveDays == null ? (
-          <span className="text-slate-400" title="This campaign was made before this fact was captured">Not captured</span>
+          <span className="text-slate-400" title={tr("This campaign was made before this fact was captured")}>{tr("Not captured")}</span>
         ) : (
           <>
-            <div>{item.lastLoginAt ? formatDateTime(item.lastLoginAt) : "Never signed in"}</div>
-            <div className={cn("text-xs", item.inactive ? "font-medium text-amber-700" : "text-slate-500")}>{item.inactiveDays} days without sign-in</div>
+            <div>{item.lastLoginAt ? formatDateTime(item.lastLoginAt) : tr("Never signed in")}</div>
+            <div className={cn("text-xs", item.inactive ? "font-medium text-amber-700" : "text-slate-500")}>{item.inactiveDays} {tr("days without sign-in")}</div>
           </>
         ),
     },
@@ -421,26 +422,26 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         item.mfaState ? (
           <Badge size="sm" color={item.mfaState === "ENROLLED" ? "emerald" : item.mfaState === "REQUIRED_NOT_ENROLLED" ? "red" : "slate"}>{item.mfaStateLabel ?? item.mfaState}</Badge>
         ) : (
-          <span className="text-slate-400">Not captured</span>
+          <span className="text-slate-400">{tr("Not captured")}</span>
         ),
     },
     {
       id: "timeLimited",
-      header: "Time-limited Until",
-      label: "Time-limited Until",
+      header: tr("Time-limited Until"),
+      label: tr("Time-limited Until"),
       cellClassName: "text-slate-700",
       cell: (item) => (item.timeLimitedUntil ? formatDateTime(item.timeLimitedUntil) : <span className="text-slate-400">—</span>),
     },
     {
       id: "sod",
-      header: "SoD Conflicts",
-      label: "SoD Conflicts",
+      header: tr("SoD Conflicts"),
+      label: tr("SoD Conflicts"),
       cellClassName: "text-slate-700",
       cell: (item) =>
         item.superAdmin ? (
-          <span className="text-slate-400" title="Holds every permission">All</span>
+          <span className="text-slate-400" title={tr("Holds every permission")}>{tr("All")}</span>
         ) : item.openSodViolations == null ? (
-          <span className="text-slate-400">Not captured</span>
+          <span className="text-slate-400">{tr("Not captured")}</span>
         ) : item.openSodViolations > 0 ? (
           <Badge size="sm" color="red">{item.openSodViolations}</Badge>
         ) : (
@@ -453,9 +454,9 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
       label: "Flags",
       cell: (item) => (
         <div className="flex flex-wrap gap-1">
-          {item.superAdmin && <Badge color="purple" size="sm">Super Admin</Badge>}
-          {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">No Permissions</Badge>}
-          {item.inactive && <Badge color="amber" size="sm">Inactive</Badge>}
+          {item.superAdmin && <Badge color="purple" size="sm">{tr("Super Admin")}</Badge>}
+          {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">{tr("No Permissions")}</Badge>}
+          {item.inactive && <Badge color="amber" size="sm">{tr("Inactive")}</Badge>}
           {!item.superAdmin && item.permissionCount !== 0 && !item.inactive && <span className="text-slate-400">—</span>}
         </div>
       ),
@@ -514,7 +515,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           ref={getRef(item.id)}
           onClick={(e) => toggle(item.id, e)}
           className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 transition-colors"
-          aria-label="More actions"
+          aria-label={tr("More actions")}
         >
           <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4 text-slate-600" />
         </button>
@@ -556,17 +557,17 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     return (
       <div className="space-y-4 md:space-y-6">
         <PageHeader
-          title="Access Review"
+          title={tr("Access Review")}
           breadcrumbItems={accessReviewBreadcrumb(navigate)}
           actions={
             <Button variant="outline-emerald" size="sm" onClick={handleBack}>
-              Back
+              {tr("Back")}
             </Button>
           }
         />
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 flex flex-col items-center text-center gap-3">
           <p className="text-sm font-medium text-slate-700">
-            Campaign not found
+            {tr("Campaign not found")}
           </p>
           <Button
             variant="outline"
@@ -574,7 +575,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
             className="mt-2"
             onClick={handleBack}
           >
-            Back to Access Review
+            {tr("Back to Access Review")}
           </Button>
         </div>
       </div>
@@ -588,7 +589,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Access Review Campaign Detail"
+        title={tr("Access Review Campaign Detail")}
         breadcrumbItems={accessReviewBreadcrumb(
           navigate,
           "Access Review Campaign Detail",
@@ -601,7 +602,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               onClick={handleBack}
               className="whitespace-nowrap"
             >
-              Back
+              {tr("Back")}
             </Button>
             {canManage && inProgress && (
               <>
@@ -611,7 +612,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                   onClick={() => setCancelConfirmOpen(true)}
                   className="whitespace-nowrap"
                 >
-                  Cancel Campaign
+                  {tr("Cancel Campaign")}
                 </Button>
                 <Button
                   size="sm"
@@ -641,7 +642,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         {(campaign.campaignNumber || campaign.description) && (
           <div className="space-y-2">
             {campaign.campaignNumber && (
-              <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title="Access Review Campaign Number">
+              <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700" title={tr("Access Review Campaign Number")}>
                 {campaign.campaignNumber}
               </span>
             )}
@@ -657,22 +658,22 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                 <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                   <p className="text-xl sm:text-2xl font-semibold text-slate-900">{campaign.totalItems}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Total Users</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{tr("Total Users")}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                   <p className="text-xl sm:text-2xl font-semibold text-emerald-700">{reviewed}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Reviewed</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{tr("Reviewed")}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                   <p className={cn("text-xl sm:text-2xl font-semibold", campaign.pendingItems > 0 ? "text-amber-600" : "text-emerald-700")}>{campaign.pendingItems}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Pending</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{tr("Pending")}</p>
                 </div>
               </div>
               <div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Review progress">
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={tr("Review progress")}>
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${percent}%` }} />
                 </div>
-                <p className="mt-1.5 text-xs text-slate-500">{percent}% reviewed</p>
+                <p className="mt-1.5 text-xs text-slate-500">{percent}{tr("% reviewed")}</p>
               </div>
             </div>
           );
@@ -682,14 +683,14 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           {[
             { label: "Reviewer", value: campaign.reviewerName ?? "—" },
             {
-              label: "Review Period",
+              label: tr("Review Period"),
               value: campaign.reviewPeriodStart || campaign.reviewPeriodEnd
                 ? `${campaign.reviewPeriodStart ? formatDateUS(campaign.reviewPeriodStart) : "—"} – ${campaign.reviewPeriodEnd ? formatDateUS(campaign.reviewPeriodEnd) : "—"}`
                 : "—",
             },
             { label: "Signed", value: campaign.signedAt ? formatDateTime(campaign.signedAt) : "—" },
             { label: "Created", value: campaign.createdAt ? formatDateTime(campaign.createdAt) : "—" },
-            { label: "Last Updated", value: campaign.updatedAt ? formatDateTime(campaign.updatedAt) : "—" },
+            { label: tr("Last Updated"), value: campaign.updatedAt ? formatDateTime(campaign.updatedAt) : "—" },
           ].map((field) => (
             <div key={field.label} className="min-w-0">
               <dt className="text-xs text-slate-500">{field.label}</dt>
@@ -708,7 +709,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setItemPage(1); }}
-                placeholder="Search users…"
+                placeholder={tr("Search users…")}
                 className="w-full pl-9 pr-9 h-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
               />
               {search && (
@@ -719,7 +720,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
 
@@ -727,13 +728,13 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           <div className="hidden md:block pb-4 md:pb-5">
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="w-full min-w-0">
-              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">Search</label>
+              <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Search")}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setItemPage(1); }}
-                  placeholder="Search name, username, employee ID, profile…"
+                  placeholder={tr("Search name, username, employee ID, profile…")}
                   className="w-full pl-9 pr-9 h-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400"
                 />
                 {search && (
@@ -748,13 +749,13 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               </div>
             </div>
             <Select
-              label="User Status"
+              label={tr("User Status")}
               value={userStatusFilter}
               onChange={(v) => { setUserStatusFilter(String(v)); setItemPage(1); }}
               options={toOptions("userStatuses", "All")}
             />
             <Select
-              label="Decision"
+              label={tr("Decision")}
               value={decisionFilter}
               onChange={(v) => { setDecisionFilter(String(v)); setItemPage(1); }}
               options={toOptions("decisions", "All")}
@@ -776,8 +777,8 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
               <div className="border border-slate-200 rounded-xl py-12 bg-white">
                 <TableEmptyState
                  
-                  title="No Users Found"
-                  description="No reviewed users match the current filters."
+                  title={tr("No Users Found")}
+                  description={tr("No reviewed users match the current filters.")}
                 />
               </div>
             ) : (
@@ -822,7 +823,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="User Status"
+          label={tr("User Status")}
           isExpanded={expandedFilterSections.has("userStatus")}
           onToggle={() => toggleFilterSection("userStatus")}
         >
@@ -840,7 +841,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
           </div>
         </FilterAccordionItem>
         <FilterAccordionItem
-          label="Decision"
+          label={tr("Decision")}
           isExpanded={expandedFilterSections.has("decision")}
           onToggle={() => toggleFilterSection("decision")}
         >
@@ -874,9 +875,9 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         onClose={() => setCancelConfirmOpen(false)}
         onConfirm={() => void handleCancel()}
         type="warning"
-        title="Cancel Access Review Campaign"
+        title={tr("Cancel Access Review Campaign")}
         description={`Are you sure you want to cancel "${campaign.name}"? This action cannot be undone.`}
-        confirmText="Cancel Campaign"
+        confirmText={tr("Cancel Campaign")}
         cancelText="Back"
         showCancel
       />

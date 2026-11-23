@@ -24,6 +24,7 @@ import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { COMPONENT_LABEL, filesText, MEDIUM_LABEL, POLICY_STATUS_COLOR } from "./policyLabels";
 import { IconSettingsAutomation } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr, trFormat } from "@/i18n";
 
 type SortKey = "version" | "status" | "proposedBy" | "approvedBy" | "createdAt" | "activatedAt";
 
@@ -31,17 +32,17 @@ const ALL = "ALL";
 const PART_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Database", value: "DATABASE" },
-  { label: "Document files", value: "OBJECT_STORE" },
+  { label: tr("Document files"), value: "OBJECT_STORE" },
 ];
 const FILES_OPTIONS = [
   { label: "All", value: ALL },
-  { label: "At its own time", value: "OWN" },
-  { label: "With the database", value: "WITH_DATABASE" },
+  { label: tr("At its own time"), value: "OWN" },
+  { label: tr("With the database"), value: "WITH_DATABASE" },
 ];
 const APPROVAL_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Approved", value: "APPROVED" },
-  { label: "Not approved", value: "NOT_APPROVED" },
+  { label: tr("Not approved"), value: "NOT_APPROVED" },
 ];
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(["ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED"] as PolicyStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
@@ -179,8 +180,8 @@ export const BackupPolicyView: React.FC = () => {
     { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (row) => <Badge color={POLICY_STATUS_COLOR[row.status]}>{statusLabel(row.status)}</Badge> },
     { id: "scope", header: "Backs up", label: "Backs up", cell: (row) => readPolicyBody(row).components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ") || "—" },
     { id: "targets", header: "Copied to", label: "Copied to", cell: (row) => readPolicyBody(row).targets.map((t) => t.code).join(", ") || "—" },
-    { id: "proposedBy", header: "Proposed by", label: "Proposed by", sort: sortFor("proposedBy"), cell: (row) => row.proposedBy ?? "System" },
-    { id: "approvedBy", header: "Approved by", label: "Approved by", sort: sortFor("approvedBy"), cell: (row) => row.approvedBy ?? "—" },
+    { id: "proposedBy", header: tr("Proposed by"), label: tr("Proposed by"), sort: sortFor("proposedBy"), cell: (row) => row.proposedBy ?? "System" },
+    { id: "approvedBy", header: tr("Approved by"), label: tr("Approved by"), sort: sortFor("approvedBy"), cell: (row) => row.approvedBy ?? "—" },
     { id: "createdAt", header: "Proposed", label: "Proposed", sort: sortFor("createdAt"), cell: (row) => formatDateTime(row.createdAt) },
     { id: "activatedAt", header: "Activated", label: "Activated", sort: sortFor("activatedAt"), cell: (row) => formatDateTime(row.activatedAt) },
   ];
@@ -191,7 +192,7 @@ export const BackupPolicyView: React.FC = () => {
       <button
         type="button"
         ref={menu.getRef(row.id)}
-        aria-label="More actions"
+        aria-label={tr("More actions")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8"
         onClick={(event) => menu.toggle(row.id, event)}
       >
@@ -204,56 +205,56 @@ export const BackupPolicyView: React.FC = () => {
 
   return (
     <BackupAdminLivePage
-      title="Backup Policy"
+      title={tr("Backup Policy")}
       actions={
         canPropose ? (
           <Button size="sm" variant="default" onClick={() => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_NEW)} className="gap-2 whitespace-nowrap">
-            Propose Policy Change
+            {tr("Propose Policy Change")}
           </Button>
         ) : undefined
       }
     >
-      {activeError && <WarningBanner variant="error" title="The running policy could not be read" description={activeError} />}
-      <FormSection title="Running Policy" icon={<IconSettingsAutomation className="h-4 w-4" />}>
+      {activeError && <WarningBanner variant="error" title={tr("The running policy could not be read")} description={activeError} />}
+      <FormSection title={tr("Running Policy")} icon={<IconSettingsAutomation className="h-4 w-4" />}>
         {active === undefined ? (
           <SectionLoading minHeight="80px" />
         ) : active && activeBody ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
             <div className="space-y-3">
-              <Fact label="Version">
+              <Fact label={tr("Version")}>
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <button type="button" className="font-semibold text-emerald-600 hover:underline" onClick={() => open(active.version)}>
-                    Version {active.version}
+                    {tr("Version")} {active.version}
                   </button>
                   <Badge color={POLICY_STATUS_COLOR[active.status]}>{statusLabel(active.status)}</Badge>
                 </span>
               </Fact>
-              <Fact label="Approved">
+              <Fact label={tr("Approved")}>
                 {active.approvedBy ? `${active.approvedBy}, ${formatDateTime(active.activatedAt)}` : "Installed with the Backup Agent"}
               </Fact>
             </div>
             <div className="space-y-3">
-              <Fact label="Backs up">{activeBody.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ")}</Fact>
-              <Fact label="Database backup">{activeBody.enabled ? `Daily at ${activeBody.time}` : "Switched off"}</Fact>
-              <Fact label="Files backup">{filesText(activeBody)}</Fact>
+              <Fact label={tr("Backs up")}>{activeBody.components.map((c) => COMPONENT_LABEL[c] ?? c).join(", ")}</Fact>
+              <Fact label={tr("Database backup")}>{activeBody.enabled ? `Daily at ${activeBody.time}` : tr("Switched off")}</Fact>
+              <Fact label={tr("Files backup")}>{filesText(activeBody)}</Fact>
             </div>
             <div className="space-y-3">
-              <Fact label="Copied to">
+              <Fact label={tr("Copied to")}>
                 <ul className="space-y-1">
                   {activeBody.targets.map((t) => (
                     <li key={t.code}>
                       {t.code} · {MEDIUM_LABEL[t.medium] ?? t.medium}
-                      {t.offsite && <Badge color="slate" className="ml-2">Off-site</Badge>}
-                      {t.immutable && <Badge color="slate" className="ml-2">Immutable</Badge>}
+                      {t.offsite && <Badge color="slate" className="ml-2">{tr("Off-site")}</Badge>}
+                      {t.immutable && <Badge color="slate" className="ml-2">{tr("Immutable")}</Badge>}
                     </li>
                   ))}
                 </ul>
               </Fact>
-              {activeBody.manualCopy && <Fact label="Manual copy">{activeBody.manualCopy.description}, every {activeBody.manualCopy.everyDays} day(s)</Fact>}
+              {activeBody.manualCopy && <Fact label={tr("Manual copy")}>{activeBody.manualCopy.description}, {trFormat("every {count} days", { count: activeBody.manualCopy.everyDays })}</Fact>}
             </div>
           </div>
         ) : (
-          <p className="text-xs text-slate-500 sm:text-sm">No policy is running.</p>
+          <p className="text-xs text-slate-500 sm:text-sm">{tr("No policy is running.")}</p>
         )}
       </FormSection>
 
@@ -266,17 +267,17 @@ export const BackupPolicyView: React.FC = () => {
         loading={loading}
         hasLoaded={hasLoaded}
         error={error}
-        emptyTitle="No Policy Versions"
-        emptyDescription="Try changing your search or filters."
+        emptyTitle={tr("No Policy Versions")}
+        emptyDescription={tr("Try changing your search or filters.")}
         search={search}
         onSearch={setSearch}
         searchLabel="Search policy versions"
-        searchPlaceholder="Version, person or reason…"
+        searchPlaceholder={tr("Version, person or reason…")}
         filters={[
           { id: "status", label: "Status", value: status, options: STATUS_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setStatus },
           { id: "part", label: "Backs Up", value: part, options: PART_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setPart },
           { id: "target", label: "Copied To", value: target, options: targetOptions, defaultValue: ALL, placeholder: "All", onChange: setTarget },
-          { id: "files", label: "Files Backup", value: filesSchedule, options: FILES_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setFilesSchedule },
+          { id: "files", label: tr("Files Backup"), value: filesSchedule, options: FILES_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setFilesSchedule },
           { id: "approval", label: "Approval", value: approval, options: APPROVAL_OPTIONS, defaultValue: ALL, placeholder: "All", onChange: setApproval },
         ]}
         dates={[
@@ -314,7 +315,7 @@ export const BackupPolicyView: React.FC = () => {
                 menu.close();
               }}
             >
-              View Details
+              {tr("View Details")}
             </DropdownMenuItem>
           </div>
         )}

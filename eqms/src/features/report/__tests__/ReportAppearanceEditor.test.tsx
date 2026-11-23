@@ -104,16 +104,15 @@ it("the header has a section for each place and the footer has the page number c
   expect(screen.getByRole("checkbox", { name: "Show page numbers" })).toBeInTheDocument();
 });
 
-it("Report Placeholders is a section of the same screen: the server searches, sorts and pages it, and there is no Word upload", async () => {
+it("Report Placeholders is a section of the same screen: it filters locally, and there is no Word upload", async () => {
   render(<Draft />);
   expect(screen.queryByRole("tab", { name: "Cover Page" })).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/Word template/)).not.toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "Copy report.executor" })).toBeInTheDocument();
-  expect(reportAppearanceApi.placeholders).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 10 }), expect.anything());
-  fireEvent.change(screen.getByLabelText("Search"), { target: { value: "executor" } });
-  await waitFor(() => expect(reportAppearanceApi.placeholders).toHaveBeenCalledWith(expect.objectContaining({ search: "executor", page: 1 }), expect.anything()));
-  fireEvent.click(await screen.findByRole("columnheader", { name: /^Name/ }));
-  await waitFor(() => expect(reportAppearanceApi.placeholders).toHaveBeenCalledWith(expect.objectContaining({ sort: "name", direction: "asc" }), expect.anything()));
+  expect(reportAppearanceApi.placeholders).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Filter placeholders"), { target: { value: "executor" } });
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Copy report.title" })).toBeNull());
+  expect(screen.getByRole("button", { name: "Copy report.executor" })).toBeInTheDocument();
 });
 
 it("a layout that still has Word templates offers to remove them", () => {

@@ -14,6 +14,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { personalInformation } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import notice from "./dataPrivacyNotice.json";
+import { tr } from "@/i18n";
 
 const icons = {
   file: FileText,
@@ -48,7 +49,7 @@ export const DataPrivacyNoticeView: React.FC = () => {
             variant="outline-emerald"
             onClick={() => navigate("/profile")}
           >
-            Back to Personal Information
+            {tr("Back to Personal Information")}
           </Button>
         }
       />

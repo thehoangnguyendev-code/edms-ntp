@@ -12,6 +12,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { cn } from "@/components/ui/utils";
 import { trainingActivitiesApi, type TrainingGroup, type TrainingPerson, type TrainingSuggestedParticipant } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 type Scope = "matrix" | "business_unit" | "department" | "individual" | "outside";
 export interface Outsider { name: string; org: string }
@@ -32,7 +33,7 @@ function GroupCard({ group, selected, onToggle, icon }: { group: TrainingGroup; 
             <span className="min-w-0 truncate text-xs font-semibold text-slate-900 sm:text-sm">{group.name}</span>
             {selected && <IconCheck className="h-4 w-4 shrink-0 text-emerald-500" />}
           </div>
-          <span className={cn("mt-1 inline-flex rounded-full px-1.5 py-0.5 text-2xs font-medium", selected ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{group.total} employees</span>
+          <span className={cn("mt-1 inline-flex rounded-full px-1.5 py-0.5 text-2xs font-medium", selected ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{group.total} {tr("employees")}</span>
         </div>
       </div>
     </button>
@@ -99,22 +100,22 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
 
   const tabs = [
     ...(hasMatrix ? [{ id: "matrix", label: `Required by matrix${matrixPeople.length ? ` (${matrixPeople.length})` : ""}`, icon: IconListCheck }] : []),
-    { id: "business_unit", label: "Business Unit", icon: IconBuilding },
+    { id: "business_unit", label: tr("Business Unit"), icon: IconBuilding },
     { id: "department", label: "Department", icon: Building2 },
-    { id: "individual", label: "Individual", icon: IconUser },
-    { id: "outside", label: "Outside person", icon: IconUserQuestion },
+    { id: "individual", label: tr("Individual"), icon: IconUser },
+    { id: "outside", label: tr("Outside person"), icon: IconUserQuestion },
   ];
   const toggle = (list: string[], set: (next: string[]) => void, name: string) => set(list.includes(name) ? list.filter((x) => x !== name) : [...list, name]);
   const togglePerson = (person: TrainingPerson) => setPicked((old) => { const next = { ...old }; if (next[person.id]) delete next[person.id]; else next[person.id] = person; return next; });
   const rows = resolved.slice((page - 1) * limit, page * limit);
   const columns: DataTableColumn<TrainingPerson>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (page - 1) * limit + i + 1 },
-    { id: "code", header: "Employee ID", cell: (p) => <span className="font-semibold text-emerald-600">{p.employeeCode ?? "—"}</span> },
+    { id: "code", header: tr("Employee ID"), cell: (p) => <span className="font-semibold text-emerald-600">{p.employeeCode ?? "—"}</span> },
     { id: "name", header: "Full Name", cell: (p) => <span className="font-medium text-slate-900">{p.fullName}</span> },
     { id: "email", header: "Email", cell: (p) => p.email ?? "—" },
     { id: "position", header: "Position", cell: (p) => p.position ?? "—" },
     { id: "department", header: scope === "outside" ? "Organization" : "Department", cell: (p) => p.department ?? "—" },
-    { id: "unit", header: "Business Unit", cell: (p) => p.businessUnit || "—" },
+    { id: "unit", header: tr("Business Unit"), cell: (p) => p.businessUnit || "—" },
   ];
 
   return (
@@ -125,11 +126,11 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
         {scope === "matrix" && (
           <div className="rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between px-3 pb-2 pt-3">
-              <p className="text-xs font-semibold text-slate-700 sm:text-sm">People the training matrix requires for this topic</p>
-              {matrixPeople.length > 0 && <button type="button" className="text-xs text-emerald-700 underline" onClick={() => setChosenMatrix(chosenMatrix.length === matrixPeople.length ? [] : matrixPeople.map((m) => m.personId))}>{chosenMatrix.length === matrixPeople.length ? "Clear all" : "Select all"}</button>}
+              <p className="text-xs font-semibold text-slate-700 sm:text-sm">{tr("People the training matrix requires for this topic")}</p>
+              {matrixPeople.length > 0 && <button type="button" className="text-xs text-emerald-700 underline" onClick={() => setChosenMatrix(chosenMatrix.length === matrixPeople.length ? [] : matrixPeople.map((m) => m.personId))}>{chosenMatrix.length === matrixPeople.length ? "Clear all" : tr("Select all")}</button>}
             </div>
             <div className="max-h-[360px] space-y-1 overflow-y-auto px-2 pb-2">
-              {matrixPeople.length === 0 && <p className="p-3 text-sm text-slate-500">The matrix requires nobody else for this topic.</p>}
+              {matrixPeople.length === 0 && <p className="p-3 text-sm text-slate-500">{tr("The matrix requires nobody else for this topic.")}</p>}
               {matrixPeople.map((m) => (
                 <label key={m.personId} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-transparent p-1.5 transition-all hover:border-emerald-200 hover:bg-emerald-50/50">
                   <Checkbox checked={chosenMatrix.includes(m.personId)} onChange={(c) => setChosenMatrix(c ? [...chosenMatrix, m.personId] : chosenMatrix.filter((x) => x !== m.personId))} />
@@ -137,7 +138,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-xs font-medium leading-tight text-slate-900 sm:text-sm">{m.fullName}</p>
                       {m.employeeCode && <Badge color="emerald" size="sm" pill>{m.employeeCode}</Badge>}
-                      <Badge color={m.reason === "DUE" ? "amber" : "red"} size="sm">{m.reason === "DUE" ? "Annual training due" : "Not trained"}</Badge>
+                      <Badge color={m.reason === "DUE" ? "amber" : "red"} size="sm">{m.reason === "DUE" ? tr("Annual training due") : tr("Not trained")}</Badge>
                     </div>
                     <p className="mt-0.5 truncate text-2xs leading-tight text-slate-500 sm:text-xs">{[m.positionName, m.department].filter(Boolean).join(" - ")}</p>
                   </div>
@@ -154,17 +155,17 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
+                placeholder={tr("Search…")}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               {search && (
-                <button type="button" onClick={() => setSearch("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600" aria-label="Clear employee search"><X className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setSearch("")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600" aria-label={tr("Clear employee search")}><X className="h-4 w-4" /></button>
               )}
             </div>
             <div className="rounded-xl border border-slate-200 bg-white">
-              <div className="px-3 pb-2 pt-3"><p className="text-xs font-semibold text-slate-700 sm:text-sm">Employee List</p></div>
+              <div className="px-3 pb-2 pt-3"><p className="text-xs font-semibold text-slate-700 sm:text-sm">{tr("Employee List")}</p></div>
               <div className="max-h-[360px] space-y-1 overflow-y-auto px-2 pb-2">
-                {found.length === 0 && <p className="p-3 text-sm text-slate-500">No employee found.</p>}
+                {found.length === 0 && <p className="p-3 text-sm text-slate-500">{tr("No employee found.")}</p>}
                 {found.map((p) => (
                   <label key={p.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-transparent p-1.5 transition-all hover:border-emerald-200 hover:bg-emerald-50/50">
                     <Checkbox checked={!!picked[p.id]} onChange={() => togglePerson(p)} />
@@ -184,36 +185,36 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
 
         {scope === "business_unit" && (
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-            {units.length === 0 && <p className="col-span-full text-sm text-slate-500">No business unit.</p>}
+            {units.length === 0 && <p className="col-span-full text-sm text-slate-500">{tr("No business unit.")}</p>}
             {units.map((g) => <GroupCard key={g.name} group={g} selected={chosenUnits.includes(g.name)} onToggle={() => toggle(chosenUnits, setChosenUnits, g.name)} icon={<IconBuilding className="h-4 w-4" />} />)}
           </div>
         )}
 
         {scope === "department" && (
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4">
-            {departments.length === 0 && <p className="col-span-full text-sm text-slate-500">No department.</p>}
+            {departments.length === 0 && <p className="col-span-full text-sm text-slate-500">{tr("No department.")}</p>}
             {departments.map((g) => <GroupCard key={g.name} group={g} selected={chosenDepartments.includes(g.name)} onToggle={() => toggle(chosenDepartments, setChosenDepartments, g.name)} icon={<Users className="h-4 w-4" />} />)}
           </div>
         )}
 
         {scope === "outside" && (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">A visitor or a temporary contractor has no account: only the name and the organisation are written on the attendee list.</p>
+            <p className="text-xs text-slate-500">{tr("A visitor or a temporary contractor has no account: only the name and the organisation are written on the attendee list.")}</p>
             {outsiders.map((o, i) => (
               <div key={i} className="grid grid-cols-1 items-center gap-3 md:grid-cols-[1fr_1fr_auto]">
-                <Input value={o.name} placeholder="Full name" onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-                <Input value={o.org} placeholder="Organization" onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, org: e.target.value } : x)))} />
-                <Button size="icon-sm" variant="ghost" aria-label="Remove this person" disabled={outsiders.length === 1} onClick={() => setOutsiders(outsiders.filter((_x, k) => k !== i))}><Trash2 className="h-4 w-4" /></Button>
+                <Input value={o.name} placeholder={tr("Full name")} onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+                <Input value={o.org} placeholder={tr("Organization")} onChange={(e) => setOutsiders(outsiders.map((x, k) => (k === i ? { ...x, org: e.target.value } : x)))} />
+                <Button size="icon-sm" variant="ghost" aria-label={tr("Remove this person")} disabled={outsiders.length === 1} onClick={() => setOutsiders(outsiders.filter((_x, k) => k !== i))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
-            <Button size="sm" variant="default" onClick={() => setOutsiders([...outsiders, { name: "", org: "" }])}><Plus className="mr-1.5 h-4 w-4" />Add another person</Button>
+            <Button size="sm" variant="default" onClick={() => setOutsiders([...outsiders, { name: "", org: "" }])}><Plus className="mr-1.5 h-4 w-4" />{tr("Add another person")}</Button>
           </div>
         )}
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-slate-700 sm:text-sm">Selected Assignees</p>
+          <p className="text-xs font-semibold text-slate-700 sm:text-sm">{tr("Selected Assignees")}</p>
           {resolved.length > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{resolved.length} {scope === "outside" ? `person${resolved.length !== 1 ? "s" : ""}` : `employee${resolved.length !== 1 ? "s" : ""}`}</span>}
         </div>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -221,7 +222,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
             rows={rows}
             getRowKey={(p) => p.id}
             columns={columns}
-            emptyState={<TableEmptyState title="No assignees selected" description="Select assignees from the scope selector above." />}
+            emptyState={<TableEmptyState title={tr("No assignees selected")} description={tr("Select assignees from the scope selector above.")} />}
             pagination={resolved.length > 0 ? <TablePagination currentPage={page} totalPages={Math.max(1, Math.ceil(resolved.length / limit))} totalItems={resolved.length} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={setLimit} /> : undefined}
           />
         </div>

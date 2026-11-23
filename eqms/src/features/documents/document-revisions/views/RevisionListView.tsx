@@ -35,6 +35,7 @@ import {
 
 import type { Revision } from "./types";
 import { mapStatusToStatusType } from "@/utils/status";
+import { tr } from "@/i18n";
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -44,23 +45,23 @@ const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
 // Default columns configuration
 const DEFAULT_COLUMNS: TableColumn[] = [
   { id: "no", label: "No.", visible: true, order: 0, locked: true },
-  { id: "documentNumber", label: "Document Number", visible: true, order: 1 },
-  { id: "revisionNumber", label: "Revision Number", visible: true, order: 2 },
+  { id: "documentNumber", label: tr("Document Number"), visible: true, order: 1 },
+  { id: "revisionNumber", label: tr("Revision Number"), visible: true, order: 2 },
   { id: "created", label: "Created", visible: true, order: 3 },
   { id: "openedBy", label: "Opened By", visible: true, order: 4 },
-  { id: "revisionName", label: "Revision Name", visible: true, order: 5 },
+  { id: "revisionName", label: tr("Revision Name"), visible: true, order: 5 },
   { id: "state", label: "Status", visible: true, order: 6 },
-  { id: "documentName", label: "Document Name", visible: true, order: 7 },
-  { id: "type", label: "Document Type", visible: true, order: 8 },
-  { id: "relatedDocuments", label: "Related Document", visible: true, order: 9 },
-  { id: "correlatedDocuments", label: "Correlated Document", visible: true, order: 10 },
+  { id: "documentName", label: tr("Document Name"), visible: true, order: 7 },
+  { id: "type", label: tr("Document Type"), visible: true, order: 8 },
+  { id: "relatedDocuments", label: tr("Related Document"), visible: true, order: 9 },
+  { id: "correlatedDocuments", label: tr("Correlated Document"), visible: true, order: 10 },
   { id: "template", label: "Template", visible: true, order: 11 },
-  { id: "businessUnit", label: "Business Unit", visible: true, order: 12 },
+  { id: "businessUnit", label: tr("Business Unit"), visible: true, order: 12 },
   { id: "department", label: "Department", visible: true, order: 13 },
   { id: "author", label: "Author", visible: true, order: 14 },
-  { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
-  { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
-  { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
+  { id: "effectiveDate", label: tr("Effective Date"), visible: true, order: 15 },
+  { id: "validUntil", label: tr("Valid Until"), visible: true, order: 16 },
+  { id: "trainingNumber", label: tr("Training Number"), visible: true, order: 17 },
   { id: "action", label: "Action", visible: true, order: 18, locked: true },
 ];
 
@@ -205,7 +206,7 @@ export const RevisionListView: React.FC = () => {
       console.error("Failed to publish revision", error);
       showToast({
         type: "error",
-        title: "Publish failed",
+        title: tr("Publish failed"),
         message: (error as any)?.response?.data?.message || "Failed to publish revision.",
       });
       setSelectedRevisionForPublish(null);
@@ -222,8 +223,8 @@ export const RevisionListView: React.FC = () => {
       await documentApi.publishRevision(revisionId, params);
       showToast({
         type: "success",
-        title: "Publish successful",
-        message: "Revision has been published successfully.",
+        title: tr("Publish successful"),
+        message: tr("Revision has been published successfully."),
       });
       await Promise.resolve(reload());
       setSelectedRevisionForPublish(null);
@@ -240,7 +241,7 @@ export const RevisionListView: React.FC = () => {
         console.error("Failed to publish revision", error);
         showToast({
           type: "error",
-          title: "Publish failed",
+          title: tr("Publish failed"),
           message: responseData?.error?.message || responseData?.message || "Failed to publish revision.",
         });
         setSelectedRevisionForPublish(null);
@@ -310,21 +311,21 @@ export const RevisionListView: React.FC = () => {
         return revision.type;
       case "relatedDocuments":
         return revision.hasRelatedDocuments ? (
-          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">Yes</span>
+          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">{tr("Yes")}</span>
         ) : (
-          <span className="text-slate-600 font-medium">No</span>
+          <span className="text-slate-600 font-medium">{tr("No")}</span>
         );
       case "correlatedDocuments":
         return revision.hasCorrelatedDocuments ? (
-          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">Yes</span>
+          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">{tr("Yes")}</span>
         ) : (
-          <span className="text-slate-600 font-medium">No</span>
+          <span className="text-slate-600 font-medium">{tr("No")}</span>
         );
       case "template":
         return revision.isTemplate ? (
-          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">Yes</span>
+          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">{tr("Yes")}</span>
         ) : (
-          <span className="text-slate-600 font-medium">No</span>
+          <span className="text-slate-600 font-medium">{tr("No")}</span>
         );
       case "businessUnit":
         return revision.businessUnit;
@@ -361,13 +362,13 @@ export const RevisionListView: React.FC = () => {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         dataset="revisions"
-        title="Revisions"
+        title={tr("Revisions")}
         totalRecords={totalItems}
         onExport={exportRevisions}
       />
 
       <PageHeader
-        title="All Revisions"
+        title={tr("All Revisions")}
         breadcrumbItems={revisionList(navigateTo)}
         actions={
           <Button
@@ -380,12 +381,12 @@ export const RevisionListView: React.FC = () => {
             {isExporting ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600" />
-                Exporting...
+                {tr("Exporting...")}
               </>
             ) : (
               <>
                 <Download className="h-4 w-4" />
-                Export
+                {tr("Export")}
               </>
             )}
           </Button>
@@ -568,13 +569,13 @@ export const RevisionListView: React.FC = () => {
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onConfirm={() => setShowWarningModal(false)}
-        title="Cannot Publish Yet"
+        title={tr("Cannot Publish Yet")}
         type="warning"
         confirmText="OK"
         showCancel={false}
         description={
           <div className="space-y-3">
-            <p className="font-semibold text-slate-900">One or more Related Documents are not yet Ready for Publishing:</p>
+            <p className="font-semibold text-slate-900">{tr("One or more Related Documents are not yet Ready for Publishing:")}</p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 text-xs text-slate-700">
               {nonEffectiveDocs.map((doc, idx) => (
                 <div key={idx} className="flex justify-between">
@@ -583,7 +584,7 @@ export const RevisionListView: React.FC = () => {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-500">Bring the listed document(s) to Ready for Publishing first, then publish again.</p>
+            <p className="text-xs text-slate-500">{tr("Bring the listed document(s) to Ready for Publishing first, then publish again.")}</p>
           </div>
         }
       />

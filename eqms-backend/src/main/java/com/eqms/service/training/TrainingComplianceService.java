@@ -52,7 +52,7 @@ public class TrainingComplianceService {
            where u.status = 'Active'
              and (lower(trim(u.department)) = lower(trim((select name from departments where id = (select id from d)))) or p.department_id = (select id from d))),
         gaps as (
-          select distinct on (pe.pid, req.row_id) req.row_id, pe.pid, pe.full_name, pe.employee_code, pe.position_name, pe.is_new, pe.no_role, req.title, req.code, req.annual_required, req.all_employees,
+          select distinct on (pe.pid, req.row_id) req.row_id, pe.pid, pe.position_id, pe.full_name, pe.employee_code, pe.position_name, pe.is_new, pe.no_role, req.title, req.code, req.annual_required, req.all_employees,
                  req.tname, req.dnum,
                  (select max(r.completed_on) from training_records r left join training_record_voids v on v.record_id = r.id
                    where r.person_user_id = pe.pid and v.id is null
@@ -118,11 +118,18 @@ public class TrainingComplianceService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> coverage(UserAccount actor, UUID departmentId, String status, boolean newOnly, String search, String sortBy, String sortDirection, int page, int limit) {
+        return coverage(actor, departmentId, status, newOnly, search, null, sortBy, sortDirection, page, limit);
+    }
+
+    /** The same list for one required training only (a row of the effective matrix), when {@code rowId} is given. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> coverage(UserAccount actor, UUID departmentId, String status, boolean newOnly, String search, UUID rowId, String sortBy, String sortDirection, int page, int limit) {
         UUID department = department(actor, departmentId);
         List<Object> args = new ArrayList<>();
         args.add(department);
         StringBuilder where = new StringBuilder(" where 1=1");
         if (newOnly) where.append(" and x.is_new");
+        if (rowId != null) { where.append(" and x.row_id = ?"); args.add(rowId); }
         if (status != null && !status.isBlank()) {
             if (!List.of("MISSING", "DUE", "OK").contains(status)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
             where.append(" and x.status = ?");
@@ -160,11 +167,36 @@ public class TrainingComplianceService {
         out.put("newEmployees", fresh.get("new_employees"));
         out.put("newEmployeesWithGaps", fresh.get("new_with_gaps"));
         out.put("peopleWithoutPosition", jdbc.queryForObject("select count(*) from app_users u where u.status = 'Active' and lower(trim(u.department)) = lower(trim((select name from departments where id = ?))) and not exists (select 1 from training_person_positions tp where tp.person_user_id = u.id and tp.valid_to is null)", Integer.class, department));
+        out.put("generatedAt", java.time.OffsetDateTime.now().toString());
+        Map<String, Object> version = jdbc.queryForList("select v.version_no, v.effective_at from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", department).stream().findFirst().orElse(null);
+        if (version != null) { out.put("matrixVersionNo", version.get("version_no")); out.put("matrixEffectiveAt", iso(version.get("effective_at"))); }
+        out.put("positions", TrainingRows.camel(jdbc.queryForList("select x.position_id as id, max(x.position_name) as name, count(distinct x.pid) as people, count(*) as required, count(*) filter (where x.status = 'OK') as ok, count(*) filter (where x.status = 'MISSING') as missing, count(*) filter (where x.status = 'DUE') as due, "
+                + "case when count(*) = 0 then null else round(count(*) filter (where x.status = 'OK') * 100.0 / count(*)) end as percent_trained from (" + BASE + ") x where x.position_id is not null group by x.position_id order by percent_trained nulls last, max(x.position_name)", department)));
         out.put("openReviews", jdbc.queryForObject("select count(*) from training_personnel_reviews r join app_users u on u.id = r.person_user_id where r.status = 'OPEN' and lower(trim(u.department)) = lower(trim((select name from departments where id = ?)))", Integer.class, department));
         out.put("overdueActivities", jdbc.queryForObject("select count(*) from training_activities where organizer_department_id = ? and due_date < current_date and status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')", Integer.class, department));
         // Lines of the approved requirements of the department moved later than the month after the approved one (SOP.0003 5.3.6): not blocked, shown here.
         out.put("linesBeyondSopWindow", jdbc.queryForObject("select count(*) from training_requirement_lines l join training_requirements r on r.id = l.requirement_id where r.department_id = ? and r.status = 'APPROVED' and l.postponed_from is not null and l.planned_month > l.postponed_from + interval '1 month'", Integer.class, department));
         out.put("dueSoonActivities", jdbc.queryForObject("select count(*) from training_activities where organizer_department_id = ? and due_date between current_date and current_date + 14 and status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')", Integer.class, department));
         return out;
+    }
+
+    /** The required trainings of the department that somebody has not done or must repeat, with how many people each one concerns; the Gap List chooses one of them. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> gapTrainings(UserAccount actor, UUID departmentId) {
+        UUID department = department(actor, departmentId);
+        List<Map<String, Object>> rows = jdbc.queryForList("select x.row_id as id, max(x.code) as code, max(x.title) as title, count(distinct x.pid) as people, count(*) filter (where x.status = 'MISSING') as missing, count(*) filter (where x.status = 'DUE') as due "
+                + "from (" + BASE + ") x where x.status <> 'OK' group by x.row_id order by count(distinct x.pid) desc, max(x.title)", department);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("data", TrainingRows.camel(rows));
+        out.put("generatedAt", java.time.OffsetDateTime.now().toString());
+        jdbc.queryForList("select v.version_no, v.effective_at from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", department).stream().findFirst().ifPresent((v) -> {
+            out.put("matrixVersionNo", v.get("version_no"));
+            out.put("matrixEffectiveAt", iso(v.get("effective_at")));
+        });
+        return out;
+    }
+    /** A timestamp column as an ISO instant, so every reader parses it the same way. */
+    public static String iso(Object value) {
+        return value == null ? null : value instanceof java.sql.Timestamp t ? t.toInstant().toString() : value.toString();
     }
 }

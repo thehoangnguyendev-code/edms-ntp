@@ -1,14 +1,15 @@
 import React from 'react';
 import { Radio } from '@/components/ui/radio/Radio';
 import type { GeneralConfig } from '../types';
+import { tr } from "@/i18n";
 
 type TimelineStyle = NonNullable<GeneralConfig['appearance']['auditTabTimelineStyle']>;
 
 const STYLES: { value: TimelineStyle; label: string; description: string }[] = [
-  { value: 'RAIL', label: 'Rail and cards', description: 'A line on the left, a card for each record. The easiest to read.' },
-  { value: 'CENTER', label: 'Centre spine', description: 'Records alternate left and right of a centre line, the time opposite.' },
-  { value: 'COMPACT', label: 'Compact log', description: 'One line for each record; hover for the details. Shows the most records.' },
-  { value: 'SCROLL_LIT', label: 'Date column', description: 'A big date on the left; the line lights up as you scroll.' },
+  { value: 'RAIL', label: tr('Rail and cards'), description: tr('A line on the left, a card for each record. The easiest to read.') },
+  { value: 'CENTER', label: tr('Centre spine'), description: tr('Records alternate left and right of a centre line, the time opposite.') },
+  { value: 'COMPACT', label: tr('Compact log'), description: tr('One line for each record; hover for the details. Shows the most records.') },
+  { value: 'SCROLL_LIT', label: tr('Date column'), description: tr('A big date on the left; the line lights up as you scroll.') },
 ];
 
 /** A few strokes that show the shape of each look, so that the choice is made by seeing it. */
@@ -83,24 +84,24 @@ export const AuditTabViewSection: React.FC<AuditTabViewSectionProps> = ({ config
   const style = config.appearance?.auditTabTimelineStyle ?? 'COMPACT';
   return (
     <div className="border-t border-slate-200 pt-6">
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Audit Trail Tabs</h3>
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">{tr("Audit Trail Tabs")}</h3>
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">View</p>
-          <div role="radiogroup" aria-label="Audit Trail tab view" className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("View")}</p>
+          <div role="radiogroup" aria-label={tr("Audit Trail tab view")} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Radio variant="card" name="audit-tab-view" value="TABLE" checked={view === 'TABLE'} onChange={() => onChange('auditTabView', 'TABLE')}
-              label="Table" description="Columns with sort and pagination, as it is today." />
+              label={tr("Table")} description={tr("Columns with sort and pagination, as it is today.")} />
             <Radio variant="card" name="audit-tab-view" value="TIMELINE" checked={view === 'TIMELINE'} onChange={() => onChange('auditTabView', 'TIMELINE')}
-              label="Timeline" description="Who did what and when, newest first, in a panel that scrolls on its own." />
+              label={tr("Timeline")} description={tr("Who did what and when, newest first, in a panel that scrolls on its own.")} />
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Applies to the Audit Trail tab of every record, for every signed-in user, after you save. The Audit Trail module and the export of the audit trail are not affected.
+            {tr("Applies to the Audit Trail tab of every record, for every signed-in user, after you save. The Audit Trail module and the export of the audit trail are not affected.")}
           </p>
         </div>
         {view === 'TIMELINE' && (
           <div>
-            <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">Timeline look</p>
-            <div role="radiogroup" aria-label="Timeline look" className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <p className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">{tr("Timeline look")}</p>
+            <div role="radiogroup" aria-label={tr("Timeline look")} className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {STYLES.map((option) => (
                 <Radio key={option.value} variant="card" name="audit-tab-timeline-style" value={option.value} checked={style === option.value}
                   onChange={() => onChange('auditTabTimelineStyle', option.value)}

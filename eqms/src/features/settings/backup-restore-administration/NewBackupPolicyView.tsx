@@ -21,6 +21,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { GateTable } from "./BackupPolicyDetailView";
 import { COMPONENT_LABEL, MEDIUM_LABEL, policyErrorMessage } from "./policyLabels";
+import { tr, trFormat } from "@/i18n";
 
 interface TargetChoice {
   info: BackupTargetInfo;
@@ -140,7 +141,7 @@ export const NewBackupPolicyView: React.FC = () => {
   const ownSchedule = documents && filesOwn;
   const timeOk = clock.test(time) && (!ownSchedule || clock.test(filesTime));
   const manualOk = !manual.declared || (manual.description.trim().length > 0 && Number.isInteger(manual.everyDays) && manual.everyDays >= 1 && manual.everyDays <= 365);
-  const parent = { label: "Backup Policy", path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
+  const parent = { label: tr("Backup Policy"), path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
 
   const submit = async () => {
     if (!choices) return;
@@ -162,10 +163,10 @@ export const NewBackupPolicyView: React.FC = () => {
         },
         reason: reason.trim(),
       });
-      showToast({ type: "success", title: "Policy version proposed", message: `Version ${created.version} is a draft. Activate it with your electronic signature.` });
+      showToast({ type: "success", title: tr("Policy version proposed"), message: `Version ${created.version} is a draft. Activate it with your electronic signature.` });
       navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY_DETAIL(created.version));
     } catch (e) {
-      showToast({ type: "error", title: "The version was not proposed", message: policyErrorMessage(e, "The request was refused.") });
+      showToast({ type: "error", title: tr("The version was not proposed"), message: policyErrorMessage(e, "The request was refused.") });
     } finally {
       setSaving(false);
     }
@@ -174,7 +175,7 @@ export const NewBackupPolicyView: React.FC = () => {
   const actions = (
     <>
       <Button variant="outline-emerald" size="sm" onClick={() => go(parent.path)} className="whitespace-nowrap touch-manipulation">
-        Cancel
+        {tr("Cancel")}
       </Button>
       <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk || !manualOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
         {saving ? "Proposing…" : "Propose Version"}
@@ -184,14 +185,14 @@ export const NewBackupPolicyView: React.FC = () => {
 
   if (loadError) {
     return (
-      <BackupAdminLivePage title="Propose Policy Change" parent={parent}>
-        <WarningBanner variant="error" title="Unable to prepare the form." description={loadError} />
+      <BackupAdminLivePage title={tr("Propose Policy Change")} parent={parent}>
+        <WarningBanner variant="error" title={tr("Unable to prepare the form.")} description={loadError} />
       </BackupAdminLivePage>
     );
   }
   if (!choices || !gate) {
     return (
-      <BackupAdminLivePage title="Propose Policy Change" parent={parent}>
+      <BackupAdminLivePage title={tr("Propose Policy Change")} parent={parent}>
         <SectionLoading minHeight="40vh" />
       </BackupAdminLivePage>
     );
@@ -201,54 +202,54 @@ export const NewBackupPolicyView: React.FC = () => {
   const failing = gate.conditions.filter((c) => !c.ok && !c.pending).length;
 
   return (
-    <BackupAdminLivePage title="Propose Policy Change" parent={parent} actions={actions}>
-      <WarningBanner variant="info" description="Proposing creates a draft only. The running policy does not change until the draft is activated with an electronic signature." />
+    <BackupAdminLivePage title={tr("Propose Policy Change")} parent={parent} actions={actions}>
+      <WarningBanner variant="info" description={tr("Proposing creates a draft only. The running policy does not change until the draft is activated with an electronic signature.")} />
 
       <div className="grid grid-cols-1 gap-4 md:gap-6 xl:grid-cols-2">
-        <FormSection title="What Is Backed Up" icon={<ListChecks className="h-4 w-4" />} description="The data each backup copies.">
+        <FormSection title={tr("What Is Backed Up")} icon={<ListChecks className="h-4 w-4" />} description={tr("The data each backup copies.")}>
           <div className="space-y-3">
-            <ScopeRow title={COMPONENT_LABEL.DATABASE} note="Required: every backup contains the database, with everything stored in it: settings, users, audit trail, and the images, videos and large objects kept in database columns." checked disabled />
+            <ScopeRow title={COMPONENT_LABEL.DATABASE} note={tr("Required: every backup contains the database, with everything stored in it: settings, users, audit trail, and the images, videos and large objects kept in database columns.")} checked disabled />
             <ScopeRow
               title={COMPONENT_LABEL.OBJECT_STORE}
-              note="Every stored version of every file in the three document buckets (documents, revisions, templates, controlled copies, executed records, reports, training files, and the pictures inside documents) is copied once, encrypted."
+              note={tr("Every stored version of every file in the three document buckets (documents, revisions, templates, controlled copies, executed records, reports, training files, and the pictures inside documents) is copied once, encrypted.")}
               checked={documents}
               onChange={setDocuments}
             />
           </div>
         </FormSection>
 
-        <FormSection title="Schedule" icon={<CalendarClock className="h-4 w-4" />} description="When the database and the files are backed up. Backups are kept permanently.">
+        <FormSection title={tr("Schedule")} icon={<CalendarClock className="h-4 w-4" />} description={tr("When the database and the files are backed up. Backups are kept permanently.")}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Group title="Database backup">
+            <Group title={tr("Database backup")}>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-700">{dbEnabled ? "Daily" : "Switched off"}</span>
-                <Switch checked={dbEnabled} size="sm" aria-label="Database backup" onChange={setDbEnabled} />
+                <span className="text-sm text-slate-700">{dbEnabled ? "Daily" : tr("Switched off")}</span>
+                <Switch checked={dbEnabled} size="sm" aria-label={tr("Database backup")} onChange={setDbEnabled} />
               </div>
             </Group>
-            <Group title="Time of day">
+            <Group title={tr("Time of day")}>
               <TimePicker value={time} onChange={setTime} disabled={!dbEnabled} />
-              <p className="text-xs text-slate-500">Used when the database backup is switched on.</p>
+              <p className="text-xs text-slate-500">{tr("Used when the database backup is switched on.")}</p>
             </Group>
-            <Group title="Files backup">
+            <Group title={tr("Files backup")}>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-700">{!documents ? "Not part of the policy" : filesOwn ? "At its own time" : "With the database"}</span>
-                <Switch checked={ownSchedule} size="sm" disabled={!documents} aria-label="Files at their own time" onChange={setFilesOwn} />
+                <span className="text-sm text-slate-700">{!documents ? "Not part of the policy" : filesOwn ? tr("At its own time") : tr("With the database")}</span>
+                <Switch checked={ownSchedule} size="sm" disabled={!documents} aria-label={tr("Files at their own time")} onChange={setFilesOwn} />
               </div>
-              <p className="text-xs text-slate-500">Off: the files are copied in the same run as the database. On: the database and the files are backed up in two separate runs.</p>
+              <p className="text-xs text-slate-500">{tr("Off: the files are copied in the same run as the database. On: the database and the files are backed up in two separate runs.")}</p>
             </Group>
-            <Group title="Files time of day">
+            <Group title={tr("Files time of day")}>
               <TimePicker value={filesTime} onChange={setFilesTime} disabled={!ownSchedule} />
-              <p className="text-xs text-slate-500">Used when the files have their own time.</p>
+              <p className="text-xs text-slate-500">{tr("Used when the files have their own time.")}</p>
             </Group>
           </div>
         </FormSection>
       </div>
 
       <FormSection
-        title="Backup Targets"
+        title={tr("Backup Targets")}
         icon={<IconServer2 className="h-4 w-4" />}
-        description="T1 is where every backup is written first. Declare which of the others are in another location."
-        headerRight={<Badge color="slate" size="sm">{included} of {choices.length} used</Badge>}
+        description={tr("T1 is where every backup is written first. Declare which of the others are in another location.")}
+        headerRight={<Badge color="slate" size="sm">{trFormat("{included} of {total} used", { included, total: choices.length })}</Badge>}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {choices.map((c) => {
@@ -270,14 +271,14 @@ export const NewBackupPolicyView: React.FC = () => {
                   />
                 </div>
                 <Select
-                  label="Medium"
+                  label={tr("Medium")}
                   value={c.medium}
                   onChange={(medium) => change(c.info.code, { medium: medium as PolicyMedium })}
                   options={media.map((m) => ({ label: MEDIUM_LABEL[m], value: m }))}
                   disabled={!c.included || media.length === 1}
                 />
                 <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                  <span>Off-site</span>
+                  <span>{tr("Off-site")}</span>
                   <Switch checked={c.offsite} size="sm" disabled={locked} aria-label={`${c.info.code} off-site`} onChange={(offsite) => change(c.info.code, { offsite })} />
                 </div>
               </div>
@@ -287,37 +288,37 @@ export const NewBackupPolicyView: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title="Manual Copy"
+        title={tr("Manual Copy")}
         icon={<IconCopy className="h-4 w-4" />}
-        description="A copy you make yourself and keep away from the server, for example on a disk in a safe. The Backup Agent cannot see it, so it is declared here and never tested."
-        headerRight={<Switch checked={manual.declared} size="sm" aria-label="Use a manual copy" onChange={(declared) => setManual((m) => ({ ...m, declared }))} />}
+        description={tr("A copy you make yourself and keep away from the server, for example on a disk in a safe. The Backup Agent cannot see it, so it is declared here and never tested.")}
+        headerRight={<Switch checked={manual.declared} size="sm" aria-label={tr("Use a manual copy")} onChange={(declared) => setManual((m) => ({ ...m, declared }))} />}
       >
         {manual.declared ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FormField label="Where it is kept and who makes it" required>
-              <Input value={manual.description} maxLength={500} onChange={(event) => setManual((m) => ({ ...m, description: event.target.value }))} placeholder="For example: USB disk in the quality safe, copied by the quality manager" />
+            <FormField label={tr("Where it is kept and who makes it")} required>
+              <Input value={manual.description} maxLength={500} onChange={(event) => setManual((m) => ({ ...m, description: event.target.value }))} placeholder={tr("For example: USB disk in the quality safe, copied by the quality manager")} />
             </FormField>
-            <FormField label="Made every (days)" required hint="From 1 to 365.">
+            <FormField label={tr("Made every (days)")} required hint={tr("From 1 to 365.")}>
               <Input type="number" min={1} max={365} value={String(manual.everyDays)} onChange={(event) => setManual((m) => ({ ...m, everyDays: Number(event.target.value) }))} />
             </FormField>
           </div>
         ) : (
-          <p className="text-sm text-slate-600">No manual copy is declared.</p>
+          <p className="text-sm text-slate-600">{tr("No manual copy is declared.")}</p>
         )}
       </FormSection>
 
       <FormSection
         title="3-2-1-1 Rule"
         icon={<Warehouse className="h-4 w-4" />}
-        description="What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated."
+        description={tr("What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated.")}
         headerRight={<Badge color={failing > 0 ? "red" : "emerald"} size="sm">{failing > 0 ? `${failing} not met` : "No condition failing"}</Badge>}
       >
         <GateTable gate={gate} />
       </FormSection>
 
-      <FormSection title="Reason for Change" icon={<FileText className="h-4 w-4" />} description="Recorded with the proposal, with your name and the time.">
-        <FormField label="Reason" required>
-          <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why is this change needed?" />
+      <FormSection title={tr("Reason for Change")} icon={<FileText className="h-4 w-4" />} description={tr("Recorded with the proposal, with your name and the time.")}>
+        <FormField label={tr("Reason")} required>
+          <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder={tr("Why is this change needed?")} />
         </FormField>
       </FormSection>
 
@@ -326,10 +327,10 @@ export const NewBackupPolicyView: React.FC = () => {
         onClose={() => setConfirming(false)}
         onConfirm={submit}
         type="confirm"
-        title="Propose This Policy Version?"
+        title={tr("Propose This Policy Version?")}
         description={
           <p className="text-sm text-slate-600">
-            The version is saved as a draft and waits to be activated with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.
+            {tr("The version is saved as a draft and waits to be activated with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.")}
           </p>
         }
         confirmText="Propose Version"

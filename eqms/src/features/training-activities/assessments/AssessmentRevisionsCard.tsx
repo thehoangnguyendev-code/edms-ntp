@@ -4,6 +4,7 @@ import { trainingAssessmentsApi, type TrainingAssessmentRevision } from "@/servi
 import { RevisionLink, RevisionsCard } from "../shared/RevisionsCard";
 import { when } from "../shared/trainingLabels";
 import { ASSESSMENT_STATUS_COLOR, ASSESSMENT_STATUS_LABEL } from "./TrainingAssessmentListView";
+import { tr } from "@/i18n";
 
 /** The revisions of an assessment under the footer buttons of its details (the Revisions sub-tab of Document Details). `signature` changes whenever the assessment does. */
 export function AssessmentRevisionsCard({ assessmentId, signature }: { assessmentId: string; signature: string }) {
@@ -11,16 +12,16 @@ export function AssessmentRevisionsCard({ assessmentId, signature }: { assessmen
   return (
     <RevisionsCard<TrainingAssessmentRevision>
       tabLabel="Assessment Revision"
-      searchPlaceholder="Search by revision number, assessment name, or author..."
+      searchPlaceholder={tr("Search by revision number, assessment name, or author...")}
       defaultSortKey="revisionNumber"
       objectId={assessmentId}
       signature={signature}
       fetchPage={(params) => trainingAssessmentsApi.revisions(assessmentId, params)}
       columns={[
-        { header: "Revision Number", sortKey: "revisionNumber", link: true, cell: (r) => <RevisionLink label={r.revisionNumber} current={r.current} onOpen={() => navigate(`/training-management/assessments/${r.id}`)} /> },
+        { header: tr("Revision Number"), sortKey: "revisionNumber", link: true, cell: (r) => <RevisionLink label={r.revisionNumber} current={r.current} onOpen={() => navigate(`/training-management/assessments/${r.id}`)} /> },
         { header: "Created", sortKey: "created", hideOnPhone: true, cell: (r) => when(r.createdAt) },
         { header: "Opened By", sortKey: "openedBy", hideOnPhone: true, cell: (r) => r.createdByName },
-        { header: "Assessment Name", sortKey: "name", cell: (r) => r.name },
+        { header: tr("Assessment Name"), sortKey: "name", cell: (r) => r.name },
         { header: "Status", sortKey: "status", link: true, cell: (r) => <Badge color={ASSESSMENT_STATUS_COLOR[r.status]}>{ASSESSMENT_STATUS_LABEL[r.status] ?? r.status}</Badge> },
       ]}
     />

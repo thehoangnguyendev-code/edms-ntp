@@ -36,7 +36,7 @@ describe('translation catalog', () => {
   });
 
   it('translates data-driven labels without changing an unknown label', () => {
-    expect(translateLabel('vi', 'Document Control')).toBe('Kiểm soát tài liệu');
+    expect(translateLabel('vi', 'Document Control')).toBe('Kiểm soát Tài liệu');
     expect(translateLabel('vi', 'A custom navigation name')).toBe('A custom navigation name');
     expect(translateLabel('en', 'Document Control')).toBe('Document Control');
   });

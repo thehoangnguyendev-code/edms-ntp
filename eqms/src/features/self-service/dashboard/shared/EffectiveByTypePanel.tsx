@@ -3,6 +3,7 @@ import { dashboardApi } from '@/services/api/dashboard';
 import { BreakdownPanel } from './BreakdownPanel';
 import type { RankedCount } from './dashboardMetrics';
 import { useDashboardResource } from './useDashboardResource';
+import { tr } from "@/i18n";
 
 /** Effective Documents per Document Type, in the shared bar/donut panel. */
 export const EffectiveByTypePanel: React.FC<{ className?: string }> = ({ className }) => {
@@ -21,7 +22,7 @@ export const EffectiveByTypePanel: React.FC<{ className?: string }> = ({ classNa
   return (
     <BreakdownPanel
       className={className}
-      title="Effective documents by type"
+      title={tr("Effective documents by type")}
       idleSubtitle="Documents with an effective revision, per Document Type"
       subtitle={(total, count) => `${total.toLocaleString()} effective documents across ${count} ${count === 1 ? 'type' : 'types'}`}
       resource={resource}
@@ -29,7 +30,7 @@ export const EffectiveByTypePanel: React.FC<{ className?: string }> = ({ classNa
       centerCaption="Effective"
       chartLabel="effective documents by type"
       emptyLabel="No document is effective yet"
-      errorMessage="Effective documents by type could not be loaded."
+      errorMessage={tr("Effective documents by type could not be loaded.")}
       idPrefix="effective-type"
       defaultView="donut"
     />

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { lazy, Suspense } from 'react';
 import { IconDatabase, IconChartBar, IconFileText, IconArchive, IconStack2 } from '@tabler/icons-react';
 import { Loading } from '@/components/ui/loading/Loading';
@@ -15,8 +16,8 @@ const OnlyOfficeTab = lazy(() => import('./OnlyOfficeTab').then((m) => ({ defaul
 
 const ALL_TABS = [
   { id: 'storage', label: 'Storage', icon: IconArchive },
-  { id: 'storage-usage', label: 'Storage Usage', icon: IconChartBar },
-  { id: 'onlyoffice', label: 'OnlyOffice', icon: IconStack2 },
+  { id: 'storage-usage', label: tr('Storage Usage'), icon: IconChartBar },
+  { id: 'onlyoffice', label: tr('OnlyOffice'), icon: IconStack2 },
   HISTORY_TAB,
 ] as const;
 

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Briefcase, GraduationCap, ShieldCheck, User as UserIcon, UserCog } from "lucide-react";
@@ -11,11 +12,11 @@ export type ProfileTabId = "personal" | "employment" | "qualifications" | "accou
 
 /** The five areas of a user record. The profile and the Add User screen show the same ones. */
 export const PROFILE_TABS: ReadonlyArray<{ id: ProfileTabId; label: string; icon: React.ElementType }> = [
-  { id: "personal", label: "Personal & Identity", icon: UserIcon },
-  { id: "employment", label: "Employment Record", icon: Briefcase },
-  { id: "qualifications", label: "Training & Competency", icon: GraduationCap },
-  { id: "account", label: "Account Status", icon: IconUserCheck },
-  { id: "security", label: "Security & Compliance", icon: ShieldCheck },
+  { id: "personal", label: tr("Personal & Identity"), icon: UserIcon },
+  { id: "employment", label: tr("Employment Record"), icon: Briefcase },
+  { id: "qualifications", label: tr("Training & Competency"), icon: GraduationCap },
+  { id: "account", label: tr("Account Status"), icon: IconUserCheck },
+  { id: "security", label: tr("Security & Compliance"), icon: ShieldCheck },
 ];
 
 /** `TabItem`s for the five areas; `extra` adds a description or a count to a tab. */

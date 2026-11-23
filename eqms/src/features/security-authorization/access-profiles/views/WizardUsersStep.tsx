@@ -13,6 +13,7 @@ import { settingsApi } from "@/services/api/settings";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { USER_MANAGEMENT_ROUTES } from "../../user-management/constants";
 import type { User } from "@/types";
+import { tr } from "@/i18n";
 
 type SortKey = "employeeCode" | "fullName" | "businessUnit" | "department" | "email";
 type SortDirection = "asc" | "desc";
@@ -60,7 +61,7 @@ export const WizardUsersStep: React.FC<{
         setBusinessUnitOptions(filters.businessUnits.map((item) => ({ label: item.label, value: item.value })));
         setDepartmentOptions(filters.departments.map((item) => ({ label: item.label, value: item.value })));
       })
-      .catch(() => { if (active) showToast({ type: "error", title: "Load Failed", message: "Failed to load user filter options." }); });
+      .catch(() => { if (active) showToast({ type: "error", title: tr("Load Failed"), message: "Failed to load user filter options." }); });
     return () => { active = false; };
   }, [canListUsers, showToast]);
 
@@ -89,7 +90,7 @@ export const WizardUsersStep: React.FC<{
         setTotal(result.pagination?.total ?? result.data?.length ?? 0);
         setTotalPages(Math.max(1, result.pagination?.totalPages ?? 1));
       })
-      .catch(() => { if (active) showToast({ type: "error", message: "Failed to load users" }); })
+      .catch(() => { if (active) showToast({ type: "error", message: tr("Failed to load users") }); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [canListUsers, page, limit, debouncedSearch, businessUnit, department, sort, showToast]);
@@ -107,7 +108,7 @@ export const WizardUsersStep: React.FC<{
 
   const selection: DataTableSelection<User> = {
     visible: true,
-    header: <Checkbox aria-label="Select every user of this page" checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={() => onToggleMany(rows, !pageAllSelected)} />,
+    header: <Checkbox aria-label={tr("Select every user of this page")} checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={() => onToggleMany(rows, !pageAllSelected)} />,
     cell: (user) => <span onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select ${user.fullName}`} checked={selectedIds.has(user.id)} onChange={() => onToggle(user)} /></span>,
     cellClassName: "w-10",
   };
@@ -117,8 +118,8 @@ export const WizardUsersStep: React.FC<{
       { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_user, index) => (page - 1) * limit + index + 1 },
       {
         id: "employeeCode",
-        header: "Employee ID",
-        label: "Employee ID",
+        header: tr("Employee ID"),
+        label: tr("Employee ID"),
         sort: sortOf("employeeCode"),
         // the same look as the Employee ID of User Management (a green link to the person's profile); here it opens in a new tab so that the wizard keeps what was entered
         cell: (user) => (
@@ -145,7 +146,7 @@ export const WizardUsersStep: React.FC<{
           </div>
         ),
       },
-      { id: "businessUnit", header: "Business Unit", label: "Business Unit", sort: sortOf("businessUnit"), cell: (user) => user.businessUnit || "—" },
+      { id: "businessUnit", header: tr("Business Unit"), label: tr("Business Unit"), sort: sortOf("businessUnit"), cell: (user) => user.businessUnit || "—" },
       { id: "department", header: "Department", label: "Department", sort: sortOf("department"), cell: (user) => user.department || "—" },
       { id: "email", header: "Email", label: "Email", sort: sortOf("email"), cellClassName: "text-slate-600", cell: (user) => user.email || "—" },
     ],
@@ -159,27 +160,27 @@ export const WizardUsersStep: React.FC<{
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div>
-          <label className={labelClass}>Search</label>
+          <label className={labelClass}>{tr("Search")}</label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               className={inputClass + " pl-9"}
               value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              placeholder="Search by name, employee ID, email…"
+              placeholder={tr("Search by name, employee ID, email…")}
               disabled={!canListUsers}
             />
           </div>
         </div>
         <Select
-          label="Business Unit"
+          label={tr("Business Unit")}
           value={businessUnit}
           onChange={(value) => { setBusinessUnit(String(value)); setDepartment("All"); setPage(1); }}
           options={[{ label: "All", value: "All" }, ...businessUnitOptions]}
           disabled={!canListUsers}
         />
         <Select
-          label="Department"
+          label={tr("Department")}
           value={department}
           onChange={(value) => { setDepartment(String(value)); setPage(1); }}
           options={[{ label: "All", value: "All" }, ...departmentOptions]}
@@ -188,13 +189,13 @@ export const WizardUsersStep: React.FC<{
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Badge color="emerald" size="sm">{selectedIds.size} selected</Badge>
+        <Badge color="emerald" size="sm">{selectedIds.size} {tr("selected")}</Badge>
         {selectedIds.size > 0 ? (
           <button type="button" className="rounded text-xs font-medium text-rose-600 transition-colors hover:text-rose-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30" onClick={onClear}>
-            Clear all
+            {tr("Clear all")}
           </button>
         ) : (
-          <span className="text-xs text-slate-500">No users selected — the Access Profile will be created unassigned.</span>
+          <span className="text-xs text-slate-500">{tr("No users selected — the Access Profile will be created unassigned.")}</span>
         )}
       </div>
 
@@ -208,10 +209,10 @@ export const WizardUsersStep: React.FC<{
         rowClassName={(user) => (selectedIds.has(user.id) ? "bg-emerald-50/60 cursor-pointer" : "cursor-pointer")}
         emptyState={
           <TableEmptyState
-            title={canListUsers ? "No users found" : "You cannot list users"}
+            title={canListUsers ? tr("No users found") : "You cannot list users"}
             description={
               canListUsers
-                ? hasFilters ? "Try adjusting your search or filters." : "There are no active users."
+                ? hasFilters ? tr("Try adjusting your search or filters.") : "There are no active users."
                 : "You do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab."
             }
           />

@@ -50,12 +50,13 @@ import {
 } from "./MarkingEditors";
 import { MarkingPreviewPane } from "./MarkingPreviewPane";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
+import { tr, trFormat } from "@/i18n";
 
 type PolicyTabKey = "policy" | "markings";
 
 const POLICY_TABS: TabItem[] = [
-  { id: "policy", label: "Distribution & Lifecycle" },
-  { id: "markings", label: "PDF Markings" },
+  { id: "policy", label: tr("Distribution & Lifecycle") },
+  { id: "markings", label: tr("PDF Markings") },
 ];
 
 type MarkingTabKey = "ISSUED" | ControlledCopyStatusMarkingKey;
@@ -64,9 +65,9 @@ const MARKING_TABS: {
   key: MarkingTabKey;
   label: string;
 }[] = [
-  { key: "ISSUED", label: "Distributed Copy" },
+  { key: "ISSUED", label: tr("Distributed Copy") },
   { key: "OBSOLETED", label: "Obsoleted" },
-  { key: "CLOSED_CANCELLED", label: "Closed - Cancelled" },
+  { key: "CLOSED_CANCELLED", label: tr("Closed - Cancelled") },
 ];
 
 interface PolicyState {
@@ -309,7 +310,7 @@ const SessionLengthField: React.FC<{
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,12rem)]">
         <div className="min-w-0">
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            Session length
+            {tr("Session length")}
           </label>
           <input
             type="number"
@@ -332,7 +333,7 @@ const SessionLengthField: React.FC<{
           />
         </div>
         <Select
-          label="Unit"
+          label={tr("Unit")}
           value={unit}
           onChange={(v) => setUnit(v as "MINUTES" | "HOURS")}
           options={[
@@ -346,8 +347,7 @@ const SessionLengthField: React.FC<{
       <p
         className={`mt-1.5 text-2xs ${invalid ? "text-red-600" : "text-slate-400"}`}
       >
-        Between {SESSION_MIN_MINUTES} minutes and 8 hours ({SESSION_MAX_MINUTES}{" "}
-        minutes). Currently {minutes} minutes. Default: 2 hours.
+        {trFormat("Between {min} minutes and 8 hours ({max} minutes). Currently {current} minutes. Default: 2 hours.", { min: SESSION_MIN_MINUTES, max: SESSION_MAX_MINUTES, current: minutes })}
       </p>
     </div>
   );
@@ -486,7 +486,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       showToast({
         type: "error",
         title: "Error",
-        message: "Duration must be a positive number.",
+        message: tr("Duration must be a positive number."),
       });
       return;
     }
@@ -651,7 +651,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         type: "error",
         title: "Error",
         message:
-          "External viewer session length must be between 5 minutes and 8 hours.",
+          tr("External viewer session length must be between 5 minutes and 8 hours."),
       });
       return;
     }
@@ -662,7 +662,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       showToast({
         type: "error",
         title: "Error",
-        message: "Select a DCO recipient before enabling delivery redirection.",
+        message: tr("Select a DCO recipient before enabling delivery redirection."),
       });
       return;
     }
@@ -708,7 +708,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
       showToast({
         type: "success",
         title: "Success",
-        message: "Controlled Copies Policy saved successfully.",
+        message: tr("Controlled Copies Policy saved successfully."),
       });
     } catch (err) {
       showToast({
@@ -814,7 +814,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           onClick={() => resetPosition(kind)}
           disabled={saving}
         >
-          Reset Position
+          {tr("Reset Position")}
         </Button>
       </div>
     );
@@ -908,7 +908,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
-        title="Controlled Copies Policy"
+        title={tr("Controlled Copies Policy")}
         breadcrumbItems={breadcrumbItems}
         actions={
           canManagePolicy ? (
@@ -938,50 +938,50 @@ export const ControlledCopiesPolicyView: React.FC = () => {
             <div className="space-y-4">
               {/* Distribution & Access */}
               <FormSection
-                title="Distribution & Access"
+                title={tr("Distribution & Access")}
                 icon={<Mail className="h-4 w-4" />}
               >
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      Channels
+                      {tr("Channels")}
                     </p>
                     <div className="divide-y divide-slate-100 -my-2">
                       <SwitchRow
-                        label="Email distribution"
+                        label={tr("Email distribution")}
                         checked={
                           policy.distributionSecurity.allowEmailDistribution
                         }
                         onChange={(v) => setDS("allowEmailDistribution", v)}
                         disabled={!canManagePolicy}
-                        note="Allow distribution notifications and links by email."
+                        note={tr("Allow distribution notifications and links by email.")}
                       />
                       <SwitchRow
-                        label="Portal view"
+                        label={tr("Portal view")}
                         checked={policy.distributionSecurity.allowPortalView}
                         onChange={(v) => setDS("allowPortalView", v)}
                         disabled={!canManagePolicy}
-                        note="Allow recipients to open the controlled-copy portal."
+                        note={tr("Allow recipients to open the controlled-copy portal.")}
                       />
                     </div>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      Recipient Actions
+                      {tr("Recipient Actions")}
                     </p>
                     <div className="divide-y divide-slate-100 -my-2">
                       <SwitchRow
-                        label="Download"
+                        label={tr("Download")}
                         checked={policy.distributionSecurity.allowDownload}
                         onChange={(v) => setDS("allowDownload", v)}
                         disabled={!canManagePolicy}
-                        note="Allow downloading a PDF copy."
+                        note={tr("Allow downloading a PDF copy.")}
                       />
                       {policy.distributionSecurity.allowDownload && (
                         <div className="pl-3 border-l-2 border-emerald-100 ml-1">
                           <SwitchRow
-                            label="One download per record"
+                            label={tr("One download per record")}
                             checked={policy.distributionSecurity.downloadOnce}
                             onChange={(v) => setDS("downloadOnce", v)}
                             disabled={!canManagePolicy}
@@ -989,16 +989,16 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                         </div>
                       )}
                       <SwitchRow
-                        label="Print"
+                        label={tr("Print")}
                         checked={policy.distributionSecurity.allowPrint}
                         onChange={(v) => setDS("allowPrint", v)}
                         disabled={!canManagePolicy}
-                        note="Allow the viewer Print command and Ctrl+P."
+                        note={tr("Allow the viewer Print command and Ctrl+P.")}
                       />
                       {policy.distributionSecurity.allowPrint && (
                         <div className="pl-3 border-l-2 border-emerald-100 ml-1">
                           <SwitchRow
-                            label="One print per record"
+                            label={tr("One print per record")}
                             checked={policy.distributionSecurity.printOnce}
                             onChange={(v) => setDS("printOnce", v)}
                             disabled={!canManagePolicy}
@@ -1010,7 +1010,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
                   <div className="border-t border-slate-100 pt-4">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      External Viewer Session
+                      {tr("External Viewer Session")}
                     </p>
                     <SessionLengthField
                       minutes={
@@ -1025,12 +1025,12 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
               {/* DCO Delivery Routing */}
               <FormSection
-                title="DCO Delivery Routing"
+                title={tr("DCO Delivery Routing")}
                 icon={<UserCheck className="h-4 w-4" />}
               >
                 <div className="divide-y divide-slate-100 -my-2">
                   <SwitchRow
-                    label="Redirect delivery to DCO"
+                    label={tr("Redirect delivery to DCO")}
                     checked={policy.delivery.redirectDeliveryToDco}
                     onChange={(v) => setDelivery("redirectDeliveryToDco", v)}
                     disabled={!canManagePolicy}
@@ -1039,17 +1039,12 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                     <div className="pl-3 border-l-2 border-sky-200 ml-1 pt-3 pb-1 space-y-2">
                       {dcoUsersLoaded && dcoUsers.length === 0 && (
                         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
-                          No user currently holds the "Receive Controlled
-                          Copies as DCO" permission yet, so there is no one to
-                          select below. Grant it to at least one user via
-                          Access Profiles / Permission Sets, then come back and
-                          pick them here -- this switch can stay on in the
-                          meantime, but saving needs a recipient.
+                          {tr("No user currently holds the \"Receive Controlled Copies as DCO\" permission yet, so there is no one to select below. Grant it to at least one user via Access Profiles / Permission Sets, then come back and pick them here -- this switch can stay on in the meantime, but saving needs a recipient.")}
                         </p>
                       )}
                       <Select
-                        label="DCO Recipient"
-                        placeholder="Select the user who will receive controlled copies"
+                        label={tr("DCO Recipient")}
+                        placeholder={tr("Select the user who will receive controlled copies")}
                         options={dcoUsers.map((u) => ({
                           label: u.email
                             ? `${u.fullName} (${u.email})`
@@ -1065,12 +1060,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       {policy.delivery.dcoRecipientUserId &&
                         !policy.delivery.dcoRecipientEligible && (
                           <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-2xs text-rose-700">
-                            This user no longer holds the "Receive Controlled
-                            Copies as DCO" permission (revoked, or account
-                            inactive). Until fixed, distributions fall back to
-                            normal delivery and the issue is logged. Select a
-                            different eligible user, or re-grant the
-                            permission.
+                            {tr("This user no longer holds the \"Receive Controlled Copies as DCO\" permission (revoked, or account inactive). Until fixed, distributions fall back to normal delivery and the issue is logged. Select a different eligible user, or re-grant the permission.")}
                           </p>
                         )}
                     </div>
@@ -1080,26 +1070,26 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
               {/* Recall / Lost / Damaged */}
               <FormSection
-                title="Recall / Lost / Damaged"
+                title={tr("Recall / Lost / Damaged")}
                 icon={<RotateCcw className="h-4 w-4" />}
               >
                 <div className="divide-y divide-slate-100 -my-2">
                   <SwitchRow
-                    label="Allow Manual Recall"
+                    label={tr("Allow Manual Recall")}
                     checked={policy.recallLostDamaged.allowManualRecall}
                     onChange={(v) => setRecall("allowManualRecall", v)}
                     disabled={!canManagePolicy}
-                    note="Lets a DCO pull back a distributed copy, e.g. after a new revision is published."
+                    note={tr("Lets a DCO pull back a distributed copy, e.g. after a new revision is published.")}
                   />
                   <SwitchRow
-                    label="Allow Report Lost/Damaged"
+                    label={tr("Allow Report Lost/Damaged")}
                     checked={policy.recallLostDamaged.allowReportLostDamaged}
                     onChange={(v) => setRecall("allowReportLostDamaged", v)}
                     disabled={!canManagePolicy}
-                    note="Lets a recipient report their copy as lost or damaged (evidence required for damaged)."
+                    note={tr("Lets a recipient report their copy as lost or damaged (evidence required for damaged).")}
                   />
                   <SwitchRow
-                    label="Allow Replacement"
+                    label={tr("Allow Replacement")}
                     checked={
                       policy.recallLostDamaged.allowReplacementForLostDamaged
                     }
@@ -1107,7 +1097,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       setRecall("allowReplacementForLostDamaged", v)
                     }
                     disabled={!canManagePolicy}
-                    note="Lets a new copy be issued to replace one reported lost or damaged."
+                    note={tr("Lets a new copy be issued to replace one reported lost or damaged.")}
                   />
                 </div>
               </FormSection>
@@ -1116,7 +1106,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                   mandatory "Global Default" row guarantees a resolution, with document type/department rows overriding it when
                   more specific. */}
               <FormSection
-                title="Download Link Expiry"
+                title={tr("Download Link Expiry")}
                 icon={<TimerReset className="h-4 w-4" />}
                 headerRight={
                   canManagePolicy && (
@@ -1127,31 +1117,29 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       className="gap-1.5 whitespace-nowrap shrink-0"
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      Add Rule
+                      {tr("Add Rule")}
                     </Button>
                   )
                 }
               >
                 <p className="mb-3 text-xs text-slate-500">
-                  How long the link in the distribution e-mail stays valid, counted from the moment the e-mail is sent. After that
-                  the recipient asks the Document Control Officer for a new link. This does not change when a controlled copy
-                  expires: a copy is valid until the Valid Until date of its document.
+                  {tr("How long the link in the distribution e-mail stays valid, counted from the moment the e-mail is sent. After that the recipient asks the Document Control Officer for a new link. This does not change when a controlled copy expires: a copy is valid until the Valid Until date of its document.")}
                 </p>
                 <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                   <TableMarkup.Root className="w-full text-xs sm:text-sm">
                     <TableMarkup.Head className="bg-slate-50">
                       <TableMarkup.Row>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
-                          Document Type
+                          {tr("Document Type")}
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
-                          Department
+                          {tr("Department")}
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell43}>
-                          Link valid for
+                          {tr("Link valid for")}
                         </TableMarkup.HeaderCell>
                         <TableMarkup.HeaderCell className="text-right px-3 py-2 text-2xs md:text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                          Actions
+                          {tr("Actions")}
                         </TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>
@@ -1166,7 +1154,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                           <TableMarkup.Cell className="px-3 py-2 text-slate-700">
                             {limit.isSystem ? (
                               <span className="font-semibold text-emerald-700">
-                                Global Default
+                                {tr("Global Default")}
                               </span>
                             ) : (
                               limit.documentTypeName || "Any"
@@ -1189,7 +1177,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 type="button"
                                 onClick={() => openEditLimitModal(limit)}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                                aria-label="Edit rule"
+                                aria-label={tr("Edit rule")}
                               >
                                 <IconPencilMinus className="h-3.5 w-3.5" />
                               </button>
@@ -1199,7 +1187,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 type="button"
                                 onClick={() => handleDeleteLimit(limit)}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
-                                aria-label="Delete rule"
+                                aria-label={tr("Delete rule")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1220,7 +1208,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 <div className="min-w-0 space-y-4">
                   <div
                     role="tablist"
-                    aria-label="Marking scenario"
+                    aria-label={tr("Marking scenario")}
                     className="flex flex-nowrap gap-1 rounded-lg bg-slate-100 p-1"
                   >
                     {MARKING_TABS.map((tab) => (
@@ -1244,7 +1232,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                   {markingTab === "ISSUED" ? (
                     <div className="space-y-4">
                       <MarkCard
-                        title="Stamp"
+                        title={tr("Stamp")}
                         enabled={policy.marking.stampEnabled}
                         onToggle={(v) => setMarking("stampEnabled", v)}
                         disabled={!canManagePolicy}
@@ -1263,7 +1251,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                           disabled={!canManagePolicy}
                           items={[
                             {
-                              label: "Copy number",
+                              label: tr("Copy number"),
                               checked: policy.marking.stampShowCopyNumber,
                               onChange: (v) =>
                                 setMarking("stampShowCopyNumber", v),
@@ -1275,13 +1263,13 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 setMarking("stampShowRecipient", v),
                             },
                             {
-                              label: "Distributed date",
+                              label: tr("Distributed date"),
                               checked: policy.marking.stampShowDistributedDate,
                               onChange: (v) =>
                                 setMarking("stampShowDistributedDate", v),
                             },
                             {
-                              label: "Expiry date",
+                              label: tr("Expiry date"),
                               checked: policy.marking.stampShowExpiryDate,
                               onChange: (v) =>
                                 setMarking("stampShowExpiryDate", v),
@@ -1292,7 +1280,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       </MarkCard>
 
                       <MarkCard
-                        title="Watermark"
+                        title={tr("Watermark")}
                         enabled={policy.distributionSecurity.watermarkEnabled}
                         onToggle={(v) => setDS("watermarkEnabled", v)}
                         disabled={!canManagePolicy}
@@ -1306,15 +1294,15 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             )
                           }
                           disabled={!canManagePolicy}
-                          textHint="Letters, digits and . , : ; / ( ) -"
+                          textHint={tr("Letters, digits and . , : ; / ( ) -")}
                           opacityRange={[5, 50]}
                           layerOptions={[
                             {
-                              label: "Behind the content (text stays crisp)",
+                              label: tr("Behind the content (text stays crisp)"),
                               value: "BEHIND",
                             },
                             {
-                              label: "Above the content (always visible)",
+                              label: tr("Above the content (always visible)"),
                               value: "ABOVE",
                             },
                           ]}
@@ -1323,7 +1311,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                           disabled={!canManagePolicy}
                           items={[
                             {
-                              label: "Copy number",
+                              label: tr("Copy number"),
                               checked:
                                 policy.distributionSecurity.watermarkCopyNumber,
                               onChange: (v) => setDS("watermarkCopyNumber", v),
@@ -1335,7 +1323,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                               onChange: (v) => setDS("watermarkRecipient", v),
                             },
                             {
-                              label: "Distributed date",
+                              label: tr("Distributed date"),
                               checked:
                                 policy.distributionSecurity
                                   .watermarkDistributedDate,
@@ -1343,7 +1331,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 setDS("watermarkDistributedDate", v),
                             },
                             {
-                              label: "Expiry date",
+                              label: tr("Expiry date"),
                               checked:
                                 policy.distributionSecurity.watermarkExpiryDate,
                               onChange: (v) => setDS("watermarkExpiryDate", v),
@@ -1354,16 +1342,13 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       </MarkCard>
 
                       <MarkCard
-                        title="QR code (paper copies)"
+                        title={tr("QR code (paper copies)")}
                         enabled={policy.marking.qrCodeEnabled}
                         onToggle={(v) => setMarking("qrCodeEnabled", v)}
                         disabled={!canManagePolicy}
                       >
                         <p className="text-xs text-slate-500">
-                          Prints a code on every paper copy issued from now on (on every page or on the first page only),
-                          so the DCO can recall returned paper in bulk by scanning it (Controlled Copies &gt; Recall by Scan).
-                          The code is only a random lookup key, with the page number: it carries no document data. Copies issued before this was switched on have no
-                          code and are recalled one by one.
+                          {tr("Prints a code on every paper copy issued from now on (on every page or on the first page only), so the DCO can recall returned paper in bulk by scanning it (Controlled Copies &gt; Recall by Scan). The code is only a random lookup key, with the page number: it carries no document data. Copies issued before this was switched on have no code and are recalled one by one.")}
                         </p>
                         <QrCodeFields
                           value={policy.marking}
@@ -1388,7 +1373,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                               <Button
                                 size="sm"
                                 variant="outline-emerald"
-                                aria-label="Reset QR Code Position"
+                                aria-label={tr("Reset QR Code Position")}
                                 onClick={() =>
                                   setPolicy((p) => ({
                                     ...p,
@@ -1397,7 +1382,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 }
                                 disabled={saving}
                               >
-                                Reset Position
+                                {tr("Reset Position")}
                               </Button>
                             </div>
                           )}
@@ -1416,7 +1401,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                       return (
                         <div className="space-y-4">
                           <MarkCard
-                            title="Stamp"
+                            title={tr("Stamp")}
                             enabled={cfg.stampEnabled}
                             onToggle={(v) =>
                               setStatusMarking(status, "stampEnabled", v)
@@ -1449,7 +1434,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                             {renderResetPosition("stamp")}
                           </MarkCard>
                           <MarkCard
-                            title="Watermark"
+                            title={tr("Watermark")}
                             enabled={cfg.watermarkEnabled}
                             onToggle={(v) =>
                               setStatusMarking(status, "watermarkEnabled", v)
@@ -1460,15 +1445,15 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                               value={cfg}
                               onChange={set}
                               disabled={!canManagePolicy}
-                              textHint="Leave blank to use the automatic text."
+                              textHint={tr("Leave blank to use the automatic text.")}
                               opacityRange={[5, 60]}
                               layerOptions={[
                                 {
-                                  label: "Above the content (always visible)",
+                                  label: tr("Above the content (always visible)"),
                                   value: "ABOVE",
                                 },
                                 {
-                                  label: "Behind the content",
+                                  label: tr("Behind the content"),
                                   value: "BEHIND",
                                 },
                               ]}
@@ -1501,7 +1486,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
                 {/* The picture comes first on narrow screens (so it's seen before the settings) and to the right on wide ones. */}
                 <div className="order-first min-w-0 xl:order-last xl:sticky xl:top-4 xl:self-start">
-                  <FormSection title="PDF Preview" icon={<IconFileTypePdf className="h-4 w-4" />}>
+                  <FormSection title={tr("PDF Preview")} icon={<IconFileTypePdf className="h-4 w-4" />}>
                   <MarkingPreviewPane
                     scenario={markingTab}
                     draft={{
@@ -1542,21 +1527,20 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           editingLimit
             ? editingLimit.isSystem
               ? "Edit Global Default"
-              : "Edit Link Expiry Rule"
-            : "Add Link Expiry Rule"
+              : tr("Edit Link Expiry Rule")
+            : tr("Add Link Expiry Rule")
         }
         confirmText="Save"
       >
         <div className="space-y-3">
           {editingLimit?.isSystem ? (
             <p className="text-2xs text-slate-500 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
-              The Global Default applies to Any document type / Any department
-              and cannot be scoped — only its duration can be edited.
+              {tr("The Global Default applies to Any document type / Any department and cannot be scoped — only its duration can be edited.")}
             </p>
           ) : (
             <>
               <Select
-                label="Document Type"
+                label={tr("Document Type")}
                 options={[
                   { label: "Any", value: "" },
                   ...documentTypes.map((d) => ({ label: d.name, value: d.id })),
@@ -1567,7 +1551,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 }
               />
               <Select
-                label="Department"
+                label={tr("Department")}
                 options={[
                   { label: "Any", value: "" },
                   ...departments.map((d) => ({ label: d.name, value: d.id })),
@@ -1582,7 +1566,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs sm:text-sm text-slate-700 mb-1.5 block">
-                Duration
+                {tr("Duration")}
               </label>
               <input
                 type="number"
@@ -1595,7 +1579,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               />
             </div>
             <Select
-              label="Unit"
+              label={tr("Unit")}
               options={DURATION_UNIT_OPTIONS.map((u) => ({
                 label: u.label,
                 value: u.value,
@@ -1614,17 +1598,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           </p>
           {isLaxerThanOverridden && overriddenLimit && (
             <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
-              This rule is longer than the{" "}
-              {overriddenLimit.isSystem
-                ? "Global Default"
-                : overriddenLimit.documentTypeName ||
-                  overriddenLimit.departmentName ||
-                  "less specific"}{" "}
-              rule it will override for this scope (
-              {overriddenLimit.durationValue}{" "}
-              {overriddenLimit.durationUnit.toLowerCase()}) — e-mail links
-              here will stay valid longer than that policy intends. Confirm this
-              relaxation is deliberate before saving.
+              {trFormat("This rule is longer than the {which} rule it will override for this scope ({value} {unit}) — e-mail links here will stay valid longer than that policy intends. Confirm this relaxation is deliberate before saving.", { which: overriddenLimit.isSystem ? tr("Global Default") : overriddenLimit.documentTypeName || overriddenLimit.departmentName || tr("less specific"), value: overriddenLimit.durationValue, unit: overriddenLimit.durationUnit.toLowerCase() })}
             </p>
           )}
           <div className="flex items-center gap-3">
@@ -1632,7 +1606,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               id="isActive expiry-limit"
               checked={limitForm.active}
               onChange={(active) => setLimitForm((f) => ({ ...f, active }))}
-              label="Active"
+              label={tr("Active")}
               disabled={Boolean(editingLimit?.isSystem)}
             />
           </div>

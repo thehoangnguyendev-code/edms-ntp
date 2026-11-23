@@ -108,6 +108,7 @@ import {
   trainingBreadcrumbs,
   fileSafe, when, statusChange } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { tr, trFormat } from "@/i18n";
 
 const EMPTY_PARTICIPANT_STATS = { total: 0, pending: 0, attendancePending: 0, eligible: 0, unscored: 0, present: 0, absent: 0, actualAbsent: 0, passed: 0, failed: 0, readPending: 0 };
 
@@ -138,8 +139,10 @@ const MODE_TAB: Record<ActivityMode, string> = {
   confirm: "overview",
   participate: "participants",
 };
+// A person who fails (or is absent) does not stop the activity from being completed; the retraining is a new activity under the same number with the next letter (SOP.0003 5.1.4, 5.3.7), arranged
+// from the Completed activity (the server allows it only then, and shows the capability only then), which is read in the details: so the button is allowed there and in no other mode.
 const MODE_CAPS: Record<ActivityMode, string[]> = {
-  view: [],
+  view: ["addSupplementary"],
   edit: [
     "edit",
     "editRemarks",
@@ -169,7 +172,6 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
     "recordAssessment",
     "finishTraining",
     "sendAttendanceList",
-    "addSupplementary",
     "cancel",
   ],
   review: [],
@@ -292,6 +294,7 @@ export function TrainingActivityDetailPage({
     }
   });
   const [dialog, setDialog] = useState<Dialog>();
+  const [addingSession, setAddingSession] = useState(false);
   const [sign, setSign] = useState<SignRequest>();
   const [busy, setBusy] = useState(false);
   const [pSession, setPSession] = useState(workspaceSessionId ?? "");
@@ -340,7 +343,7 @@ export function TrainingActivityDetailPage({
     } catch (e) {
       showToast({
         type: "error",
-        title: "The action was not done",
+        title: tr("The action was not done"),
         message: trainingError(e),
       });
       return false;
@@ -350,11 +353,21 @@ export function TrainingActivityDetailPage({
   };
 
   const caps = activity ? limitCaps(activity.capabilities, mode) : undefined;
+  // The list menu entry "Supplementary Training" lands here with the dialog already open, once.
+  const openedSupplementary = useRef(false);
+  const wantsSupplementary = Boolean((location.state as { openSupplementary?: boolean } | null)?.openSupplementary);
+  useEffect(() => {
+    if (!wantsSupplementary || openedSupplementary.current || !caps) return;
+    openedSupplementary.current = true;
+    if (caps.addSupplementary && (activity?.supplementaryPending ?? 0) > 0) setDialog({ type: "supplementary" });
+  }, [wantsSupplementary, caps, activity?.supplementaryPending]);
   const title = workspace ? "Session Workspace" : MODE_TITLE[mode];
+  // A person who takes part (mode participate) sees their own part only; the results of everyone are shown where the activity is read, conducted or confirmed.
+  const showResults = Boolean(activity) && mode !== "participate" && activity?.kind !== "LEGACY" && ["IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED"].includes(activity?.status ?? "");
   const tabs: TabItem[] = useMemo(
     () =>
       [
-        { id: "overview", label: "General Information" },
+        { id: "overview", label: tr("General Information") },
         {
           id: "participants",
           // A historical activity (Legacy Import) has no participants of sessions: the tab shows the persons who were trained on paper.
@@ -362,12 +375,14 @@ export function TrainingActivityDetailPage({
           // The total comes from the summary, which the server always sends; the list itself is empty on the tabs that do not need the people, which made this number jump between 0 and the real one.
           count: activity?.kind === "LEGACY" ? undefined : (activity?.participantSummary?.all?.total ?? activity?.participants.length),
         },
-        { id: "materials", label: "Training Materials" },
+        // The result of each person, with the scan of the paper test where there is one, read only: it is what the trainer typed in the Session Workspace, shown where the activity is read.
+        ...(showResults ? [{ id: "results", label: tr("Results") }] : []),
+        { id: "materials", label: tr("Training Materials") },
         { id: "assessment", label: "Assessment" },
-        { id: "signatures", label: "Signatures" },
-        { id: "audit", label: "Audit Trail" },
+        { id: "signatures", label: tr("Signatures") },
+        { id: "audit", label: tr("Audit Trail") },
       ],
-    [activity?.kind, activity?.participantSummary?.all?.total, activity?.participants.length],
+    [activity?.kind, activity?.participantSummary?.all?.total, activity?.participants.length, showResults],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -442,16 +457,16 @@ export function TrainingActivityDetailPage({
   const renderTrainerCheck = (s: TrainingSession): ReactNode => {
         const q = s.trainerQualification;
         if (!q || !q.applies) return null;
-        if (q.qualified) return <Badge color="emerald">Qualified</Badge>;
+        if (q.qualified) return <Badge color="emerald">{tr("Qualified")}</Badge>;
         const ex = q.exception;
         return (
           <div className="max-w-64 space-y-1 whitespace-normal">
             {ex?.status === "APPROVED" ? (
-              <Badge color="amber">Exception approved</Badge>
+              <Badge color="amber">{tr("Exception approved")}</Badge>
             ) : ex?.status === "PENDING" ? (
-              <Badge color="amber">Exception waiting</Badge>
+              <Badge color="amber">{tr("Exception waiting")}</Badge>
             ) : (
-              <Badge color="red">Not qualified</Badge>
+              <Badge color="red">{tr("Not qualified")}</Badge>
             )}
             {ex?.status !== "APPROVED" && (
               <ul className="list-disc pl-4 text-xs text-slate-600">
@@ -462,7 +477,7 @@ export function TrainingActivityDetailPage({
             )}
             {ex?.status === "REJECTED" && (
               <div className="text-xs text-red-700">
-                Last exception rejected: {ex.rejectReason}
+                {trFormat("Last exception rejected: {reason}", { reason: ex.rejectReason ?? "" })}
               </div>
             )}
             <div className="flex flex-wrap gap-2">
@@ -476,7 +491,7 @@ export function TrainingActivityDetailPage({
                       setDialog({ type: "trainerException", session: s })
                     }
                   >
-                    Request Exception
+                    {tr("Request Exception")}
                   </Button>
                 )}
               {(mode === "approve" || mode === "edit") &&
@@ -502,7 +517,7 @@ export function TrainingActivityDetailPage({
                         )
                       }
                     >
-                      Complete Approval
+                      {tr("Complete Approval")}
                     </Button>
                     <Button
                       size="sm"
@@ -514,7 +529,7 @@ export function TrainingActivityDetailPage({
                         })
                       }
                     >
-                      Reject
+                      {tr("Reject")}
                     </Button>
                   </>
                 )}
@@ -529,7 +544,7 @@ export function TrainingActivityDetailPage({
           <div className="flex flex-wrap gap-2">
             {caps?.editSession && (
               <Button size="sm" variant="outline-emerald" onClick={() => setDialog({ type: "editSession", session: s })}>
-                Change
+                {tr("Change")}
               </Button>
             )}
             {sessionNotStarted(s) && caps?.adjustPlan && (
@@ -538,7 +553,7 @@ export function TrainingActivityDetailPage({
                 variant="outline-emerald"
                 onClick={() => setDialog({ type: "postpone", session: s })}
               >
-                Postpone
+                {tr("Postpone")}
               </Button>
             )}
           </div>
@@ -589,7 +604,7 @@ export function TrainingActivityDetailPage({
               )
             }
           >
-            Clear Absence
+            {tr("Clear Absence")}
           </Button>
         ) : (
           <Button
@@ -599,7 +614,7 @@ export function TrainingActivityDetailPage({
               setDialog({ type: "plannedAbsence", participant: p })
             }
           >
-            Mark Absent
+            {tr("Mark Absent")}
           </Button>
         ))}
       {scope !== "results" &&
@@ -612,7 +627,7 @@ export function TrainingActivityDetailPage({
               setDialog({ type: "removeParticipant", participant: p })
             }
           >
-            Remove
+            {tr("Remove")}
           </Button>
         )}
       {scope === "attendance" &&
@@ -629,7 +644,7 @@ export function TrainingActivityDetailPage({
               setDialog({ type: "correctAttendance", participant: p })
             }
           >
-            Correct Attendance
+            {tr("Correct Attendance")}
           </Button>
         )}
       {scope !== "results" &&
@@ -646,7 +661,7 @@ export function TrainingActivityDetailPage({
             variant="outline-emerald"
             onClick={() => setDialog({ type: "participation", participant: p })}
           >
-            Set Participation
+            {tr("Set Participation")}
           </Button>
         )}
       {scope !== "results" &&
@@ -657,7 +672,7 @@ export function TrainingActivityDetailPage({
            variant="outline-emerald"
             onClick={() => setDialog({ type: "attendance", participant: p })}
           >
-            Mark Attendance
+            {tr("Mark Attendance")}
           </Button>
         )}
       {scope !== "results" &&
@@ -673,7 +688,7 @@ export function TrainingActivityDetailPage({
             title={p.lastReadReminderAt ? `Last reminded ${when(p.lastReadReminderAt)}` : "Send an e-mail and a notice asking this person to read and sign"}
             onClick={() => run(() => trainingActivitiesApi.remindRead(p.id), `Reminder sent to ${p.fullName}`)}
           >
-            Send Reminder
+            {tr("Send Reminder")}
           </Button>
         )}
       {scope !== "results" &&
@@ -685,7 +700,7 @@ export function TrainingActivityDetailPage({
             size="sm"
             variant="outline"
             disabled={busy}
-            title="This person cannot read within this training (left, long leave, illness): they stay on the list as absent and are trained later in a supplementary training"
+            title={tr("This person cannot read within this training (left, long leave, illness): they stay on the list as absent and are trained later in a supplementary training")}
             onClick={() =>
               signAction(
                 `Record ${p.fullName} as unable to read`,
@@ -696,7 +711,7 @@ export function TrainingActivityDetailPage({
               )
             }
           >
-            Cannot Read
+            {tr("Cannot Read")}
           </Button>
         )}
       {scope !== "attendance" &&
@@ -711,7 +726,7 @@ export function TrainingActivityDetailPage({
            variant="outline-emerald"
             onClick={() => setDialog({ type: "assessment", participant: p })}
           >
-            Record Result
+            {tr("Record Result")}
           </Button>
         )}
       {mode === "participate" &&
@@ -739,7 +754,7 @@ export function TrainingActivityDetailPage({
            variant="outline-emerald"
             onClick={() => setDialog({ type: "releaseExam", participant: p })}
           >
-            Release the Test
+            {tr("Release the Test")}
           </Button>
         )}
       {mode === "participate" &&
@@ -752,7 +767,7 @@ export function TrainingActivityDetailPage({
            variant="outline-emerald"
             onClick={() =>
               setSign({
-                title: "Confirm Self-Reading",
+                title: tr("Confirm Self-Reading"),
                 meaningCode: "TRAINING_READ_CONFIRMED",
                 meaningName: "Self-reading Confirmed",
                 changes: statusChange("Invited", "Read and understood", "Self-reading"),
@@ -763,7 +778,7 @@ export function TrainingActivityDetailPage({
               })
             }
           >
-            I have read and understood
+            {tr("I have read and understood")}
           </Button>
         )}
     </div>
@@ -771,7 +786,7 @@ export function TrainingActivityDetailPage({
   // The columns of the attendee list APD.0117: No., ID, name, department, session, attendance, result. The actions follow the screen.
   const participantColumns: DataTableColumn<TrainingParticipant>[] = [
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => i + 1 },
-    { id: "code", header: "Employee ID", cell: (p) => p.employeeCode ?? "—" },
+    { id: "code", header: tr("Employee ID"), cell: (p) => p.employeeCode ?? "—" },
     {
       id: "name",
       header: "Full Name",
@@ -785,7 +800,7 @@ export function TrainingActivityDetailPage({
             ) : null}
             {p.addedReason ? (
               <div className="max-w-64 whitespace-normal text-xs text-amber-700">
-                Added by hand: {p.addedReason}
+                {trFormat("Added by hand: {reason}", { reason: p.addedReason })}
               </div>
             ) : null}
           </div>
@@ -804,7 +819,7 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "participation",
-      header: "Participation",
+      header: tr("Participation"),
       cell: (p) => (
         <div className="max-w-64 whitespace-normal">
           <div>{PARTICIPATION_ROLE_LABEL[p.participationRole ?? "TRAINEE"]}</div>
@@ -816,7 +831,7 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "state",
-      header: "Attendance",
+      header: tr("Attendance"),
       cell: (p) => (
         <div className="max-w-64 whitespace-normal">
           {labelOfState(p)}
@@ -846,7 +861,7 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "attempts",
-      header: "Re-training",
+      header: tr("Re-training"),
       cell: (p) =>
         p.attempts && p.attempts > 1 ? `${p.attempts - 1} time(s)` : "—",
     },
@@ -876,12 +891,12 @@ export function TrainingActivityDetailPage({
         ),
         {
           id: "trn",
-          header: "Training number",
+          header: tr("Training number"),
           cell: () => activity.trainingNumber,
         },
         {
           id: "read",
-          header: "Reading day",
+          header: tr("Reading day"),
           cell: (p) => (p.readConfirmedAt ? day(p.readConfirmedAt) : "—"),
         },
         {
@@ -904,8 +919,8 @@ export function TrainingActivityDetailPage({
     : participantColumns;
   const groups = [
     { id: "EMPLOYEES", title: "Employees" },
-    { id: "ABSENT", title: "Absent (stay on the list)" },
-    { id: "OUTSIDE", title: "Outside persons" },
+    { id: "ABSENT", title: tr("Absent (stay on the list)") },
+    { id: "OUTSIDE", title: tr("Outside persons") },
   ];
   const targetSession =
     activity.sessions.find((x) => x.id === pSession) ?? activity.sessions[0];
@@ -913,7 +928,7 @@ export function TrainingActivityDetailPage({
   const sessionChips = (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-medium text-slate-700 sm:text-sm">
-        Session
+        {tr("Session")}
       </span>
       {[
         { id: "", label: `All (${allParticipantStats.total})` },
@@ -971,13 +986,13 @@ export function TrainingActivityDetailPage({
         notes={
           <>
             {!p.personUserId && p.externalOrg ? <div className="truncate text-xs text-slate-500">{p.externalOrg}</div> : null}
-            {p.addedReason ? <div className="text-xs text-amber-700">Added by hand: {p.addedReason}</div> : null}
+            {p.addedReason ? <div className="text-xs text-amber-700">{trFormat("Added by hand: {reason}", { reason: p.addedReason })}</div> : null}
             {accountNote(p)}
           </>
         }
         status={<Badge color={statusColor} className="max-w-full whitespace-normal">{labelOfState(p)}</Badge>}
         actions={renderActions(p, "attendance")}
-        quickAction={canMarkAttendance(p) ? <Button size="sm" variant="outline-emerald" aria-label={`Mark Attendance of ${p.fullName}`} onClick={() => setDialog({ type: "attendance", participant: p })}>Mark</Button> : undefined}
+        quickAction={canMarkAttendance(p) ? <Button size="sm" variant="outline-emerald" aria-label={`Mark Attendance of ${p.fullName}`} onClick={() => setDialog({ type: "attendance", participant: p })}>{tr("Mark")}</Button> : undefined}
         moreActions={hasMore ? more : undefined}
       />
     );
@@ -994,8 +1009,22 @@ export function TrainingActivityDetailPage({
   const open = !["COMPLETED", "CANCELLED"].includes(activity.status);
   const qa = activity.qaList;
   const results = activity.resultsToQa;
+  // The retraining of the people who were absent or failed is offered until it is arranged, also after the activity is Completed: a failed person does not stop the completion.
+  // The button "Supplementary Training" sits in the header, beside Back; the notice keeps only the people who cannot be put on one now.
+  const supplementaryNotice =
+    !activity.parentActivityId && (activity.supplementaryBlocked ?? 0) > 0 && ["COMPLETED"].includes(activity.status) ? (
+      <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        {`${activity.supplementaryBlocked} person(s) cannot be put on one now because their account is not Active (left or suspended); they stay Absent on the list.`}
+      </p>
+    ) : null;
+  const supplementaryButton =
+    caps?.addSupplementary && (activity.supplementaryPending ?? 0) > 0 ? (
+      <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "supplementary" })}>{tr("Supplementary Training")}</Button>
+    ) : null;
   // Two notices that guide the manual part of the procedure: the day the list goes to QA (SOP.0003 5.3.6) and the approved vendor list for an outside trainer (SOP.0025).
-  const notices = open ? (
+  const notices = (
+    <>
+    {open ? (
     <div className="mb-4 space-y-2 empty:hidden">
       {qa && ["DUE", "DUE_TODAY", "OVERDUE", "WAITING"].includes(qa.state) && (
         <p
@@ -1012,12 +1041,6 @@ export function TrainingActivityDetailPage({
             `The attendance list was due to QA on ${day(qa.dueOn)} and has not been sent. Send it now; the delay is recorded.`}
         </p>
       )}
-      {!activity.parentActivityId && ((activity.supplementaryPending ?? 0) > 0 || (activity.supplementaryBlocked ?? 0) > 0) && ["IN_PROGRESS", "PENDING_QA_CONFIRMATION"].includes(activity.status) && (
-        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {(activity.supplementaryPending ?? 0) > 0 && `${activity.supplementaryPending} absent or failed person(s) have no supplementary training yet (SOP.0003 5.3.7). Create it with Supplementary training; they are listed on it for you. `}
-          {(activity.supplementaryBlocked ?? 0) > 0 && `${activity.supplementaryBlocked} person(s) cannot be put on one now because their account is not Active (left or suspended); they stay Absent on the list.`}
-        </p>
-      )}
       {external && activity.vendorWarning && (
         <p
           role="status"
@@ -1029,7 +1052,10 @@ export function TrainingActivityDetailPage({
         </p>
       )}
     </div>
-  ) : null;
+    ) : null}
+    {supplementaryNotice}
+    </>
+  );
   // What the training is about: the topics of its sessions, or its document (SOP.0003 5.3.5). It has no title of its own.
   const activityTopics = activity.trainingTopics ?? activity.topics ?? "";
   const form = draft ?? {
@@ -1039,9 +1065,9 @@ export function TrainingActivityDetailPage({
     vendorRef: activity.vendorRef ?? "",
   };
   const dueDateField = caps?.edit ? (
-    <TrainingDateField label="Due Date" hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setDraft({ ...form, dueDate: v })} />
+    <TrainingDateField label={tr("Due Date")} hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setDraft({ ...form, dueDate: v })} />
   ) : (
-    <ReadonlyField label="Due Date" value={day(activity.dueDate)} hint={DATE_HINT.due} />
+    <ReadonlyField label={tr("Due Date")} value={day(activity.dueDate)} hint={DATE_HINT.due} />
   );
   // On the row of the Scheduled date of the session when there is a session, or a form to add one
   const dueDateWithSession = activity.sessions.length > 0 || Boolean(caps?.planSessions);
@@ -1108,7 +1134,7 @@ export function TrainingActivityDetailPage({
     ["PLANNED", "NOTIFIED"].includes(activity.status) && caps?.planSessions ? (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 md:p-5">
         <h3 className="mb-2 text-sm font-semibold text-slate-800">
-          To prepare this training
+          {tr("To prepare this training")}
         </h3>
         <ol className="space-y-1.5 text-sm">
           {stepsToDo.map((x, i) => (
@@ -1130,7 +1156,7 @@ export function TrainingActivityDetailPage({
         </ol>
         {activity.listPreparedBy && blockers.length > 0 && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            Participants cannot be notified yet:
+            {tr("Participants cannot be notified yet:")}
             <ul className="mt-1 list-disc pl-4">
               {blockers.map((b) => (
                 <li key={b}>{trainingCodeText(b)}</li>
@@ -1151,18 +1177,18 @@ export function TrainingActivityDetailPage({
   const liveSessions = activity.sessions.filter((x) => x.status !== "CANCELLED");
   const readingOnly = liveSessions.length > 0 && liveSessions.every((x) => x.method === "SELF_READING");
   const signatureSteps: { key: string; label: string; by?: string | null; on?: string | null }[] = [
-    ...(activity.documentNumber ? [{ key: "docApproved", label: "Document Approved", by: activity.documentApprovedByName, on: activity.documentApprovedAt ?? day(activity.approvedOn) }] : []),
+    ...(activity.documentNumber ? [{ key: "docApproved", label: tr("Document Approved"), by: activity.documentApprovedByName, on: activity.documentApprovedAt ?? day(activity.approvedOn) }] : []),
     ...(external ? [] : [
-      { key: "reviewed", label: "Content Reviewed", by: confirmed("CONTENT_REVIEWED")?.confirmedByName, on: when(confirmed("CONTENT_REVIEWED")?.confirmedAt) },
-      { key: "approved", label: "Content Approved", by: confirmed("CONTENT_APPROVED")?.confirmedByName, on: when(confirmed("CONTENT_APPROVED")?.confirmedAt) },
+      { key: "reviewed", label: tr("Content Reviewed"), by: confirmed("CONTENT_REVIEWED")?.confirmedByName, on: when(confirmed("CONTENT_REVIEWED")?.confirmedAt) },
+      { key: "approved", label: tr("Content Approved"), by: confirmed("CONTENT_APPROVED")?.confirmedByName, on: when(confirmed("CONTENT_APPROVED")?.confirmedAt) },
     ]),
     ...activity.confirmations
       .filter((c) => c.kind === "HEAD_SELF_READING")
       .map((c) => ({ key: `read-${c.id}`, label: `Self-reading Verified${c.departmentName ? ` (${c.departmentName})` : ""}`, by: c.confirmedByName, on: when(c.confirmedAt) })),
-    ...(hasSelfReading && !activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING") ? [{ key: "read", label: "Self-reading Verified", by: null, on: null }] : []),
-    ...(readingOnly ? [] : [{ key: "sent", label: "Attendance List Sent to QA", by: activity.attendanceSentByName, on: activity.attendanceSentAt }]),
-    { key: "finished", label: "Training Finished and Results Sent to QA", by: activity.resultsFinishedByName, on: activity.resultsFinishedAt },
-    { key: "completion", label: "Completion Confirmed by QA", by: confirmed("QA_COMPLETION")?.confirmedByName, on: when(confirmed("QA_COMPLETION")?.confirmedAt) },
+    ...(hasSelfReading && !activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING") ? [{ key: "read", label: tr("Self-reading Verified"), by: null, on: null }] : []),
+    ...(readingOnly ? [] : [{ key: "sent", label: tr("Attendance List Sent to QA"), by: activity.attendanceSentByName, on: activity.attendanceSentAt }]),
+    { key: "finished", label: tr("Training Finished and Results Sent to QA"), by: activity.resultsFinishedByName, on: activity.resultsFinishedAt },
+    { key: "completion", label: tr("Completion Confirmed by QA"), by: confirmed("QA_COMPLETION")?.confirmedByName, on: when(confirmed("QA_COMPLETION")?.confirmedAt) },
   ];
 
   // ---- the workspace of one session
@@ -1197,25 +1223,25 @@ export function TrainingActivityDetailPage({
       label: "Prepare",
       subtitle: wsHeld ? `Started ${day(wsSession?.heldOn)}` : "Not started",
       description:
-        "Tick what is ready: the room, the equipment, the materials, the notice, the test and the paper. The training starts with the first attendance.",
+        tr("Tick what is ready: the room, the equipment, the materials, the notice, the test and the paper. The training starts with the first attendance."),
       done: wsHeld,
       icon: IconClipboardCheck,
     },
     {
       id: "ws-attendance",
-      label: "Attendance",
+      label: tr("Attendance"),
       subtitle: `${wsPresent} of ${wsStatsData.total} present`,
       description:
-        "Record who came: with the code or the QR, with the quick roll-call, or one by one; an absence needs its reason. When everyone is recorded, the trainer sends the attendance list to QA with an electronic signature. A mistake is corrected with a reason.",
+        tr("Record who came: with the code or the QR, with the quick roll-call, or one by one; an absence needs its reason. When everyone is recorded, the trainer sends the attendance list to QA with an electronic signature. A mistake is corrected with a reason."),
       done: wsAttendanceDone,
       icon: IconUserCheck,
     },
     {
       id: "ws-training",
       label: "Training",
-      subtitle: "Approved content",
+      subtitle: tr("Approved content"),
       description:
-        "Teach with the approved content only. Nothing is typed here: the session is held and the attendance recorded.",
+        tr("Teach with the approved content only. Nothing is typed here: the session is held and the attendance recorded."),
       done: wsAttendanceDone,
       icon: IconPresentation,
     },
@@ -1226,7 +1252,7 @@ export function TrainingActivityDetailPage({
         ? (ASSESSMENT_SHORT[wsSession.assessmentMethod] ?? "—")
         : "—",
       description:
-        "Give the test or the checklist. A paper test is printed here and typed in with its scan; a checked file is uploaded as evidence.",
+        tr("Give the test or the checklist. A paper test is printed here and typed in with its scan; a checked file is uploaded as evidence."),
       done: wsEligible > 0 && wsUnscored === 0,
       icon: IconChecklist,
     },
@@ -1235,7 +1261,7 @@ export function TrainingActivityDetailPage({
       label: "Results",
       subtitle: `${wsPassed} passed · ${wsFailed} not passed`,
       description:
-        "Type the score of each person in the row (the maximum score once, above the table) and save. When every result is in, the trainer finishes the training with a signature: the results are written in the list APD.0117. Then the trainer sends the results to QA.",
+        tr("Type the score of each person in the row (the maximum score once, above the table) and save. When every result is in, the trainer finishes the training with a signature: the results are written in the list APD.0117. Then the trainer sends the results to QA."),
       done: !!activity.resultsFinishedAt,
       icon: IconTrophy,
     },
@@ -1252,7 +1278,7 @@ export function TrainingActivityDetailPage({
                 label: "Reading",
                 subtitle: `${wsPresent} of ${wsStatsData.total} read`,
                 description:
-                  "Every invited person reads the document and signs in the system (My Training). A person who has not signed is reminded before the due date (Training Properties), and you can remind one person with Send Reminder. The head of each department then confirms the people of the department.",
+                  tr("Every invited person reads the document and signs in the system (My Training). A person who has not signed is reminded before the due date (Training Properties), and you can remind one person with Send Reminder. The head of each department then confirms the people of the department."),
                 done: wsPending === 0 && wsStatsData.total > 0,
               }
             : x.id === "ws-results"
@@ -1260,7 +1286,7 @@ export function TrainingActivityDetailPage({
                   ...x,
                   subtitle: `${wsPassed} confirmed by the head`,
                   description:
-                    "The result of each person comes from the confirmation of the head of the department. When nobody is waiting, the trainer finishes the training with a signature: QA is told and the self-reading lists APD.0108 go with the message.",
+                    tr("The result of each person comes from the confirmation of the head of the department. When nobody is waiting, the trainer finishes the training with a signature: QA is told and the self-reading lists APD.0108 go with the message."),
                 }
               : x,
         )
@@ -1302,11 +1328,11 @@ export function TrainingActivityDetailPage({
         },
         {
           icon: IconCalendar,
-          label: "Conducted on",
+          label: tr("Conducted on"),
           value: wsSession.heldOn ? day(wsSession.heldOn) : "Not yet",
         },
         { icon: IconUser, label: "Trainer", value: trainerOf(wsSession) },
-        ...(results && results.dueOn ? [{ icon: IconCalendar, label: "Results due to QA", value: day(results.dueOn) }] : []),
+        ...(results && results.dueOn ? [{ icon: IconCalendar, label: tr("Results due to QA"), value: day(results.dueOn) }] : []),
         {
           icon: IconMapPin,
           label: "Venue",
@@ -1340,7 +1366,7 @@ export function TrainingActivityDetailPage({
       ]
     : [];
   const wsStats: WorkspaceStat[] = [
-    { label: "on the list", value: wsStatsData.total, icon: IconUsers, tone: "slate" },
+    { label: tr("on the list"), value: wsStatsData.total, icon: IconUsers, tone: "slate" },
     { label: wsReading ? "not signed yet" : "absent", value: wsReading ? wsPending : wsAbsent, icon: IconUserX, tone: "amber" },
   ];
   const wsRates: WorkspaceRate[] = [
@@ -1362,7 +1388,7 @@ export function TrainingActivityDetailPage({
   const refreshActivity = () => void run(() => trainingActivitiesApi.get(activity.id), "Updated");
   const wsContent = !workspace ? null : !wsSession ? (
     <p role="alert" className="text-sm text-red-700">
-      This session was not found in the training activity.
+      {tr("This session was not found in the training activity.")}
     </p>
   ) : (
     <>
@@ -1422,8 +1448,6 @@ export function TrainingActivityDetailPage({
           }
           absent={wsStatsData.actualAbsent}
           failed={wsFailed}
-          canArrange={Boolean(caps?.addSupplementary)}
-          onArrange={() => setDialog({ type: "supplementary" })}
         />
       )}
     </>
@@ -1448,7 +1472,7 @@ export function TrainingActivityDetailPage({
             )
           }
         >
-          Finish Training
+          {tr("Finish Training")}
         </Button>
       )}
     </>
@@ -1465,7 +1489,7 @@ export function TrainingActivityDetailPage({
           className="whitespace-nowrap"
           onClick={() => navigate(`/documents/revisions/training/${r.revisionId}`)}
         >
-          {waitingRevisions.length > 1 ? `Complete Training (${r.documentNumber})` : "Complete Training (Revision)"}
+          {waitingRevisions.length > 1 ? `Complete Training (${r.documentNumber})` : tr("Complete Training (Revision)")}
         </Button>
       ))}
       {caps?.cancel && (
@@ -1475,7 +1499,7 @@ export function TrainingActivityDetailPage({
           className="whitespace-nowrap"
           onClick={() => setDialog({ type: "cancel" })}
         >
-          Cancel
+          {tr("Cancel")}
         </Button>
       )}
       {mode === "conduct" &&
@@ -1520,17 +1544,17 @@ export function TrainingActivityDetailPage({
             })
           }
         >
-          Save changes
+          {tr("Save changes")}
         </Button>
       )}
       {caps?.reopenContent && (
         <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "reopenContent" })}>
-          Reopen Content
+          {tr("Reopen Content")}
         </Button>
       )}
       {caps?.returnForCorrection && (
         <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "returnForCorrection" })}>
-          Return for Correction
+          {tr("Return for Correction")}
         </Button>
       )}
       {caps?.confirmList && (
@@ -1548,7 +1572,7 @@ export function TrainingActivityDetailPage({
             )
           }
         >
-          Confirm attendee list
+          {tr("Confirm attendee list")}
         </Button>
       )}
       {caps?.notify && activity.listPreparedBy && (
@@ -1569,7 +1593,7 @@ export function TrainingActivityDetailPage({
             )
           }
         >
-          Notify participants
+          {tr("Notify participants")}
         </Button>
       )}
       {hasSelfReading && myWaitingDepartments.length > 0 && (
@@ -1579,11 +1603,11 @@ export function TrainingActivityDetailPage({
             className="whitespace-nowrap"
             onClick={verifySelfReading}
           >
-            Verify self-reading
+            {tr("Verify self-reading")}
           </Button>
         )}
       {hasSelfReading && myWaitingDepartments.some((d) => d.substitute) && (
-        <p className="text-xs text-slate-500">{myWaitingDepartments.filter((d) => d.substitute).map((d) => d.departmentName).join(", ")}: no Department Head is set in the master data. You confirm in place of the head, and the record says so.</p>
+              <p className="text-xs text-slate-500">{myWaitingDepartments.filter((d) => d.substitute).map((d) => d.departmentName).join(", ")}{tr(": no Department Head is set in the master data. You confirm in place of the head, and the record says so.")}</p>
       )}
       {caps?.confirmCompletion && (
         <Button
@@ -1605,19 +1629,10 @@ export function TrainingActivityDetailPage({
             )
           }
         >
-          Confirm completion
+          {tr("Confirm completion")}
         </Button>
       )}
-      {caps?.addSupplementary && (
-        <Button
-          size="sm"
-          variant="outline-emerald"
-          className="whitespace-nowrap"
-          onClick={() => setDialog({ type: "supplementary" })}
-        >
-          Supplementary training
-        </Button>
-      )}
+      {supplementaryButton}
     </>
   );
   return (
@@ -1690,7 +1705,7 @@ export function TrainingActivityDetailPage({
               {/* APD.0108 is the record of the self-reading signed in the system (no paper print, no copy number): one list for each department of the session, each saved as its own file named by the department */}
               {wsSession?.method === "SELF_READING" && sessionStarted(wsSession) && (
                 <FormDownloadButtons
-                  label="The self-reading list"
+                  label={tr("The self-reading list")}
                   buttonText="Self-reading List"
                   parts={((activity.selfReadingDepartments ?? []).length > 1 ? activity.selfReadingDepartments ?? [] : [undefined]).map((d) => ({
                     key: d?.departmentId || d?.departmentName || "",
@@ -1705,7 +1720,7 @@ export function TrainingActivityDetailPage({
                   loading={busy}
                   onClick={sendAttendanceList}
                 >
-                  Send Attendance List to QA
+                  {tr("Send Attendance List to QA")}
                 </Button>
               )}
               {endButtons}
@@ -1727,6 +1742,7 @@ export function TrainingActivityDetailPage({
           onTab={setTab}
           tabLayoutId="training-activity-detail-tab"
           footer={footer}
+          headerExtra={supplementaryButton}
           repeatFooterInHeader={mode === "confirm" || mode === "conduct"}
         >
           {notices}
@@ -1736,22 +1752,22 @@ export function TrainingActivityDetailPage({
               {/* The same fields in the same order as New Training Activity: the activity (with who opened it, the document and the days), then the session, then the description. */}
               <ReadonlyGrid>
                 <ReadonlyField
-                  label="Training Number"
+                  label={tr("Training Number")}
                   value={activity.trainingNumber}
                 />
                 <ReadonlyField
-                  label="Department"
+                  label={tr("Department")}
                   value={activity.departmentName}
                 />
-                <ReadonlyField label="Opened By" value={activity.createdByName} />
-                <ReadonlyField label="Training Completed On" value={day(activity.completedOn)} />
-                <ReadonlyField label="Created Time" value={when(activity.createdAt)} />
+                <ReadonlyField label={tr("Opened By")} value={activity.createdByName} />
+                <ReadonlyField label={tr("Training Completed On")} value={day(activity.completedOn)} />
+                <ReadonlyField label={tr("Created Time")} value={when(activity.createdAt)} />
                 <ReadonlyField
-                  label="Type"
+                  label={tr("Type")}
                   value={KIND_LABEL[activity.kind] ?? activity.kind}
                 />
                 <ReadonlyField
-                  label="Reason"
+                  label={tr("Reason")}
                   value={
                     activity.kindReason
                       ? (KIND_REASON_LABEL[activity.kindReason] ??
@@ -1761,7 +1777,7 @@ export function TrainingActivityDetailPage({
                 />
                 {external && (
                   <ReadonlyField
-                    label="External training"
+                    label={tr("External training")}
                     value={
                       activity.externalType
                         ? EXTERNAL_TYPE_LABEL[activity.externalType]
@@ -1772,7 +1788,7 @@ export function TrainingActivityDetailPage({
                 {external &&
                   (caps?.edit ? (
                     <>
-                      <FormField label="Training unit / individual" required>
+                      <FormField label={tr("Training unit / individual")} required>
                         <Input
                           value={form.trainingUnitName}
                           maxLength={255}
@@ -1784,7 +1800,7 @@ export function TrainingActivityDetailPage({
                           }
                         />
                       </FormField>
-                      <FormField label="Vendor reference (SOP.0025)">
+                      <FormField label={tr("Vendor reference (SOP.0025)")}>
                         <Input
                           value={form.vendorRef}
                           maxLength={120}
@@ -1797,11 +1813,11 @@ export function TrainingActivityDetailPage({
                   ) : (
                     <>
                       <ReadonlyField
-                        label="Training unit / individual"
+                        label={tr("Training unit / individual")}
                         value={activity.trainingUnitName}
                       />
                       <ReadonlyField
-                        label="Vendor reference (SOP.0025)"
+                        label={tr("Vendor reference (SOP.0025)")}
                         value={activity.vendorRef}
                       />
                     </>
@@ -1809,24 +1825,24 @@ export function TrainingActivityDetailPage({
                 {activity.documentNumber && (
                   <>
                     <ReadonlyField
-                      label="Document"
+                      label={tr("Document")}
                       value={activity.documentLabel ?? ""}
                     />
                   </>
                 )}
                 {(activity.groupRevisions ?? []).filter((r) => !r.isMain).length > 0 && (
                   <ReadonlyField
-                    label="Related documents (same Training Number)"
+                    label={tr("Related documents (same Training Number)")}
                     value={(activity.groupRevisions ?? []).filter((r) => !r.isMain).map((r) => r.documentLabel ?? r.documentNumber).join(", ")}
                     wide
                   />
                 )}
                 {/* The Due Date is on the row of the Scheduled date of the session; it is here only when the activity has no session and none can be added. */}
                 {!dueDateWithSession && dueDateField}
-                {/* With a session, the topic is the topic of the session (below): it is not said twice. */}
-                {activity.sessions.length === 0 && (
+                {/* With a session, or with the form that adds one, the topic is the topic of the session (below): it is not said twice. */}
+                {activity.sessions.length === 0 && !caps?.planSessions && (
                   <ReadonlyField
-                    label="Training Topic"
+                    label={tr("Training Topic")}
                     value={activityTopics || "—"}
                     wide
                   />
@@ -1834,15 +1850,16 @@ export function TrainingActivityDetailPage({
                 {/* A historical activity has no session: the mode and the trainer are the ones written on the paper record. */}
                 {activity.kind === "LEGACY" && (
                   <>
-                    <ReadonlyField label="Mode" value={activity.paperMethod ? METHOD_LABEL[activity.paperMethod] ?? activity.paperMethod : "—"} />
-                    <ReadonlyField label="Trainer" value={activity.paperTrainer || "—"} />
+                    <ReadonlyField label={tr("Mode")} value={activity.paperMethod ? METHOD_LABEL[activity.paperMethod] ?? activity.paperMethod : "—"} />
+                    <ReadonlyField label={tr("Trainer")} value={activity.paperTrainer || "—"} />
                   </>
                 )}
               </ReadonlyGrid>
               {/* The session: what the training is, then when, where and with whom it is held (the fields of the Session of New Training Activity). */}
               <div className="space-y-4">
                 <div className="space-y-4">
-                  {caps?.planSessions && (
+                  {/* The form of a session is open while there is none; once there is one it is corrected in the session below, and the form for another one opens on request (the topic is not asked twice). */}
+                  {caps?.planSessions && (activity.sessions.length === 0 || addingSession) && (
                     <SessionPanel
                       external={external}
                       busy={busy}
@@ -1853,9 +1870,14 @@ export function TrainingActivityDetailPage({
                         void run(
                           () => trainingActivitiesApi.addSession(activity.id, body),
                           "Session added",
-                        )
+                        ).then((ok) => ok && setAddingSession(false))
                       }
                     />
+                  )}
+                  {caps?.planSessions && activity.sessions.length > 0 && !addingSession && (
+                    <div>
+                      <Button size="sm" variant="outline-emerald" onClick={() => setAddingSession(true)}>{tr("Add another session")}</Button>
+                    </div>
                   )}
                   {/* The paper pack and the preparation are tools of the person who organises: they are shown where that person works (planning, and before the first session is held);
                       elsewhere they would only be read, and the prints are in the Audit Trail. */}
@@ -1865,7 +1887,7 @@ export function TrainingActivityDetailPage({
                       <p className="p-4 text-sm text-slate-500">
                         {activity.kind === "LEGACY"
                           ? "This training was done on paper before the system and was imported with its document. It has no session; the scan of the paper record and the persons who were trained are in Legacy Training Evidence."
-                          : "No session yet. Fill in the form above to add the first one."}
+                          : tr("No session yet. Fill in the form above to add the first one.")}
                         {(activity.proposedParticipantCount ?? 0) > 0 &&
                           ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
                       </p>
@@ -1886,7 +1908,7 @@ export function TrainingActivityDetailPage({
               <ReadonlyGrid>
                 {caps?.edit || caps?.editRemarks ? (
                   <div className="md:col-span-2">
-                    <FormField label="Description" required>
+                    <FormField label={tr("Description")} required>
                       <Textarea
                         rows={3}
                         value={form.remarks}
@@ -1898,7 +1920,7 @@ export function TrainingActivityDetailPage({
                   </div>
                 ) : (
                   <ReadonlyField
-                    label="Description"
+                    label={tr("Description")}
                     value={activity.remarks}
                     wide
                     multiline
@@ -1906,7 +1928,7 @@ export function TrainingActivityDetailPage({
                 )}
                 {activity.cancelReason && (
                   <ReadonlyField
-                    label="Reason for Cancelling"
+                    label={tr("Reason for Cancelling")}
                     value={activity.cancelReason}
                     wide
                   />
@@ -1939,8 +1961,7 @@ export function TrainingActivityDetailPage({
                   />
                 ) : (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-600">
-                    Add a session first (General Information): the people are added to
-                    a session.
+                    {tr("Add a session first (General Information): the people are added to a session.")}
                   </p>
                 ))}
               {/* Typing the results of a paper test is work of the conduct of the training (and of the person who checks it), not of a screen that only shows the activity. */}
@@ -1962,6 +1983,22 @@ export function TrainingActivityDetailPage({
             </div>
           )}
 
+          {tab === "results" && showResults && (
+            <WorkspaceResultsTable
+              readOnly
+              activityId={activity.id}
+              people={activity.sessionParticipants ?? []}
+              passPercent={activity.passPercent}
+              defaultMax={activity.assessment?.maxScore ?? undefined}
+              locked
+              canRecord={false}
+              canRelease={false}
+              onRelease={() => undefined}
+              assessmentMethod={activity.sessions.find((x) => x.assessmentMethod && x.assessmentMethod !== "SELF_READING_CONFIRMATION")?.assessmentMethod}
+              onActivity={() => undefined}
+            />
+          )}
+
           {tab === "signatures" &&
             !["edit", "review", "approve"].includes(mode) && (
               <ReadonlyGrid>
@@ -1978,17 +2015,11 @@ export function TrainingActivityDetailPage({
             ["edit", "review", "approve"].includes(mode) && (
               <div className="space-y-4">
                 <p className="text-sm text-slate-600">
-                  The person who prepares the training chooses who reviews and
-                  approves the content. Only a person who holds the permission
-                  for the step, in the right department, and who is not the
-                  person who prepared it, can be chosen. The person chosen signs
-                  with an electronic signature.
+                  {tr("The person who prepares the training chooses who reviews and approves the content. Only a person who holds the permission for the step, in the right department, and who is not the person who prepared it, can be chosen. The person chosen signs with an electronic signature.")}
                 </p>
                 {external && (
                   <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-600">
-                    An external training has no content or test of its own, so
-                    there is no review or approval of content. QA confirms the
-                    completion.
+                    {tr("An external training has no content or test of its own, so there is no review or approval of content. QA confirms the completion.")}
                   </p>
                 )}
                 {(external
@@ -2026,7 +2057,7 @@ export function TrainingActivityDetailPage({
                                   setDialog({ type: "designate", step })
                                 }
                               >
-                                Designate
+                                {tr("Designate")}
                               </Button>
                             )}
                           {!done &&
@@ -2043,7 +2074,7 @@ export function TrainingActivityDetailPage({
                                   signAction(
                                     step === "CONTENT_REVIEW"
                                       ? "Confirm review"
-                                      : "Complete approval of the training content",
+                                      : tr("Complete approval of the training content"),
                                     step === "CONTENT_REVIEW"
                                       ? "TRAINING_CONTENT_REVIEWED"
                                       : "TRAINING_CONTENT_APPROVED",
@@ -2066,7 +2097,7 @@ export function TrainingActivityDetailPage({
                               >
                                 {step === "CONTENT_REVIEW"
                                   ? "Sign review"
-                                  : "Complete Approval"}
+                                  : tr("Complete Approval")}
                               </Button>
                             )}
                         </div>
@@ -2107,7 +2138,7 @@ export function TrainingActivityDetailPage({
                         }
                         emptyState={
                           <p className="p-4 text-sm text-slate-500">
-                            {done ? "Done" : "No one designated yet."}
+                            {done ? "Done" : tr("No one designated yet.")}
                           </p>
                         }
                       />
@@ -2119,7 +2150,7 @@ export function TrainingActivityDetailPage({
                     {activity.status === "COMPLETED"
                       ? "Done"
                       : canClose
-                        ? "Any person who holds the QA permission can confirm, except the person who confirmed the attendee list."
+                        ? tr("Any person who holds the QA permission can confirm, except the person who confirmed the attendee list.")
                         : "Pending QA confirmation."}
                   </p>
                 </TabBlock>
@@ -2178,8 +2209,8 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "reopenContent" && (
         <ReasonDialog
-          title="Reopen the Training Content"
-          help="The review and the approval that were given stay in the history but no longer count; the content must be reviewed and approved again. If the people were notified, the activity goes back to Planned and they are notified again after the new approval."
+          title={tr("Reopen the Training Content")}
+          help={tr("The review and the approval that were given stay in the history but no longer count; the content must be reviewed and approved again. If the people were notified, the activity goes back to Planned and they are notified again after the new approval.")}
           confirmText="Continue"
           busy={busy}
           onClose={() => setDialog(undefined)}
@@ -2197,8 +2228,8 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "returnForCorrection" && (
         <ReasonDialog
-          title="Return the Results for Correction"
-          help="Nothing has been written to a personal record yet. The activity goes back to In Progress, the organizer corrects and sends it to QA again."
+          title={tr("Return the Results for Correction")}
+          help={tr("Nothing has been written to a personal record yet. The activity goes back to In Progress, the organizer corrects and sends it to QA again.")}
           confirmText="Continue"
           busy={busy}
           onClose={() => setDialog(undefined)}
@@ -2216,8 +2247,8 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "cancel" && (
         <ReasonDialog
-          title="Cancel Training Activity"
-          help="The cancellation is signed. The Training Number is never used again. The reason stays in the record."
+          title={tr("Cancel Training Activity")}
+          help={tr("The cancellation is signed. The Training Number is never used again. The reason stays in the record.")}
           confirmText="Cancel activity"
           destructive
           busy={busy}
@@ -2237,7 +2268,7 @@ export function TrainingActivityDetailPage({
       {dialog?.type === "releaseExam" && (
         <ReasonDialog
           title={`Release the Test for ${dialog.participant.fullName}`}
-          help="The trainee may take the test once more. The reason stays in the Audit Trail."
+          help={tr("The trainee may take the test once more. The reason stays in the Audit Trail.")}
           confirmText="Release"
           busy={busy}
           onClose={() => setDialog(undefined)}
@@ -2361,8 +2392,8 @@ export function TrainingActivityDetailPage({
       )}
       {dialog?.type === "rejectException" && (
         <ReasonDialog
-          title="Reject Trainer Exception"
-          help="The session cannot go ahead with this trainer unless another exception is approved."
+          title={tr("Reject Trainer Exception")}
+          help={tr("The session cannot go ahead with this trainer unless another exception is approved.")}
           confirmText="Reject"
           destructive
           busy={busy}
@@ -2381,7 +2412,7 @@ export function TrainingActivityDetailPage({
       {dialog?.type === "removeParticipant" && (
         <ReasonDialog
           title={`Remove ${dialog.participant.fullName}`}
-          help="Only before the attendee list is confirmed. The name and the reason stay in the Audit Trail. After that, mark the person absent instead."
+          help={tr("Only before the attendee list is confirmed. The name and the reason stay in the Audit Trail. After that, mark the person absent instead.")}
           confirmText="Remove"
           destructive
           busy={busy}
@@ -2419,7 +2450,7 @@ export function TrainingActivityDetailPage({
       {dialog?.type === "plannedAbsence" && (
         <ReasonDialog
           title={`Mark ${dialog.participant.fullName} Absent`}
-          help="The person stays on the attendee list, as SOP.0003 5.3.4 requires. The reason is written on the row."
+          help={tr("The person stays on the attendee list, as SOP.0003 5.3.4 requires. The reason is written on the row.")}
           confirmText="Mark absent"
           busy={busy}
           onClose={() => setDialog(undefined)}
@@ -2447,7 +2478,7 @@ export function TrainingActivityDetailPage({
                 ids,
                 reason,
               );
-              navigate(`/training-management/activities/${created.id}`);
+              navigate(`/training-management/activities/${created.id}/edit`);
               return created;
             }, "Supplementary training created")
           }
@@ -2508,7 +2539,7 @@ function ReasonDialog({
       confirmDisabled={!reason.trim()}
       size="md"
     >
-      <FormField label="Reason" required>
+      <FormField label={tr("Reason")} required>
         <Textarea
           rows={3}
           value={reason}
@@ -2547,7 +2578,7 @@ function ParticipationDialog({
       isOpen
       onClose={onClose}
       title={`Participation: ${participant.fullName}`}
-      description="How the person takes part decides whether they take the assessment. The role, the reason and who set it stay in the Audit Trail. It cannot be changed once the person has a score."
+      description={tr("How the person takes part decides whether they take the assessment. The role, the reason and who set it stay in the Audit Trail. It cannot be changed once the person has a score.")}
       confirmText="Save"
       isLoading={busy}
       confirmDisabled={(role === current && reason.trim() === (participant.participationReason ?? "")) || (!trainee && !reason.trim())}
@@ -2555,7 +2586,7 @@ function ParticipationDialog({
       onConfirm={() => onSave(role, trainee ? undefined : reason.trim())}
     >
       <div className="grid gap-4">
-        <FormField label="Participation" required>
+        <FormField label={tr("Participation")} required>
           <Select
             value={role}
             enableSearch={false}
@@ -2566,7 +2597,7 @@ function ParticipationDialog({
         <p className="text-xs text-slate-500">{PARTICIPATION_ROLE_HELP[role]}</p>
         {!trainee && (
           <>
-            <FormField label="Reason" required>
+            <FormField label={tr("Reason")} required>
               <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
             </FormField>
             <div className="flex flex-wrap gap-2">
@@ -2611,23 +2642,23 @@ function PostponeDialog({
       isOpen
       onClose={onClose}
       onConfirm={() => onSave(date, reason.trim(), afterDue && moveDue === "MOVE")}
-      title="Postpone Session"
-      description="The Training Number stays. The old date, the new date and the reason are recorded."
+      title={tr("Postpone Session")}
+      description={tr("The Training Number stays. The old date, the new date and the reason are recorded.")}
       confirmText="Postpone"
       isLoading={busy}
       confirmDisabled={!date || !reason.trim()}
       size="xl"
     >
       <div className="grid gap-4">
-        <TrainingDateField label="New date" value={date} onChange={setDate} />
+        <TrainingDateField label={tr("New date")} value={date} onChange={setDate} />
         {afterDue && (
           <div role="alert" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            <p>The new date is after the Due Date ({day(dueDate)}). SOP.0003 5.3.6: a training that cannot be completed in its month is conducted in the following month. If it comes from a training requirement, the line of the requirement moves to that month too; the month it was approved for stays on the line.</p>
+                <p>{trFormat("The new date is after the Due Date ({date}). SOP.0003 5.3.6: a training that cannot be completed in its month is conducted in the following month. If it comes from a training requirement, the line of the requirement moves to that month too; the month it was approved for stays on the line.", { date: day(dueDate) })}</p>
             <RadioGroup name="postpone-due" value={moveDue} onChange={(v) => setMoveDue(String(v))}
               options={[{ label: `Move the Due Date to ${day(newDue)}`, value: "MOVE" }, { label: `Keep the Due Date ${day(dueDate)} (the session is then after it)`, value: "KEEP" }]} />
           </div>
         )}
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea
             rows={3}
             value={reason}
@@ -2666,20 +2697,20 @@ function AttendanceDialog({
       onConfirm={() => onSave(state, reason.trim() || undefined)}
     >
       <div className="grid gap-4">
-        <FormField label="Attendance" required>
+        <FormField label={tr("Attendance")} required>
           <Select
             value={state}
             enableSearch={false}
             onChange={(v) => setState(v)}
             options={[
               { label: "Attended", value: "ATTENDED" },
-              { label: "Attended online", value: "ONLINE" },
+              { label: tr("Attended online"), value: "ONLINE" },
               { label: "Absent", value: "ABSENT" },
             ]}
           />
         </FormField>
         {state === "ABSENT" && (
-          <FormField label="Reason for absence" required>
+          <FormField label={tr("Reason for absence")} required>
             <Textarea
               rows={2}
               value={reason}
@@ -2713,7 +2744,7 @@ function CorrectAttendanceDialog({
       isOpen
       onClose={onClose}
       title={`Correct the Attendance of ${participant.fullName}`}
-      description="Use this only for a mistake. The old value, the new value and your reason stay in the Audit Trail. It cannot be changed after the person has a score."
+      description={tr("Use this only for a mistake. The old value, the new value and your reason stay in the Audit Trail. It cannot be changed after the person has a score.")}
       confirmText="Confirm"
       isLoading={busy}
       confirmDisabled={state === current || !reason.trim()}
@@ -2721,22 +2752,22 @@ function CorrectAttendanceDialog({
       onConfirm={() => onSave(state, reason.trim())}
     >
       <div className="grid gap-4">
-        <FormField label="Attendance now">
+        <FormField label={tr("Attendance now")}>
           <Input value={PARTICIPANT_STATE_LABEL[current] ?? current} disabled />
         </FormField>
-        <FormField label="Correct attendance" required>
+        <FormField label={tr("Correct attendance")} required>
           <Select
             value={state}
             enableSearch={false}
             onChange={(v) => setState(v)}
             options={[
               { label: "Attended", value: "ATTENDED" },
-              { label: "Attended online", value: "ONLINE" },
+              { label: tr("Attended online"), value: "ONLINE" },
               { label: "Absent", value: "ABSENT" },
             ]}
           />
         </FormField>
-        <FormField label="Reason for the correction" required>
+        <FormField label={tr("Reason for the correction")} required>
           <Textarea
             rows={2}
             value={reason}
@@ -2772,7 +2803,7 @@ function AssessmentDialog({
       isOpen
       onClose={onClose}
       title={`Result: ${participant.fullName}`}
-      description="Enter the score. The system works out the percentage and the result from the pass mark in force."
+      description={tr("Enter the score. The system works out the percentage and the result from the pass mark in force.")}
       confirmText="Save"
       isLoading={busy}
       confirmDisabled={!valid}
@@ -2782,7 +2813,7 @@ function AssessmentDialog({
       }
     >
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Score Obtained" required>
+        <FormField label={tr("Score Obtained")} required>
           <Input
             type="number"
             min={0}
@@ -2790,7 +2821,7 @@ function AssessmentDialog({
             onChange={(e) => setGot(e.target.value)}
           />
         </FormField>
-        <FormField label="Maximum Score" required>
+        <FormField label={tr("Maximum Score")} required>
           <Input
             type="number"
             min={1}
@@ -2799,7 +2830,7 @@ function AssessmentDialog({
           />
         </FormField>
         <div className="col-span-2">
-          <FormField label="Remarks">
+          <FormField label={tr("Remarks")}>
             <Textarea
               rows={2}
               value={remarks}
@@ -2852,7 +2883,7 @@ function DesignateDialog({
       isOpen
       onClose={onClose}
       title={`Designate: ${STEP_LABEL[step]}`}
-      description="Only people the system found eligible for this step are listed."
+      description={tr("Only people the system found eligible for this step are listed.")}
       confirmText="Designate"
       isLoading={busy}
       confirmDisabled={!personId}
@@ -2861,13 +2892,11 @@ function DesignateDialog({
     >
       {loaded && people.length === 0 ? (
         <p className="text-sm text-amber-700">
-          No eligible person was found. A person needs the permission of the
-          step in this department and cannot be the person who prepared the
-          activity.
+          {tr("No eligible person was found. A person needs the permission of the step in this department and cannot be the person who prepared the activity.")}
         </p>
       ) : (
         <Select
-          label="Person"
+          label={tr("Person")}
           value={personId}
           onChange={setPersonId}
           options={people.map((p) => ({
@@ -2875,7 +2904,7 @@ function DesignateDialog({
             value: p.id,
           }))}
           onSearch={search}
-          placeholder="Search by name"
+          placeholder={tr("Search by name")}
         />
       )}
     </FormModal>
@@ -2901,8 +2930,8 @@ function SupplementaryDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title="Supplementary Training"
-      description="A new activity is created under the same number with the next letter. People who were absent or failed are listed."
+      title={tr("Supplementary Training")}
+      description={tr("A new activity is created under the same number with the next letter. People who were absent or failed are listed.")}
       confirmText={`Create (${selected.length})`}
       isLoading={busy}
       confirmDisabled={selected.length === 0 || !reason.trim()}
@@ -2910,7 +2939,7 @@ function SupplementaryDialog({
       onConfirm={() => onSave(selected, reason.trim())}
     >
       {participants.length === 0 ? (
-        <p className="text-sm text-slate-600">No one was absent or failed.</p>
+        <p className="text-sm text-slate-600">{tr("No one was absent or failed.")}</p>
       ) : (
         <div className="space-y-4">
           <div className="max-h-[350px] min-h-[100px] overflow-y-auto px-1 -mx-1 custom-scrollbar">
@@ -2947,7 +2976,7 @@ function SupplementaryDialog({
                       <div className="flex flex-wrap items-center gap-2 truncate text-xs font-medium text-slate-900 md:text-sm">
                         {p.fullName}
                         <Badge color={p.state === "ABSENT" ? "amber" : "red"} size="sm">{p.state === "ABSENT" ? "Absent" : "Failed"}</Badge>
-                        {p.hasSupplementary && <Badge color="slate" size="sm">Already in a supplementary training</Badge>}
+                        {p.hasSupplementary && <Badge color="slate" size="sm">{tr("Already in a supplementary training")}</Badge>}
                         {notActive && <Badge color="slate" size="sm">{`Account ${(p.accountStatus ?? "not active").toLowerCase()}`}</Badge>}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-slate-500">
@@ -2960,7 +2989,7 @@ function SupplementaryDialog({
               })}
             </div>
           </div>
-          <FormField label="Reason" required>
+          <FormField label={tr("Reason")} required>
             <Textarea
               rows={2}
               value={reason}
@@ -3011,15 +3040,15 @@ function TrainerExceptionDialog({
       isOpen
       onClose={onClose}
       onConfirm={() => onSave(reason.trim(), id)}
-      title="Request an Exception for the Trainer"
-      description="The session goes ahead with this trainer only if the person you choose approves, with a signature."
+      title={tr("Request an Exception for the Trainer")}
+      description={tr("The session goes ahead with this trainer only if the person you choose approves, with a signature.")}
       confirmText="Request"
       isLoading={busy}
       confirmDisabled={!reason.trim() || !id}
       size="md"
     >
       <div className="grid gap-4">
-        <FormField label="Reason" required>
+        <FormField label={tr("Reason")} required>
           <Textarea
             rows={3}
             value={reason}
@@ -3028,11 +3057,11 @@ function TrainerExceptionDialog({
         </FormField>
         {loaded && people.length === 0 ? (
           <p className="text-sm text-amber-700">
-            No eligible approver was found.
+            {tr("No eligible approver was found.")}
           </p>
         ) : (
           <Select
-            label="Approver"
+            label={tr("Approver")}
             value={id}
             onChange={setId}
             options={people.map((p) => ({
@@ -3040,7 +3069,7 @@ function TrainerExceptionDialog({
               value: p.id,
             }))}
             onSearch={search}
-            placeholder="Search by name"
+            placeholder={tr("Search by name")}
           />
         )}
       </div>

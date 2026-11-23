@@ -12,6 +12,7 @@ import { AuthBackLink, AuthField, AuthLayout, AuthTopBackButton } from "./compon
 import { authApi } from "@/services/api";
 import { usePasswordPolicy } from "./usePasswordPolicy";
 import { evaluatePasswordPolicy, passwordReuseNote } from "./passwordPolicyRules";
+import { tr } from "@/i18n";
 
 interface ResetPasswordViewProps {
   onBackToLogin?: () => void;
@@ -160,7 +161,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
       <AuthLayout
         left={
           <div className={ui.formColumn}>
-            <AuthTopBackButton onClick={onBackToLogin} label="Back to Sign In" disabled={isSubmitting} />
+            <AuthTopBackButton onClick={onBackToLogin} label={tr("Back to Sign In")} disabled={isSubmitting} />
             <div className={ui.brand}>
               <BrandLogo className="h-8 w-auto object-contain sm:h-9" />
             </div>
@@ -169,38 +170,38 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
               <div className="space-y-6">
                 <div className={ui.headerArea}>
                   <div className={ui.headingBlock}>
-                    <h1 className={ui.pageTitle}>Reset Link Unavailable</h1>
+                    <h1 className={ui.pageTitle}>{tr("Reset Link Unavailable")}</h1>
                     <p className={ui.description}>{validationError}</p>
                   </div>
                 </div>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  Request a new password reset link and use the latest email only.
+                  {tr("Request a new password reset link and use the latest email only.")}
                 </div>
                 <Button onClick={onBackToLogin} className={ui.submitButton}>
-                  Back to Sign In
+                  {tr("Back to Sign In")}
                 </Button>
               </div>
             ) : isSuccess ? (
               <div className="space-y-6">
                 <div className={ui.headerArea}>
                   <div className={ui.headingBlock}>
-                    <h1 className={ui.pageTitle}>Password Reset Complete</h1>
+                    <h1 className={ui.pageTitle}>{tr("Password Reset Complete")}</h1>
                     <p className={ui.description}>
-                      Your password has been updated successfully. All active sessions were revoked for security.
+                      {tr("Your password has been updated successfully. All active sessions were revoked for security.")}
                     </p>
                   </div>
                 </div>
                 <Button onClick={onBackToLogin} className={ui.submitButton}>
-                  Back to Sign In
+                  {tr("Back to Sign In")}
                 </Button>
               </div>
             ) : (
               <>
                 <div className={ui.headerArea}>
                   <div className={ui.headingBlock}>
-                    <h1 className={ui.pageTitle}>Reset Your Password</h1>
+                    <h1 className={ui.pageTitle}>{tr("Reset Your Password")}</h1>
                     <p className={ui.description}>
-                      Choose a new password for your account.
+                      {tr("Choose a new password for your account.")}
                       {expiresAt ? ` This link expires at ${expiresAt}.` : ""}
                     </p>
                   </div>
@@ -211,7 +212,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     <div className="flex gap-3">
                       <ShieldAlert className="h-5 w-5 text-red-600" />
                       <div>
-                        <p className="text-sm font-semibold text-red-900">Password Reset Failed</p>
+                        <p className="text-sm font-semibold text-red-900">{tr("Password Reset Failed")}</p>
                         <p className="mt-0.5 text-sm text-red-700">{submitError}</p>
                       </div>
                     </div>
@@ -219,7 +220,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                 )}
 
                 <form onSubmit={handleSubmit} className={ui.formStack} noValidate>
-                  <AuthField htmlFor="newPassword" label="New Password" required error={errors.newPassword}>
+                  <AuthField htmlFor="newPassword" label={tr("New Password")} required error={errors.newPassword}>
                     <div className="relative">
                       <input
                         id="newPassword"
@@ -233,7 +234,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                           errors.newPassword ? ui.inputError : ui.inputDefault
                         )}
                         disabled={isSubmitting}
-                        placeholder="Enter new password"
+                        placeholder={tr("Enter new password")}
                       />
                       <button
                         type="button"
@@ -276,7 +277,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                   {reuseNote && <p className="text-xs text-slate-500">{reuseNote}</p>}
                   </div>
 
-                  <AuthField htmlFor="confirmPassword" label="Confirm New Password" required error={errors.confirmPassword}>
+                  <AuthField htmlFor="confirmPassword" label={tr("Confirm New Password")} required error={errors.confirmPassword}>
                     <div className="relative">
                       <input
                         id="confirmPassword"
@@ -290,7 +291,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                           errors.confirmPassword ? ui.inputError : ui.inputDefault
                         )}
                         disabled={isSubmitting}
-                        placeholder="Confirm new password"
+                        placeholder={tr("Confirm new password")}
                       />
                       <button
                         type="button"
@@ -307,11 +308,11 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onBackToLo
                     className={ui.submitButton}
                     disabled={isSubmitting || !strength.isValid || formData.confirmPassword !== formData.newPassword}
                   >
-                    {isSubmitting ? <ButtonLoading text="Updating Password..." light /> : "Reset Password"}
+                    {isSubmitting ? <ButtonLoading text="Updating Password..." light /> : tr("Reset Password")}
                   </Button>
 
                   <div className="hidden sm:block">
-                    <AuthBackLink onClick={onBackToLogin} label="Back to Sign In" disabled={isSubmitting} />
+                    <AuthBackLink onClick={onBackToLogin} label={tr("Back to Sign In")} disabled={isSubmitting} />
                   </div>
                 </form>
               </>

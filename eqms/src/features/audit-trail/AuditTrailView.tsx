@@ -54,6 +54,7 @@ import { FilterOptionButton } from "@/components/ui/filter/FilterOptionButton";
 import type { AuditTrailRecord } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 const formatSignatureId = (id?: string | null): string => {
   if (!id || !id.trim()) return "";
@@ -209,7 +210,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
         className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
       >
         <IconInfoCircle className="h-4 w-4 flex-shrink-0" />
-        <span className="font-medium">View Details</span>
+        <span className="font-medium">{tr("View Details")}</span>
       </button>
       <button
         onClick={(e) => {
@@ -219,7 +220,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
         className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 active:bg-slate-100 transition-colors"
       >
         <Download className="h-4 w-4 flex-shrink-0" />
-        <span className="font-medium">Export</span>
+        <span className="font-medium">{tr("Export")}</span>
       </button>
     </div>
   </PortalDropdownMenu>
@@ -485,7 +486,7 @@ export const AuditTrailView: React.FC = () => {
       )}
 
       <PageHeader
-        title="All Records"
+        title={tr("All Records")}
         breadcrumbItems={auditTrail(navigate)}
         actions={
           <Button
@@ -494,7 +495,7 @@ export const AuditTrailView: React.FC = () => {
             onClick={() => setIsBulkExportESignOpen(true)}
           >
             <Download className="mr-2 h-4 w-4" />
-            Export
+            {tr("Export")}
           </Button>
         }
       />
@@ -509,14 +510,14 @@ export const AuditTrailView: React.FC = () => {
         <div className="flex flex-1 flex-col p-4 md:p-5">
           <div className="flex w-full flex-col gap-1.5 pb-4 md:hidden">
             <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">
-              Search
+              {tr("Search")}
             </label>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search audit trail..."
+                  placeholder={tr("Search audit trail...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full pl-10 pr-10 h-10 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all placeholder:text-slate-400"
@@ -526,7 +527,7 @@ export const AuditTrailView: React.FC = () => {
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -538,7 +539,7 @@ export const AuditTrailView: React.FC = () => {
                 className="whitespace-nowrap gap-2 h-10"
               >
                 <IconFilter2 className="h-4 w-4" />
-                Filters
+                {tr("Filters")}
               </Button>
             </div>
           </div>
@@ -546,17 +547,17 @@ export const AuditTrailView: React.FC = () => {
 <ConfiguredDesktopFilters
   search={
     <input
-      aria-label="Search"
+      aria-label={tr("Search")}
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
-      placeholder={"Search audit trail..."}
+      placeholder={tr("Search audit trail...")}
       className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-500"
     />
   }
   filters={[
     {
       id: "actionFilter",
-      label: "Action Type",
+      label: tr("Action Type"),
       value: String(actionFilter),
       options: actionOptions,
       onChange: (value) => setActionFilter(String(value)),
@@ -571,7 +572,7 @@ export const AuditTrailView: React.FC = () => {
     },
     {
       id: "eSignatureFilter",
-      label: "E-Signature",
+      label: tr("E-Signature"),
       value: String(eSignatureFilter),
       options: [
         { label: "All", value: "All" },
@@ -584,7 +585,7 @@ export const AuditTrailView: React.FC = () => {
   dates={[
     {
       id: "dateFrom",
-      label: "Date Range",
+      label: tr("Date Range"),
       from: dateFrom,
       to: dateTo,
       onFromChange: (value) => {
@@ -602,7 +603,7 @@ export const AuditTrailView: React.FC = () => {
 <div className="hidden md:grid grid-cols-1 items-end gap-4 pb-4 md:grid-cols-3 md:pb-5">
             <div className="w-full">
               <label className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm capitalize">
-                Search
+                {tr("Search")}
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -610,7 +611,7 @@ export const AuditTrailView: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search audit trail..."
+                  placeholder={tr("Search audit trail...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block h-9 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -620,7 +621,7 @@ export const AuditTrailView: React.FC = () => {
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -630,21 +631,21 @@ export const AuditTrailView: React.FC = () => {
 
             <div className="w-full">
               <Select
-                label="Action Type"
+                label={tr("Action Type")}
                 value={actionFilter}
                 onChange={(value) => setActionFilter(String(value))}
                 options={actionOptions}
-                placeholder="All"
+                placeholder={tr("All")}
               />
             </div>
 
             <div className="w-full">
               <Select
-                label="User"
+                label={tr("User")}
                 value={userFilter}
                 onChange={(value) => setUserFilter(String(value))}
                 options={userOptions}
-                placeholder="All"
+                placeholder={tr("All")}
                 isLoading={isUserOptionsLoading}
                 loadingText="Loading users..."
               />
@@ -652,7 +653,7 @@ export const AuditTrailView: React.FC = () => {
 
             <div className="w-full">
               <Select
-                label="E-Signature"
+                label={tr("E-Signature")}
                 value={eSignatureFilter}
                 onChange={(value) =>
                   setESignatureFilter(value as "All" | "Yes" | "No")
@@ -662,13 +663,13 @@ export const AuditTrailView: React.FC = () => {
                   { label: "Yes", value: "Yes" },
                   { label: "No", value: "No" },
                 ]}
-                placeholder="All"
+                placeholder={tr("All")}
               />
             </div>
 
             <div className="w-full">
               <DateRangePicker
-                label="Date Range"
+                label={tr("Date Range")}
                 startDate={dateFrom}
                 endDate={dateTo}
                 onStartDateChange={(value) => {
@@ -679,7 +680,7 @@ export const AuditTrailView: React.FC = () => {
                   setDateTo(value);
                   setCurrentPage(1);
                 }}
-                placeholder="Select date range"
+                placeholder={tr("Select date range")}
                 includeTime
               />
             </div>
@@ -692,9 +693,9 @@ export const AuditTrailView: React.FC = () => {
 
           {entityFilter && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-800 sm:text-sm">
-              <span>History of this object only{entityFilter.code ? <>: <span className="font-semibold">{entityFilter.code}</span></> : null}</span>
+              <span>{tr("History of this object only")}{entityFilter.code ? <>: <span className="font-semibold">{entityFilter.code}</span></> : null}</span>
               <button type="button" onClick={() => { setEntityFilter(null); setCurrentPage(1); }} className="ml-auto font-semibold text-emerald-700 hover:underline">
-                Show all records
+                {tr("Show all records")}
               </button>
             </div>
           )}
@@ -718,8 +719,8 @@ export const AuditTrailView: React.FC = () => {
                 {!isLoading && records.length === 0 ? (
                   <div className="py-12 text-center">
                     <TableEmptyState
-                      title="No Audit Records Found"
-                      description="We couldn't find any audit records matching your filters. Try adjusting your search criteria."
+                      title={tr("No Audit Records Found")}
+                      description={tr("We couldn't find any audit records matching your filters. Try adjusting your search criteria.")}
                     />
                   </div>
                 ) : (
@@ -727,21 +728,21 @@ export const AuditTrailView: React.FC = () => {
                     <TableMarkup.Head className="sticky top-0 z-30">
                       <TableMarkup.Row>
                         <TableMarkup.HeaderCell className={TABLE_STYLES.headerCell40}>
-                          No.
+                          {tr("No.")}
                         </TableMarkup.HeaderCell>
                         {[
                           { label: "Timestamp", key: "timestamp" },
                           { label: "User", key: "user" },
-                          { label: "Employee ID" },
+                          { label: tr("Employee ID") },
                           { label: "Module", key: "module" },
-                          { label: "Object Type" },
-                          { label: "Object Code", key: "entityId" },
+                          { label: tr("Object Type") },
+                          { label: tr("Object Code"), key: "entityId" },
                           { label: "Action", key: "action" },
-                          { label: "Status Change" },
-                          { label: "E-Signature" },
-                          { label: "Progress Duration" },
-                          { label: "IP Address" },
-                          { label: "Device / Browser" },
+                          { label: tr("Status Change") },
+                          { label: tr("E-Signature") },
+                          { label: tr("Progress Duration") },
+                          { label: tr("IP Address") },
+                          { label: tr("Device / Browser") },
                         ].map(({ label, key }) => (
                           <TableMarkup.HeaderCell
                             key={label}
@@ -782,7 +783,7 @@ export const AuditTrailView: React.FC = () => {
                           </TableMarkup.HeaderCell>
                         ))}
                         <TableMarkup.HeaderCell className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xs md:text-xs font-bold uppercase tracking-wider text-slate-500 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200">
-                          Action
+                          {tr("Action")}
                         </TableMarkup.HeaderCell>
                       </TableMarkup.Row>
                     </TableMarkup.Head>
@@ -922,7 +923,7 @@ export const AuditTrailView: React.FC = () => {
                                   handleDropdownToggle(record.id, e)
                                 }
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
-                                aria-label="More actions"
+                                aria-label={tr("More actions")}
                               >
                                 <MoreVertical className="h-3.5 w-3.5 text-slate-600 sm:h-4 sm:w-4" />
                               </button>
@@ -1027,7 +1028,7 @@ export const AuditTrailView: React.FC = () => {
         onApply={() => setIsFilterDrawerOpen(false)}
       >
         <FilterAccordionItem
-          label="Action Type"
+          label={tr("Action Type")}
           isExpanded={expandedSections.has("action")}
           onToggle={() => toggleSection("action")}
         >
@@ -1047,14 +1048,14 @@ export const AuditTrailView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="User"
+          label={tr("User")}
           isExpanded={expandedSections.has("user")}
           onToggle={() => toggleSection("user")}
         >
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4 max-h-60 overflow-y-auto pr-1">
             {isUserOptionsLoading ? (
               <div className="text-xs text-slate-500 py-2">
-                Loading users...
+                {tr("Loading users...")}
               </div>
             ) : (
               userOptions.map((opt) => (
@@ -1073,7 +1074,7 @@ export const AuditTrailView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="E-Signature"
+          label={tr("E-Signature")}
           isExpanded={expandedSections.has("signature")}
           onToggle={() => toggleSection("signature")}
         >
@@ -1097,7 +1098,7 @@ export const AuditTrailView: React.FC = () => {
         </FilterAccordionItem>
 
         <FilterAccordionItem
-          label="Date Range"
+          label={tr("Date Range")}
           isExpanded={expandedSections.has("date")}
           onToggle={() => toggleSection("date")}
         >
@@ -1114,7 +1115,7 @@ export const AuditTrailView: React.FC = () => {
                 setDateTo(value);
                 setCurrentPage(1);
               }}
-              placeholder="Select date range"
+              placeholder={tr("Select date range")}
               includeTime
             />
           </div>

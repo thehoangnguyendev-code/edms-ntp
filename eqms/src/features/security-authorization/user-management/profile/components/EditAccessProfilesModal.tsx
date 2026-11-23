@@ -13,6 +13,7 @@ import { useSecurityESign } from "../../../shared/useSecurityESign";
 import { useSodAccessProfileCheck } from "../../../shared/useSodAccessProfileCheck";
 import { SodViolationPanel } from "../../../shared/SodViolationPanel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { tr } from "@/i18n";
 
 interface Props {
   isOpen: boolean;
@@ -78,7 +79,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
     settingsApi
       .listAllAccessProfiles()
       .then((profiles) => { if (alive) setFetchedProfiles(profiles); })
-      .catch(() => { if (alive) showToast({ type: "error", message: "Failed to load access profiles" }); })
+      .catch(() => { if (alive) showToast({ type: "error", message: tr("Failed to load access profiles") }); })
       .finally(() => { if (alive) setLoading(false); });
     return () => {
       alive = false;
@@ -199,7 +200,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
       if (failed > 0) {
         showToast({
           type: "error",
-          title: "Some changes failed to apply",
+          title: tr("Some changes failed to apply"),
           message: `${added.length + removed.length - failed} change(s) applied, ${failed} failed. The list below now reflects the actual server state.`,
         });
       } else {
@@ -218,7 +219,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
         isOpen={isOpen}
         onClose={onClose}
         onConfirm={() => void handleSave()}
-        title={isLocalMode ? "Assign Access Profiles" : "Edit Access Profiles"}
+        title={isLocalMode ? tr("Assign Access Profiles") : "Edit Access Profiles"}
         description={
           isLocalMode
             ? `Choose which Access Profiles will be assigned to ${userName} once the account is created.`
@@ -238,21 +239,21 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
               variant="info"
               className="mb-3"
               description={`${isLocalMode
-                ? "Access is cumulative across all selected profiles -- there is no primary/secondary distinction."
-                : "Unassigning a profile immediately removes every permission it grants once saved."} System profiles and inactive profiles cannot be changed here.`}
+                ? tr("Access is cumulative across all selected profiles -- there is no primary/secondary distinction.")
+                : tr("Unassigning a profile immediately removes every permission it grants once saved.")} System profiles and inactive profiles cannot be changed here.`}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-2 lg:gap-6">
               {/* Available Profiles */}
               <div className="flex flex-col min-w-0">
-                <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">Available Profiles</h3>
+                <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">{tr("Available Profiles")}</h3>
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
                     value={availableSearch}
                     onChange={(e) => setAvailableSearch(e.target.value)}
-                    placeholder="Search by name or code..."
+                    placeholder={tr("Search by name or code...")}
                     className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                   />
                 </div>
@@ -297,7 +298,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                   onClick={() => moveToSelected(pickedAvailableIds)}
                   disabled={pickedAvailableIds.length === 0}
                   className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  title="Move to selected"
+                  title={tr("Move to selected")}
                 >
                   <ChevronRight className="h-5 w-5 rotate-90 lg:rotate-0" />
                 </button>
@@ -305,7 +306,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                   onClick={() => moveToAvailable(pickedSelectedIds)}
                   disabled={pickedSelectedIds.length === 0}
                   className="p-2 sm:p-2.5 border border-slate-200 rounded-xl bg-white shadow-sm hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  title="Move to available"
+                  title={tr("Move to available")}
                 >
                   <ChevronLeft className="h-5 w-5 rotate-90 lg:rotate-0" />
                 </button>
@@ -313,14 +314,14 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
 
               {/* Selected Profiles */}
               <div className="flex flex-col min-w-0">
-                <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">Selected Profiles</h3>
+                <h3 className="text-xs sm:text-sm font-semibold text-slate-900 mb-2 sm:mb-3">{tr("Selected Profiles")}</h3>
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
                     value={selectedSearch}
                     onChange={(e) => setSelectedSearch(e.target.value)}
-                    placeholder="Search in selected..."
+                    placeholder={tr("Search in selected...")}
                     className="w-full h-9 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
                   />
                 </div>
@@ -341,7 +342,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                             onDragEnd={handleDragEnd}
                             onClick={() => toggleSelectedPick(p.id, locked)}
                             onDoubleClick={() => !locked && moveToAvailable([p.id])}
-                            title={locked ? (p.system ? "System profiles cannot be modified." : "Inactive profiles cannot be changed here.") : undefined}
+                            title={locked ? (p.system ? tr("System profiles cannot be modified.") : tr("Inactive profiles cannot be changed here.")) : undefined}
                             className={cn(
                               "px-3 py-2.5 transition-all text-2xs flex items-center gap-2.5",
                               locked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white/80",
@@ -352,15 +353,15 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                               <IconUserKey className="h-3 w-3 text-emerald-600" />
                             </div>
                             <span className="font-medium text-slate-900 truncate min-w-0 flex-1">{p.name}</span>
-                            {!p.active && <Badge color="slate" size="sm">Inactive</Badge>}
-                            {p.system && <Badge color="blue" size="sm">System</Badge>}
+                            {!p.active && <Badge color="slate" size="sm">{tr("Inactive")}</Badge>}
+                            {p.system && <Badge color="blue" size="sm">{tr("System")}</Badge>}
                           </div>
                         );
                       })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-60">
-                      <span className="text-xs">No profiles selected</span>
+                      <span className="text-xs">{tr("No profiles selected")}</span>
                     </div>
                   )}
                 </div>
@@ -372,7 +373,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                 <SodViolationPanel violations={violations} />
                 {hasBlockingViolation && (
                   <p className="mt-2 text-xs font-medium text-rose-600">
-                    Resolve the blocked conflict(s) above before saving.
+                    {tr("Resolve the blocked conflict(s) above before saving.")}
                   </p>
                 )}
               </div>

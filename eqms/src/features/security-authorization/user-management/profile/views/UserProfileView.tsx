@@ -39,6 +39,7 @@ import type { UserActionCapabilitiesResponse } from "@/services/api/settings";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { AvatarCropModal } from "@/features/settings/user-profile/AvatarCropModal";
 import { isAvatarFileWithinLimit, isSupportedAvatarFile } from "@/utils/avatar";
+import { tr } from "@/i18n";
 
 type MainTab = ProfileTabId;
 
@@ -155,15 +156,15 @@ export const UserProfileView: React.FC = () => {
     if (!isSupportedAvatarFile(file)) {
       showToast({
         type: "error",
-        title: "Invalid Avatar",
-        message: "Only .png or .jpg files are accepted.",
+        title: tr("Invalid Avatar"),
+        message: tr("Only .png or .jpg files are accepted."),
       });
       return;
     }
     if (!isAvatarFileWithinLimit(file)) {
       showToast({
         type: "error",
-        title: "Invalid Avatar",
+        title: tr("Invalid Avatar"),
         message: "File size exceeds 5MB limit.",
       });
       return;
@@ -194,7 +195,7 @@ export const UserProfileView: React.FC = () => {
         onClick={handleAvatarClick}
         disabled={!canPerform("edit") || isAvatarSaving}
         className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors hover:bg-black/20 disabled:cursor-not-allowed"
-        aria-label="Change avatar"
+        aria-label={tr("Change avatar")}
       >
         <Camera className="h-4.5 w-4.5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
       </button>
@@ -211,11 +212,11 @@ export const UserProfileView: React.FC = () => {
   return (
     <div className="flex w-full flex-1 flex-col gap-4 md:gap-6">
       <PageHeader
-        title="User Profile"
+        title={tr("User Profile")}
         breadcrumbItems={userProfileBreadcrumb(navigate, user.fullName)}
         actions={
           <>
-            <Button onClick={handleBack} variant="outline-emerald" size="sm" className="gap-2 whitespace-nowrap">Back</Button>
+            <Button onClick={handleBack} variant="outline-emerald" size="sm" className="gap-2 whitespace-nowrap">{tr("Back")}</Button>
             {/* One Edit/Save/Cancel/Reset for the whole page -- covers every plain field across
                 Personal Information, Professional Qualifications, and the MFA requirement
                 checkbox in one draft/save cycle. Access Profiles and Education/Certifications
@@ -223,12 +224,12 @@ export const UserProfileView: React.FC = () => {
             {canPerform("edit") && (
               isEditingProfile ? (
                 <>
-                  <Button variant="outline-emerald" size="sm" onClick={resetEdit} disabled={!isDraftDirty} className="whitespace-nowrap">Reset</Button>
-                  <Button variant="outline-emerald" size="sm" onClick={cancelEdit} className="whitespace-nowrap">Cancel</Button>
-                  <Button variant="outline-emerald" size="sm" onClick={saveAll} className="whitespace-nowrap">Save</Button>
+                  <Button variant="outline-emerald" size="sm" onClick={resetEdit} disabled={!isDraftDirty} className="whitespace-nowrap">{tr("Reset")}</Button>
+                  <Button variant="outline-emerald" size="sm" onClick={cancelEdit} className="whitespace-nowrap">{tr("Cancel")}</Button>
+                  <Button variant="outline-emerald" size="sm" onClick={saveAll} className="whitespace-nowrap">{tr("Save")}</Button>
                 </>
               ) : (
-                <Button variant="outline-emerald" size="sm" onClick={startEdit} className="whitespace-nowrap">Edit Profile</Button>
+                <Button variant="outline-emerald" size="sm" onClick={startEdit} className="whitespace-nowrap">{tr("Edit Profile")}</Button>
               )
             )}
           </>
@@ -242,16 +243,16 @@ export const UserProfileView: React.FC = () => {
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-rose-600" />
             <div>
-              <p className="font-semibold text-rose-700">Account Locked</p>
+              <p className="font-semibold text-rose-700">{tr("Account Locked")}</p>
               <p className="mt-0.5 text-rose-600">
-                Login is locked out after too many failed login attempts.
+                {tr("Login is locked out after too many failed login attempts.")}
               </p>
             </div>
           </div>
           {canPerform("unlock") && (
             <Button size="sm" variant="outline-emerald" onClick={() => setUnlockModal(true)} className="gap-1.5 whitespace-nowrap flex-shrink-0">
               <LockOpen className="h-3.5 w-3.5" />
-              Unlock Account
+              {tr("Unlock Account")}
             </Button>
           )}
         </div>
@@ -267,7 +268,7 @@ export const UserProfileView: React.FC = () => {
             <AlertTriangle className={cn("h-4 w-4 mt-0.5 flex-shrink-0", user.status === "Suspended" ? "text-amber-600" : "text-rose-600")} />
             <div>
               <p className={cn("font-semibold", user.status === "Suspended" ? "text-amber-700" : "text-rose-700")}>
-                {user.status === "Suspended" ? "Account Suspended" : "Employee Terminated"}
+                {user.status === "Suspended" ? tr("Account Suspended") : tr("Employee Terminated")}
               </p>
               <p className={cn("mt-0.5", user.status === "Suspended" ? "text-amber-600" : "text-rose-600")}>
                 {user.status === "Suspended"
@@ -279,7 +280,7 @@ export const UserProfileView: React.FC = () => {
           {user.status === "Suspended" && canPerform("reinstate") && (
             <Button size="sm" variant="outline-emerald" onClick={() => setReinstateModal(true)} className="gap-1.5 whitespace-nowrap flex-shrink-0">
               <RotateCcw className="h-3.5 w-3.5" />
-              Reinstate
+              {tr("Reinstate")}
             </Button>
           )}
         </div>
@@ -290,7 +291,7 @@ export const UserProfileView: React.FC = () => {
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        panelBadge={isEditingProfile ? <Badge color="emerald" size="sm">Editing</Badge> : undefined}
+        panelBadge={isEditingProfile ? <Badge color="emerald" size="sm">{tr("Editing")}</Badge> : undefined}
       >
           {activeTab === "personal" && (
             <PersonalTab
@@ -399,7 +400,7 @@ export const UserProfileView: React.FC = () => {
         onClose={() => setReinstateModal(false)}
         onConfirm={handleConfirmReinstate}
         type="confirm"
-        title="Reinstate User"
+        title={tr("Reinstate User")}
         description={`Are you sure you want to reinstate ${user.fullName}? Their account will be set to Active and they will regain full access.`}
         confirmText="Yes, Reinstate"
         cancelText="Cancel"

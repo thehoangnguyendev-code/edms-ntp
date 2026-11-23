@@ -2,6 +2,7 @@ import React from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Progress } from "@/components/ui/progress/Progress";
+import { tr } from "@/i18n";
 
 interface DistributeBatchProgressModalProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
 
         {!isCompleted && !hasErrors && (
           <p className="mb-4 text-xs sm:text-sm text-slate-500">
-            The system is processing the Controlled Copy information. Please wait a moment.
+            {tr("The system is processing the Controlled Copy information. Please wait a moment.")}
           </p>
         )}
 

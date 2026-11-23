@@ -49,9 +49,12 @@ public class TrainingActivityService {
     private final TrainingTrainerService trainers;
     private final TrainingSuspensionService suspensions;
     private final TrainingVendorService vendors;
+    private final TrainingAssessmentLibraryService assessmentLibrary;
 
     public TrainingActivityService(JdbcTemplate jdbc, TrainingAccess access, TrainingStore store, TrainingNumberService numbers, TrainingSettingsService settings,
-                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions, TrainingVendorService vendors, TrainingShadow shadow) {
+                                   TrainingApprovalService approvals, ElectronicSignatureService signatures, UserAccountRepository users, TrainingNotifier notifier, TrainingTrainerService trainers, TrainingSuspensionService suspensions, TrainingVendorService vendors, TrainingShadow shadow,
+                                   TrainingAssessmentLibraryService assessmentLibrary) {
+        this.assessmentLibrary = assessmentLibrary;
         this.jdbc = jdbc;
         this.access = access;
         this.shadow = shadow;
@@ -184,7 +187,7 @@ public class TrainingActivityService {
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select t.id, t.training_number, training_activity_topics(t.id) as training_topics, t.kind, t.kind_reason, t.status, t.due_date, t.document_number, t.revision_number, t.year, t.created_at,
-                   t.organizer_department_id, t.revision_id,
+                   t.organizer_department_id, t.revision_id, t.parent_activity_id,
                    case when exists (select 1 from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING') then 'PENDING_TRAINING'
                         else (select r.status_code from document_revisions r where r.id = t.revision_id) end as revision_status,
                    (select r.id from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING' order by r.created_at limit 1) as pending_revision_id,
@@ -219,7 +222,7 @@ public class TrainingActivityService {
 
     /**
      * What the person may do with each row of the list, worked out by the server for the lifecycle state and the person (the screens offer one menu entry for each):
-     * edit the preparation, conduct, review or approve the content, confirm the completion, and open the revision to complete the training.
+     * edit the preparation, conduct, review or approve the content, confirm the completion, arrange a supplementary training, and open the revision to complete the training.
      */
     private List<Map<String, Object>> withActions(UserAccount actor, List<Map<String, Object>> rows) {
         List<UUID> ids = rows.stream().map(r -> (UUID) r.get("id")).toList();
@@ -248,12 +251,15 @@ public class TrainingActivityService {
             actions.put("review", open && steps.contains("CONTENT_REVIEW"));
             actions.put("approve", open && (steps.contains("CONTENT_APPROVE") || steps.contains("TRAINER_EXCEPTION")));
             actions.put("confirm", closer && inScope && "PENDING_QA_CONFIRMATION".equals(status));
+            // Same rule as the capability of the activity: Completed, of the original training (a supplementary is not supplemented again) and someone still needs one.
+            actions.put("supplementary", organizer && inScope && "COMPLETED".equals(status) && row.get("parentActivityId") == null && needsSupplementary((UUID) row.get("id")));
             // The revision is completed in Document Control only once the trainer has finished the training (Finish Training: every result in).
             actions.put("completeTraining", ("COMPLETED".equals(status) || row.get("resultsFinishedAt") != null) && row.get("pendingRevisionId") != null);
             // The link of the action goes to a revision of the group that waits for "Complete Training".
             if (row.get("pendingRevisionId") != null) row.put("revisionId", row.get("pendingRevisionId"));
             row.put("actions", actions);
             row.remove("organizerDepartmentId");
+            row.remove("parentActivityId");
             row.remove("revisionStatus");
             row.remove("pendingRevisionId");
             row.remove("attendanceSentAt");
@@ -402,6 +408,12 @@ public class TrainingActivityService {
         var rows = TrainingRows.camel(jdbc.queryForList(PARTICIPANT_SELECT + where + TrainingRows.orderBy(sortBy, sortDirection, PARTICIPANT_SORT, "lower(p.full_name), p.id") + " limit ? offset ?", args.toArray()));
         return new com.eqms.dto.user.PageResponse<>(rows, new com.eqms.dto.user.PaginationResponse(safePage, size,
                 total == null ? 0 : total, total == null ? 0 : (int) Math.ceil((double) total / size)));
+    }
+
+    /** True when a person who was absent or who failed can be put on a supplementary training now: the account is Active (or the person has none) and no supplementary training of the activity lists them yet. */
+    private boolean needsSupplementary(UUID activityId) {
+        return jdbc.queryForList("select p.person_user_id, u.status as account_status from training_participants p left join app_users u on u.id = p.person_user_id where p.activity_id = ? and (p.state = 'ABSENT' or p.result = 'FAILED')", activityId)
+                .stream().anyMatch(r -> (r.get("person_user_id") == null || "Active".equals(r.get("account_status"))) && !hasSupplementary(activityId, r.get("person_user_id")));
     }
 
     /** True when a supplementary (make-up) training of the activity already lists the person, or has them proposed. */
@@ -651,9 +663,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         caps.put("reopenContent", organize && Set.of("PLANNED", "NOTIFIED").contains(status) && (confirmed((UUID) activity.get("id"), "CONTENT_REVIEWED") || confirmed((UUID) activity.get("id"), "CONTENT_APPROVED")));
         caps.put("returnForCorrection", "PENDING_QA_CONFIRMATION".equals(status) && access.has(actor, "training.activity.close") && access.inScope(actor, department));
         caps.put("cancel", organize && open);
-        // a supplementary training is offered only when someone needs one: a person who was absent or who failed
-        Integer needMakeUp = jdbc.queryForObject("select count(*) from training_participants where activity_id=? and (state='ABSENT' or result='FAILED')", Integer.class, activity.get("id"));
-        caps.put("addSupplementary", organize && Set.of("IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED").contains(status) && needMakeUp != null && needMakeUp > 0);
+        // A supplementary training is offered only once the activity is Completed (the people who failed do not stop it from being completed; owner decision 2026-11-23) and only when someone needs one:
+        // a person who was absent or who failed, whose account is Active and whom no supplementary training of the activity lists yet. Everyone passed, or everyone already arranged: nothing to organize.
+        caps.put("addSupplementary", organize && "COMPLETED".equals(status) && needsSupplementary((UUID) activity.get("id")));
         return caps;
     }
 
@@ -1794,7 +1806,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     private Map<String, Object> supplementaryInner(UserAccount actor, UUID id, SupplementaryRequest request) {
         // who may do this (the permission to organize and the department of the activity) is decided by the Hybrid engine (TrainingShadow, TRAINING_ACTIVITY / TRAINING_PARTICIPANT)
         Map<String, Object> parent = lockedUnderEngine(id);
-        requireStatus(parent, "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED");
+        requireStatus(parent, "COMPLETED");
         if (request == null || request.participantIds() == null || request.participantIds().isEmpty()) throw new IllegalArgumentException("TRAINING_PARTICIPANT_REQUIRED");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         if (parent.get("parent_activity_id") != null) throw new IllegalArgumentException("TRAINING_SUPPLEMENTARY_OF_ROOT_ONLY");
@@ -1823,11 +1835,76 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         // the people are proposed on the new activity: the system adds them to its first session, but the organizer still confirms the list with a signature as for any activity
         for (Map<String, Object> p : people)
             if (p.get("person_user_id") != null) jdbc.update("insert into training_proposed_participants(id, activity_id, person_user_id, proposed_by) values (?,?,?,?) on conflict do nothing", UUID.randomUUID(), childId, p.get("person_user_id"), actor.getId());
+        copyFirstSession(actor, id, childId);
         Map<String, Object> child = store.activity(childId).orElseThrow();
         store.event(TrainingStore.OBJECT_ACTIVITY, childId, childId, "NUMBER_ISSUED", Map.of("number", number, "parent", String.valueOf(parent.get("training_number"))), actor.getId());
         store.auditActivity(actor, child, "TRAINING_ACTIVITY_CREATED", null, "PLANNED", "Supplementary of " + parent.get("training_number") + ": " + request.reason().trim(),
                 com.eqms.util.AuditChanges.with("Reason", request.reason(), com.eqms.util.AuditChanges.of("Supplementary Of",null,parent.get("training_number")), com.eqms.util.AuditChanges.of("Training Number",null,child.get("training_number"))));
+        copyContent(actor, parent, child);
         return get(actor, childId);
+    }
+
+    /**
+     * The training material and the assessment of the original come with the new activity, to be corrected or replaced before the content is reviewed (the tabs Training Materials and Assessment stay editable).
+     * An assessment of the library is chosen again, so its exam file and answer key carry the new Training Number; any other file (the content, an uploaded exam) is listed again from the same stored file, and
+     * a change made in the new activity writes a new file and leaves the original as it was. A link is listed again. The exemptions of the original are kept.
+     */
+    private void copyContent(UserAccount actor, Map<String, Object> parent, Map<String, Object> child) {
+        UUID parentId = (UUID) parent.get("id");
+        UUID childId = (UUID) child.get("id");
+        jdbc.update("update training_activities set materials_exempt = ?, materials_exempt_reason = ?, assessment_exempt = ?, assessment_exempt_reason = ? where id = ?",
+                parent.get("materials_exempt"), parent.get("materials_exempt_reason"), parent.get("assessment_exempt"), parent.get("assessment_exempt_reason"), childId);
+        boolean chosenAgain = false;
+        if (parent.get("assessment_def_id") != null) {
+            List<Map<String, Object>> def = jdbc.queryForList("select status, kind from training_assessment_defs where id = ?", parent.get("assessment_def_id"));
+            List<String> methods = jdbc.queryForList("select assessment_method from training_sessions where activity_id = ? and status <> 'CANCELLED'", String.class, childId);
+            if (!def.isEmpty() && "EFFECTIVE".equals(def.get(0).get("status")) && methods.contains("CHECKLIST".equals(def.get(0).get("kind")) ? "CHECKLIST" : "TEST")) {
+                assessmentLibrary.choose(actor, childId, new TrainingAssessmentLibraryService.ChooseRequest((UUID) parent.get("assessment_def_id")));
+                chosenAgain = true;
+            }
+        }
+        for (Map<String, Object> m : jdbc.queryForList("select * from training_materials where activity_id = ? and removed_at is null order by created_at", parentId)) {
+            String purpose = String.valueOf(m.get("purpose"));
+            if (chosenAgain && !"CONTENT".equals(purpose)) continue;
+            UUID id = UUID.randomUUID();
+            String title = String.valueOf(m.get("title"));
+            if (m.get("link_url") != null) {
+                jdbc.update("insert into training_materials(id, activity_id, title, purpose, link_url, uploaded_by) values (?,?,?,'CONTENT',?,?)", id, childId, title, m.get("link_url"), actor.getId());
+                store.auditActivity(actor, child, "TRAINING_MATERIAL_LINK_ADDED", null, null, title + " (" + m.get("link_url") + ")",
+                        List.of(TrainingStore.change("Material", null, title), TrainingStore.change("Link", null, String.valueOf(m.get("link_url")))));
+            } else {
+                jdbc.update("insert into training_materials(id, activity_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?)",
+                        id, childId, title, purpose, m.get("original_name"), m.get("provider"), m.get("stored_path"), m.get("content_type"), m.get("size_bytes"), m.get("sha256"), actor.getId());
+                store.auditActivity(actor, child, "TRAINING_MATERIAL_ADDED", null, null, title + " (copied from " + parent.get("training_number") + ")",
+                        List.of(TrainingStore.change("Material", null, title), TrainingStore.change("File Name", null, String.valueOf(m.get("original_name"))), TrainingStore.change("Purpose", null, TrainingStore.words(purpose))));
+            }
+            store.event(TrainingStore.OBJECT_ACTIVITY, id, childId, m.get("link_url") != null ? "MATERIAL_LINK_ADDED" : "MATERIAL_ADDED", Map.of("title", title, "copiedFrom", String.valueOf(parent.get("training_number"))), actor.getId());
+        }
+    }
+
+    static final String SUPPLEMENTARY_TOPIC_PREFIX = "Supplementary training: ";
+
+    /**
+     * The new activity opens with a session like the last one of the original (mode, assessment, trainer, place, topic with the prefix above), so the organizer corrects it instead of typing it again.
+     * The date is left empty. The people proposed on the activity are put on this first session by addSessionInner. If the old session cannot be copied as it is, the activity stays without a session and the organizer adds one.
+     */
+    private void copyFirstSession(UserAccount actor, UUID parentId, UUID childId) {
+        List<Map<String, Object>> last = jdbc.queryForList("select * from training_sessions where activity_id = ? and status <> 'CANCELLED' order by session_no desc limit 1", parentId);
+        if (last.isEmpty()) return;
+        Map<String, Object> s = last.get(0);
+        List<Map<String, Object>> topics = jdbc.queryForList("select topic_text, document_revision_id from training_session_topics where session_id = ? order by topic_text", s.get("id"));
+        if (topics.isEmpty()) return;
+        String text = SUPPLEMENTARY_TOPIC_PREFIX + topics.stream().map(t -> String.valueOf(t.get("topic_text"))).collect(java.util.stream.Collectors.joining("; "));
+        UUID revision = topics.stream().map(t -> (UUID) t.get("document_revision_id")).filter(java.util.Objects::nonNull).findFirst().orElse(null);
+        UUID trainer = (UUID) s.get("trainer_user_id");
+        if (trainer != null && users.findById(trainer).filter(u -> u.getStatus() == UserStatus.Active).isEmpty()) trainer = null;
+        try {
+            addSessionInner(actor, childId, new SessionRequest((String) s.get("method"), (String) s.get("assessment_method"), trainer, (String) s.get("external_trainer_name"), null,
+                    (String) s.get("venue"), (String) s.get("location_type"), (String) s.get("online_platform"), (String) s.get("meeting_link"),
+                    List.of(new TopicRequest(text.length() > 500 ? text.substring(0, 500) : text, revision))));
+        } catch (IllegalArgumentException oldSessionNotValid) {
+            // an old session without a place or a method (an imported one): nothing to copy
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ helpers

@@ -1,6 +1,10 @@
+import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { IconPrinter } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { Button } from "@/components/ui/button/Button";
+import type { PrintAction } from "./usePrintAction";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import type { ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { dictionaryApi } from "@/services/api/dictionary";
@@ -15,13 +19,13 @@ import { ComplianceRetentionTab } from "./tabs/ComplianceRetentionTab";
 
 const TABS: TabItem[] = [
   { id: "summary", label: "Summary" },
-  { id: "completion", label: "Matrix Completion" },
+  { id: "completion", label: tr("Matrix Completion") },
   { id: "gaps", label: "Gap List" },
-  { id: "suspensions", label: "Work Suspensions" },
-  { id: "retention", label: "Record Retention" },
+  { id: "suspensions", label: tr("Work Suspensions") },
+  { id: "retention", label: tr("Record Retention") },
 ];
 
-/** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the three tabs. */
+/** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the tabs; the print button of the header prints the tab that is open. */
 export function TrainingComplianceView() {
   const own = useOwnDepartment();
   if (!own.loaded) return <SectionLoading text="Loading…" />;
@@ -35,6 +39,8 @@ function TrainingCompliance({ ownDepartmentId }: { ownDepartmentId: string }) {
   const [tab, setTab] = useState(TABS.some((t) => t.id === initialTab) ? String(initialTab) : "summary");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [departmentId, setDepartmentId] = useState(ownDepartmentId);
+  // the print routine of the tab that is open (Summary, Matrix Completion, Gap List); the other tabs print nothing
+  const [printer, setPrinter] = useState<PrintAction | null>(null);
 
   useEffect(() => {
     dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([]));
@@ -56,14 +62,23 @@ function TrainingCompliance({ ownDepartmentId }: { ownDepartmentId: string }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
-      <PageHeader title={TRAINING_PAGES.compliance.title} breadcrumbItems={trainingBreadcrumbs(navigate, "compliance")} />
+      <PageHeader
+        title={TRAINING_PAGES.compliance.title}
+        breadcrumbItems={trainingBreadcrumbs(navigate, "compliance")}
+        actions={printer ? (
+          <Button size="sm" variant="default" disabled={printer.disabled} onClick={printer.run}>
+            <IconPrinter className="mr-2 h-4 w-4" />
+            {tr("Print for inspection")}
+          </Button>
+        ) : undefined}
+      />
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Training compliance" tabIdPrefix="compliance-tab" panelIdPrefix="compliance-panel" />
         <div className="p-4 md:p-5">
           <div id={`compliance-panel-${tab}`} role="tabpanel" aria-labelledby={`compliance-tab-${tab}`} className="min-w-0">
-            {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departmentOptions(departments, ownDepartmentId)} onDepartment={setDepartmentId} />}
-            {tab === "completion" && <ComplianceCompletionTab departmentId={departmentId} departmentFilter={departmentFilter} />}
-            {tab === "gaps" && <ComplianceGapsTab departmentId={departmentId} departmentFilter={departmentFilter} />}
+            {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departmentOptions(departments, ownDepartmentId)} onDepartment={setDepartmentId} registerPrint={setPrinter} />}
+            {tab === "completion" && <ComplianceCompletionTab departmentId={departmentId} departmentFilter={departmentFilter} registerPrint={setPrinter} />}
+            {tab === "gaps" && <ComplianceGapsTab departmentId={departmentId} departmentFilter={departmentFilter} registerPrint={setPrinter} />}
             {tab === "suspensions" && <ComplianceSuspensionsTab departmentId={departmentId} departmentFilter={departmentFilter} />}
             {tab === "retention" && <ComplianceRetentionTab departmentId={departmentId} departmentFilter={departmentFilter} />}
           </div>

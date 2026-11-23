@@ -5,6 +5,7 @@ import { documentApi } from "@/services/api/documents";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { OnlyOfficeCapacityNotice } from "./OnlyOfficeCapacityNotice";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
+import { tr } from "@/i18n";
 
 interface OnlyOfficeDocumentViewerProps {
   revisionId: string;
@@ -146,7 +147,7 @@ export const OnlyOfficeDocumentViewer = ({ revisionId, versionToken, height = "c
       {state === "loading" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-white text-slate-500">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-sm">Loading document...</span>
+          <span className="text-sm">{tr("Loading document...")}</span>
         </div>
       )}
       {state === "error" && (

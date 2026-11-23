@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { canBypassMaintenance } from "@/utils/maintenance";
 import { formatCountdown, mustSignOut } from "./maintenanceStatus";
 import { useMaintenance } from "./MaintenanceStatusProvider";
+import { tr } from "@/i18n";
 
 /**
  * The notice to people who are signed in (SDS 11.5.2 M1-M3). It shows the time left and asks them to save their work and sign out.
@@ -37,16 +38,15 @@ export const MaintenanceNoticeHost: React.FC = () => {
       onClose={maintenance.closeNotice}
       onConfirm={() => void logout()}
       type="warning"
-      title="System Maintenance"
+      title={tr("System Maintenance")}
       confirmText="Sign out now"
       cancelText="Close"
       showCancel
       description={
         <span>
-          The system will be locked for maintenance in{" "}
-          <strong className="tabular-nums">{remaining === null ? "—" : formatCountdown(remaining)}</strong>. Save your work and sign out
-          now. When the time runs out you will be signed out automatically, and you will not be able to sign in again until the work is
-          finished.
+          {tr("The system will be locked for maintenance in")}{" "}
+          <strong className="tabular-nums">{remaining === null ? "—" : formatCountdown(remaining)}</strong>
+          {tr(". Save your work and sign out now. When the time runs out you will be signed out automatically, and you will not be able to sign in again until the work is finished.")}
         </span>
       }
     />

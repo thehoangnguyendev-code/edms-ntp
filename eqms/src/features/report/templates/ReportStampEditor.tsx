@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Select } from "@/components/ui/select";
@@ -15,8 +16,8 @@ const FONT_OPTIONS = [
 ];
 
 const PAGE_OPTIONS = [
-  { label: "Every page", value: "ALL" },
-  { label: "First page only", value: "FIRST" },
+  { label: tr("Every page"), value: "ALL" },
+  { label: tr("First page only"), value: "FIRST" },
 ];
 
 const FIELD_INPUT =
@@ -116,7 +117,7 @@ export const ReportStampFields: React.FC<{
   <>
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <Field label="Text" hint="Letters, digits and . , : ; / ( ) -">
+        <Field label="Text" hint={tr("Letters, digits and . , : ; / ( ) -")}>
           <input className={FIELD_INPUT} value={text} maxLength={40} onChange={(e) => onText(e.target.value)} disabled={disabled} />
         </Field>
       </div>
@@ -131,7 +132,7 @@ export const ReportStampFields: React.FC<{
         enableSearch={false}
         disabled={disabled}
       />
-      <NumberField label="Opacity (%)" hint="30 to 100" value={stamp.opacity} min={30} max={100} disabled={disabled} onChange={(opacity) => onChange({ opacity })} />
+      <NumberField label={tr("Opacity (%)")} hint="30 to 100" value={stamp.opacity} min={30} max={100} disabled={disabled} onChange={(opacity) => onChange({ opacity })} />
       <Select
         label="Pages"
         value={stamp.pages}
@@ -146,7 +147,7 @@ export const ReportStampFields: React.FC<{
         <Button
           size="sm"
           variant="outline-emerald"
-          aria-label="Reset Stamp Position"
+          aria-label={tr("Reset Stamp Position")}
           onClick={() => onChange({ x: undefined, y: undefined, width: undefined })}
         >
           Reset Position

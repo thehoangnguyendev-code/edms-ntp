@@ -3,6 +3,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import type { DocumentAdministrationRule } from "@/services/api/settings";
+import { tr } from "@/i18n";
 
 // ── Document Workflow Rules panel (presentational) ──────────────────────────
 // Fixed, non-extensible SoD-style rules specific to the Document/Revision
@@ -29,11 +30,11 @@ export const DocumentWorkflowRulesPanel: React.FC<{
 }> = ({ isLoading, isEditing, canManage, sodRules, setSodRules, sodRuleDefinitions, setIsDirty }) => {
   return (
     <div>
-      {isLoading && <FullPageLoading text="Loading document workflow rules..." />}
+      {isLoading && <FullPageLoading text={tr("Loading document workflow rules...")} />}
       <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-800">Document Revision Integrity Rules</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{tr("Document Revision Integrity Rules")}</h3>
         <p className="text-xs text-slate-500 mt-0.5">
-          Server-enforced controls for revision participants and workflow transitions. Access Profile labels never grant these actions; canonical permissions and the assigned participant determine access.
+          {tr("Server-enforced controls for revision participants and workflow transitions. Access Profile labels never grant these actions; canonical permissions and the assigned participant determine access.")}
         </p>
       </div>
 
@@ -51,11 +52,11 @@ export const DocumentWorkflowRulesPanel: React.FC<{
             />
             <span className="min-w-0">
               <span className="block text-xs sm:text-sm text-slate-700 group-hover:text-emerald-600 transition-colors font-medium">
-                {rule.label}
+                {tr(rule.label)}
               </span>
               {rule.description && (
                 <span className="mt-0.5 block text-2xs sm:text-xs leading-5 text-slate-500">
-                  {rule.description}
+                  {tr(rule.description)}
                 </span>
               )}
             </span>
@@ -63,11 +64,10 @@ export const DocumentWorkflowRulesPanel: React.FC<{
         ))}
         {sodRuleDefinitions.length === 0 && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:text-sm text-slate-600">
-            No document revision integrity rules are available from the server.
+            {tr("No document revision integrity rules are available from the server.")}
           </div>
         )}
-        <WarningBanner variant="success">These rules are enforced by the server when a Document Master or Revision is saved/submitted —
-          toggling one here changes real validation behavior immediately after saving.</WarningBanner>
+        <WarningBanner variant="success">{tr("These rules are enforced by the server when a Document Master or Revision is saved/submitted — toggling one here changes real validation behavior immediately after saving.")}</WarningBanner>
       </div>
     </div>
   );

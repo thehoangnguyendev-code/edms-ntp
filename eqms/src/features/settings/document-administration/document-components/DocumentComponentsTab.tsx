@@ -34,6 +34,7 @@ import type { DocumentComponentItem } from "../document-name-formats/documentNam
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { readableCode } from "@/utils/machineText";
+import { tr } from "@/i18n";
 
 export const DocumentComponentsTab: React.FC = () => {
   const navigate = useNavigate();
@@ -83,7 +84,7 @@ export const DocumentComponentsTab: React.FC = () => {
       });
     } catch (error) {
       setShowToggleModal(false);
-      showToast({ type: "error", title: "Status Update Failed", message: extractApiMessage(error, "Unable to update component status.") });
+      showToast({ type: "error", title: tr("Status Update Failed"), message: extractApiMessage(error, "Unable to update component status.") });
     } finally {
       setIsSubmitting(false);
     }
@@ -113,16 +114,16 @@ export const DocumentComponentsTab: React.FC = () => {
   type Row = (typeof items)[number];
   const docComponentsColumns: DataTableColumn<Row>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
-    { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => (<div className="flex items-center gap-1.5"><span className="font-medium text-slate-900">{item.name}</span>{item.systemDefined && (<span title="System-defined — Table/Field mapping is fixed by the backend, cannot be edited"><Lock className="h-3 w-3 text-slate-400" /></span>)}</div>) },
-    { id: "value", header: "Value (Token)", label: "Value (Token)", cell: (item) => <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code> },
-    { id: "shortDescription", header: "Short Description", label: "Short Description", cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.shortDescription || "-" },
+    { id: "name", header: "Name", label: "Name", sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => (<div className="flex items-center gap-1.5"><span className="font-medium text-slate-900">{item.name}</span>{item.systemDefined && (<span title={tr("System-defined — Table/Field mapping is fixed by the backend, cannot be edited")}><Lock className="h-3 w-3 text-slate-400" /></span>)}</div>) },
+    { id: "value", header: tr("Value (Token)"), label: tr("Value (Token)"), cell: (item) => <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code> },
+    { id: "shortDescription", header: tr("Short Description"), label: tr("Short Description"), cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.shortDescription || "-" },
     { id: "sourceTable", header: "Source", label: "Source", cell: (item) => (<Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">{item.sourceTable === "FREE_TEXT" ? "Free Text" : readableCode(item.sourceTable)}</Badge>) },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">Active</Badge> : <Badge color="slate" size="sm">Inactive</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
     { id: "displayOrder", header: "Order", label: "Order", cellClassName: "text-slate-600", cell: (item) => item.displayOrder },
   ];
   const docComponentsAction: DataTableAction<Row> = {
     header: "Action",
-    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label="More actions"><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
+    cell: (item) => (canManage ? (<button ref={getButtonRef(item.id)} onClick={(e) => handleDropdownToggle(item.id, e)} className="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg hover:bg-slate-100 transition-colors" aria-label={tr("More actions")}><MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" /></button>) : null),
   };
   const { layout: docComponentsLayout, control: docComponentsControl } = useCustomColumnLayout("docComponents", docComponentsColumns, docComponentsAction);
 
@@ -130,13 +131,13 @@ export const DocumentComponentsTab: React.FC = () => {
     <div className="flex-1 flex flex-col gap-4 md:gap-5 min-h-0">
       <div className="bg-white w-full">
         <div className="flex md:hidden flex-col gap-1.5 w-full">
-          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">Search</label>
+          <label className="text-xs sm:text-sm font-medium text-slate-700 block capitalize">{tr("Search")}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search components..."
+                placeholder={tr("Search components...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-10 pl-10 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -149,19 +150,19 @@ export const DocumentComponentsTab: React.FC = () => {
             </div>
             <Button variant="outline" onClick={() => setIsFilterDrawerOpen(true)} className="whitespace-nowrap gap-2">
               <IconFilter2 className="h-4 w-4" />
-              Filters
+              {tr("Filters")}
             </Button>
           </div>
         </div>
 
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <div className="w-full">
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Search")}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search components..."
+                placeholder={tr("Search components...")}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full h-9 pl-10 pr-4 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
@@ -170,11 +171,11 @@ export const DocumentComponentsTab: React.FC = () => {
           </div>
           <div className="w-full">
             <Select
-              label="Status"
+              label={tr("Status")}
               value={statusFilter}
               onChange={(value) => { setStatusFilter(value as "All" | "Active" | "Inactive"); setCurrentPage(1); }}
               options={[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }]}
-              placeholder="All"
+              placeholder={tr("All")}
             />
           </div>
           <div className="filter-actions flex items-end gap-2">
@@ -194,7 +195,7 @@ export const DocumentComponentsTab: React.FC = () => {
           onRowClick={(item) => goToEdit(item.id)}
           emptyState={
             <TableEmptyState
-  title="No items found" description="Try adjusting your search" />
+  title={tr("No items found")} description={tr("Try adjusting your search")} />
           }
           pagination={
             totalItems > 0 ? (
@@ -215,7 +216,7 @@ export const DocumentComponentsTab: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />
-            <span>Edit Component</span>
+            <span>{tr("Edit Component")}</span>
           </button>
           <button
             onClick={(e) => {
@@ -227,8 +228,8 @@ export const DocumentComponentsTab: React.FC = () => {
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
           >
             {items.find((current) => current.id === openDropdownId)?.isActive
-              ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>Disable</span></>)
-              : (<><IconToggleRight className="h-3.5 w-3.5" /><span>Enable</span></>)}
+              ? (<><IconToggleLeft className="h-3.5 w-3.5" /><span>{tr("Disable")}</span></>)
+              : (<><IconToggleRight className="h-3.5 w-3.5" /><span>{tr("Enable")}</span></>)}
           </button>
         </div>
       </PortalDropdownMenu>
@@ -238,26 +239,26 @@ export const DocumentComponentsTab: React.FC = () => {
         onClose={() => { setShowToggleModal(false); setSelectedItem(null); }}
         onConfirm={handleConfirmToggleStatus}
         type="warning"
-        title={`${selectedItem?.isActive ? "Deactivate" : "Activate"} Document Component?`}
+        title={`${selectedItem?.isActive ? tr("Deactivate") : tr("Activate")} ${tr("Document Component?")}`}
         description={
           <div className="space-y-3">
-            <p>Are you sure you want to {selectedItem?.isActive ? "deactivate" : "activate"} <strong>{selectedItem?.name}</strong>?</p>
+            <p>{tr("Are you sure you want to")} {selectedItem?.isActive ? tr("deactivate") : tr("activate")} <strong>{selectedItem?.name}</strong>?</p>
             <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600 inline shrink-0" />{" "}
-                <span className="font-semibold">Warning:</span> Deactivating a component removes it from any Document Name Format that still references it the next time that format is edited.
+                <span className="font-semibold">{tr("Warning:")}</span> {tr("Deactivating a component removes it from any Document Name Format that still references it the next time that format is edited.")}
               </p>
             </div>
           </div>
         }
-        confirmText={selectedItem?.isActive ? "Deactivate" : "Activate"}
+        confirmText={selectedItem?.isActive ? tr("Deactivate") : "Activate"}
         cancelText="Cancel"
         isLoading={isSubmitting}
         showCancel
       />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>
-        <FilterAccordionItem label="Status" isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
+        <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {[{ label: "All", value: "All" }, { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }].map((opt) => (
               <button
