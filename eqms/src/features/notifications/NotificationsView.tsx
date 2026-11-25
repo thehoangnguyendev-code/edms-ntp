@@ -35,7 +35,7 @@ import type { Notification, NotificationPriority, NotificationFilterTab, Notific
 import { createEmptyNotificationSummaryCounts } from "./types";
 import { formatNotificationDateTime, notificationDayGroup, notificationDayKey, type NotificationDayGroup } from "./date";
 import { getNotificationTypeIcon, getNotificationIconStyles } from "./notificationMeta";
-import { tr } from "@/i18n";
+import { tr, useLanguage } from "@/i18n";
 
 /** The modules that send notifications, for the filter of the inbox (the names of the menu; the server finds every spelling of a module in the table). */
 const INBOX_MODULES = ["documents", "controlled-copies", "training", "reports", "access-review", "security", "backup", "audit-trail"];
@@ -302,15 +302,15 @@ const EmptyState: React.FC<{ type: NotificationFilterTab; hasActiveFilters?: boo
   const messages = {
     all: {
       title: tr("No notifications"),
-      description: hasActiveFilters ? "We couldn't find any notifications matching your filters. Try adjusting your search criteria or clear filters." : "You're all caught up!",
+      description: hasActiveFilters ? tr("We couldn't find any notifications matching your filters. Try adjusting your search criteria or clear filters.") : tr("You're all caught up!"),
     },
     "for-me": {
       title: tr("No personal notifications"),
-      description: hasActiveFilters ? "We couldn't find any personal notifications matching your filters." : "You don't have any personal notifications yet.",
+      description: hasActiveFilters ? tr("We couldn't find any personal notifications matching your filters.") : tr("You don't have any personal notifications yet."),
     },
     system: {
       title: tr("No system notifications"),
-      description: hasActiveFilters ? "We couldn't find any system notifications matching your filters." : "There are no system notifications at this time.",
+      description: hasActiveFilters ? tr("We couldn't find any system notifications matching your filters.") : tr("There are no system notifications at this time."),
     },
   };
   return <TableEmptyState title={messages[type].title} description={messages[type].description} />;
@@ -398,10 +398,15 @@ export const NotificationsView: React.FC = () => {
     low: notificationSummary.byPriority.low ?? 0,
   }), [notificationSummary]);
 
+  const { tLabel } = useLanguage();
+  const localizedStatusOptions = STATUS_OPTIONS.map((option) => ({ ...option, label: tLabel(option.label) }));
+  const localizedPriorityOptions = PRIORITY_OPTIONS.map((option) => ({ ...option, label: tLabel(option.label) }));
+  const localizedScopeOptions = SCOPE_OPTIONS.map((option) => ({ ...option, label: tLabel(option.label) }));
+
   const SCOPE_TABS: TabItem[] = [
     { id: "all", label: tr("All Notifications"), count: counts.all },
-    { id: "for-me", label: "For Me", count: counts.forMe },
-    { id: "system", label: "Systems", count: counts.system },
+    { id: "for-me", label: tr("For Me"), count: counts.forMe },
+    { id: "system", label: tr("Systems"), count: counts.system },
   ];
 
   const activeScope = activeTab === "for-me" ? "personal" : activeTab === "system" ? "system" : "all";
@@ -444,7 +449,7 @@ export const NotificationsView: React.FC = () => {
       // an empty list would read as "all caught up": the person is told that the list could not be read, and can try again
       setLoadFailed(true);
       setNotifications([]);
-      showToast({ type: "error", title: tr("Failed to load notifications"), message: "Please try again." });
+      showToast({ type: "error", title: tr("Failed to load notifications"), message: tr("Please try again.") });
     } finally {
       if (requestId === requestSeqRef.current) {
         if (!silentRefresh) {
@@ -484,7 +489,7 @@ export const NotificationsView: React.FC = () => {
   const reload = () => loadNotifications(true);
   const fail = (title: string, error: unknown) => {
     console.error(title, error);
-    showToast({ type: "error", title, message: "Please try again." });
+    showToast({ type: "error", title, message: tr("Please try again.") });
   };
 
   // Handlers
@@ -596,15 +601,15 @@ export const NotificationsView: React.FC = () => {
     setCurrentPage(1);
   };
   const PRIORITY_TABS: { id: PriorityTabId; label: string; count: number; dot: string }[] = [
-    { id: "all", label: "All", count: counts.all, dot: "" },
-    { id: "high", label: "High", count: counts.high, dot: "bg-red-500" },
-    { id: "medium", label: "Medium", count: counts.medium, dot: "bg-amber-500" },
-    { id: "low", label: "Low", count: counts.low, dot: "bg-emerald-500" },
-    { id: "unread", label: "Unread", count: counts.unread, dot: "bg-emerald-700" },
+    { id: "all", label: tr("All"), count: counts.all, dot: "" },
+    { id: "high", label: tr("High"), count: counts.high, dot: "bg-red-500" },
+    { id: "medium", label: tr("Medium"), count: counts.medium, dot: "bg-amber-500" },
+    { id: "low", label: tr("Low"), count: counts.low, dot: "bg-emerald-500" },
+    { id: "unread", label: tr("Unread"), count: counts.unread, dot: "bg-emerald-700" },
   ];
 
   const moduleOptions = moduleSelectOptions(INBOX_MODULES);
-  const allModuleOptions = [{ label: "All", value: "all" }, ...moduleOptions];
+  const allModuleOptions = [{ label: tr("All"), value: "all" }, ...moduleOptions];
   const openRow = notifications.find((n) => n.id === openDropdownId);
   const showCheckboxes = selectMode || selectedIds.size > 0;
 
@@ -748,9 +753,9 @@ export const NotificationsView: React.FC = () => {
             />
           }
           filters={[
-            { id: "status", label: "Status", value: statusFilter, options: STATUS_OPTIONS, defaultValue: "all", onChange: (value) => { setStatusFilter(value); setCurrentPage(1); } },
+            { id: "status", label: "Status", value: statusFilter, options: localizedStatusOptions, defaultValue: "all", onChange: (value) => { setStatusFilter(value); setCurrentPage(1); } },
             { id: "module", label: "Module", value: module, options: allModuleOptions, defaultValue: "all", onChange: (value) => { setModule(value); setCurrentPage(1); } },
-            { id: "priority", label: "Priority", value: priority, options: PRIORITY_OPTIONS, defaultValue: "all", onChange: (value) => { setPriority(value); setCurrentPage(1); } },
+            { id: "priority", label: "Priority", value: priority, options: localizedPriorityOptions, defaultValue: "all", onChange: (value) => { setPriority(value); setCurrentPage(1); } },
           ]}
           dates={[{ id: "time", label: tr("Time Range"), from: dateFrom, to: dateTo, onFromChange: setDateFrom, onToChange: setDateTo }]}
         >
@@ -775,9 +780,9 @@ export const NotificationsView: React.FC = () => {
                 )}
               </div>
             </div>
-            <Select label={tr("Status")} value={statusFilter} onChange={(value) => { setStatusFilter(value as string); setCurrentPage(1); }} options={STATUS_OPTIONS} />
+            <Select label={tr("Status")} value={statusFilter} onChange={(value) => { setStatusFilter(value as string); setCurrentPage(1); }} options={localizedStatusOptions} />
             <Select label={tr("Module")} value={module} onChange={(value) => { setModule(value as string); setCurrentPage(1); }} options={allModuleOptions} />
-            <Select label={tr("Priority")} value={priority} onChange={(value) => { setPriority(value as string); setCurrentPage(1); }} options={PRIORITY_OPTIONS} />
+            <Select label={tr("Priority")} value={priority} onChange={(value) => { setPriority(value as string); setCurrentPage(1); }} options={localizedPriorityOptions} />
             <DateRangePicker
               label={tr("Time Range")}
               startDate={dateFrom}
@@ -928,7 +933,7 @@ export const NotificationsView: React.FC = () => {
         {!timeline && (
           <FilterAccordionItem label={tr("Scope")} isExpanded={expandedSections.has("scope")} onToggle={() => toggleSection("scope")}>
             <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-              {SCOPE_OPTIONS.map((opt) => (
+              {localizedScopeOptions.map((opt) => (
                 <FilterOptionButton key={opt.value} label={opt.label} isSelected={activeTab === opt.value} onClick={() => { setActiveTab(opt.value); setCurrentPage(1); }} />
               ))}
             </div>
@@ -937,7 +942,7 @@ export const NotificationsView: React.FC = () => {
 
         <FilterAccordionItem label={tr("Status")} isExpanded={expandedSections.has("status")} onToggle={() => toggleSection("status")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {STATUS_OPTIONS.map((opt) => (
+            {localizedStatusOptions.map((opt) => (
               <FilterOptionButton key={opt.value} label={opt.label} isSelected={statusFilter === opt.value} onClick={() => { setStatusFilter(opt.value); setCurrentPage(1); }} />
             ))}
           </div>
@@ -953,7 +958,7 @@ export const NotificationsView: React.FC = () => {
 
         <FilterAccordionItem label={tr("Priority")} isExpanded={expandedSections.has("priority")} onToggle={() => toggleSection("priority")}>
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-            {PRIORITY_OPTIONS.map((opt) => (
+            {localizedPriorityOptions.map((opt) => (
               <FilterOptionButton key={opt.value} label={opt.label} isSelected={priority === opt.value} onClick={() => { setPriority(opt.value); setCurrentPage(1); }} />
             ))}
           </div>

@@ -76,7 +76,7 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
     setBusy(true);
     try {
       await trainingBatchExportsApi.create({ departmentId, year: yearNumber, reason: reason.trim(), approverUserId: approverId, signatureToken });
-      showToast({ type: "success", title: tr("Batch prepared"), message: "It waits for the approver." });
+      showToast({ type: "success", title: tr("Batch prepared"), message: tr("It waits for the approver.") });
       setSignNew(false); setCreating(false); setDepartmentId(""); setApproverId(""); setReason("");
       table.reload();
     } catch (e) {
@@ -90,7 +90,7 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
     setBusy(true);
     try {
       await trainingBatchExportsApi.approve(signApprove.id, token);
-      showToast({ type: "success", title: tr("Batch approved"), message: "The ZIP was generated." });
+      showToast({ type: "success", title: tr("Batch approved"), message: tr("The ZIP was generated.") });
       setSignApprove(undefined);
       table.reload();
     } catch (e) {
@@ -173,13 +173,13 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
       </PortalDropdownMenu>
       <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title={tr("Prepare a Batch Export")}
         description={tr("You sign as the person who prepared it. The person you choose approves with a signature, and only then are the PDFs made. Nobody can change them afterwards.")}
-        confirmText="Continue to Signature" confirmDisabled={!departmentId || !yearOk || !reason.trim() || !approverId || !people || people.people === 0 || people.tooMany} size="md">
+        confirmText={tr("Continue to Signature")} confirmDisabled={!departmentId || !yearOk || !reason.trim() || !approverId || !people || people.people === 0 || people.tooMany} size="md">
         <div className="grid gap-4">
           <FormField label={tr("Department")} required><Select value={departmentId} onChange={setDepartmentId} options={departments} placeholder={tr("Choose a department")} /></FormField>
           <FormField label={tr("Records up to the end of the year")} required><Input type="number" min={2000} max={2100} value={year} onChange={(e) => setYear(e.target.value)} /></FormField>
           {people && (
             <p className={`rounded-lg border px-3 py-2 text-sm ${people.tooMany || people.people === 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-700"}`} role="status">
-              {people.people === 0 ? "Nobody in this department has records up to that year." : people.tooMany ? `More than ${people.limit} people. Split the batch by narrowing the year.` : `${people.people} people will be in the batch.`}
+              {people.people === 0 ? tr("Nobody in this department has records up to that year.") : people.tooMany ? `More than ${people.limit} people. Split the batch by narrowing the year.` : `${people.people} people will be in the batch.`}
             </p>
           )}
           <FormField label={tr("Reason for the batch")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>

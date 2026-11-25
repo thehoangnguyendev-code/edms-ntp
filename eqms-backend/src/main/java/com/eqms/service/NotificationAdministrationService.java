@@ -123,7 +123,7 @@ public class NotificationAdministrationService {
     @Transactional(readOnly = true)
     public List<com.eqms.dto.notification.NotificationVariableResponse> placeholders(boolean includeEvents, boolean includeEmails) {
         if (!includeEvents && !includeEmails) return List.of();
-        java.util.Map<String, com.eqms.dto.notification.NotificationVariableResponse> all = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        java.util.Map<String, com.eqms.dto.notification.NotificationVariableResponse> all = new java.util.TreeMap<>((java.util.Comparator<String>) (a, b) -> { int c = a.compareToIgnoreCase(b); return c != 0 ? c : a.compareTo(b); }); // case-sensitive as the renderer is: the renderer does not fold case, so two names that differ only by case stay two placeholders
         // what the senders of every module fill in comes first and gives the label, the example and the module
         NotificationPlaceholderCatalog.all().forEach(e -> all.put(e.name(), new com.eqms.dto.notification.NotificationVariableResponse(
                 e.name(), "{{" + e.name() + "}}", e.label(), e.sample(), e.module())));

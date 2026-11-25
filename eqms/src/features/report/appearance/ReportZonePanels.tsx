@@ -102,7 +102,7 @@ function PlaceText({ zone, value, onChange, disabled }: PanelProps) {
   const key = TEXT_FIELD[zone];
   const slot = frame[key] as ReportSlot;
   const header = zone[0] === "h";
-  const title = ZONE_TITLES[zone];
+  const title = tr(ZONE_TITLES[zone]);
   const set = (change: Partial<ReportSlot>) => onChange({ ...value, frame: { ...frame, [key]: { ...slot, ...change } } });
   return (
     <div className="space-y-4">
@@ -180,7 +180,7 @@ function LogoZone({ value, onChange, disabled, onError }: PanelProps) {
     <Panel title={tr("Logo")} icon={<IconPhoto className="h-4 w-4" />} toggle={<Toggle label={tr("Show logo")} checked={logo.enabled} disabled={disabled} onChange={(enabled) => set({ enabled })} />}>
       <label className="relative block cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
         {logo.data ? <img src={logo.data} alt="Report logo" className="mx-auto mb-3 max-h-16 max-w-full" /> : null}
-        <span>{busy ? "Preparing the picture…" : tr("Upload PNG or JPEG · up to 10 MB")}</span>
+        <span>{busy ? tr("Preparing the picture…") : tr("Upload PNG or JPEG · up to 10 MB")}</span>
         <span className="mt-1 block text-xs text-slate-500">{tr("A large picture is reduced to a size that suits the report when it is inserted.")}</span>
         <input
           aria-label={tr("Upload report logo")}
@@ -230,7 +230,7 @@ function InfoZone({ value, onChange, disabled }: PanelProps) {
   const edit = (index: number, change: Partial<{ label: string; value: string }>) => set({ info: frame.info.map((x, i) => (i === index ? { ...x, ...change } : x)) });
   return (
     <Panel
-      title={ZONE_TITLES.info}
+            title={tr(ZONE_TITLES.info)}
       icon={<IconListDetails className="h-4 w-4" />}
       toggle={
         <TabNav
@@ -277,7 +277,7 @@ function ApprovalZone({ value, onChange, disabled }: PanelProps) {
   const columns = frame.approvalColumns?.length ? frame.approvalColumns : defaultApprovalColumns();
   const setColumn = (index: number, change: Partial<ReportApprovalColumn>) => set({ approvalColumns: columns.map((column, i) => (i === index ? { ...column, ...change } : column)) });
   return (
-    <Panel title={ZONE_TITLES.appr} icon={<IconUserCheck className="h-4 w-4" />} toggle={<Toggle label={tr("Show approval block")} checked={frame.approval} disabled={disabled} onChange={(approval) => set({ approval })} />}>
+    <Panel title={tr(ZONE_TITLES.appr)} icon={<IconUserCheck className="h-4 w-4" />} toggle={<Toggle label={tr("Show approval block")} checked={frame.approval} disabled={disabled} onChange={(approval) => set({ approval })} />}>
       <p className="text-xs text-slate-500">
         {tr("A table for name, designation, signature and date, filled in when the report is printed: the lines below are its rows. On the last page. The electronic signature of a signed run is always shown in the footer of every page, whatever is set here.")}
       </p>
@@ -317,7 +317,7 @@ function NotesZone({ value, onChange, disabled }: PanelProps) {
   const frame = effectiveReportFrame(value);
   const set = (change: Partial<ReportFrame>) => onChange({ ...value, frame: { ...frame, ...change } });
   return (
-    <Panel title={ZONE_TITLES.notes} icon={<IconNote className="h-4 w-4" />} toggle={<Toggle label={tr("Show notes box")} checked={frame.notes} disabled={disabled} onChange={(notes) => set({ notes })} />}>
+    <Panel title={tr(ZONE_TITLES.notes)} icon={<IconNote className="h-4 w-4" />} toggle={<Toggle label={tr("Show notes box")} checked={frame.notes} disabled={disabled} onChange={(notes) => set({ notes })} />}>
       <p className="text-xs text-slate-500">{tr("An empty box for handwritten notes, on the last page.")}</p>
       <FormField label={`Height: ${frame.notesHeight} points`}>
         <Slider label={tr("Notes box height")} value={frame.notesHeight} min={40} max={400} onChange={(notesHeight) => !disabled && frame.notes && set({ notesHeight })} />

@@ -219,7 +219,7 @@ export const PermissionSetsView: React.FC = () => {
 
   const handleDelete = async (ps: PermissionSetResponse) => {
     if (ps.system) {
-      showToast({ type: "error", message: "System permission sets cannot be deleted" });
+      showToast({ type: "error", message: tr("System permission sets cannot be deleted") });
       return;
     }
     const sig = await requestSignature(`Delete Permission Set "${ps.name}"`, "Permission Set Change");
@@ -235,7 +235,7 @@ export const PermissionSetsView: React.FC = () => {
   };
 
   const handleDeactivate = async (ps: PermissionSetResponse) => {
-    const sig = await requestSignature(`${ps.active ? "Deactivate" : "Activate"} Permission Set "${ps.name}"`, "Permission Set Change");
+    const sig = await requestSignature(`${ps.active ? tr("Deactivate") : "Activate"} Permission Set "${ps.name}"`, "Permission Set Change");
     if (!sig) return;
     try {
       await settingsApi.updatePermissionSet(ps.id, {

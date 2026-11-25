@@ -439,7 +439,7 @@ export const AuditTrailView: React.FC = () => {
         setLoadError(
           error instanceof Error
             ? error.message
-            : "Unable to load audit trail.",
+            : tr("Unable to load audit trail."),
         );
       } finally {
         if (alive) {

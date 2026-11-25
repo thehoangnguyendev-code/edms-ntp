@@ -80,7 +80,6 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
           </div>
           <div>
             <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block capitalize">{tr("Home Page")}</label>
-            <p className="text-xs text-slate-500 mb-2">{tr("Where this user lands after signing in.")}</p>
             <Select
               label=""
               value={homePage || "DASHBOARD"}
@@ -88,6 +87,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
               options={HOME_PAGE_OPTIONS}
               className="w-full"
             />
+            <p className="text-xs text-slate-500 mt-2">{tr("Where this user lands after signing in.")}</p>
           </div>
         </FieldGroup>
       </div>

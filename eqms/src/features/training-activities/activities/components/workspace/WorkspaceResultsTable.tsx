@@ -35,7 +35,7 @@ const GROUP_TITLE: Record<GroupKey, string> = { score: "To score", recorded: "Re
  * is in the row of that person, so a scan cannot be put under another person.
  * Nothing is saved by leaving a field: Enter saves the row, "Save all" saves every row with a new score, and every save is in the Audit Trail.
  */
-export function WorkspaceResultsTable({ activityId, people, passPercent, defaultMax, locked, canRecord, canRelease, onRelease, assessmentMethod, onActivity, readOnly = false }: {
+export function WorkspaceResultsTable({ activityId, people, passPercent, defaultMax, locked, canRecord, canRelease, onRelease, assessmentMethod, onActivity }: {
   activityId: string;
   people: TrainingParticipant[];
   /** The pass mark of Training Properties, as the server sends it; nothing is shown as a result without it. */
@@ -50,8 +50,6 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
   onRelease: (p: TrainingParticipant) => void;
   assessmentMethod?: string | null;
   onActivity: (activity: TrainingActivityDetail) => void;
-  /** The results are only shown (Training Activity Details): no score field, no upload of a scan, no release of a test; the scans that exist can be opened. */
-  readOnly?: boolean;
 }) {
   const { showToast } = useToast();
   const [max, setMax] = useState(() => { const saved = people.find((p) => p.lastMax != null)?.lastMax; return saved != null ? String(saved) : defaultMax != null ? String(defaultMax) : ""; });
@@ -76,7 +74,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
   const maxNumber = allLines ? 1 : Number(max);
   const maxValid = allLines || (max.trim() !== "" && Number.isFinite(maxNumber) && maxNumber > 0);
   const isPresent = (p: TrainingParticipant) => p.state === "ATTENDED" || p.state === "ONLINE";
-  const eligible = (p: TrainingParticipant) => !readOnly && canRecord && !locked && (allLines || passPercent != null) && scoring && isPresent(p) && p.result !== "PASSED";
+  const eligible = (p: TrainingParticipant) => canRecord && !locked && (allLines || passPercent != null) && scoring && isPresent(p) && p.result !== "PASSED";
   const typed = (p: TrainingParticipant) => scores[p.id];
   const parsed = (p: TrainingParticipant) => {
     const raw = typed(p);
@@ -100,7 +98,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
   ].filter((g) => g.rows.length > 0);
 
   const evidenceOf = (p: TrainingParticipant) => (files?.evidence ?? []).filter((e) => e.participantId === p.id);
-  const canReleaseRow = (p: TrainingParticipant) => !readOnly && canRelease && p.examState === "USED" && p.result === "PENDING";
+  const canReleaseRow = (p: TrainingParticipant) => canRelease && p.examState === "USED" && p.result === "PENDING";
 
   const saveRows = async (rows: TrainingParticipant[]) => {
     setSaving(true);
@@ -114,7 +112,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           return next;
         });
       }
-      showToast({ type: "success", title: rows.length === 1 ? "Result recorded" : "Results recorded", message: rows.length === 1 ? rows[0].fullName : `${rows.length} results` });
+      showToast({ type: "success", title: rows.length === 1 ? tr("Result recorded") : tr("Results recorded"), message: rows.length === 1 ? rows[0].fullName : `${rows.length} results` });
       return true;
     } catch (e) {
       showToast({ type: "error", title: tr("The result was not recorded"), message: trainingError(e) });
@@ -147,10 +145,10 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
   const draft = (p: TrainingParticipant) => {
     if (!(eligible(p) && valid(p))) return undefined;
     const got = parsed(p) as number;
-    if (allLines) return { pass: got === 1, label: `${got === 1 ? "Pass" : "Not passed"} · not saved`, short: got === 1 ? "Pass" : "Not passed" };
+    if (allLines) return { pass: got === 1, label: `${got === 1 ? "Pass" : tr("Not passed")} · not saved`, short: got === 1 ? "Pass" : tr("Not passed") };
     const percent = Math.round((got * 10000) / maxNumber) / 100;
     const pass = percent >= (passPercent ?? 0);
-    return { pass, label: `${pass ? "Pass" : "Not passed"} (${percent}%) · not saved`, short: `${got}/${maxNumber}` };
+    return { pass, label: `${pass ? "Pass" : tr("Not passed")} (${percent}%) · not saved`, short: `${got}/${maxNumber}` };
   };
 
   const scoreInput = (p: TrainingParticipant, extra?: { onEnter?: () => void; autoFocus?: boolean; label?: string }) => {
@@ -214,19 +212,19 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           </button>
         )}
         {mine.length > 0 && !p.personUserId && <span className="text-sm text-slate-600">{mine.length} {tr("file(s)")}</span>}
-        {!readOnly && files?.canUploadEvidence && isPresent(p) && (
+        {files?.canUploadEvidence && isPresent(p) && (
           <button
             type="button"
             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50"
             disabled={uploading === p.id}
-            aria-label={`${mine.length ? "Add another scan for" : "Upload the scan of"} ${p.fullName}`}
-            title={mine.length ? "Add another scan" : "Upload the scan of the paper of this person"}
+            aria-label={`${mine.length ? tr("Add another scan for") : tr("Upload the scan of")} ${p.fullName}`}
+            title={mine.length ? tr("Add another scan") : tr("Upload the scan of the paper of this person")}
             onClick={() => askScan(p)}
           >
             <IconUpload className="h-4 w-4" />
           </button>
         )}
-        {mine.length === 0 && (readOnly || !files?.canUploadEvidence) && "—"}
+        {mine.length === 0 && !files?.canUploadEvidence && "—"}
       </div>
     );
   };
@@ -248,7 +246,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     },
     {
       id: "score",
-      header: allLines ? "Checklist Result" : `Score${maxValid ? ` (of ${maxNumber})` : ""}`,
+      header: allLines ? tr("Checklist Result") : `Score${maxValid ? ` (of ${maxNumber})` : ""}`,
       headerClassName: W.score,
       cellClassName: W.score,
       cell: (p) => {
@@ -276,8 +274,8 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     const d = draft(p);
     if (d) return { color: d.pass ? "emerald" : "red", text: d.short };
     if (!isPresent(p)) return { color: "slate", text: "Absent" };
-    if (p.result === "PENDING") return { color: "amber", text: eligible(p) ? (allLines ? "Pick result" : "Enter score") : "Pending" };
-    const text = allLines ? (p.result === "PASSED" ? "Pass" : "Not passed") : p.lastScore != null ? `${p.lastScore}/${p.lastMax}` : p.result === "PASSED" ? "Pass" : "Not passed";
+    if (p.result === "PENDING") return { color: "amber", text: eligible(p) ? (allLines ? tr("Pick result") : tr("Enter score")) : "Pending" };
+    const text = allLines ? (p.result === "PASSED" ? "Pass" : tr("Not passed")) : p.lastScore != null ? `${p.lastScore}/${p.lastMax}` : p.result === "PASSED" ? "Pass" : tr("Not passed");
     return { color: p.result === "PASSED" ? "emerald" : "red", text };
   };
 
@@ -292,12 +290,12 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     if (await saveRows([p])) setSheetId(next?.id);
   };
 
-  const canSave = !readOnly && canRecord && scoring && !locked;
+  const canSave = canRecord && scoring && !locked;
 
   return (
     <div className="relative flex flex-col gap-4">
       <div className={`order-1 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 ${canSave ? "md:pr-40" : ""}`}>
-        {!allLines && !readOnly && (
+        {!allLines && (
           <label className="flex items-center gap-2 text-sm text-slate-600">
             {tr("Out of")}
             <span className="w-20">
@@ -306,7 +304,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           </label>
         )}
         <div className="text-xs text-slate-600 sm:text-sm">
-          {allLines ? tr("Pass: every line correct") : tr("Pass mark")}: {!allLines && <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span>}{!allLines && readOnly && maxValid ? <> · {tr("Out of")} <span className="font-semibold text-slate-900">{maxNumber}</span></> : null} · {tr("Results:")}{" "}
+          {allLines ? tr("Pass: every line correct") : tr("Pass mark")}: {!allLines && <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span>} · {tr("Results:")}{" "}
           <span className="font-semibold text-slate-900">{recorded} / {present.length}</span>
         </div>
       </div>
@@ -319,7 +317,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           <section key={g.key} aria-label={GROUP_TITLE[g.key]}>
             <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <span className={`h-2 w-2 rounded-full ${GROUP_DOT[g.key]}`} aria-hidden />
-              {readOnly && g.key === "score" ? tr("Not scored yet") : GROUP_TITLE[g.key]}
+              {GROUP_TITLE[g.key]}
               <span className="font-normal text-slate-400">{g.rows.length}</span>
             </h4>
             <div className="hidden md:block">
@@ -378,9 +376,9 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
               {eligible(sheetPerson) && (
                 <Button loading={saving} disabled={!valid(sheetPerson)} onClick={() => void saveAndNext(sheetPerson)}>{tr("Save and next")}</Button>
               )}
-              {!readOnly && files?.canUploadEvidence && isPresent(sheetPerson) && (
+              {files?.canUploadEvidence && isPresent(sheetPerson) && (
                 <Button variant="outline-emerald" disabled={uploading === sheetPerson.id} onClick={() => askScan(sheetPerson)}>
-                  <IconUpload className="h-4 w-4" /> {evidenceOf(sheetPerson).length ? "Add another scan" : "Upload the scan"}
+                  <IconUpload className="h-4 w-4" /> {evidenceOf(sheetPerson).length ? tr("Add another scan") : tr("Upload the scan")}
                 </Button>
               )}
               {evidenceOf(sheetPerson).length > 0 && sheetPerson.personUserId && (
@@ -398,9 +396,9 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
             ) : eligible(sheetPerson) ? (
               <>
                 <div>
-                  <div className="mb-1 text-xs font-medium text-slate-600">{allLines ? "Checklist result" : "Score"}</div>
+                  <div className="mb-1 text-xs font-medium text-slate-600">{allLines ? tr("Checklist result") : "Score"}</div>
                   <div className="flex items-center gap-3 [&>div]:w-40 [&_input]:h-14 [&_input]:text-2xl [&_input]:font-semibold">
-                    {scoreInput(sheetPerson, { onEnter: () => void saveAndNext(sheetPerson), autoFocus: true, label: allLines ? "Checklist result" : "Score" })}
+                    {scoreInput(sheetPerson, { onEnter: () => void saveAndNext(sheetPerson), autoFocus: true, label: allLines ? tr("Checklist result") : "Score" })}
                     {!allLines && maxValid && <span className="text-base text-slate-500">{trFormat("of {max}", { max: maxNumber })}</span>}
                   </div>
                   {!maxValid && !allLines && <p className="mt-2 text-xs text-red-700">{tr("Enter the maximum score of the test first.")}</p>}

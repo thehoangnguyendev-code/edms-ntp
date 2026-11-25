@@ -433,8 +433,10 @@ public class NotificationDispatcher {
         Matcher matcher = VARIABLE_PATTERN.matcher(template);
         StringBuilder result = new StringBuilder();
         while (matcher.find()) {
-            String value = variables.getOrDefault(matcher.group(1), "");
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value));
+            // getOrDefault returns null for a variable that is present with a null value (a field the event has no answer for); an empty text is written for it, as for a missing one,
+            // instead of failing the whole action that raised the notification
+            String value = variables.get(matcher.group(1));
+            matcher.appendReplacement(result, Matcher.quoteReplacement(value == null ? "" : value));
         }
         matcher.appendTail(result);
         return result.toString();

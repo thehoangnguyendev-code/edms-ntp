@@ -73,7 +73,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
       await navigator.clipboard.writeText(linkAddress(created.token));
       setCopied(true);
     } catch {
-      showToast({ type: "error", title: tr("Could not copy"), message: "Your browser did not allow access to the clipboard. Select the link and copy it." });
+      showToast({ type: "error", title: tr("Could not copy"), message: tr("Your browser did not allow access to the clipboard. Select the link and copy it.") });
     }
   };
 
@@ -81,7 +81,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
     if (!revokeTarget) return;
     try {
       await knowledgeApi.sharingRevokeLink(revokeTarget.id);
-      showToast({ type: "success", title: tr("Link revoked"), message: "It no longer opens anything. The change was recorded in the Audit Trail." });
+      showToast({ type: "success", title: tr("Link revoked"), message: tr("It no longer opens anything. The change was recorded in the Audit Trail.") });
       setReloadKey((k) => k + 1);
     } catch (error) {
       showToast({ type: "error", title: tr("Could not revoke"), message: errorMessage(error, "Please try again.") });
@@ -123,7 +123,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
           fetchPage={fetchLinks}
           getKey={(link) => link.id}
           searchPlaceholder={tr("Search the links")}
-          emptyText="No link has been made for this item."
+          emptyText={tr("No link has been made for this item.")}
           reloadKey={reloadKey}
           renderRow={(link) => (
             <div className="flex w-full min-w-0 items-center justify-between gap-3">

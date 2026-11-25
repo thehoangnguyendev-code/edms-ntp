@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-/** The test of APD.0009 in the system: written by the trainer, taken and signed by the trainee, graded by the server. */
+/** The test of APD.0009 taken in the system (tests written before 2026-11-23): taken and signed by the trainee, graded by the server. A test is no longer written in the system for an activity. */
 @RestController
 @RequestMapping("/training")
 public class TrainingExamController {
@@ -22,9 +22,6 @@ public class TrainingExamController {
 
     @GetMapping("/activities/{id}/exam")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(exams.get(users.requireCurrentUser(), id)); }
-
-    @PutMapping("/activities/{id}/exam")
-    public ResponseEntity<?> save(@PathVariable UUID id, @RequestBody SaveRequest request) { return ResponseEntity.ok(exams.save(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/me/participations/{participantId}/exam")
     public ResponseEntity<?> mine(@PathVariable UUID participantId) { return ResponseEntity.ok(exams.mine(users.requireCurrentUser(), participantId)); }

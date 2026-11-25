@@ -227,7 +227,7 @@ export const PersonnelReviewListView: React.FC = () => {
         onConfirm={() => void handleCancelReview()}
         title={tr("Cancel the Review")}
         description={tr("The review stays on record with your reason.")}
-        confirmText="Cancel review"
+        confirmText={tr("Cancel review")}
         confirmVariant="destructive"
         isLoading={isCancelSaving}
         confirmDisabled={!cancelReason.trim()}

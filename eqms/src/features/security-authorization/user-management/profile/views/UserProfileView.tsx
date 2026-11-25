@@ -165,7 +165,7 @@ export const UserProfileView: React.FC = () => {
       showToast({
         type: "error",
         title: tr("Invalid Avatar"),
-        message: "File size exceeds 5MB limit.",
+        message: tr("File size exceeds 5MB limit."),
       });
       return;
     }
@@ -402,7 +402,7 @@ export const UserProfileView: React.FC = () => {
         type="confirm"
         title={tr("Reinstate User")}
         description={`Are you sure you want to reinstate ${user.fullName}? Their account will be set to Active and they will regain full access.`}
-        confirmText="Yes, Reinstate"
+        confirmText={tr("Yes, Reinstate")}
         cancelText="Cancel"
         showCancel
       />

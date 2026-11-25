@@ -1419,8 +1419,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   "text-slate-600 hover:text-slate-900 hover:border-slate-400 hover:bg-slate-50",
                   "transition-colors duration-200",
                 )}
-                aria-label={isCollapsed ? "Expand sidebar" : tr("Collapse sidebar")}
-                title={isCollapsed ? "Expand sidebar" : tr("Collapse sidebar")}
+                aria-label={isCollapsed ? tr("Expand sidebar") : tr("Collapse sidebar")}
+                title={isCollapsed ? tr("Expand sidebar") : tr("Collapse sidebar")}
               >
                 <motion.div
                   className="absolute will-change-transform"

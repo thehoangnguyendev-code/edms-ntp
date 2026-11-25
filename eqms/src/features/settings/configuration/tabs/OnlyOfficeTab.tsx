@@ -124,14 +124,14 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
       const result = await settingsApi.testOnlyOfficeConnection();
       showToast({
         type: result.success ? 'success' : 'error',
-        title: result.success ? 'Connection successful' : 'Connection failed',
+        title: result.success ? tr('Connection successful') : tr('Connection failed'),
         message: result.message,
       });
     } catch (error) {
       showToast({
         type: 'error',
         title: tr('Connection failed'),
-        message: error instanceof Error ? error.message : 'Unable to reach the OnlyOffice Document Server.',
+        message: error instanceof Error ? error.message : tr('Unable to reach the OnlyOffice Document Server.'),
       });
     } finally {
       setIsTesting(false);
@@ -164,12 +164,12 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
           loadingText="Testing..."
         >
           <IconPlugConnected className="h-4 w-4" />
-          {unsaved ? 'Test saved settings' : tr('Test connection')}
+          {unsaved ? tr('Test saved settings') : tr('Test connection')}
         </Button>
       ) : undefined}
       check={checks.checks.ONLYOFFICE}
       currentSubject={`OnlyOffice · ${savedUrl}`}
-      emptyText={saved.enabled ? 'No connection test has been run yet.' : 'OnlyOffice is off, so there is nothing to test.'}
+      emptyText={saved.enabled ? tr('No connection test has been run yet.') : tr('OnlyOffice is off, so there is nothing to test.')}
     />
   );
 
@@ -181,7 +181,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">{tr("JWT secret")}</p>
             <p className="text-2xs text-slate-500 md:text-xs">
-              {hasStoredJwtSecret || onlyOfficeConfig.jwtSecretConfigured ? 'A secret is saved.' : 'No secret is saved.'}
+              {hasStoredJwtSecret || onlyOfficeConfig.jwtSecretConfigured ? tr('A secret is saved.') : tr('No secret is saved.')}
               {secretChangedAt ? ` Last changed ${formatDateTime(secretChangedAt)}.` : ''}
             </p>
           </div>
@@ -214,16 +214,16 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
             <input
               id="onlyoffice-jwt-secret"
               type={showJwtSecret ? 'text' : 'password'}
-              value={isStoredJwtSecretPreview ? 'Stored secret configured' : onlyOfficeConfig.jwtSecret || ''}
+              value={isStoredJwtSecretPreview ? tr('Stored secret configured') : onlyOfficeConfig.jwtSecret || ''}
               onChange={(e) => handleFieldChange('jwtSecret', e.target.value)}
               readOnly={isStoredJwtSecretPreview}
               className={isStoredJwtSecretPreview ? `${CONTROL_STATE_CLASSES.readonlyField} pr-10` : `${INPUT_CLASS} pr-10`}
-              placeholder={isReplacingJwtSecret ? 'Enter a replacement secret' : 'Must match the onlyoffice-documentserver JWT_SECRET env var'}
+              placeholder={isReplacingJwtSecret ? tr('Enter a replacement secret') : tr('Must match the onlyoffice-documentserver JWT_SECRET env var')}
             />
             <button
               type="button"
               onClick={() => setShowJwtSecret(!showJwtSecret)}
-              aria-label={showJwtSecret ? 'Hide the JWT secret' : 'Show the JWT secret'}
+              aria-label={showJwtSecret ? tr('Hide the JWT secret') : tr('Show the JWT secret')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 transition-colors hover:text-slate-600"
             >
               {showJwtSecret ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
@@ -261,12 +261,12 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-3">
             <Switch size="sm" checked={!!onlyOfficeConfig.enabled} onChange={(checked) => handleFieldChange('enabled', checked)} aria-label={tr("Enable OnlyOffice")} />
-            <span className="text-sm font-medium text-slate-800">{onlyOfficeConfig.enabled ? 'OnlyOffice is on' : 'OnlyOffice is off'}</span>
+            <span className="text-sm font-medium text-slate-800">{onlyOfficeConfig.enabled ? tr('OnlyOffice is on') : tr('OnlyOffice is off')}</span>
           </div>
           <p className={`max-w-xl text-xs ${onlyOfficeConfig.enabled ? 'text-slate-500' : 'text-amber-800'}`}>
             {onlyOfficeConfig.enabled
-              ? 'Files that open in OnlyOffice use the Document Server below.'
-              : 'While it is off, the OnlyOffice editor and viewer cannot be opened.'}
+              ? tr('Files that open in OnlyOffice use the Document Server below.')
+              : tr('While it is off, the OnlyOffice editor and viewer cannot be opened.')}
           </p>
         </div>
 

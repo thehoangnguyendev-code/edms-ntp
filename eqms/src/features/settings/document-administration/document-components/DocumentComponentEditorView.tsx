@@ -86,7 +86,7 @@ export const DocumentComponentEditorView: React.FC = () => {
 
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ name, shortDescription, freeText, isActive }, !isLoading);
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit Document Component" : "New Document Component", "the previous page");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? tr("Edit Document Component") : tr("New Document Component"), "the previous page");
 
   // Plain Back (nothing just created): hand the untouched draft straight back so the Format
   // editor restores exactly what it had.
@@ -128,8 +128,8 @@ export const DocumentComponentEditorView: React.FC = () => {
     } catch (error) {
       showToast({
         type: "error",
-        title: isEdit ? "Update Failed" : "Create Failed",
-        message: extractApiMessage(error, isEdit ? "Unable to update document component." : "Unable to create document component."),
+        title: isEdit ? tr("Update Failed") : tr("Create Failed"),
+        message: extractApiMessage(error, isEdit ? tr("Unable to update document component.") : tr("Unable to create document component.")),
       });
     } finally {
       setIsSaving(false);

@@ -192,7 +192,7 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.duplicateTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: tr("Duplicated"), message: "Publishing template duplicated." });
+      showToast({ type: "success", title: tr("Duplicated"), message: tr("Publishing template duplicated.") });
     } catch (error) {
       console.error("Failed to duplicate publishing template", error);
       showToast({ type: "error", title: tr("Duplicate failed"), message: getApiErrorMessage(error, "Unable to duplicate publishing template.") });
@@ -206,7 +206,7 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.toggleStatus(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: tr("Status updated"), message: "Publishing template status updated. Any number of templates can be Active at once." });
+      showToast({ type: "success", title: tr("Status updated"), message: tr("Publishing template status updated. Any number of templates can be Active at once.") });
     } catch (error) {
       console.error("Failed to toggle publishing template status", error);
       showToast({ type: "error", title: tr("Update failed"), message: getApiErrorMessage(error, "Unable to update publishing template status.") });
@@ -220,7 +220,7 @@ export const PublishingTemplatesView: React.FC = () => {
     try {
       await publishingTemplatesApi.deleteTemplate(id);
       await refreshAfterMutation();
-      showToast({ type: "success", title: "Deleted", message: "Publishing template deleted." });
+      showToast({ type: "success", title: "Deleted", message: tr("Publishing template deleted.") });
     } catch (error) {
       console.error("Failed to delete publishing template", error);
       showToast({ type: "error", title: tr("Delete failed"), message: getApiErrorMessage(error, "Unable to delete publishing template.") });
@@ -296,7 +296,7 @@ export const PublishingTemplatesView: React.FC = () => {
   return (
     <div className="flex h-full flex-col gap-4 md:gap-6">
       {(isInitialLoading || isSaving) && (
-        <FullPageLoading text={isSaving ? "Saving publishing template..." : "Loading publishing templates..."} />
+        <FullPageLoading text={isSaving ? tr("Saving publishing template...") : tr("Loading publishing templates...")} />
       )}
 
       <AlertModal

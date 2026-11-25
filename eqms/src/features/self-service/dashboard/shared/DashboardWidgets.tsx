@@ -82,7 +82,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
           showToast({
             type: "error",
             title: tr("Dashboard settings unavailable"),
-            message: "The default layout is shown.",
+            message: tr("The default layout is shown."),
           });
       })
       .finally(() => {
@@ -146,7 +146,7 @@ export function DashboardWidgets({ widgets }: { widgets: Widget[] }) {
       showToast({
         type: "error",
         title: tr("Unable to save dashboard"),
-        message: "Please try again.",
+        message: tr("Please try again."),
       });
     } finally {
       setSaving(false);

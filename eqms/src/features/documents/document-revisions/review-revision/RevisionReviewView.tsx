@@ -172,7 +172,7 @@ export const RevisionReviewView: React.FC<RevisionReviewViewProps> = ({
       } catch {
         setRevisionFile(null);
         setPreviewStatus("error");
-        setPreviewMessage("Unable to load PDF preview from server.");
+        setPreviewMessage(tr("Unable to load PDF preview from server."));
       }
     },
     [revisionId],

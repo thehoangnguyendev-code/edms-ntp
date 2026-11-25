@@ -61,18 +61,18 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
           <div className={cn("mb-3 flex h-12 w-12 items-center justify-center rounded-full", dragging ? "bg-emerald-100" : "bg-slate-100")}>
             <Upload className={cn("h-6 w-6", dragging ? "text-emerald-600" : "text-slate-400")} />
           </div>
-          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? "Drop your file here" : tr("Click to upload or drag & drop")}</p>
+          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? tr("Drop your file here") : tr("Click to upload or drag & drop")}</p>
           <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">{tr("PNG or JPG (max 5 MB)")}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-24 w-40 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
-              {preview && <img src={preview.url} alt={preview.stamped ? "Specimen signature preview with the watermark" : "Specimen signature preview"} className="h-full w-full object-contain p-1" />}
+              {preview && <img src={preview.url} alt={preview.stamped ? tr("Specimen signature preview with the watermark") : tr("Specimen signature preview")} className="h-full w-full object-contain p-1" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`} · {preview?.stamped ? "Preview with the watermark. The upload time is the time of upload." : "Preview before upload"}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`} · {preview?.stamped ? tr("Preview with the watermark. The upload time is the time of upload.") : tr("Preview before upload")}</p>
               {preview?.note && <p className="mt-0.5 text-xs text-amber-700">{preview.note}.</p>}
             </div>
             <button type="button" onClick={clear} className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-slate-200" title={tr("Remove image")}>

@@ -12,7 +12,7 @@ vi.mock("@/services/api/trainingActivities", async () => {
 import { TrainingExamBlock } from "../components/TrainingExamBlock";
 
 const exam = {
-  canEdit: false, canSeeKey: true, minutes: 20,
+  canSeeKey: true, minutes: 20,
   questions: [{ id: "q1", qNo: 1, kind: "SINGLE", prompt: "Which area needs Grade A?", points: 2, options: [{ id: "A", text: "Filling zone" }, { id: "B", text: "Corridor" }], correct: ["A"] }],
 };
 
@@ -20,12 +20,12 @@ describe("Test in the system block", () => {
   beforeEach(() => get.mockResolvedValue(exam));
 
   it("marks the right answer for a person who may see the key", async () => {
-    render(<TrainingExamBlock activityId="a1" editable={false} />);
+    render(<TrainingExamBlock activityId="a1" />);
     expect(await screen.findByText("Right")).toBeTruthy();
   });
 
   it("never shows the right answer in the Session Workspace, even to a person who may see the key", async () => {
-    render(<TrainingExamBlock activityId="a1" editable={false} hideKey />);
+    render(<TrainingExamBlock activityId="a1" hideKey />);
     expect(await screen.findByText(/Which area needs Grade A[?]/)).toBeTruthy();
     expect(screen.queryByText("Right")).toBeNull();
     // the Workspace shows the question, its kind and points, and not even the choices
@@ -34,7 +34,7 @@ describe("Test in the system block", () => {
   });
 
   it("keeps the long explanation out of the page, behind the help button", async () => {
-    render(<TrainingExamBlock activityId="a1" editable={false} hideKey />);
+    render(<TrainingExamBlock activityId="a1" hideKey />);
     await screen.findByText(/Which area needs Grade A[?]/);
     expect(screen.queryByText(/graded automatically/)).toBeNull();
     expect(screen.getByRole("button", { name: "About Test in the system" })).toBeTruthy();
@@ -45,13 +45,13 @@ describe("Test in the system block: summary", () => {
   it("tells the screen how many questions it holds, and nothing when it has none", async () => {
     const onSummary = vi.fn();
     get.mockResolvedValue(exam);
-    const { unmount } = render(<TrainingExamBlock activityId="a1" editable={false} hideKey onSummary={onSummary} />);
+    const { unmount } = render(<TrainingExamBlock activityId="a1" hideKey onSummary={onSummary} />);
     await screen.findByText(/Which area needs Grade A[?]/);
     expect(onSummary).toHaveBeenLastCalledWith(1);
     unmount();
     const none = vi.fn();
     get.mockResolvedValue({ ...exam, questions: [] });
-    render(<TrainingExamBlock activityId="a1" editable={false} hideKey onSummary={none} />);
+    render(<TrainingExamBlock activityId="a1" hideKey onSummary={none} />);
     await vi.waitFor(() => expect(none).toHaveBeenLastCalledWith(undefined));
   });
 });

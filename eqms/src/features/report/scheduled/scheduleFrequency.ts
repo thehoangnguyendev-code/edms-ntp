@@ -1,3 +1,5 @@
+import { tr, trFormat } from "@/i18n";
+
 /**
  * The frequency of a scheduled report as a person thinks of it (every few hours, every day, on some days of the week, on a day of the month) and the cron expression the server
  * keeps. The page builds the cron from what the person chooses and reads it back when a schedule is opened; a cron that is none of these forms stays a custom one, untouched.
@@ -103,25 +105,37 @@ const two = (n: number) => String(n).padStart(2, "0");
 export const timeOf = (spec: FrequencySpec) => `${two(spec.hour)}:${two(spec.minute)}`;
 
 function list(names: string[]): string {
-  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} ${tr("and")} ${names[names.length - 1]}`;
 }
 
 /** The schedule in words, for the person who is setting it. */
 export function describeFrequency(spec: FrequencySpec): string {
   switch (spec.kind) {
     case "HOURLY":
-      return spec.everyHours <= 1 ? `Every hour, at minute ${two(spec.minute)} (UTC+7).` : `Every ${spec.everyHours} hours, at minute ${two(spec.minute)} (UTC+7).`;
+      return spec.everyHours <= 1
+        ? trFormat("Every hour, at minute {minute} (UTC+7).", { minute: two(spec.minute) })
+        : trFormat("Every {count} hours, at minute {minute} (UTC+7).", { count: spec.everyHours, minute: two(spec.minute) });
     case "DAILY":
-      return `Every day at ${timeOf(spec)} (UTC+7).`;
+      return trFormat("Every day at {time} (UTC+7).", { time: timeOf(spec) });
     case "WEEKLY": {
       const days = sortDays(spec.weekdays.length ? spec.weekdays : ["MON"]);
       const text =
-        days.length === 7 ? "Every day" : days.join() === "MON,TUE,WED,THU,FRI" ? "Every weekday, Monday to Friday," : `Every ${list(days.map((d) => WEEKDAY_NAMES[d]))}`;
-      return `${text} at ${timeOf(spec)} (UTC+7).`;
+        days.length === 7
+          ? tr("Every day")
+          : days.join() === "MON,TUE,WED,THU,FRI"
+            ? tr("Every weekday, Monday to Friday,")
+            : trFormat("Every {days}", { days: list(days.map((d) => tr(WEEKDAY_NAMES[d]))) });
+      return trFormat("{days} at {time} (UTC+7).", { days: text, time: timeOf(spec) });
     }
-    case "MONTHLY":
-      return `${spec.dayOfMonth === "L" ? "On the last day of every month" : `On day ${spec.dayOfMonth} of every month`} at ${timeOf(spec)} (UTC+7).`;
+    case "MONTHLY": {
+      const when = spec.dayOfMonth === "L"
+        ? tr("On the last day of every month")
+        : trFormat("On day {day} of every month", { day: spec.dayOfMonth });
+      return trFormat("{when} at {time} (UTC+7).", { when, time: timeOf(spec) });
+    }
     default:
-      return spec.custom.trim() ? `A custom schedule: ${spec.custom.trim()} (UTC+7).` : "Type a cron expression.";
+      return spec.custom.trim()
+        ? trFormat("A custom schedule: {cron} (UTC+7).", { cron: spec.custom.trim() })
+        : tr("Type a cron expression.");
   }
 }

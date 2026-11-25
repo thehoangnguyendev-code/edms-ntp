@@ -3,11 +3,14 @@ package com.eqms.repository;
 import com.eqms.entity.NotificationPolicy;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface NotificationPolicyRepository extends JpaRepository<NotificationPolicy, java.util.UUID> {
 
     Optional<NotificationPolicy> findByEventCode(String eventCode);
+
+    List<NotificationPolicy> findAllByEscalationEnabledTrue();
 
     /** The policy with its row locked until the transaction ends: two administrators saving the same notification are served one after the other, and the second sees the first. */
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

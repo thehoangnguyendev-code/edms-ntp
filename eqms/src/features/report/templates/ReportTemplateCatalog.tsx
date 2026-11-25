@@ -1,4 +1,4 @@
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -259,7 +259,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
     },
     {
       id: "revision",
-      header: inAdministration ? "Effective Revision" : "Report Template Revision",
+      header: inAdministration ? tr("Effective Revision") : tr("Report Template Revision"),
       sort: sortable("revision"),
       cell: (row) => (row.effectiveRevision != null ? reportRevisionLabel(row.effectiveRevision) : "—"),
     },
@@ -345,7 +345,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 ),
   };
   const { layout, control } = useCustomColumnLayout("reportDefinitions", columns, rowAction);
-  const title = inAdministration ? "Report Templates" : "Report Library";
+  const title = inAdministration ? tr("Report Templates") : tr("Report Library");
   return (
     <div className="flex min-w-0 flex-col h-full gap-4 md:gap-6 w-full flex-1">
       <PageHeader
@@ -358,7 +358,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
               onClick={() => navigate(`${ROUTES.REPORT.TEMPLATE_MANAGEMENT}/new`)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Report Template
+              {tr("New Report Template")}
             </Button>
           ) : undefined
         }
@@ -498,7 +498,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                       close();
                     }}
                   >
-                    Edit Report Template
+                    {tr("Edit Report Template")}
                   </DropdownMenuItem>
                 )}
                 {/* A GMP template is disabled, never deleted (REPORT-GMP-USE-APPROVAL-2026-10-14). */}
@@ -526,20 +526,20 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
       )}
       <FormModal
         isOpen={!!deleting}
-        title="Delete Report Template"
-        description={`Remove ${deleting?.displayName ?? "this template"} from future use? Existing reports, files, versions and audit history will be preserved.`}
+        title={tr("Delete Report Template")}
+        description={trFormat("Remove {name} from future use? Existing reports, files, versions and audit history will be preserved.", { name: deleting?.displayName ?? tr("this template") })}
         onClose={() => {
           if (!saving) setDeleting(undefined);
         }}
         onConfirm={() => void remove()}
-        confirmText="Delete Template"
+        confirmText={tr("Delete Template")}
         confirmVariant="destructive"
         isLoading={saving}
         confirmDisabled={!reason.trim()}
         size="md"
       >
         <label className="block space-y-2 text-sm font-medium text-slate-700 capitalize">
-          <span>Reason for deletion</span>
+          <span>{tr("Reason for deletion")}</span>
           <Textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}

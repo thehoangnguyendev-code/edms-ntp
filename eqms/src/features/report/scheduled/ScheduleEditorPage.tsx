@@ -79,7 +79,7 @@ export function ScheduleEditorPage() {
   }, [id, create]);
   const patch = (p: Partial<ReportScheduleDetail>) => setDraft((v) => ({ ...v, ...p }));
   const template = catalog.find((t) => t.code === draft.definitionCode);
-  const title = create ? "New Report Schedule" : "Edit Report Schedule";
+  const title = create ? tr("New Report Schedule") : tr("Edit Report Schedule");
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ draft, reason }, !loading);
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, title, "the list");
@@ -92,7 +92,7 @@ export function ScheduleEditorPage() {
     try {
       if (draft.id) await reportsApi.updateSchedule(draft.id, draft.version, draft, reason);
       else await reportsApi.createSchedule(draft);
-      showToast({ type: "success", title: tr("Scheduled report saved"), message: "Changes apply to future occurrences." });
+      showToast({ type: "success", title: tr("Scheduled report saved"), message: tr("Changes apply to future occurrences.") });
       navigate("/report/scheduled");
     } catch (e) {
       setError(reportError(e));
@@ -208,8 +208,8 @@ export function ScheduleEditorPage() {
                 (!template ? (
                   <p className="text-sm text-slate-500">
                     {draft.definitionCode
-                      ? "This template is not available to run now (it may not be approved, or it is outside your scope), so its criteria and columns cannot be changed here."
-                      : "Choose a Report Template on General Information to set its criteria and columns."}
+                      ? tr("This template is not available to run now (it may not be approved, or it is outside your scope), so its criteria and columns cannot be changed here.")
+                      : tr("Choose a Report Template on General Information to set its criteria and columns.")}
                   </p>
                 ) : (
                   <div className="space-y-4">

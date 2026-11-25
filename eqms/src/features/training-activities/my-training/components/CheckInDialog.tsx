@@ -85,7 +85,7 @@ function CameraScanner({ onCode, onError }: { onCode: (code: string) => void; on
         void tick();
       } catch (e) {
         const name = (e as { name?: string }).name;
-        onErrorRef.current(name === "NotAllowedError" ? "The camera is blocked. Allow it for this site in the browser, or type the code." : name === "NotFoundError" ? "No camera was found on this device. Type the code." : "The camera could not be opened. Type the code.");
+        onErrorRef.current(name === "NotAllowedError" ? tr("The camera is blocked. Allow it for this site in the browser, or type the code.") : name === "NotFoundError" ? tr("No camera was found on this device. Type the code.") : tr("The camera could not be opened. Type the code."));
       }
     })();
 

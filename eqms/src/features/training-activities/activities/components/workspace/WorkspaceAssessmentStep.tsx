@@ -102,7 +102,7 @@ export function WorkspaceAssessmentStep({ activityId, scoped, people, caps, mode
       )}
 
       <div role="tabpanel" id="ws-assess-pane-test" aria-labelledby="ws-assess-tab-test" hidden={pane("test")}>
-        {!external && <TrainingExamBlock activityId={activityId} editable={false} hideKey bare onSummary={onTest} />}
+        {!external && <TrainingExamBlock activityId={activityId} hideKey bare onSummary={onTest} />}
       </div>
       <div role="tabpanel" id="ws-assess-pane-packs" aria-labelledby="ws-assess-tab-packs" hidden={pane("packs")}>
         <TrainingPrintedPacks activity={scoped} onChanged={onChanged} bare onSummary={onPacks} />

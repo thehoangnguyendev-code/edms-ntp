@@ -128,10 +128,10 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
   const [advanced, setAdvanced] = useState(false);
   const summary =
     channel === 'EMAIL'
-      ? `${DIGEST_OPTIONS.find((o) => o.value === form.digest)?.label ?? 'Immediately'}${form.quietStart && form.quietEnd ? `, quiet ${form.quietStart} to ${form.quietEnd}` : ', no quiet hours'}`
+      ? `${DIGEST_OPTIONS.find((o) => o.value === form.digest)?.label ?? 'Immediately'}${form.quietStart && form.quietEnd ? `, quiet ${form.quietStart} to ${form.quietEnd}` : tr(', no quiet hours')}`
       : form.escalate
         ? `Escalates after ${form.escalateMinutes || '…'} minutes to ${form.escalationRules.length} ${form.escalationRules.length === 1 ? 'group' : 'groups'}`
-        : 'No escalation';
+        : tr('No escalation');
   const channelsOn = supportedChannels.filter((c) => channelOn(form, c));
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -156,7 +156,7 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
             <span className="min-w-0">
               <span className="block text-sm font-medium text-slate-800">{tr("Advanced")}</span>
               <span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">
-                {channel === 'EMAIL' ? 'When the email is sent: timing and quiet hours.' : 'Escalate the notification when it is not acted on.'} {summary}.
+                {channel === 'EMAIL' ? tr('When the email is sent: timing and quiet hours.') : tr('Escalate the notification when it is not acted on.')} {summary}.
               </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />
@@ -174,7 +174,7 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
         isOpen={advanced}
         onClose={() => setAdvanced(false)}
         onConfirm={() => setAdvanced(false)}
-        title={channel === 'EMAIL' ? 'Advanced: when the email is sent' : 'Advanced: escalation'}
+        title={channel === 'EMAIL' ? tr('Advanced: when the email is sent') : tr('Advanced: escalation')}
         description={tr("What you change here is part of this notification and is saved with Publish.")}
         confirmText="Done"
         showCancel={false}

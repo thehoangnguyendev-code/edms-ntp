@@ -87,7 +87,7 @@ public class TrainingImpactService {
             else { where.append(" and x.impact_status = ?"); args.add(status); }
         }
         if (activityStatus != null && !activityStatus.isBlank()) {
-            if (!List.of("RESERVED", "PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED").contains(activityStatus)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
+            if (!List.of("RESERVED", "PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED").contains(activityStatus)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
             where.append(" and x.activity_status = ?");
             args.add(activityStatus);
         }

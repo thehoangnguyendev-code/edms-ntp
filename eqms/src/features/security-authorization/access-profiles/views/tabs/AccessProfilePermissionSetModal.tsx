@@ -12,13 +12,13 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { MENU_MODULE_ORDER, moduleDisplayName, moduleOrderFromMenu, sortModulesLikeMenu } from "@/utils/moduleDisplay";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 // Includes the action -- two entries can share the same object type + status (e.g. distributing a
 // single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
 // action is what tells them apart and must be visible wherever more than one entry is listed together.
 const formatLifecycleUsage = (u: PermissionLifecycleUsage) =>
-  `${u.objectTypeLabel} · ${u.fromStatus ? statusText(u.fromStatusLabel, u.fromStatus) : "Any state"} (${u.actionLabel})`;
+  `${tr(u.objectTypeLabel)} · ${u.fromStatus ? statusText(u.fromStatusLabel, u.fromStatus) : tr("Any state")} (${tr(u.actionLabel)})`;
 
 const ALL_MODULES = "";
 const PAGE_SIZE = 10;
@@ -78,7 +78,7 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
     }
     const total = found.reduce((sum, m) => sum + m.count, 0);
     return [
-      { label: `All modules (${total})`, value: ALL_MODULES },
+      { label: trFormat("All modules ({count})", { count: total }), value: ALL_MODULES },
       ...sortModulesLikeMenu([...byName.values()], (m) => m.name, menuOrder).map((m) => ({ label: `${m.name} (${m.count})`, value: m.key })),
     ];
   }, [result, moduleFilter, menuOrder]);
@@ -106,11 +106,11 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
       cellClassName: "sticky left-0 z-10 w-10 min-w-0 bg-white px-2 text-center align-top text-slate-500 md:w-16 md:px-4",
       cell: (_row, index) => first + index + 1,
     },
-    { id: "name", header: tr("Permission"), label: tr("Permission"), cellClassName: `${wrap} min-w-[200px] font-medium text-slate-900`, cell: (row) => row.name },
-    { id: "module", header: "Module", label: "Module", cellClassName: `${wrap} min-w-[140px]`, cell: (row) => moduleDisplayName(row.module) },
-    { id: "code", header: "Code", label: "Code", cellClassName: "align-top font-mono text-xs text-slate-600", cell: (row) => row.code },
-    { id: "audit", header: "Audit", label: "Audit", cellClassName: "align-top", cell: (row) => (row.requiresAudit ? <Badge size="xs" color="indigo">{tr("Audit")}</Badge> : none) },
-    { id: "description", header: "Description", label: "Description", cellClassName: `${wrap} min-w-[280px] text-slate-600`, cell: (row) => row.description || none },
+    { id: "name", header: tr("Permission"), label: tr("Permission"), cellClassName: `${wrap} min-w-[200px] font-medium text-slate-900`, cell: (row) => tr(row.name) },
+    { id: "module", header: tr("Module"), label: tr("Module"), cellClassName: `${wrap} min-w-[140px]`, cell: (row) => tr(moduleDisplayName(row.module)) },
+    { id: "code", header: tr("Code"), label: tr("Code"), cellClassName: "align-top font-mono text-xs text-slate-600", cell: (row) => row.code },
+    { id: "audit", header: tr("Audit"), label: tr("Audit"), cellClassName: "align-top", cell: (row) => (row.requiresAudit ? <Badge size="xs" color="indigo">{tr("Audit")}</Badge> : none) },
+    { id: "description", header: tr("Description"), label: tr("Description"), cellClassName: `${wrap} min-w-[280px] text-slate-600`, cell: (row) => (row.description ? tr(row.description) : none) },
     {
       id: "lifecycle", header: tr("Used in workflow"), label: tr("Used in workflow"), cellClassName: `${wrap} min-w-[240px]`,
       cell: (row) => (row.lifecycleUsages.length > 0
@@ -126,10 +126,10 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
       isOpen={open}
       onClose={requestClose}
       onConfirm={() => navigate(ROUTES.SECURITY.PERMISSION_SETS)}
-      title={`Permission Set: ${ps.name}`}
-      description={ps.description}
-      confirmText="Open Permission Sets"
-      cancelText="Close"
+      title={trFormat("Permission Set: {name}", { name: ps.name })}
+      description={ps.description ? tr(ps.description) : undefined}
+      confirmText={tr("Open Permission Sets")}
+      cancelText={tr("Close")}
       size="3xl"
       className="!max-w-6xl"
     >
@@ -164,7 +164,7 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
             isLoading={loading && !result}
             emptyState={failed
               ? <TableEmptyState title={tr("Could not load the permissions")} description={tr("Close this window and open it again.")} />
-              : <TableEmptyState title={searching ? tr("No results") : "No permissions assigned"} description={searching ? "No permission matches the search or the module." : "This Permission Set grants nothing yet."} />}
+              : <TableEmptyState title={searching ? tr("No results") : tr("No permissions assigned")} description={searching ? tr("No permission matches the search or the module.") : tr("This Permission Set grants nothing yet.")} />}
             pagination={total > 0 ? (
               <div className="border-t border-slate-200">
                 <TablePagination

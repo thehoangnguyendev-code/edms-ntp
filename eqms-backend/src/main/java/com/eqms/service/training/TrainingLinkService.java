@@ -46,7 +46,17 @@ public class TrainingLinkService {
                and (a.revision_id = ? or a.id = (select r.training_activity_id from document_revisions r where r.id = ?))
              order by (a.revision_id = ?) desc limit 1
             """, revisionId, revisionId, revisionId);
-        Map<String, Object> result = describe(actor, rows.isEmpty() ? null : rows.getFirst(), revision.getTrainingMode(), revision.getTrainingOrigin());
+        String mode = revision.getTrainingMode();
+        if (rows.isEmpty() && !revision.isRequiresTraining() && revision.getTrainingActivityId() == null) {
+            // a related document of a document whose training is open: it will be read in that training, and covered by it when QA confirms
+            rows = jdbc.queryForList("""
+                select a.* from training_activities a where a.parent_activity_id is null and a.status in ('RESERVED','PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')
+                   and a.document_id in (select rel.source_document_id from document_relations rel where rel.target_document_id = ? and rel.relation_type = 'RELATED')
+                 order by a.created_at desc limit 1
+                """, revision.getDocument().getId());
+            if (!rows.isEmpty()) mode = "COVERING";
+        }
+        Map<String, Object> result = describe(actor, rows.isEmpty() ? null : rows.getFirst(), mode, revision.getTrainingOrigin());
         // A historical revision has no activity: the number typed from its paper record is all there is to show.
         if (rows.isEmpty() && "LEGACY_IMPORT".equals(revision.getTrainingOrigin()) && revision.getTrainingNumber() != null) {
             result.put("trainingNumber", revision.getTrainingNumber());
@@ -77,6 +87,7 @@ public class TrainingLinkService {
         }
         result.put("activityId", activity.get("id"));
         result.put("trainingNumber", activity.get("training_number"));
+        if ("COVERED".equals(mode) || "COVERING".equals(mode)) result.put("coveredBy", activity.get("document_number"));
         result.put("status", activity.get("status"));
         result.put("statusLabel", jdbc.queryForList("select label from training_activity_statuses where code = ?", String.class, activity.get("status")).stream().findFirst().orElse(null));
         result.put("kind", activity.get("kind"));

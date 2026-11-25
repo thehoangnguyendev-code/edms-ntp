@@ -636,7 +636,7 @@ export const AuditTrailReviewView: React.FC = () => {
         onConfirm={() => void createCampaign()}
         title={tr("New Audit Trail Review Campaign")}
         description={tr("Snapshots every audit trail entry created within the review period (EU-GMP Annex 11 §9).")}
-        confirmText="Create Campaign"
+        confirmText={tr("Create Campaign")}
         isLoading={creating}
         confirmDisabled={
           !campaignName.trim() || !reviewPeriodStart || !reviewPeriodEnd

@@ -220,7 +220,7 @@ export const ForcePasswordChangeView: React.FC<ForcePasswordChangeViewProps> = (
       type="button"
       onClick={() => togglePasswordVisibility(field)}
       className={ui.eyeButton}
-      aria-label={showPasswords[field] ? "Hide password" : "Show password"}
+      aria-label={showPasswords[field] ? tr("Hide password") : tr("Show password")}
       tabIndex={-1}
     >
       {showPasswords[field] ? (

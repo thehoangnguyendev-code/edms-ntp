@@ -85,18 +85,18 @@ export function AssessmentPaperPane({ make, ready, blockedReason, revision, heig
   }, [auto, ready, loading, failedNow, revision, view, current]);
 
   const status = loading
-    ? "Updating the paper…"
+    ? tr("Updating the paper…")
     : failedNow
-      ? "The paper could not be made. Try again."
+      ? tr("The paper could not be made. Try again.")
       : !current
         ? ""
         : !stale
-          ? "The paper shows your latest changes."
+          ? tr("The paper shows your latest changes.")
           : !ready
-            ? "The paper is out of date. Complete every question to update it."
+            ? tr("The paper is out of date. Complete every question to update it.")
             : auto
-              ? "Changes not shown yet."
-              : "The paper does not show your latest changes.";
+              ? tr("Changes not shown yet.")
+              : tr("The paper does not show your latest changes.");
   const box = { height, minHeight: "420px" };
   return (
     <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

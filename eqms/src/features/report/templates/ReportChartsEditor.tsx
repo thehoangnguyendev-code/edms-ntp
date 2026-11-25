@@ -1,4 +1,4 @@
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 import { Input } from "@/components/ui/form/ResponsiveForm";
 import { Button } from "@/components/ui/button/Button";
 import { Select } from "@/components/ui/select";
@@ -34,7 +34,7 @@ export function ReportChartsEditor({
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">Analysis charts</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{tr("Analysis charts")}</h3>
         <Button
           size="sm"
           variant="outline-emerald"
@@ -51,27 +51,27 @@ export function ReportChartsEditor({
             ])
           }
         >
-          Add chart
+          {tr("Add chart")}
         </Button>
       </div>
       <div className="space-y-2 text-xs text-slate-500">
         <ol className="list-inside list-decimal space-y-1">
-          <li>Choose a chart type.</li>
-          <li>Choose what to group records by.</li>
-          <li>Choose counts or percentages.</li>
+          <li>{tr("Choose a chart type.")}</li>
+          <li>{tr("Choose what to group records by.")}</li>
+          <li>{tr("Choose counts or percentages.")}</li>
         </ol>
-        <p>Each chart appears on its own PDF page (after the cover, when there is one) and on its own sheet of an XLSX, up to {MOST_CHARTS}. A CSV has no chart. A generated report calculates and draws the charts on the server from the records the person may see.</p>
+        <p>{trFormat("Each chart appears on its own PDF page (after the cover, when there is one) and on its own sheet of an XLSX, up to {max}. A CSV has no chart. A generated report calculates and draws the charts on the server from the records the person may see.", { max: MOST_CHARTS })}</p>
       </div>
-      {charts.length === 0 && <p className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500">This template has no charts.</p>}
+      {charts.length === 0 && <p className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500">{tr("This template has no charts.")}</p>}
       {charts.map((chart, index) => (
         <div key={index} className="space-y-3 border-t border-slate-100 pt-4">
           <label className="block space-y-1.5 text-sm text-slate-700">
-            <span>Chart title</span>
+            <span>{tr("Chart title")}</span>
             <Input className={input} maxLength={100} value={chart.title} onChange={(e) => change(index, { title: e.target.value })} />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <Select
-              label="Chart type"
+              label={tr("Chart type")}
               value={chart.type}
               // A trend by month is offered only when the source has a date field.
               options={REPORT_CHART_TYPES.filter((option) => dateFields.length > 0 || !isTrendChart(option.value)).map(({ value, label }) => ({ value, label }))}
@@ -91,7 +91,7 @@ export function ReportChartsEditor({
             />
             {!isTrendChart(chart.type) && (
               <Select
-                label="Most groups shown"
+                label={tr("Most groups shown")}
                 value={String(chart.maxGroups ?? 20)}
                 options={[5, 10, 15, 20].map((n) => ({ value: String(n), label: String(n) }))}
                 enableSearch={false}
@@ -99,7 +99,7 @@ export function ReportChartsEditor({
               />
             )}
             <Select
-              label="Metric"
+              label={tr("Metric")}
               value={chart.metric}
               options={[
                 { value: "COUNT", label: tr("Number of records") },
@@ -111,14 +111,14 @@ export function ReportChartsEditor({
           </div>
           <p className="text-xs text-slate-500">
             {isTrendChart(chart.type)
-              ? "Dates are grouped by month. Choose a date field."
-              : `Count records with the same ${fields.find((f) => f.code === chart.field)?.name ?? "field value"}.`}{" "}
-            {chart.metric === "PERCENT" ? "All categories total 100%." : "No sums or user formulas are required."}
-            {!isTrendChart(chart.type) ? ' When there are more groups than the number shown, the others are added together as one "Other" bar that says how many groups it holds.' : ""}
+              ? tr("Dates are grouped by month. Choose a date field.")
+              : trFormat("Count records with the same {field}.", { field: fields.find((f) => f.code === chart.field)?.name ?? tr("field value") })}{" "}
+            {chart.metric === "PERCENT" ? tr("All categories total 100%.") : tr("No sums or user formulas are required.")}
+            {!isTrendChart(chart.type) ? ` ${tr('When there are more groups than the number shown, the others are added together as one "Other" bar that says how many groups it holds.')}` : ""}
           </p>
           <ReportChartPreview chart={chart} fieldName={fields.find((f) => f.code === chart.field)?.name ?? "Group"} font={font} />
           <Button size="sm" variant="outline-emerald" onClick={() => onChange(charts.filter((_, i) => i !== index))}>
-            Remove chart
+            {tr("Remove chart")}
           </Button>
         </div>
       ))}

@@ -76,7 +76,12 @@ public class TrainingAssessmentLibraryService {
     }
     public record ApproveRequest(String signatureToken, String reason) {}
     public record ReasonRequest(String reason) {}
-    public record ChooseRequest(UUID assessmentId) {}
+    public record ChooseRequest(UUID assessmentId, UUID sessionId) {
+        public ChooseRequest(UUID assessmentId) { this(assessmentId, null); }
+    }
+
+    /** The reason code for a command that would put an exam file or an answer key into an activity by any way other than choosing an approved assessment of the library. */
+    public static final String LIBRARY_ONLY = "TRAINING_ASSESSMENT_FROM_LIBRARY_ONLY";
     /** What the editor shows now, saved or not: the paper is drawn from it. {@code key} draws the paper of the trainer, with the answers. */
     public record PreviewRequest(String name, String kind, Integer durationMinutes, List<ItemDto> items, boolean key, String code, String revisionNumber, Boolean sideBySide, String essayNumbering) {}
 
@@ -612,8 +617,8 @@ public class TrainingAssessmentLibraryService {
 
     // ------------------------------------------------------------------------------------------------------------------------------ an activity chooses one
 
-    private boolean contentReviewed(UUID activityId) {
-        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", Integer.class, activityId);
+    private boolean contentLocked(UUID activityId) {
+        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", Integer.class, activityId);
         return count != null && count > 0;
     }
 
@@ -621,9 +626,9 @@ public class TrainingAssessmentLibraryService {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.require(actor, "training.activity.organize");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (!Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (!"PLANNED".equals(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
         // The reviewer signs the content as it is: it is chosen before the review, like a file is uploaded before it.
-        if (contentReviewed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        if (contentLocked(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         if ("EXTERNAL".equals(activity.get("kind"))) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         return activity;
     }
@@ -635,6 +640,13 @@ public class TrainingAssessmentLibraryService {
              where s.activity_id = ? and s.status <> 'CANCELLED'
             """, String.class, activity.get("id")).stream().filter(t -> t != null && !t.isBlank()).sorted().toList();
         return topics.isEmpty() ? List.of(String.valueOf(activity.get("training_topics"))) : topics;
+    }
+
+    /** The topics of one session (for the form of that session); the topics of the activity when it has none. */
+    private List<String> topicsOfSession(UUID sessionId, Map<String, Object> activity) {
+        List<String> topics = jdbc.queryForList("select coalesce(nullif(trim(topic_text), ''), document_number) from training_session_topics where session_id = ? order by topic_text", String.class, sessionId)
+                .stream().filter(t -> t != null && !t.isBlank()).toList();
+        return topics.isEmpty() ? topicsOf(activity) : topics;
     }
 
     /** Which box of "Training type" is ticked: a training that supplements another is a re-training; otherwise the kind of the activity. */
@@ -653,12 +665,13 @@ public class TrainingAssessmentLibraryService {
     }
 
     /** A file of the activity for a purpose; the one that was there stays on record, marked as replaced. */
-    private void putMaterial(UserAccount actor, UUID activityId, String purpose, String name, byte[] bytes, String why) {
+    private void putMaterial(UserAccount actor, UUID activityId, UUID sessionId, String purpose, String name, byte[] bytes, String why) {
         UUID id = UUID.randomUUID();
         TrainingFileService.StoredFile stored = files.storeBytes(bytes, name, "training/materials/" + activityId + "/" + id, Set.of("docx"));
-        jdbc.update("insert into training_materials(id, activity_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?)",
-                id, activityId, stored.name(), purpose, stored.name(), stored.provider(), stored.path(), stored.contentType(), stored.size(), stored.sha256(), actor.getId());
-        jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose = ? and removed_at is null and id <> ?", actor.getId(), why, activityId, purpose, id);
+        jdbc.update("insert into training_materials(id, activity_id, session_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?,?)",
+                id, activityId, sessionId, stored.name(), purpose, stored.name(), stored.provider(), stored.path(), stored.contentType(), stored.size(), stored.sha256(), actor.getId());
+        // the file that was there for the same scope (this session, or every session) stays on record, marked as replaced
+        jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose = ? and removed_at is null and id <> ? and session_id is not distinct from ?", actor.getId(), why, activityId, purpose, id, sessionId);
     }
 
     /**
@@ -672,21 +685,33 @@ public class TrainingAssessmentLibraryService {
         Map<String, Object> def = row(request.assessmentId());
         if (!"EFFECTIVE".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_APPROVED");
         boolean checklist = "CHECKLIST".equals(def.get("kind"));
-        Integer matching = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method = ?", Integer.class, activityId, checklist ? "CHECKLIST" : "TEST");
+        // For one session (the assessment of that session) or, with no session, for every session of the activity that is assessed in this way
+        UUID forSession = request.sessionId();
+        Integer matching = forSession == null
+                ? jdbc.queryForObject("select count(*) from training_sessions where activity_id = ? and status <> 'CANCELLED' and assessment_method = ?", Integer.class, activityId, checklist ? "CHECKLIST" : "TEST")
+                : jdbc.queryForObject("select count(*) from training_sessions where id = ? and activity_id = ? and status <> 'CANCELLED' and assessment_method = ?", Integer.class, forSession, activityId, checklist ? "CHECKLIST" : "TEST");
         if (matching == null || matching == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_KIND_MISMATCH");
         List<Map<String, Object>> items = items((UUID) def.get("id"));
         byte[] template = enabledTemplate();
         // what is known for the whole activity is written in the form now; the fields of each trainee when the copies are printed
         Integer minutes = (Integer) def.get("duration_minutes");
-        List<String> topics = topicsOf(activity);
+        List<String> topics = forSession == null ? topicsOf(activity) : topicsOfSession(forSession, activity);
         String number = String.valueOf(activity.get("training_number"));
         String type = trainingTypeOf(activity);
         byte[] exam = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, false, topics, number, type, minutes, restart((String) def.get("essay_numbering"))));
         byte[] key = TrainingAssessmentForm.build(template, new TrainingAssessmentForm.Content(items, checklist, true, topics, number, type, minutes, restart((String) def.get("essay_numbering"))));
         String label = def.get("code") + " " + def.get("revision_number");
         String fileNumber = safe(number);
-        putMaterial(actor, activityId, "EXAM", "APD.0009 - " + fileNumber + ".docx", exam, "Replaced by the assessment " + label + " of the library");
-        putMaterial(actor, activityId, "ANSWER_KEY", "Answer key - " + fileNumber + ".docx", key, "Replaced by the assessment " + label + " of the library");
+        String scope = forSession == null ? "" : " S" + jdbc.queryForObject("select session_no from training_sessions where id = ?", Integer.class, forSession);
+        putMaterial(actor, activityId, forSession, "EXAM", "APD.0009 - " + fileNumber + scope.replace(" ", "-") + ".docx", exam, "Replaced by the assessment " + label + " of the library");
+        putMaterial(actor, activityId, forSession, "ANSWER_KEY", "Answer key - " + fileNumber + scope.replace(" ", "-") + ".docx", key, "Replaced by the assessment " + label + " of the library");
+        if (forSession != null) {
+            jdbc.update("""
+                insert into training_session_assessments(session_id, assessment_def_id, def_code, def_version, def_revision, name, kind, max_score, chosen_by, chosen_at) values (?,?,?,?,?,?,?,?,?, now())
+                on conflict (session_id) do update set assessment_def_id = excluded.assessment_def_id, def_code = excluded.def_code, def_version = excluded.def_version, def_revision = excluded.def_revision,
+                    name = excluded.name, kind = excluded.kind, max_score = excluded.max_score, chosen_by = excluded.chosen_by, chosen_at = now()
+                """, forSession, def.get("id"), def.get("code"), def.get("version_no"), def.get("revision_number"), def.get("name"), def.get("kind"), checklist ? null : total(items), actor.getId());
+        }
         String before = activity.get("assessment_def_code") == null ? null : activity.get("assessment_def_code") + " " + activity.get("assessment_def_revision");
         jdbc.update("update training_activities set assessment_def_id = ?, assessment_def_code = ?, assessment_def_version = ?, assessment_def_revision = ?, assessment_name = ?, assessment_kind = ?, assessment_max_score = ?, assessment_chosen_by = ?, assessment_chosen_at = now(), version = version + 1, updated_at = now() where id = ?",
                 def.get("id"), def.get("code"), def.get("version_no"), def.get("revision_number"), def.get("name"), def.get("kind"), checklist ? null : total(items), actor.getId(), activityId);
@@ -698,7 +723,22 @@ public class TrainingAssessmentLibraryService {
     /** Takes the choice off: the two files that were made from the assessment are marked removed (they stay on record); the organizer may then write or upload another. */
     @Transactional
     public void clear(UserAccount actor, UUID activityId) {
+        clear(actor, activityId, null);
+    }
+
+    @Transactional
+    public void clear(UserAccount actor, UUID activityId, UUID sessionId) {
         Map<String, Object> activity = lockedForContent(actor, activityId);
+        if (sessionId != null) {
+            // one session: its own two files and its row; the activity keeps what the other sessions chose
+            Integer had = jdbc.queryForObject("select count(*) from training_session_assessments where session_id = ?", Integer.class, sessionId);
+            if (had == null || had == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_CHOSEN");
+            jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and session_id = ? and purpose in ('EXAM', 'ANSWER_KEY') and removed_at is null",
+                    actor.getId(), "The assessment of the library was taken off this session", activityId, sessionId);
+            jdbc.update("delete from training_session_assessments where session_id = ?", sessionId);
+            store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_REMOVED", null, null, "The exam file and the answer key of a session were removed");
+            return;
+        }
         if (activity.get("assessment_def_id") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_CHOSEN");
         String label = activity.get("assessment_def_code") + " " + activity.get("assessment_def_revision");
         jdbc.update("update training_materials set removed_at = now(), removed_by = ?, remove_reason = ? where activity_id = ? and purpose in ('EXAM', 'ANSWER_KEY') and removed_at is null",

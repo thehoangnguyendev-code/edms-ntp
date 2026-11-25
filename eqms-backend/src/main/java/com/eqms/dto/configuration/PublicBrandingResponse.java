@@ -62,6 +62,10 @@ public record PublicBrandingResponse(
         /** Which sign-in screen every user sees: CLASSIC (the screen that existed before) or SPLIT (a card with the form on the left and a blue product panel on the right). CLASSIC when the administrator set nothing. */
         String loginLayout,
         /** The right-hand panel of the Split sign-in screen: {intervalSeconds, slides:[{title, subtitle, image}]}; null when the administrator saved no slides (the screen then draws its product preview). */
-        JsonNode loginCarousel
+        JsonNode loginCarousel,
+        /** Selected Loading UI machine identifier; system keeps the pre-existing indicator. */
+        String loadingStyle,
+        /** Shared six-digit hex colour for loading indicators. */
+        String loadingColor
 ) {
 }

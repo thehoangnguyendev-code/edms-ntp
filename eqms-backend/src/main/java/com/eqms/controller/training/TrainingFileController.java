@@ -19,11 +19,9 @@ import java.util.UUID;
 @RequestMapping("/training")
 public class TrainingFileController {
     private final TrainingFileService fileService;
-    private final com.eqms.service.training.TrainingAssessmentEditService edits;
     private final CurrentUserService users;
 
-    public TrainingFileController(TrainingFileService fileService, com.eqms.service.training.TrainingAssessmentEditService edits, CurrentUserService users) {
-        this.edits = edits;
+    public TrainingFileController(TrainingFileService fileService, CurrentUserService users) {
         this.fileService = fileService;
         this.users = users;
     }
@@ -32,14 +30,14 @@ public class TrainingFileController {
     public ResponseEntity<?> list(@PathVariable UUID id) { return ResponseEntity.ok(fileService.list(users.requireCurrentUser(), id)); }
 
     @PostMapping(value = "/activities/{id}/materials", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadMaterial(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam(required = false) String title, @RequestParam(required = false) String purpose) {
-        return ResponseEntity.ok(fileService.uploadMaterial(users.requireCurrentUser(), id, file, title, purpose));
+    public ResponseEntity<?> uploadMaterial(@PathVariable UUID id, @RequestPart("file") MultipartFile file, @RequestParam(required = false) String title, @RequestParam(required = false) String purpose, @RequestParam(required = false) UUID sessionId) {
+        return ResponseEntity.ok(fileService.uploadMaterial(users.requireCurrentUser(), id, file, title, purpose, sessionId));
     }
 
-    public record LinkRequest(String title, String url) {}
+    public record LinkRequest(String title, String url, UUID sessionId) {}
 
     @PostMapping("/activities/{id}/material-links")
-    public ResponseEntity<?> addLink(@PathVariable UUID id, @RequestBody LinkRequest request) { return ResponseEntity.ok(fileService.addLink(users.requireCurrentUser(), id, request.title(), request.url())); }
+    public ResponseEntity<?> addLink(@PathVariable UUID id, @RequestBody LinkRequest request) { return ResponseEntity.ok(fileService.addLink(users.requireCurrentUser(), id, request.title(), request.url(), request.sessionId())); }
 
     @GetMapping("/materials/{id}/view-config")
     public ResponseEntity<?> viewConfig(@PathVariable UUID id) { return ResponseEntity.ok(fileService.viewConfigOfMaterial(users.requireCurrentUser(), id)); }
@@ -69,12 +67,6 @@ public class TrainingFileController {
     @PostMapping(value = "/activities/{id}/paper-evidence/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadScanBatch(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(fileService.uploadScanBatch(users.requireCurrentUser(), id, file));
-    }
-
-    /** Opens the exam template or the answer key of an activity in the editor: the answer holds the editor configuration signed for the document server. */
-    @PostMapping("/activities/{id}/assessment-editor")
-    public ResponseEntity<?> openEditor(@PathVariable UUID id, @RequestBody com.eqms.service.training.TrainingAssessmentEditService.OpenRequest request) {
-        return ResponseEntity.ok(edits.open(users.requireCurrentUser(), id, request));
     }
 
     @PostMapping("/paper-evidence/{id}/receive")

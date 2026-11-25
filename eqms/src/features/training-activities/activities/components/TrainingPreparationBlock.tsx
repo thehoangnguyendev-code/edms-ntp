@@ -72,8 +72,8 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
     if (rules && (rules.testRequired || rules.checklistRequired)) {
       rows.push({
         key: "assessment-form",
-        label: rules.testRequired ? "Assessment test" : "Assessment checklist",
-        hint: rules.testRequired ? "The test of the session is uploaded as a file or written in the system (tab Assessment)." : "The checklist form of the session is uploaded (tab Assessment).",
+        label: rules.testRequired ? tr("Assessment test") : tr("Assessment checklist"),
+        hint: rules.testRequired ? tr("The test of the session is uploaded as a file or written in the system (tab Assessment).") : tr("The checklist form of the session is uploaded (tab Assessment)."),
         ready: (!rules.testRequired || rules.assessmentFormSatisfied || rules.onlineTest) && (!rules.checklistRequired || rules.assessmentFormSatisfied),
       });
     }
@@ -86,7 +86,7 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
       optional: true,
       ready: printing.printed(session.id) > 0,
       extra: paper.canPrint
-        ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printed(session.id) > 0 ? printing.ask({ kind: "print", session }) : void printing.print(session))}>{printing.printed(session.id) > 0 ? "Reprint attendance sheet" : "Print attendance sheet"}</Button>
+        ? <Button size="sm" className="mt-2" disabled={printing.busy} onClick={() => (printing.printed(session.id) > 0 ? printing.ask({ kind: "print", session }) : void printing.print(session))}>{printing.printed(session.id) > 0 ? tr("Reprint attendance sheet") : tr("Print attendance sheet")}</Button>
         : undefined,
     });
     if ((session.assessmentMethod === "TEST" || session.assessmentMethod === "CHECKLIST") && paper.activity.contentRules?.assessmentFormSatisfied !== false) {
@@ -99,7 +99,7 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
         extra: paper.canPrint
           ? (
             <div className="mt-2 flex flex-wrap gap-2">
-              <Button size="sm" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session, format: "pdf" }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? "Reprint test copies" : "Download test copies"}</Button>
+              <Button size="sm" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session, format: "pdf" }) : void printing.printExam(session))}>{printing.printedExam(session.id) > 0 ? tr("Reprint test copies") : tr("Download test copies")}</Button>
               <Button size="sm" variant="outline-emerald" disabled={printing.busy} onClick={() => (printing.printedExam(session.id) > 0 ? printing.ask({ kind: "exam", session, format: "docx" }) : void printing.printExam(session, undefined, "docx"))}>{tr("Download as Word")}</Button>
             </div>
           )

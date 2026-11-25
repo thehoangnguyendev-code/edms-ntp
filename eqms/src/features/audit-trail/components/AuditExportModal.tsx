@@ -40,7 +40,7 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
           "",
           `Timestamp: ${formatDateTime(record.timestamp)}`,
           `User: ${record.user?.fullName || record.fullName || "Not recorded"}`,
-          `Module: ${record.module ? formatAuditModuleLabel(record.module) : "Not recorded"}`,
+          `Module: ${record.module ? formatAuditModuleLabel(record.module) : tr("Not recorded")}`,
           `Action: ${formatAuditActionLabel(record.action)}`,
           `Entity: ${record.entityLabel || record.entityName || "Not recorded"}`,
           `Description: ${record.description || "Not recorded"}`,
@@ -57,7 +57,7 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
         showToast({
           type: "error",
           title: tr("Export failed"),
-          message: error instanceof Error ? error.message : "Could not export audit record as PDF.",
+          message: error instanceof Error ? error.message : tr("Could not export audit record as PDF."),
           duration: 3500,
         });
       } finally {

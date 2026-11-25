@@ -104,7 +104,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             onConfirm={handleSave}
             title={tr("Setup Approver")}
             description={tr("Select the final approver for this document.")}
-            confirmText="Commit Selection"
+            confirmText={tr("Commit Selection")}
             confirmDisabled={!selectedId}
             size="lg"
         >

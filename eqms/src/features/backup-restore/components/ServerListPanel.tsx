@@ -223,7 +223,7 @@ export function ServerListPanel<T>({
               onRowClick={onRowClick}
               rowClassName={rowClassName}
               isLoading={loading}
-              emptyState={<TableEmptyState title={error ? "The list could not be loaded" : emptyTitle} description={error || emptyDescription} />}
+              emptyState={<TableEmptyState title={error ? tr("The list could not be loaded") : emptyTitle} description={error || emptyDescription} />}
               pagination={
                 totalItems > 0 ? (
                   <div className="border-t border-slate-200">

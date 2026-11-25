@@ -115,7 +115,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 nationality: user.nationality || '',
                 accessProfiles: (user.accessProfileNames && user.accessProfileNames.length > 0)
                     ? user.accessProfileNames.join(', ')
-                    : 'Unassigned',
+                    : tr('Unassigned'),
                 email: user.email || '',
                 phone: user.phone || '',
             };
@@ -152,7 +152,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             return;
         }
         if (!isAvatarFileWithinLimit(file)) {
-            showToast({ type: 'error', title: 'Error', message: 'File size exceeds 5MB limit.' });
+            showToast({ type: 'error', title: 'Error', message: tr('File size exceeds 5MB limit.') });
             return;
         }
 

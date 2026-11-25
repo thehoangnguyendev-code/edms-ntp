@@ -16,7 +16,7 @@ import { tr } from "@/i18n";
 
 type Scope = "matrix" | "business_unit" | "department" | "individual" | "outside";
 export interface Outsider { name: string; org: string }
-export interface AssigneeSelection { personIds: string[]; outsiders: Outsider[] }
+export interface AssigneeSelection { personIds: string[]; outsiders: Outsider[]; /** The people chosen, with their names (not for a person from outside). */ people?: TrainingPerson[] }
 
 /** A business unit or a department as a card with its number of people; a click selects or clears it. */
 function GroupCard({ group, selected, onToggle, icon }: { group: TrainingGroup; selected: boolean; onToggle: () => void; icon: React.ReactNode }) {
@@ -93,7 +93,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
   }, [scope, matrixPeople, chosenMatrix, inUnits, inDepartments, filledOutsiders, picked]);
   const key = scope === "outside" ? filledOutsiders.map((o) => `${o.name}|${o.org}`).join(",") : resolved.map((p) => p.id).join(",");
   useEffect(() => {
-    onChange(scope === "outside" ? { personIds: [], outsiders: filledOutsiders.map((o) => ({ name: o.name.trim(), org: o.org.trim() })) } : { personIds: resolved.map((p) => p.id), outsiders: [] });
+    onChange(scope === "outside" ? { personIds: [], outsiders: filledOutsiders.map((o) => ({ name: o.name.trim(), org: o.org.trim() })) } : { personIds: resolved.map((p) => p.id), outsiders: [], people: resolved });
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, key]);
@@ -114,7 +114,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
     { id: "name", header: "Full Name", cell: (p) => <span className="font-medium text-slate-900">{p.fullName}</span> },
     { id: "email", header: "Email", cell: (p) => p.email ?? "—" },
     { id: "position", header: "Position", cell: (p) => p.position ?? "—" },
-    { id: "department", header: scope === "outside" ? "Organization" : "Department", cell: (p) => p.department ?? "—" },
+    { id: "department", header: scope === "outside" ? tr("Organization") : "Department", cell: (p) => p.department ?? "—" },
     { id: "unit", header: tr("Business Unit"), cell: (p) => p.businessUnit || "—" },
   ];
 

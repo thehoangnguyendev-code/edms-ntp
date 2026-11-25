@@ -58,9 +58,8 @@ public final class NotificationPlaceholderCatalog {
         one(USERS, "recipientName", "Recipient name", "Nguyen Van A");
         one(USERS, "recipientEmail", "Recipient e-mail", "a.nguyen@company.example");
         one(USERS, "recipientDate", "Date of the recipient's action", "12/11/2026");
-        one(USERS, "userName", "User name (full name)", "Nguyen Van A");
         one(USERS, "username", "Username", "a.nguyen");
-        one(USERS, "fullName", "Full name", "Nguyen Van A");
+        one(USERS, "fullName", "Full name (of the person the notice is about)", "Nguyen Van A");
         one(USERS, "displayName", "Display name", "Nguyen Van A");
         one(USERS, "employeeCode", "Employee code", "NTP.0001");
         one(USERS, "userEmail", "User e-mail", "a.nguyen@company.example");
@@ -160,6 +159,17 @@ public final class NotificationPlaceholderCatalog {
         one(TRAINING, "trainingPlannedDate", "Planned date of the training", "20/11/2026");
         one(TRAINING, "trainingPeriodEndDate", "End of the training period", "30/11/2026");
         one(TRAINING, "trainingCompletionDate", "Completion date of the training", "25/11/2026");
+        one(TRAINING, "sessionNo", "Session", "Session 2");
+        one(TRAINING, "sessionTopic", "Topic of the session", "SOP.0003 Training management");
+        one(TRAINING, "sessionDate", "Day of the session", "27/11/2026");
+        one(TRAINING, "oldDate", "Previous day of the session", "27/11/2026");
+        one(TRAINING, "newDate", "New day of the session", "02/12/2026");
+        one(TRAINING, "venue", "Place of the session", "Meeting room 2");
+        one(TRAINING, "trainerName", "Trainer of the session", "Tran Thi B");
+        one(TRAINING, "previousTrainerName", "Trainer who was replaced", "Tran Thi B");
+        one(TRAINING, "newTrainerName", "Trainer who takes the session over", "Le Van C");
+        one(TRAINING, "reason", "Reason given by the person who made the change", "The room is not available");
+        one(TRAINING, "changedBy", "Person who made the change", "Nguyen The Hoang");
 
         // Knowledge Base
         one(KNOWLEDGE, "knowledgeBase", "Knowledge Base", "Knowledge Base");
@@ -170,6 +180,9 @@ public final class NotificationPlaceholderCatalog {
 
         // Security and Access
         one(SECURITY, "roleName", "Role name", "Document Controller");
+        one(SECURITY, "profileName", "Access profile name", "QA Specialist");
+        one(SECURITY, "changeType", "What happened to the profile", "updated");
+        one(SECURITY, "endDate", "End of the time-limited access", "30/11/2026");
         one(SECURITY, "suspendReason", "Suspension reason", "Long leave");
         one(SECURITY, "suspendedAt", "Suspended at", "12/11/2026 08:00:00");
         one(SECURITY, "terminatedAt", "Terminated at", "12/11/2026 08:00:00");

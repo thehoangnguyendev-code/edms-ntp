@@ -32,6 +32,12 @@ const STATUS_BADGE_CLASS: Record<BadgeColor, string> = {
   indigo: "bg-indigo-50 text-indigo-700 border-indigo-200/70",
   teal: "bg-teal-50 text-teal-700 border-teal-200/70",
   gray: "bg-gray-50 text-gray-600 border-gray-200/70",
+  violet: "bg-violet-50 text-violet-700 border-violet-200/70",
+  lime: "bg-lime-50 text-lime-700 border-lime-200/70",
+  pink: "bg-pink-50 text-pink-700 border-pink-200/70",
+  fuchsia: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/70",
+  yellow: "bg-yellow-50 text-yellow-700 border-yellow-200/70",
+  green: "bg-green-50 text-green-700 border-green-200/70",
 };
 
 const normalizeStatusCode = (status?: string): string =>

@@ -382,11 +382,11 @@ export const RoleSetupWizardView: React.FC = () => {
           <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2">
             <div>
               <label className={labelClass}>{tr("Created By")}</label>
-              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={tr(AFTER_CREATION)} />
             </div>
             <div>
               <label className={labelClass}>{tr("Created Time")}</label>
-              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={tr(AFTER_CREATION)} />
             </div>
 
             <div>
@@ -412,7 +412,7 @@ export const RoleSetupWizardView: React.FC = () => {
             </div>
             <div>
               <label className={labelClass}>{tr("Code (Immutable)")}</label>
-              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={AFTER_CREATION} />
+              <input className={cn(inputClass, CONTROL_STATE_CLASSES.readonly)} disabled placeholder={tr(AFTER_CREATION)} />
             </div>
 
             <div>
@@ -480,7 +480,7 @@ export const RoleSetupWizardView: React.FC = () => {
                 onClear={() => { setSelectedSetIds(new Set()); setSelectedSetDetails(new Map()); }}
                 searchPlaceholder={tr("Search permission sets by name, code, description…")}
                 noun="permission set"
-                requiredHint="Select at least one permission set"
+                requiredHint={tr("Select at least one permission set")}
                 emptyTitle={tr("No permission sets found")}
                 columns={({ sortOf, offset }) => [
                   { id: "no", header: "No.", label: "No.", locked: true, headerClassName: "w-14", cellClassName: "w-14 text-xs tabular-nums text-slate-500", cell: (_set, index) => offset + index + 1 },

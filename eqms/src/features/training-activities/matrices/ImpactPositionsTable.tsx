@@ -55,7 +55,7 @@ export function ImpactPositionsTable({ activityId, selected, onChange }: { activ
           header: <Checkbox checked={allShown} onChange={toggleShown} aria-label={tr("Select the Work Positions shown")} />,
           cell: (p) => <Checkbox checked={chosen.has(p.id)} onChange={(on) => toggle(p.id, Boolean(on))} aria-label={`Select ${p.name}`} />,
         }}
-        emptyState={<TableEmptyState title={table.searchQuery ? "No Work Position matches" : tr("No Work Position")} description={table.searchQuery ? "Change the search." : "The department has no Work Position."} />}
+        emptyState={<TableEmptyState title={table.searchQuery ? "No Work Position matches" : tr("No Work Position")} description={table.searchQuery ? tr("Change the search.") : "The department has no Work Position."} />}
         scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
         pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} itemsPerPageOptions={[5]} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
       />

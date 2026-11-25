@@ -31,11 +31,11 @@ public class TrainingParticipantReportMetadataProvider implements ReportMetadata
         column("state", "State", ReportQueryKit.labelCase("p.state", "INVITED", "Invited", "ATTENDED", "Attended", "ONLINE", "Online", "ABSENT", "Absent",
                 "READ_CONFIRMED", "Read and confirmed"));
         column("result", "Result", ReportQueryKit.labelCase("p.result", "PENDING", "Pending", "PASSED", "Passed", "FAILED", "Failed"));
-        column("activityStatus", "Activity Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "NOTIFIED", "Notified",
+        column("activityStatus", "Activity Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "PENDING_APPROVAL", "Pending Approval", "NOTIFIED", "Notified",
                 "IN_PROGRESS", "In Progress", "PENDING_QA_CONFIRMATION", "Pending QA Confirmation", "COMPLETED", "Completed", "CANCELLED", "Closed - Cancelled"));
         column("organizer", "Organizing Department", "dep.name");
         column("dueDate", "Due Date", "a.due_date");
-        column("daysOverdue", "Days Overdue", "case when a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state in ('INVITED','ABSENT') "
+        column("daysOverdue", "Days Overdue", "case when a.status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state in ('INVITED','ABSENT') "
                 + "and a.due_date < current_date then current_date - a.due_date else 0 end");
         column("notifiedAt", "Notified At", ReportQueryKit.timestamp("p.notified_at"));
         column("readConfirmedAt", "Read Confirmed At", ReportQueryKit.timestamp("p.read_confirmed_at"));

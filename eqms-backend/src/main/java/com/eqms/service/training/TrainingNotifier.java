@@ -16,6 +16,10 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Notices of Training Management: an in-app notice and an e-mail to the person who has something to do (a step to sign, a training to attend, an assignment to
@@ -32,6 +36,22 @@ public class TrainingNotifier {
     private final JdbcTemplate jdbc;
     private final NotificationDispatcher dispatcher;
     private final TransactionTemplate separate;
+    /** One thread for every batch of notices: a large list is worked through one person at a time, in the order sent, and never holds the request or crowds the mail outbox. */
+    private static final ExecutorService BATCH = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), runnable -> {
+        Thread thread = new Thread(runnable, "training-notice-batch");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /** One person of a batch; the key makes the notice idempotent (the same key is never sent twice to the same person and channel). */
+    public record Notice(UserAccount recipient, String title, String message, String dedupeKey, Map<String, String> extra) {
+        public Notice(UserAccount recipient, String title, String message, String dedupeKey) {
+            this(recipient, title, message, dedupeKey, null);
+        }
+    }
+
+    /** Where a person who is on a list of a training opens the notice: their own screen of tasks (the screens of the activity need the permission to view activities). */
+    public static final String MY_TRAINING = "/training-management/my-training/tasks";
 
     public TrainingNotifier(JdbcTemplate jdbc, NotificationDispatcher dispatcher, PlatformTransactionManager transactions) {
         this.jdbc = jdbc;
@@ -63,7 +83,8 @@ public class TrainingNotifier {
     public static String stepText(String stepCode) {
         return switch (stepCode == null ? "" : stepCode) {
             case "CONTENT_REVIEW" -> "review the training content and test";
-            case "CONTENT_APPROVE" -> "approve the training content and test";
+            case "CONTENT_APPROVE_FIRST" -> "approve the training content and test (first approval)";
+            case "CONTENT_APPROVE" -> "approve the training content and test (second approval)";
             case "ACTIVITY_COMPLETE" -> "confirm that the training is completed";
             case "MATRIX_APPROVE" -> "approve a training matrix";
             case "JOB_ASSIGN_EXCEPTION" -> "approve an exception to a job assignment";
@@ -78,6 +99,33 @@ public class TrainingNotifier {
         };
     }
 
+    /**
+     * Many notices of one kind (the invitation of every participant of a training). They are handed to a single background thread once the surrounding transaction has committed, so the
+     * person who pressed the button does not wait for them; each goes through the same path as {@link #send}, with its own transaction, log row and key. Never throws.
+     */
+    public void sendBatch(String event, UserAccount sender, String objectType, UUID objectId, List<Notice> notices) {
+        if (notices == null || notices.isEmpty()) return;
+        List<Notice> work = List.copyOf(notices);
+        Runnable submit = () -> BATCH.execute(() -> {
+            for (Notice notice : work) {
+                if (notice.recipient() == null || notice.recipient().getId() == null) continue;
+                try {
+                    separate.executeWithoutResult(status -> deliver(event, notice.recipient(), sender, notice.title(), notice.message(), objectType, objectId, notice.dedupeKey(), null, null, notice.extra()));
+                } catch (Exception failure) {
+                    log.warn("Training notice {} to {} was not delivered: {}", event, notice.recipient().getId(), failure.getMessage());
+                }
+            }
+        });
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { submit.run(); }
+            });
+        } else {
+            submit.run();
+        }
+    }
+
     /** Sends the notice when the surrounding transaction has committed (at once when there is none). Never throws. */
     public void send(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey) {
         send(event, recipient, sender, title, message, objectType, objectId, dedupeKey, null, null);
@@ -85,10 +133,19 @@ public class TrainingNotifier {
 
     /** The same notice, whose e-mail carries a file (the in-app notice has none). */
     public void send(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment) {
+        send(event, recipient, sender, title, message, objectType, objectId, dedupeKey, attachmentName, attachment, null);
+    }
+
+    /** The same notice with more placeholders for the wording an administrator edits (the session, the old and the new day, the trainer ...). */
+    public void sendWith(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, Map<String, String> extra) {
+        send(event, recipient, sender, title, message, objectType, objectId, null, null, null, extra);
+    }
+
+    private void send(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment, Map<String, String> extra) {
         if (recipient == null || recipient.getId() == null) return;
         Runnable work = () -> {
             try {
-                separate.executeWithoutResult(status -> deliver(event, recipient, sender, title, message, objectType, objectId, dedupeKey, attachmentName, attachment));
+                separate.executeWithoutResult(status -> deliver(event, recipient, sender, title, message, objectType, objectId, dedupeKey, attachmentName, attachment, extra));
             } catch (Exception failure) {
                 log.warn("Training notice {} to {} was not delivered: {}", event, recipient.getId(), failure.getMessage());
             }
@@ -103,13 +160,14 @@ public class TrainingNotifier {
         }
     }
 
-    private void deliver(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment) {
+    private void deliver(String event, UserAccount recipient, UserAccount sender, String title, String message, String objectType, UUID objectId, String dedupeKey, String attachmentName, byte[] attachment, Map<String, String> extra) {
         boolean withFile = attachment != null;
         UUID inApp = claim(event, recipient, "IN_APP", title, objectType, objectId, dedupeKey);
         UUID mail = claim(event, recipient, "EMAIL", title, objectType, objectId, dedupeKey);
         if (inApp == null && mail == null) return; // the same keyed notice was already sent
         Map<String, String> variables = NotificationDispatcher.noticeVariables(title, message, path(objectType, objectId));
         addContext(variables, sender, objectType, objectId);
+        if (extra != null) extra.forEach((k, v) -> { if (v != null) variables.put(k, v); });
         variables.put("recipientName", StringUtils.hasText(recipient.getFullName()) ? recipient.getFullName() : String.valueOf(recipient.getUsername()));
         NotificationDispatcher.Outcome outcome;
         try {

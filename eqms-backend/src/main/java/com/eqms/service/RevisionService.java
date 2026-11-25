@@ -1941,6 +1941,7 @@ public class RevisionService {
         List<DocumentRevisionRecord> bundle = new java.util.ArrayList<>();
         bundle.add(revision);
         bundle.addAll(relatedRevisionsToPublish);
+        coverRelatedRevisions(revision, relatedRevisionsToPublish, currentUser);
 
         if (forcedWithoutRelated) {
             auditTrailService.logAs(
@@ -1991,6 +1992,41 @@ public class RevisionService {
         }
 
         return toDetailResponse(revision);
+    }
+
+    /**
+     * The Related Documents published with a document whose training is complete were read in that training (it is their material) and need none of their own: the revision carries the
+     * Training Number, the days and the link of that training, so that its Document Details show the evidence (owner decision 2026-11-24, DEC-TRAINING-2026-11-24-8). A related revision that
+     * needs training itself, or that has a training of its own, is left as it is.
+     */
+    private void coverRelatedRevisions(DocumentRevisionRecord parent, List<DocumentRevisionRecord> related, UserAccount actor) {
+        if (parent.getTrainingActivityId() == null || parent.getTrainingCompletionDate() == null || !parent.isRequiresTraining()) return;
+        for (DocumentRevisionRecord covered : related) {
+            if (covered.isRequiresTraining() || covered.getTrainingActivityId() != null) continue;
+            covered.setTrainingActivityId(parent.getTrainingActivityId());
+            covered.setTrainingNumber(parent.getTrainingNumber());
+            covered.setTrainingMode("COVERED");
+            covered.setTrainingPlannedDate(parent.getTrainingPlannedDate());
+            covered.setTrainingPeriodEndDate(parent.getTrainingPeriodEndDate());
+            covered.setTrainingCompletionDate(parent.getTrainingCompletionDate());
+            revisionRepository.save(covered);
+            auditTrailService.logAs(
+                    actor,
+                    "REVISION",
+                    covered.getRevisionName(),
+                    covered.getId(),
+                    "TRAINING_COVERED",
+                    "READY_FOR_PUBLISHING",
+                    "READY_FOR_PUBLISHING",
+                    "Read in the training " + parent.getTrainingNumber() + " of " + safeDocumentLabel(parent.getDocument()) + " (completed on " + DateTimeFormatUtils.formatDate(parent.getTrainingCompletionDate())
+                            + "); no training of its own is required.",
+                    List.of(
+                            new AuditTrailChangeResponse("Training Number", "-", parent.getTrainingNumber()),
+                            new AuditTrailChangeResponse("Covered By Document", "-", safeDocumentLabel(parent.getDocument())),
+                            new AuditTrailChangeResponse("Training Completion Date", "-", DateTimeFormatUtils.formatDate(parent.getTrainingCompletionDate()))
+                    )
+            );
+        }
     }
 
     private String relatedNotReadyMessage(RelatedPublishBatchResolution resolution) {

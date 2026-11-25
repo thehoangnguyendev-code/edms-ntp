@@ -41,7 +41,7 @@ export function ReportTemplateRunPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
-        title="Create Report"
+        title={tr("Create Report")}
         breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, { label: tr("Report Library"), onClick: () => navigate("/report/templates") })}
         actions={
           <Button size="sm" variant="outline" className="whitespace-nowrap touch-manipulation" onClick={() => navigate("/report/templates")}>

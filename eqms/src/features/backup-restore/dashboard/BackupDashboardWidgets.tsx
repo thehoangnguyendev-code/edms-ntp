@@ -118,7 +118,7 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
     <Card aria-label={tr("Needs attention")} role="region">
       <CardHeader
         title={tr("Needs attention")}
-        subtitle={alerts.length === 0 ? "Every backup control is within its target" : `${errors} need action · ${warnings} to review · ${groups.length} kind${groups.length === 1 ? "" : "s"} of problem`}
+        subtitle={alerts.length === 0 ? tr("Every backup control is within its target") : `${errors} need action · ${warnings} to review · ${groups.length} kind${groups.length === 1 ? "" : "s"} of problem`}
         badge={
           <Badge color={errors > 0 ? "red" : alerts.length > 0 ? "amber" : "emerald"} size="sm">
             {alerts.length === 0 ? "All clear" : `${alerts.length} open`}
@@ -141,7 +141,7 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
             {(hidden > 0 || showAll) && groups.length > GROUPS_SHOWN && (
               <div className="mt-3">
                 <Button size="sm" variant="ghost" onClick={() => setShowAll((value) => !value)}>
-                  {showAll ? "Show fewer" : `Show ${hidden} more kind${hidden === 1 ? "" : "s"} of problem`}
+                  {showAll ? tr("Show fewer") : `Show ${hidden} more kind${hidden === 1 ? "" : "s"} of problem`}
                 </Button>
               </div>
             )}
@@ -206,7 +206,7 @@ const StoreScrubCard: React.FC = () => {
     setStarting(true);
     try {
       await backupRestoreApi.startStoreScrub();
-      showToast({ type: "success", title: tr("Check started"), message: "The result appears here when it ends." });
+      showToast({ type: "success", title: tr("Check started"), message: tr("The result appears here when it ends.") });
       window.setTimeout(() => setReloadKey((k) => k + 1), 4000);
     } catch (e) {
       showToast({ type: "error", title: tr("The check was not started"), message: getApiErrorMessage(e, "The request was refused.") });
@@ -224,7 +224,7 @@ const StoreScrubCard: React.FC = () => {
         badge={
           run ? (
             <Badge color={run.status === "RUNNING" ? "blue" : run.status === "FAILED" || differences > 0 ? "red" : "emerald"} size="sm">
-              {run.status === "RUNNING" ? "Running" : run.status === "FAILED" ? "Failed" : differences > 0 ? "Differences found" : "No differences"}
+              {run.status === "RUNNING" ? "Running" : run.status === "FAILED" ? "Failed" : differences > 0 ? tr("Differences found") : tr("No differences")}
             </Badge>
           ) : undefined
         }
@@ -238,7 +238,7 @@ const StoreScrubCard: React.FC = () => {
       ) : (
         <dl className="divide-y divide-slate-100 px-4 pb-3 pt-2 text-sm">
           <Fact label={tr("Last check")}>{formatDateTime(run.finishedAt ?? run.startedAt)}</Fact>
-          <Fact label={tr("Started by")}>{run.trigger === "SCHEDULED" ? "The weekly schedule" : run.requestedBy}</Fact>
+          <Fact label={tr("Started by")}>{run.trigger === "SCHEDULED" ? tr("The weekly schedule") : run.requestedBy}</Fact>
           <Fact label={tr("Files read")}>
             <span className="tabular-nums">{run.checkedFiles}</span>
           </Fact>
@@ -284,7 +284,7 @@ const ManualCopyCard: React.FC = () => {
     return (
       <Card aria-label={tr("Manual copy")} role="region">
         <CardHeader title={tr("Manual copy")} subtitle={tr("The copy a person makes by hand.")} />
-        <p className="px-4 pb-4 pt-3 text-sm text-slate-500">{hidden ? "The manual copy status could not be read." : "Reading…"}</p>
+        <p className="px-4 pb-4 pt-3 text-sm text-slate-500">{hidden ? tr("The manual copy status could not be read.") : "Reading…"}</p>
       </Card>
     );
   }
@@ -404,7 +404,7 @@ const LedgerWidget: React.FC = () => (
           <Fact label={tr("Events checked")}>
             <span className="tabular-nums">{overview.ledger.checked}</span>
           </Fact>
-          <Fact label={tr("Compared with the copy outside the database")}>{overview.ledger.fileCopyCompared ? "Yes" : "No copy found"}</Fact>
+          <Fact label={tr("Compared with the copy outside the database")}>{overview.ledger.fileCopyCompared ? "Yes" : tr("No copy found")}</Fact>
         </dl>
       </Card>
     )}
@@ -422,7 +422,7 @@ export function useBackupDashboardWidgets(): DashboardWidget[] {
     () =>
       hasPermission("backup.module.view")
         ? [
-            { id: "backup-last-success", label: tr("Last successful backup"), width: "half", content: <KpiWidget label={tr("Last successful backup")} title={tr("Last successful backup")} accent={OK} cell={(o) => ({ title: tr("Last successful backup"), accent: o.lastCompleted ? OK : BAD, value: o.lastCompleted ? formatDateTime(o.lastCompleted.finishedAt) : "None yet", footValue: o.lastCompleted ? formatBytes(o.lastCompleted.sizeBytes) : "—", footLabel: o.lastCompleted ? `backup ${o.lastCompleted.backupNumber}` : "no backup has completed" })} /> },
+            { id: "backup-last-success", label: tr("Last successful backup"), width: "half", content: <KpiWidget label={tr("Last successful backup")} title={tr("Last successful backup")} accent={OK} cell={(o) => ({ title: tr("Last successful backup"), accent: o.lastCompleted ? OK : BAD, value: o.lastCompleted ? formatDateTime(o.lastCompleted.finishedAt) : "None yet", footValue: o.lastCompleted ? formatBytes(o.lastCompleted.sizeBytes) : "—", footLabel: o.lastCompleted ? `backup ${o.lastCompleted.backupNumber}` : tr("no backup has completed") })} /> },
             { id: "backup-failed", label: tr("Failed backups"), width: "half", content: <KpiWidget label={tr("Failed backups")} title={tr("Failed backups")} accent={OK} cell={(o) => ({ title: tr("Failed backups"), accent: o.failed > 0 ? BAD : OK, value: o.failed, footValue: o.openAlerts.length, footLabel: "open alerts" })} /> },
             { id: "backup-attention", label: tr("Backup: needs attention"), width: "half", content: <AttentionWidget /> },
             { id: "backup-daily", label: tr("Backup runs, last 30 days"), width: "half", content: <DailyWidget /> },

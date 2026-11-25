@@ -151,7 +151,7 @@ export function WizardPickerTable<T>({
         isLoading={loading && rows.length === 0}
         onRowClick={onToggle}
         rowClassName={(row) => (selectedIds.has(getId(row)) ? "bg-emerald-50/60 cursor-pointer" : "cursor-pointer")}
-        emptyState={<TableEmptyState title={emptyTitle} description={search.trim() ? "Try adjusting your search." : undefined} />}
+        emptyState={<TableEmptyState title={emptyTitle} description={search.trim() ? tr("Try adjusting your search.") : undefined} />}
         pagination={
           total > 0 ? (
             <div className="border-t border-slate-200">

@@ -240,7 +240,7 @@ export function TrainingJobDetailPage() {
       cell: (i) => (i.annualRequired ? "Yes" : "No"),
     },
     { id: "role", header: tr("Work Position"), cell: (i) => i.jobRoleName ?? "—" },
-    { id: "source", header: tr("Required by"), cell: (i) => (i.source === "CHOSEN" ? "Ticked for this assignment" : i.source === "FACTORY" ? "All employees (Quality Assurance)" : "Matrix") },
+    { id: "source", header: tr("Required by"), cell: (i) => (i.source === "CHOSEN" ? tr("Ticked for this assignment") : i.source === "FACTORY" ? tr("All employees (Quality Assurance)") : "Matrix") },
     { id: "last", header: tr("Last trained"), cell: (i) => day(i.lastDone) },
     {
       id: "status",
@@ -704,7 +704,7 @@ function ReasonDialog({
       onConfirm={() => onSave(reason.trim())}
       title={tr("Cancel Job Assignment")}
       description={tr("The reason stays in the record.")}
-      confirmText="Cancel assignment"
+      confirmText={tr("Cancel assignment")}
       confirmVariant="destructive"
       isLoading={busy}
       confirmDisabled={!reason.trim()}

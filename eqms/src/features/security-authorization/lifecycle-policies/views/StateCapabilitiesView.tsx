@@ -106,7 +106,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load state policies" });
+      showToast({ type: "error", message: tr("Failed to load state policies") });
     } finally {
       setLoading(false);
     }

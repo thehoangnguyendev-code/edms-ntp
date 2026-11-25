@@ -31,7 +31,7 @@ interface TabFields {
 const FIELDS: Record<GeneralTabId, TabFields> = {
   branding: {
     top: ['systemName', 'systemDisplayName', 'systemHeaderTitle', 'systemFooterLeft', 'systemFooterRight', 'footerShowOnDesktop', 'footerShowOnMobile', 'systemLogo', 'systemFavicon', 'systemSidebarCollapsedLogo', 'appIcon', 'appIconBackground', 'appShortName'],
-    appearance: ['systemSidebarCollapsedLogo'],
+    appearance: ['systemSidebarCollapsedLogo', 'loadingStyle', 'loadingColor'],
   },
   'sign-in': { top: [], appearance: ['loginLayout', 'loginCarousel', 'authBackground'] },
   appearance: {

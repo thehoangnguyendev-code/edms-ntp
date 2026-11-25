@@ -2,8 +2,10 @@ import { useState, type ReactNode } from "react";
 import { CloudUpload, Download, ExternalLink, Eye, Link2, Lock, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { Select } from "@/components/ui/select/Select";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { DataTable, type DataTableAction, type DataTableColumn, type DataTableColumnLayout } from "@/components/ui/table";
 import { DropdownMenuItem, PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -30,6 +32,8 @@ export interface MaterialItem {
   staged?: boolean;
   removedAt?: string | null;
   removeReason?: string | null;
+  /** Whom the material is for: "All sessions" or "S2". Left out for an activity with one session. */
+  sessionLabel?: string | null;
 }
 
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx,.mp4";
@@ -67,6 +71,8 @@ interface Props {
   /** Only for a file that is on record. */
   onPreview?: (item: MaterialItem) => void;
   onDownload?: (item: MaterialItem) => void;
+  /** The session a new material is for ("Use for"); left out for an activity with one session. */
+  scope?: { label: string; value: string; options: { label: string; value: string }[]; onChange: (value: string) => void };
 }
 
 /**
@@ -122,6 +128,13 @@ export function TrainingMaterialsBoard(props: Props) {
             </div>
           )}
         </div>
+        {props.scope && (
+          <div className="md:col-span-2">
+            <FormField label={props.scope.label}>
+              <Select value={props.scope.value} onChange={props.scope.onChange} enableSearch={false} options={props.scope.options} />
+            </FormField>
+          </div>
+        )}
         <div className="md:col-span-2">
           <FormField label={tr("Title")}>
             <Input value={form.title} maxLength={255} placeholder={tr("Shown in the list of materials")} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -196,6 +209,7 @@ export function TrainingMaterialsBoard(props: Props) {
       cell: (m) => (
         <div className="max-w-80 whitespace-normal">
           {m.title}
+          {m.sessionLabel && <span className="ml-2 align-middle"><Badge color="slate">{m.sessionLabel}</Badge></span>}
           {removedNote(m)}
         </div>
       ),
@@ -237,18 +251,19 @@ export function TrainingMaterialsBoard(props: Props) {
   return (
     <div className="space-y-4">
       {layout === "TILES" && canAdd && (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">{tr("Add material")}</h3>
-            <p className="mt-0.5 text-xs text-slate-500">{tr("Drop a file or paste a link. Files are fingerprinted when they are saved.")}</p>
-          </div>
+        <FormSection
+          title={tr("Add material")}
+          description={tr("Drop a file or paste a link. Files are fingerprinted when they are saved.")}
+          icon={<Plus className="h-4 w-4" aria-hidden="true" />}
+          contentClassName="space-y-4 p-4 md:p-5"
+        >
           {fields}
           <div>
             <Button size="sm" variant="outline-emerald" loading={busy || !!sending} disabled={!ready} onClick={() => void add()}>
               {form.mode === "link" ? "Add link" : tr("Add material")}
             </Button>
           </div>
-        </div>
+        </FormSection>
       )}
       {head}
       {layout === "TABLE" ? (
@@ -275,6 +290,7 @@ export function TrainingMaterialsBoard(props: Props) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <h4 className={`line-clamp-2 break-words text-sm font-semibold leading-5 ${m.removedAt ? "text-slate-500 line-through" : "text-slate-900"}`} title={m.title}>{m.title}</h4>
+                    {m.sessionLabel && <div className="mt-1"><Badge color="slate">{m.sessionLabel}</Badge></div>}
                     <p className="mt-0.5 truncate text-xs text-slate-500" title={m.linkUrl ?? m.fileName ?? undefined}>
                       {m.linkUrl ? host(m.linkUrl) : `${m.fileName ?? "file"}${m.sizeBytes ? ` · ${size(m.sizeBytes)}` : ""}`}
                     </p>

@@ -108,7 +108,7 @@ export const AccessProfileDetailView: React.FC = () => {
           active: p.active,
         });
       })
-      .catch(() => showToast({ type: "error", message: "Failed to load profile" }))
+      .catch(() => showToast({ type: "error", message: tr("Failed to load profile") }))
       .finally(() => setLoading(false));
   }, [id, showToast]);
 
@@ -175,7 +175,7 @@ export const AccessProfileDetailView: React.FC = () => {
     return items;
   }, [changes, generalDirty, managedDirty, managedDraft, assignedUserIds]);
 
-  const nameError = submitted && !draft.name.trim() ? "Enter a name for this access profile." : "";
+  const nameError = submitted && !draft.name.trim() ? tr("Enter a name for this access profile.") : "";
 
   const performSave = async () => {
     if (!draft.name.trim()) {
@@ -228,7 +228,7 @@ export const AccessProfileDetailView: React.FC = () => {
       setManagedDraft(null);
       setReloadKey((k) => k + 1);
       setIsEditing(false);
-      showToast({ type: "success", message: "Access profile updated" });
+      showToast({ type: "success", message: tr("Access profile updated") });
     } catch (e: any) {
       if (e?.response?.status === 409) {
         setConflictModal(true);
@@ -284,7 +284,7 @@ export const AccessProfileDetailView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteAccessProfile(id!, sig);
-      showToast({ type: "success", message: "Access profile deleted" });
+      showToast({ type: "success", message: tr("Access profile deleted") });
       navigate(ROUTES.SECURITY.ACCESS_PROFILES);
     } catch {
       showToast({ type: "error", message: tr("Failed to delete access profile") });
@@ -294,7 +294,7 @@ export const AccessProfileDetailView: React.FC = () => {
 
   const handleToggle = async () => {
     if (!profile) return;
-    const sig = await requestSignature(profile.active ? "Deactivate Access Profile" : "Activate Access Profile", "Access Profile Change");
+    const sig = await requestSignature(profile.active ? tr("Deactivate Access Profile") : tr("Activate Access Profile"), "Access Profile Change");
     if (!sig) return;
     try {
       const updated = await settingsApi.toggleAccessProfileStatus(id!, sig);
@@ -308,7 +308,7 @@ export const AccessProfileDetailView: React.FC = () => {
   };
 
   const mode: "edit" | "view" = isEditing ? "edit" : "view";
-  const title = isEditing ? "Edit Access Profile" : "Access Profile Details";
+  const title = isEditing ? tr("Edit Access Profile") : tr("Access Profile Details");
   const canAssignInTab = (action: string) => isEditing && can(action);
   const tabDeniedReason = (action: string) =>
     !isEditing ? undefined : reason(action);
@@ -386,7 +386,7 @@ export const AccessProfileDetailView: React.FC = () => {
                   variant="outline-emerald"
                   size="sm"
                   disabled={isSaving || !hasChanges}
-                  title={!hasChanges ? "No changes to save" : undefined}
+                  title={!hasChanges ? tr("No changes to save") : undefined}
                   onClick={handleSave}
                 >
                   {isSaving ? "Saving…" : "Save"}
@@ -535,8 +535,8 @@ export const AccessProfileDetailView: React.FC = () => {
             <p className="text-xs text-slate-500">{tr("Document participants remain assigned per revision; this change does not assign anyone as an Author, Reviewer or Approver.")}</p>
           </div>
         }
-        confirmText="Continue to E-Sign"
-        cancelText="Review Changes"
+        confirmText={tr("Continue to E-Sign")}
+        cancelText={tr("Review Changes")}
         showCancel
       />
       <AlertModal
@@ -547,7 +547,7 @@ export const AccessProfileDetailView: React.FC = () => {
         title={tr("Configuration Changed")}
         description={tr("This Access Profile was modified by another administrator while you were editing. Reload to see the latest configuration — your unsaved changes will need to be re-applied.")}
         confirmText="Reload"
-        cancelText="Keep Editing"
+        cancelText={tr("Keep Editing")}
         showCancel
       />
       <AlertModal

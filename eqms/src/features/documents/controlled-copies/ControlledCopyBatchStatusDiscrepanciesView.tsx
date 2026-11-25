@@ -26,7 +26,7 @@ import { ROUTES } from "@/app/routes.constants";
 import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { displayDateTime } from "@/utils/format";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const PAGE_SIZE = 20;
 
@@ -74,7 +74,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
         setLoadError(true);
         showToast({
           type: "error",
-          message: "Failed to load the batch review list.",
+          message: tr("Failed to load the batch review list."),
         });
       })
       .finally(() => {
@@ -217,7 +217,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
               size="sm"
               className="shrink-0 self-start md:self-auto"
             >
-              {total > 0 ? `${total} requiring review` : "No discrepancies"}
+              {total > 0 ? trFormat("{count} requiring review", { count: total }) : tr("No discrepancies")}
             </Badge>
           )}
         </div>

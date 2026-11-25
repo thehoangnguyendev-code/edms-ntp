@@ -11,7 +11,7 @@ import type {
   EmailTemplateRestoreVersionPayload,
   EmailTemplateTestSendPayload,
   EmailTemplateVersion,
-} from '@/features/settings/email-templates/types';
+} from '@/features/settings/notifications/emailTemplateTypes';
 
 const ENDPOINT = '/settings/email-templates';
 

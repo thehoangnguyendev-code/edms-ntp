@@ -90,7 +90,7 @@ export function ScheduleRecipientsField({
             }}
           >
             {hasPeople ? <IconUserEdit className="mr-1.5 h-4 w-4" /> : <IconUserPlus className="mr-1.5 h-4 w-4" />}
-            {hasPeople ? "Edit Recipients" : "Add Recipients"}
+            {hasPeople ? tr("Edit Recipients") : tr("Add Recipients")}
           </Button>
         )}
       </div>
@@ -117,7 +117,7 @@ export function ScheduleRecipientsField({
         emptyState={
           <TableEmptyState
             title={tr("No recipient selected")}
-            description={disabled ? "Nobody receives this schedule." : "Use Add Recipients to choose the people who receive the report."}
+            description={disabled ? tr("Nobody receives this schedule.") : tr("Use Add Recipients to choose the people who receive the report.")}
           />
         }
       />

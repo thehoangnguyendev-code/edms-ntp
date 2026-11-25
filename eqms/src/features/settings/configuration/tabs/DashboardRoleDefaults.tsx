@@ -23,7 +23,7 @@ export function DashboardRoleDefaults() {
     try {
       const [options, layouts] = await Promise.all([api.get<Role[]>('/dashboard/layout/roles/options'), api.get<RoleLayout[]>('/dashboard/layout/roles')]);
       setRoles(options.data); setSaved(layouts.data);
-    } catch { showToast({ type: 'error', title: tr('Unable to load dashboard defaults'), message: 'Please try again.' }); }
+    } catch { showToast({ type: 'error', title: tr('Unable to load dashboard defaults'), message: tr('Please try again.') }); }
   };
   useEffect(() => { void load(); }, []);
   const select = (id: string) => {
@@ -46,7 +46,7 @@ export function DashboardRoleDefaults() {
     try {
       await api.put(`/dashboard/layout/roles/${selected}`, { priority, layout: { widgets: items.map(({ id, visible, width }) => ({ id, visible, width })) } });
       await load(); showToast({ type: 'success', title: tr('Dashboard defaults saved'), message: 'The access profile defaults have been updated.' });
-    } catch { showToast({ type: 'error', title: tr('Unable to save dashboard defaults'), message: 'Please try again.' }); }
+    } catch { showToast({ type: 'error', title: tr('Unable to save dashboard defaults'), message: tr('Please try again.') }); }
     finally { setSaving(false); }
   };
   return <section className="space-y-3 border-t border-slate-100 pt-4">

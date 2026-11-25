@@ -187,7 +187,7 @@ export const ActorPickerModal: React.FC<ActorPickerModalProps> = ({
               <TableEmptyState
                
                 title={tr("No users found")}
-                description={query ? "Try a different name, email, employee ID, or department." : "There are no active users available."}
+                description={query ? tr("Try a different name, email, employee ID, or department.") : tr("There are no active users available.")}
               />
             ) : (
               <>

@@ -70,7 +70,7 @@ public class TrainingFileService {
         boolean answerKeyViewer = canSeeAnswerKey(actor, activity);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("materials", TrainingRows.camel(jdbc.queryForList("""
-            select m.id, m.title, m.purpose, m.link_url, m.original_name, m.content_type, m.size_bytes, m.sha256, m.created_at, m.removed_at, m.remove_reason, u.full_name as uploaded_by_name
+            select m.id, m.title, m.purpose, m.session_id, (select s.session_no from training_sessions s where s.id = m.session_id) as session_no, m.link_url, m.original_name, m.content_type, m.size_bytes, m.sha256, m.created_at, m.removed_at, m.remove_reason, u.full_name as uploaded_by_name
               from training_materials m join app_users u on u.id = m.uploaded_by where m.activity_id=? """ + (manager ? " " : " and m.removed_at is null ") + (answerKeyViewer ? " " : " and m.purpose <> 'ANSWER_KEY' ") + " order by m.created_at", activityId)));
         out.put("canSeeAnswerKey", answerKeyViewer);
         out.put("evidence", manager || access.has(actor, "training.activity.view") ? TrainingRows.camel(jdbc.queryForList("""
@@ -80,7 +80,7 @@ public class TrainingFileService {
               left join training_paper_packs k on k.id = e.pack_id
              where e.activity_id=? order by e.uploaded_at
             """, activityId)) : List.of());
-        out.put("canUploadMaterial", manager && Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status"))) && !contentReviewed(activityId));
+        out.put("canUploadMaterial", manager && "PLANNED".equals(String.valueOf(activity.get("status"))) && !contentLocked(activityId));
         out.put("canUploadEvidence", conductor(actor, activity) && Set.of("NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION").contains(String.valueOf(activity.get("status"))));
         out.put("canReceive", conductor(actor, activity));
         return out;
@@ -111,8 +111,8 @@ public class TrainingFileService {
         return access.has(actor, "training.activity.conduct", "training.activity.organize") && access.inScope(actor, (UUID) activity.get("organizer_department_id"));
     }
 
-    private boolean contentReviewed(UUID activityId) {
-        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", Integer.class, activityId);
+    private boolean contentLocked(UUID activityId) {
+        Integer count = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id=? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", Integer.class, activityId);
         return count != null && count > 0;
     }
 
@@ -120,51 +120,74 @@ public class TrainingFileService {
 
     @Transactional
     public Map<String, Object> uploadMaterial(UserAccount actor, UUID activityId, MultipartFile file, String title, String purpose) {
+        return uploadMaterial(actor, activityId, file, title, purpose, null);
+    }
+
+    /** The session the material is for (null: shared by every session of the activity). */
+    @Transactional
+    public Map<String, Object> uploadMaterial(UserAccount actor, UUID activityId, MultipartFile file, String title, String purpose, UUID sessionId) {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.require(actor, "training.activity.organize");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (!Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
-        if (contentReviewed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        if (!"PLANNED".equals(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (contentLocked(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         String kind = purpose == null || purpose.isBlank() ? "CONTENT" : purpose;
         if (!Set.of("CONTENT", "EXAM", "ANSWER_KEY").contains(kind)) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
-        if (!"CONTENT".equals(kind)) {
-            Integer same = jdbc.queryForObject("select count(*) from training_materials where activity_id=? and purpose=? and removed_at is null", Integer.class, activityId, kind);
-            if (same != null && same > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATERIAL_PURPOSE_EXISTS");
-        }
+        // The exam file and the answer key come only from an approved assessment of the library (Training Assessments), never from a file put in by hand (owner decision 2026-11-23).
+        if (!"CONTENT".equals(kind)) throw new ResponseStatusException(HttpStatus.CONFLICT, TrainingAssessmentLibraryService.LIBRARY_ONLY);
+        UUID forSession = sessionOf(activityId, sessionId);
         Checked checked = check(file);
-        if (!"CONTENT".equals(kind) && !Set.of("pdf", "docx").contains(checked.extension())) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         String name = title == null || title.isBlank() ? checked.name() : title.trim();
         if (name.length() > 255) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
         UUID id = UUID.randomUUID();
         FileStorageService.StorageWriteResult stored = write("training/materials/" + activityId + "/" + id + "." + checked.extension(), checked);
-        jdbc.update("insert into training_materials(id, activity_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?)",
-                id, activityId, name, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(), actor.getId());
+        jdbc.update("insert into training_materials(id, activity_id, session_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,?,?,?,?,?,?,?,?)",
+                id, activityId, forSession, name, kind, checked.name(), stored.provider(), stored.storedPath(), checked.contentType(), checked.bytes().length, checked.sha256(), actor.getId());
         store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_ADDED", Map.of("name", checked.name(), "sha256", checked.sha256()), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_MATERIAL_ADDED", null, null, name + " (SHA-256 " + checked.sha256().substring(0, 12) + ")",
-                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("File Name", null, checked.name()), TrainingStore.change("Purpose", null, TrainingStore.words(String.valueOf(kind)))));
+                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("File Name", null, checked.name()), TrainingStore.change("Purpose", null, TrainingStore.words(String.valueOf(kind))), TrainingStore.change("Session", null, sessionLabel(forSession))));
         return list(actor, activityId);
     }
 
     /** A link (for example a video or a web page) as training content. It is outside the controlled files: nothing is stored or fingerprinted, and the screen says so. */
     @Transactional
     public Map<String, Object> addLink(UserAccount actor, UUID activityId, String title, String url) {
+        return addLink(actor, activityId, title, url, null);
+    }
+
+    @Transactional
+    public Map<String, Object> addLink(UserAccount actor, UUID activityId, String title, String url, UUID sessionId) {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.require(actor, "training.activity.organize");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (!Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
-        if (contentReviewed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        if (!"PLANNED".equals(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (contentLocked(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         String link = url == null ? "" : url.trim();
         java.net.URI uri;
         try { uri = java.net.URI.create(link); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("TRAINING_LINK_INVALID"); }
         if (link.length() > 1000 || uri.getHost() == null || !"https".equalsIgnoreCase(uri.getScheme())) throw new IllegalArgumentException("TRAINING_LINK_INVALID");
         String name = title == null || title.isBlank() ? uri.getHost() : title.trim();
         if (name.length() > 255) throw new IllegalArgumentException("TRAINING_LINK_INVALID");
+        UUID forSession = sessionOf(activityId, sessionId);
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into training_materials(id, activity_id, title, purpose, link_url, uploaded_by) values (?,?,?,'CONTENT',?,?)", id, activityId, name, link, actor.getId());
+        jdbc.update("insert into training_materials(id, activity_id, session_id, title, purpose, link_url, uploaded_by) values (?,?,?,?,'CONTENT',?,?)", id, activityId, forSession, name, link, actor.getId());
         store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_LINK_ADDED", Map.of("title", name, "url", link), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_MATERIAL_LINK_ADDED", null, null, name + " (" + link + ")",
-                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("Link", null, link)));
+                List.of(TrainingStore.change("Material", null, name), TrainingStore.change("Link", null, link), TrainingStore.change("Session", null, sessionLabel(forSession))));
         return list(actor, activityId);
+    }
+
+    /** The session a material is for: one of the activity (not cancelled), or null for every session. */
+    private UUID sessionOf(UUID activityId, UUID sessionId) {
+        if (sessionId == null) return null;
+        Integer found = jdbc.queryForObject("select count(*) from training_sessions where id = ? and activity_id = ? and status <> 'CANCELLED'", Integer.class, sessionId, activityId);
+        if (found == null || found == 0) throw new IllegalArgumentException("TRAINING_SESSION_INVALID");
+        return sessionId;
+    }
+
+    private String sessionLabel(UUID sessionId) {
+        if (sessionId == null) return "All sessions";
+        return "Session " + jdbc.queryForObject("select session_no from training_sessions where id = ?", Integer.class, sessionId);
     }
 
     @Transactional
@@ -174,7 +197,9 @@ public class TrainingFileService {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         access.require(actor, "training.activity.organize");
         access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (m.get("removed_at") != null || !Set.of("PLANNED", "NOTIFIED").contains(String.valueOf(activity.get("status"))) || contentReviewed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        // The exam file and the answer key go together with the assessment of the library they were made from: they are taken off by taking the assessment off.
+        if (!"CONTENT".equals(m.get("purpose"))) throw new ResponseStatusException(HttpStatus.CONFLICT, TrainingAssessmentLibraryService.LIBRARY_ONLY);
+        if (m.get("removed_at") != null || !"PLANNED".equals(String.valueOf(activity.get("status"))) || contentLocked(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("update training_materials set removed_at=now(), removed_by=?, remove_reason=? where id=?", actor.getId(), request.reason().trim(), id);
         store.auditActivity(actor, activity, "TRAINING_MATERIAL_REMOVED", null, null, m.get("title") + ": " + request.reason().trim(),

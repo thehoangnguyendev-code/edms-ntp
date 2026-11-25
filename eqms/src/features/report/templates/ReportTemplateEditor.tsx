@@ -44,7 +44,7 @@ import {
   type ReportNameFormat,
   type ReportNameFormatListItem,
 } from "@/services/api/reportNameFormats";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type RoleGrant = NonNullable<ReportTemplate["roleScopes"]>[number];
 const tabs = [
@@ -220,7 +220,7 @@ export function ReportTemplateEditor() {
       setNotice(
         saved.effectiveRevision != null && saved.openRevision != null
           ? `Changes saved to Revision ${saved.openRevision}. Revision ${saved.effectiveRevision} stays in use until Revision ${saved.openRevision} is approved.`
-          : "Changes saved.",
+          : tr("Changes saved."),
       );
     } catch (error) {
       setError(reportError(error));
@@ -323,7 +323,7 @@ export function ReportTemplateEditor() {
         </Button>
       )}
       {!create && stored && lifecycle === "DRAFT" && can("submitForApproval") && (
-        <Button size="sm" variant="outline-emerald" disabled={saving || dirty} onClick={submitVersion} title={dirty ? "Save your changes first." : undefined}>
+        <Button size="sm" variant="outline-emerald" disabled={saving || dirty} onClick={submitVersion} title={dirty ? tr("Save your changes first.") : undefined}>
           Submit for Approval
         </Button>
       )}
@@ -347,7 +347,7 @@ export function ReportTemplateEditor() {
   // The page is named by the work it is for, as the Document Control revision pages are (Create / Approve / Revision Details), and the breadcrumb says the same
   // words as the title. It leads back to the list or page it was opened from; a pending revision opened by its address (a notification) belongs to Pending My Approval.
   const canApprove = !create && stored != null && lifecycle === "PENDING_APPROVAL" && can("approve");
-  const title = create ? "Create Report Template" : !stored || !capabilitiesLoaded ? "Revision Details" : canApprove ? "Approve Revision" : editable && lifecycle === "DRAFT" ? "Edit Revision" : "Revision Details";
+  const title = create ? tr("Create Report Template") : !stored || !capabilitiesLoaded ? tr("Revision Details") : canApprove ? tr("Approve Revision") : editable && lifecycle === "DRAFT" ? tr("Edit Revision") : tr("Revision Details");
   const from = (location.state as { from?: string } | null)?.from;
   const parent = reportRevisionParent(from, go, !create && lifecycle === "PENDING_APPROVAL" ? ROUTES.REPORT.TEMPLATE_REVISIONS_PENDING : ROUTES.REPORT.TEMPLATE_MANAGEMENT);
   return (
@@ -374,7 +374,7 @@ export function ReportTemplateEditor() {
         onClose={() => setRejecting(undefined)}
         title={tr("Reject Revision")}
         description={tr("The reason is required. The author is told, in the application and by e-mail, with this reason, and must change the template and submit it again.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!rejecting?.reason.trim() || saving}
         onConfirm={() => rejecting && setRejecting({ ...rejecting, step: "sign" })}
       >
@@ -416,7 +416,7 @@ export function ReportTemplateEditor() {
         onClose={() => setApproving(undefined)}
         title={tr("Approve Revision")}
         description={tr("You approve this exact saved version. You must not be its author or the person who submitted it. Say what you checked.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!approving?.reason.trim()}
         onConfirm={() => approving && setApproving({ ...approving, step: "sign" })}
       >
@@ -470,7 +470,7 @@ export function ReportTemplateEditor() {
       )}
       {loading ? (
         <p role="status" className="text-sm text-slate-500">
-          Loading template configuration…
+          {tr("Loading template configuration…")}
         </p>
       ) : (
         value && (
@@ -481,8 +481,7 @@ export function ReportTemplateEditor() {
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p>
-                  Revision {reportRevisionLabel(stored.effectiveRevision)} is effective and cannot be edited. To change this template, upgrade it: the new revision is written and approved
-                  while {reportRevisionLabel(stored.effectiveRevision)} stays in use, then {reportRevisionLabel(stored.effectiveRevision)} becomes Obsoleted.
+                  {trFormat("Revision {revision} is effective and cannot be edited. To change this template, upgrade it: the new revision is written and approved while {revision} stays in use, then {revision} becomes Obsoleted.", { revision: reportRevisionLabel(stored.effectiveRevision) })}
                 </p>
                 {can("upgrade") && (
                   <Button size="sm" variant="outline-emerald" onClick={() => setUpgrading(true)}>
@@ -527,7 +526,7 @@ export function ReportTemplateEditor() {
                     {/* Template Number (read-only, issued by the system) */}
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-medium text-slate-700 sm:text-sm capitalize">{tr("Template Number")}</label>
-                      <input type="text" readOnly value={create ? "" : code} className={CONTROL_STATE_CLASSES.readonlyField} placeholder="Assigned automatically when saved" />
+                      <input type="text" readOnly value={create ? "" : code} className={CONTROL_STATE_CLASSES.readonlyField} placeholder={tr("Assigned automatically when saved")} />
                     </div>
 
                     {/* Revision (read-only) */}
@@ -538,7 +537,7 @@ export function ReportTemplateEditor() {
                         readOnly
                         value={create || !stored ? "" : stored.openRevision != null ? reportRevisionLabel(stored.openRevision, stored.openRevisionStatus ?? "DRAFT") : reportRevisionLabel(stored.revision ?? stored.effectiveRevision)}
                         className={CONTROL_STATE_CLASSES.readonlyField}
-                        placeholder="0.0.1 when saved"
+                        placeholder={tr("0.0.1 when saved")}
                       />
                     </div>
 
@@ -550,7 +549,7 @@ export function ReportTemplateEditor() {
                         readOnly
                         value={stored?.createdAt ? displayDateTime(stored.createdAt) : ""}
                         className={CONTROL_STATE_CLASSES.readonlyField}
-                        placeholder="Set when saved"
+                        placeholder={tr("Set when saved")}
                       />
                     </div>
 
@@ -562,7 +561,7 @@ export function ReportTemplateEditor() {
                         readOnly
                         value={stored?.updatedAt ? displayDateTime(stored.updatedAt) : ""}
                         className={CONTROL_STATE_CLASSES.readonlyField}
-                        placeholder="Set when saved"
+                        placeholder={tr("Set when saved")}
                       />
                     </div>
 
@@ -662,7 +661,7 @@ export function ReportTemplateEditor() {
                         </label>
                         <Checkbox id="gmpUse" checked={value.gmpUse ?? false} onChange={(gmpUse) => change({ gmpUse })} />
                       </div>
-                      <p className="text-xs text-slate-500">A template for GMP decisions cannot be deleted; disable it instead. Every template, whatever its use, runs only after it is approved.</p>
+                      <p className="text-xs text-slate-500">{tr("A template for GMP decisions cannot be deleted; disable it instead. Every template, whatever its use, runs only after it is approved.")}</p>
                     </div>
 
                     {/* Allowed output formats */}
@@ -694,14 +693,14 @@ export function ReportTemplateEditor() {
                         maxLength={2000}
                         rows={4}
                         onChange={(event) => change({ description: event.target.value })}
-                        placeholder="Enter template description"
+                        placeholder={tr("Enter template description")}
                         className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
                   {!create && (
                     <p className="text-xs text-slate-500">
-                      Report files are kept permanently and never expire by age. Template changes never delete historical report files or audit records.
+                      {tr("Report files are kept permanently and never expire by age. Template changes never delete historical report files or audit records.")}
                     </p>
                   )}
                 </div>
@@ -728,7 +727,7 @@ export function ReportTemplateEditor() {
                       disabled={!editable || saving || shownFields.length === 0}
                       onClick={() => setShown({ allowed: true })}
                     >
-                      Allow Shown
+                      {tr("Allow Shown")}
                     </Button>
                     <Button
                       size="sm"
@@ -736,10 +735,10 @@ export function ReportTemplateEditor() {
                       disabled={!editable || saving || shownFields.length === 0}
                       onClick={() => setShown({ allowed: false })}
                     >
-                      Remove Shown
+                      {tr("Remove Shown")}
                     </Button>
                     <p className={cn("text-xs", defaultCount > maxColumns ? "font-medium text-red-600" : "text-slate-500")} aria-live="polite">
-                      {allowedCount} of {value.fields.length} fields allowed. Default columns: {defaultCount} of {maxColumns} (a report carries at most {maxColumns}).
+                      {trFormat("{allowed} of {total} fields allowed. Default columns: {defaultCount} of {max} (a report carries at most {max}).", { allowed: allowedCount, total: value.fields.length, defaultCount, max: maxColumns })}
                     </p>
                   </div>
                   <DataTable

@@ -422,7 +422,7 @@ export const DestroyControlledCopyView: React.FC = () => {
           backendMessage ||
           (error instanceof Error && error.message
             ? error.message
-            : "Failed to mark controlled copy as destroyed. Please try again."),
+            : tr("Failed to mark controlled copy as destroyed. Please try again.")),
         duration: 3500,
       });
       return;

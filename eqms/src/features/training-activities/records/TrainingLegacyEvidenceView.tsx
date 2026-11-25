@@ -161,8 +161,8 @@ export function TrainingLegacyEvidenceView() {
           </div>
         )}
       </PortalDropdownMenu>
-      <FormModal isOpen={!!submitting && !signing} onClose={() => setSubmitting(undefined)} onConfirm={() => setSigning(true)} isLoading={busy} confirmText="Continue to Sign" size="md"
-        title={submitting?.none ? tr("Declare: no evidence") : "Attach the scan of the paper record"}
+      <FormModal isOpen={!!submitting && !signing} onClose={() => setSubmitting(undefined)} onConfirm={() => setSigning(true)} isLoading={busy} confirmText={tr("Continue to Sign")} size="md"
+        title={submitting?.none ? tr("Declare: no evidence") : tr("Attach the scan of the paper record")}
         description={tr("You sign the evidence in the next step; nobody else verifies it. After that it is read-only, and the persons you name get their training record.")}
         confirmDisabled={!submitting || (submitting.none ? !submitting.reason.trim() : !submitting.file)}>
         {submitting && (

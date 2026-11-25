@@ -40,6 +40,7 @@ public final class TrainingWorkflows {
     private static final List<WorkflowStepResponse> ACTIVITY = List.of(
             step("RESERVED", "Pending Document Approval"),
             step("PLANNED", "Planned"),
+            step("PENDING_APPROVAL", "Pending Approval"),
             step("NOTIFIED", "Notified"),
             step("IN_PROGRESS", "In Progress"),
             step("PENDING_QA_CONFIRMATION", "Pending QA Confirmation"),

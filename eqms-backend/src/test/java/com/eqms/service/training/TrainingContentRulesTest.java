@@ -70,11 +70,12 @@ class TrainingContentRulesTest {
     }
 
     @Test
-    void aSupplementaryTrainingKeepsTheContentOfTheActivityItSupplements() {
-        Result r = TrainingContentRules.evaluate(facts("RETRAINING", "FAILED_ASSESSMENT", true, false, 0, 0, List.of("TEST")));
-        assertThat(r.complete()).isTrue();
-        assertThat(r.inherited()).isTrue();
-        assertThat(r.materialsRequired()).isFalse();
+    void aSupplementaryTrainingIsHeldToTheSameRulesAsAnyOtherTraining() {
+        // it starts with a copy of the content and the assessment of the original, so it is complete with them and incomplete without
+        Result without = TrainingContentRules.evaluate(facts("RETRAINING", "FAILED_ASSESSMENT", true, false, 0, 0, List.of("TEST")));
+        assertThat(without.materialsRequired()).isTrue();
+        assertThat(without.missing()).containsExactly(TrainingContentRules.MATERIALS_REQUIRED, TrainingContentRules.TEST_REQUIRED);
+        assertThat(TrainingContentRules.evaluate(facts("RETRAINING", "FAILED_ASSESSMENT", true, false, 1, 1, List.of("TEST"))).complete()).isTrue();
     }
 
     @Test
@@ -99,10 +100,10 @@ class TrainingContentRulesTest {
     }
 
     @Test
-    void aTestWrittenInTheSystemIsTheTestAndNeedsNoFile() {
+    void aTestWrittenInTheSystemIsShownButNoLongerTakesThePlaceOfTheTestOfTheLibrary() {
         Result r = TrainingContentRules.evaluate(new Facts("PERIODIC", "OTHER", false, true, 0, 0, 5, List.of("TEST"), false, false));
         assertThat(r.onlineTest()).isTrue();
-        assertThat(r.complete()).isTrue();
+        assertThat(r.missing()).containsExactly(TrainingContentRules.TEST_REQUIRED);
     }
 
     @Test

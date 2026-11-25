@@ -516,7 +516,7 @@ export const PositionsTab = React.forwardRef<
             openResultModal(
               "error",
               showEditModal ? "Position Update Failed" : "Position Creation Failed",
-              extractApiMessage(error, showEditModal ? "Unable to update position." : "Unable to create position.")
+              extractApiMessage(error, showEditModal ? tr("Unable to update position.") : tr("Unable to create position."))
             );
             throw error;
           }

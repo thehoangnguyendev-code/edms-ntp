@@ -109,16 +109,16 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
     },
     {
       id: "access",
-      header: "Access",
-      label: "Access",
+      header: tr("Access"),
+      label: tr("Access"),
       cell: (row) =>
         row.scope ? (
           <Badge color="emerald" size="sm">
-            Can use this template
+            {tr("Can use this template")}
           </Badge>
         ) : (
           <Badge color="slate" size="sm">
-            No access
+            {tr("No access")}
           </Badge>
         ),
     },
@@ -128,12 +128,11 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
-        Report metadata scope is independent of source-document access. An Access Profile without a scope has no access to this template. Scopes of the profiles a person holds
-        are combined; the broadest applicable scope wins. Entire system includes metadata outside the user's department, but never file content.
+        {tr("Report metadata scope is independent of source-document access. An Access Profile without a scope has no access to this template. Scopes of the profiles a person holds are combined; the broadest applicable scope wins. Entire system includes metadata outside the user's department, but never file content.")}
       </div>
       {(result?.inactive ?? []).length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-medium">These Access Profiles are not active any more. Remove their scope before the template is saved.</p>
+          <p className="font-medium">{tr("These Access Profiles are not active any more. Remove their scope before the template is saved.")}</p>
           <ul className="mt-2 space-y-1">
             {(result?.inactive ?? []).map((role) => (
               <li key={role.id} className="flex items-center justify-between gap-3">
@@ -205,7 +204,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
           isLoading={loading && !result}
           columns={columns}
           columnLayout={layout}
-          emptyState={<TableEmptyState title="No access profiles" description="No active Access Profile matches the search or filter." />}
+          emptyState={<TableEmptyState title={tr("No access profiles")} description={tr("No active Access Profile matches the search or filter.")} />}
           pagination={
             result && result.pagination.total > 0 ? (
               <TablePagination

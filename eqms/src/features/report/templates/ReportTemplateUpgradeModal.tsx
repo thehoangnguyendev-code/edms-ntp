@@ -53,7 +53,7 @@ export function ReportTemplateUpgradeModal({
       confirmDisabled={!reason.trim() || busy}
       onConfirm={() => void upgrade()}
     >
-      <FormField label="Reason for the upgrade" required>
+      <FormField label={tr("Reason for the upgrade")} required>
         <Textarea rows={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
       </FormField>
       {error && (

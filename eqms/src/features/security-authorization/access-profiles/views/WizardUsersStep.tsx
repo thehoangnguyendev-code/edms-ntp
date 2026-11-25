@@ -213,7 +213,7 @@ export const WizardUsersStep: React.FC<{
             description={
               canListUsers
                 ? hasFilters ? tr("Try adjusting your search or filters.") : "There are no active users."
-                : "You do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab."
+                : tr("You do not have permission to list users. The Access Profile will be created unassigned; assign users later from the profile's Assigned Users tab.")
             }
           />
         }

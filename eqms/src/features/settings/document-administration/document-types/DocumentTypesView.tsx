@@ -137,8 +137,8 @@ export const DocumentTypesView: React.FC = () => {
     } catch (error) {
       openResultModal(
         "error",
-        showEditModal ? "Document Type Update Failed" : "Document Type Create Failed",
-        extractApiMessage(error, showEditModal ? "Unable to update document type." : "Unable to create document type.")
+        showEditModal ? tr("Document Type Update Failed") : tr("Document Type Create Failed"),
+        extractApiMessage(error, showEditModal ? tr("Unable to update document type.") : tr("Unable to create document type."))
       );
       throw error;
     }

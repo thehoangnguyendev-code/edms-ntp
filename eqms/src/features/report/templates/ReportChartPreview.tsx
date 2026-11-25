@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { reportError, reportTemplatesApi, type ReportChart } from "@/services/api/reportTemplates";
 
@@ -48,14 +49,14 @@ export function ReportChartPreview({ chart, fieldName, font }: { chart: ReportCh
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4" aria-label={`Sample of ${chart.title || "chart"}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-800">{chart.title || "Untitled chart"}</p>
-        <span className="text-2xs font-medium uppercase tracking-wide text-slate-400">Sample data</span>
+        <p className="text-sm font-semibold text-slate-800">{chart.title || tr("Untitled chart")}</p>
+        <span className="text-2xs font-medium uppercase tracking-wide text-slate-400">{tr("Sample data")}</span>
       </div>
       <div className="relative mt-3 aspect-[1400/850] w-full overflow-hidden rounded-lg bg-slate-50">
         {picture && <img src={picture} alt={`Sample of the chart ${chart.title || "Untitled chart"}`} className={`h-full w-full object-contain transition-opacity duration-200 ${loading ? "opacity-50" : "opacity-100"}`} />}
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">
-            {picture ? "" : "Drawing the chart…"}
+            {picture ? "" : tr("Drawing the chart…")}
           </div>
         )}
         {error && !loading && (

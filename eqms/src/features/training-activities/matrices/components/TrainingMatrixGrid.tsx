@@ -249,7 +249,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
           </TableMarkup.Foot>
         </TableMarkup.Root>
       </div>
-      <p className="px-1 text-xs text-slate-500">{rows.length} row{rows.length !== 1 ? "s" : ""} × {allPositions.length} Work Position{allPositions.length !== 1 ? "s" : ""}</p>
+      <p className="px-1 text-xs text-slate-500">{rows.length} row{rows.length !== 1 ? "s" : ""} × {allPositions.length} {tr("Work Position")}{allPositions.length !== 1 ? "s" : ""}</p>
       {filtered && visible.length === 0 && <p className="text-sm text-slate-500">{tr("Nothing matches the search or the filters.")}</p>}
     </div>
     </ReportListToolbar>

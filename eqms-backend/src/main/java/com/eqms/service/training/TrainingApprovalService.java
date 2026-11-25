@@ -37,6 +37,7 @@ public class TrainingApprovalService {
 
     private static final Map<String, Step> STEPS = Map.ofEntries(
             Map.entry("CONTENT_REVIEW", new Step("CONTENT_REVIEW", "training.content.review", "TRAINING_CONTENT_REVIEWED")),
+            Map.entry("CONTENT_APPROVE_FIRST", new Step("CONTENT_APPROVE_FIRST", "training.content.approve", "TRAINING_CONTENT_APPROVED")),
             Map.entry("CONTENT_APPROVE", new Step("CONTENT_APPROVE", "training.content.approve", "TRAINING_CONTENT_APPROVED")),
             Map.entry("ACTIVITY_COMPLETE", new Step("ACTIVITY_COMPLETE", "training.activity.close", "TRAINING_COMPLETED")),
             Map.entry("MATRIX_APPROVE", new Step("MATRIX_APPROVE", "training.matrix.approve", "TRAINING_MATRIX_APPROVED")),
@@ -161,6 +162,32 @@ public class TrainingApprovalService {
                         new com.eqms.dto.audittrail.AuditTrailChangeResponse("Approver", null, assignee.getFullName())));
         notifier.send("TRAINING_STEP_ASSIGNED", assignee, actor, "Training: your action is needed",
                 actor.getFullName() + " asked you to " + TrainingNotifier.stepText(stepCode) + ": " + subject.label() + ".", subject.objectType(), subject.id(), null);
+        return id;
+    }
+
+    /**
+     * Assigns a step to a person chosen earlier (the two approvers of the content are saved by the organizer, then the first is assigned at Submit and the second after the first approval),
+     * so the one who assigns need not hold the permission to designate. The person must still be eligible; the person is told.
+     */
+    @Transactional
+    public UUID assign(UserAccount by, Subject subject, String stepCode, UUID assigneeId, Set<UUID> keptApart) {
+        Step step = step(stepCode);
+        if (assigneeId == null) throw new IllegalArgumentException(NOT_ELIGIBLE);
+        UserAccount assignee = users.findById(assigneeId).orElseThrow(() -> new IllegalArgumentException(NOT_ELIGIBLE));
+        if (!eligible(assignee, step, subject.departmentId(), keptApart)) throw new IllegalArgumentException(NOT_ELIGIBLE);
+        Integer open = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and step_code=? and status='PENDING'",
+                Integer.class, subject.objectType(), subject.id(), stepCode);
+        if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_APPROVER_ALREADY_DESIGNATED");
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into training_approval_assignments(id, object_type, object_id, step_code, assignee_user_id, assigned_by) values (?,?,?,?,?,?)",
+                id, subject.objectType(), subject.id(), stepCode, assigneeId, by.getId());
+        store.event(subject.objectType(), subject.id(), "TRAINING_ACTIVITY".equals(subject.objectType()) ? subject.id() : null, "APPROVER_DESIGNATED",
+                Map.of("step", stepCode, "assignee", assigneeId.toString()), by.getId());
+        audit.logAs(by, subject.objectType(), subject.label(), subject.id(), "TRAINING_APPROVER_DESIGNATED", null, null, stepCode + " -> " + assignee.getFullName(),
+                List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Step", null, TrainingStore.words(stepCode)),
+                        new com.eqms.dto.audittrail.AuditTrailChangeResponse("Approver", null, assignee.getFullName())));
+        notifier.send("TRAINING_STEP_ASSIGNED", assignee, by, "Training: your approval is needed",
+                by.getFullName() + " asked you to " + TrainingNotifier.stepText(stepCode) + ": " + subject.label() + ".", subject.objectType(), subject.id(), null);
         return id;
     }
 

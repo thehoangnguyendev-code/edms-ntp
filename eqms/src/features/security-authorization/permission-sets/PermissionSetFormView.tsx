@@ -52,7 +52,7 @@ export const PermissionSetFormView: React.FC = () => {
 
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ name, code, description, active, permissions: [...selectedCodes].sort() }, !(isEdit && loadingSource));
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit Shared Permission Set" : "New Shared Permission Set", "the previous page");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? tr("Edit Shared Permission Set") : tr("New Shared Permission Set"), "the previous page");
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -83,8 +83,8 @@ export const PermissionSetFormView: React.FC = () => {
   };
 
   const errors = {
-    name: name.trim() ? "" : "Enter a name for this permission set.",
-    permissions: selectedCodes.size > 0 ? "" : "Select at least one permission.",
+    name: name.trim() ? "" : tr("Enter a name for this permission set."),
+    permissions: selectedCodes.size > 0 ? "" : tr("Select at least one permission."),
   };
   const shown = { name: submitted ? errors.name : "", permissions: submitted ? errors.permissions : "" };
 
@@ -127,7 +127,7 @@ export const PermissionSetFormView: React.FC = () => {
     return [
       ...base,
       { label: tr("Shared Permission Sets"), onClick: () => go(ROUTES.SECURITY.PERMISSION_SETS) },
-      { label: isEdit ? "Edit Shared Permission Set" : "New Shared Permission Set", isActive: true },
+      { label: isEdit ? tr("Edit Shared Permission Set") : tr("New Shared Permission Set"), isActive: true },
     ];
   }, [go, isEdit, source]);
 

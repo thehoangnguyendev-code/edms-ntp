@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
@@ -19,7 +20,7 @@ afterEach(() => {
 
 function openMenu(onClose = vi.fn(), minWidth = 240) {
   return render(<SmartDropdown isOpen onClose={onClose} triggerRef={createRef<HTMLElement>()} minWidth={minWidth}>
-    <DropdownItem>Edit Report Template</DropdownItem>
+    <DropdownItem>{tr("Edit Report Template")}</DropdownItem>
   </SmartDropdown>);
 }
 
@@ -46,7 +47,7 @@ it('keeps Escape dismissal and item actions working', () => {
   const onClose = vi.fn();
   const onClick = vi.fn();
   render(<SmartDropdown isOpen onClose={onClose} triggerRef={createRef<HTMLElement>()}>
-    <DropdownItem onClick={onClick}>View Detail</DropdownItem>
+    <DropdownItem onClick={onClick}>{tr("View Detail")}</DropdownItem>
   </SmartDropdown>);
   fireEvent.click(screen.getByRole('menuitem'));
   expect(onClick).toHaveBeenCalledOnce();

@@ -165,7 +165,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   entityId,
   entityType,
   includeChildren = false,
-  emptyMessage = "No audit trail records available.",
+    emptyMessage = tr("No audit trail records available."),
 }) => {
   // Memoized so its reference stays stable across re-renders when records/auditEntries are
   // undefined — otherwise the `[] ` fallback creates a new array every render, and effects that
@@ -564,7 +564,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
                     const department = user?.department || "-";
                     const action = record.action || "-";
                     const entity = buildEntityLabel(record);
-                    const changeSummary = buildChangeSummary(record);
+                    const changeSummary = buildChangeSummary(record).replace(/\n/g, "; ");
                     const signature = hasESignature(record) ? "Yes" : "No";
                     const device = record.device || "-";
                     const rowNumber = startIndex + index + 1;

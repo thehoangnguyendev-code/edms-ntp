@@ -26,7 +26,7 @@ import {
 import { metadataApi, type MetadataUserLookup } from "@/services/api/metadata";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { BackupAdminLivePage } from "./BackupAdminLivePage";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type TargetEdit = { scenario: DrScenarioRecord; rpo: string; rto: string; reason: string; step: "form" | "sign" };
 type VerifyEdit = { item: DrKitItemRecord; date: string; note: string };
@@ -208,17 +208,17 @@ export const DisasterRecoveryPlanView: React.FC = () => {
   };
 
   const stateBadge = (state: string) =>
-    state === "WITHIN" ? <Badge color="emerald">{tr("Within the target")}</Badge> : state === "EXCEEDED" ? <Badge color="red">{tr("Over the target")}</Badge> : <Badge color="amber">{state === "NOT_TESTED" ? "Not tested" : "No data"}</Badge>;
+    state === "WITHIN" ? <Badge color="emerald">{tr("Within the target")}</Badge> : state === "EXCEEDED" ? <Badge color="red">{tr("Over the target")}</Badge> : <Badge color="amber">{state === "NOT_TESTED" ? tr("Not tested") : tr("No data")}</Badge>;
 
   const plan = (
     <div className="space-y-6">
       {error && <WarningBanner variant="error" title={tr("Unable to load")} description={error} />}
-      {open && <WarningBanner variant="error" title={`A disaster is declared: ${open.code}`} description={`${open.scenarioLabel}, declared by ${open.declaredBy} on ${formatDateTime(open.declaredAt)}. It stays open until it is closed with a summary and a signature.`} />}
+      {open && <WarningBanner variant="error" title={trFormat("A disaster is declared: {code}", { code: open.code })} description={trFormat("{scenario}, declared by {by} on {when}. It stays open until it is closed with a summary and a signature.", { scenario: tr(open.scenarioLabel), by: open.declaredBy, when: formatDateTime(open.declaredAt) })} />}
       {notVerified.length > 0 && (
-        <WarningBanner variant="warning" title={tr("The rebuild kit is not verified")} description={`${notVerified.length} item(s) have never been checked by a person. Without a check a rebuild cannot be relied on.`} />
+        <WarningBanner variant="warning" title={tr("The rebuild kit is not verified")} description={trFormat("{count} item(s) have never been checked by a person. Without a check a rebuild cannot be relied on.", { count: notVerified.length })} />
       )}
       {overdue.length > 0 && (
-        <WarningBanner variant="warning" title={tr("Rebuild kit checks are overdue")} description={`${overdue.length} item(s) were last checked longer ago than the review period of the alert rule.`} />
+        <WarningBanner variant="warning" title={tr("Rebuild kit checks are overdue")} description={trFormat("{count} item(s) were last checked longer ago than the review period of the alert rule.", { count: overdue.length })} />
       )}
 
       <FormSection
@@ -232,11 +232,11 @@ export const DisasterRecoveryPlanView: React.FC = () => {
           columns={[
             {
               id: "scenario",
-              header: "Scenario",
+              header: tr("Scenario"),
               cell: (row) => (
                 <div className="max-w-96 whitespace-normal">
-                  <span className="font-medium text-slate-900">{row.label}</span>
-                  <span className="block text-xs text-slate-500">{row.description}</span>
+                  <span className="font-medium text-slate-900">{tr(row.label)}</span>
+                  <span className="block text-xs text-slate-500">{tr(row.description)}</span>
                 </div>
               ),
             },
@@ -266,7 +266,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
           rows={scenarios ?? []}
           getRowKey={(row) => row.code}
           columns={[
-            { id: "scenario", header: "Scenario", cell: (row) => row.label },
+            { id: "scenario", header: tr("Scenario"), cell: (row) => tr(row.label) },
             { id: "age", header: tr("Age of the data"), cell: (row) => hours(readinessOf(row.code)?.dataAgeHours ?? null) },
             { id: "rpoNow", header: tr("Against RPO"), cell: (row) => stateBadge(readinessOf(row.code)?.rpoState ?? "NO_DATA") },
             { id: "tested", header: tr("Tested restore time"), cell: (row) => duration(readinessOf(row.code)?.testedRestoreSeconds) },
@@ -282,18 +282,18 @@ export const DisasterRecoveryPlanView: React.FC = () => {
           columns={[
             {
               id: "item",
-              header: "Item",
+              header: tr("Item"),
               cell: (row) => (
                 <div className="max-w-96 whitespace-normal">
-                  <span className="font-medium text-slate-900">{row.label}</span>
-                  <span className="block text-xs text-slate-500">{row.detail}</span>
+                  <span className="font-medium text-slate-900">{tr(row.label)}</span>
+                  <span className="block text-xs text-slate-500">{tr(row.detail)}</span>
                 </div>
               ),
             },
             {
               id: "state",
-              header: "State",
-              cell: (row) => <Badge color={row.state === "VERIFIED" ? "emerald" : "amber"}>{row.state === "VERIFIED" ? "Verified" : row.state === "OVERDUE" ? "Check overdue" : "Not verified"}</Badge>,
+              header: tr("State"),
+              cell: (row) => <Badge color={row.state === "VERIFIED" ? "emerald" : "amber"}>{row.state === "VERIFIED" ? tr("Verified") : row.state === "OVERDUE" ? tr("Check overdue") : tr("Not verified")}</Badge>,
             },
             { id: "verified", header: tr("Last verified"), cell: (row) => (row.lastVerifiedAt ? `${formatDate(row.lastVerifiedAt)} by ${row.lastVerifiedBy}` : "—") },
             {
@@ -334,7 +334,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       <WarningBanner
         variant="info"
         title={tr("How a declaration works")}
-        description={`Only ${authority ?? "the declaration authority"} can declare a disaster, with an electronic signature. One declaration is open at a time. It is closed, again with a signature and a summary, when service is restored; the time between the two is the recovery time actually taken.`}
+        description={trFormat("Only {authority} can declare a disaster, with an electronic signature. One declaration is open at a time. It is closed, again with a signature and a summary, when service is restored; the time between the two is the recovery time actually taken.", { authority: authority ?? tr("the declaration authority") })}
       />
       <DrDeclarationsList reloadKey={reloadKey} scenarios={scenarios ?? []} />
     </div>
@@ -368,7 +368,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setTarget(undefined)}
         title={`Change Targets: ${target?.scenario.label ?? ""}`}
         description={tr("The new targets take effect only after the electronic signature.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!target || !target.reason.trim() || !(Number(target.rpo) > 0) || !(Number(target.rto) > 0)}
         onConfirm={() => target && setTarget({ ...target, step: "sign" })}
       >
@@ -426,7 +426,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setDeclareAuthority(undefined)}
         title={tr("Change Who May Declare a Disaster")}
         description={tr("The person must be an active account. The change takes effect after the electronic signature.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!declareAuthority || !declareAuthority.username.trim() || !declareAuthority.reason.trim()}
         onConfirm={() => declareAuthority && setDeclareAuthority({ ...declareAuthority, step: "sign" })}
       >
@@ -460,7 +460,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setDeclare(undefined)}
         title={tr("Declare a Disaster")}
         description={tr("This opens a declaration that stays open until it is closed. It is recorded with your name, the time and your signature.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!declare || !declare.scenario || !declare.reason.trim()}
         onConfirm={() => declare && setDeclare({ ...declare, step: "sign" })}
       >
@@ -493,7 +493,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         onClose={() => setClose(undefined)}
         title={`Close Declaration ${close?.declaration.code ?? ""}`}
         description={tr("Close it when service is restored. The time since it was declared becomes the recovery time actually taken.")}
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         confirmDisabled={!close || !close.summary.trim()}
         onConfirm={() => close && setClose({ ...close, step: "sign" })}
       >

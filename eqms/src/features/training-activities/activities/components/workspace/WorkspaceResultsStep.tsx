@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { tr, trFormat } from "@/i18n";
 
 /**
@@ -15,11 +16,9 @@ export function WorkspaceResultsStep({ table, absent, failed }: {
     <>
       {table}
       {waiting > 0 && (
-        <div role="status" className="flex flex-col gap-3 rounded-lg border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
-          <p className="min-w-0">
-            {[absent > 0 ? trFormat("{count} absent", { count: absent }) : "", failed > 0 ? trFormat("{count} did not pass", { count: failed }) : ""].filter(Boolean).join(` ${tr("and")} `)}{tr(": after the training is Completed they are trained again in a separate list under the same Training Number (SOP.0003 5.3.7).")}
-          </p>
-        </div>
+        <WarningBanner
+          description={`${[absent > 0 ? trFormat("{count} absent", { count: absent }) : "", failed > 0 ? trFormat("{count} did not pass", { count: failed }) : ""].filter(Boolean).join(` ${tr("and")} `)}${tr(": after the training is Completed they are trained again in a separate list under the same Training Number (SOP.0003 5.3.7).")}`}
+        />
       )}
     </>
   );

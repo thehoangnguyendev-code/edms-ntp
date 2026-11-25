@@ -142,14 +142,14 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
               showToast({
                 type: "success",
                 title: "Copied!",
-                message: "All credentials copied to clipboard",
+                message: tr("All credentials copied to clipboard"),
               });
             } catch (err) {
               console.error("Failed to copy credentials:", err);
               showToast({
                 type: "error",
                 title: tr("Copy Failed"),
-                message: "Failed to copy credentials to clipboard",
+                message: tr("Failed to copy credentials to clipboard"),
               });
             }
           }}

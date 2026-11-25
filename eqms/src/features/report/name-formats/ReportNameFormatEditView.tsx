@@ -88,7 +88,7 @@ export function ReportNameFormatEditView() {
   const [editing, setEditing] = useState<{ index: number | null; draft: PartDraft }>();
   const NEW_PART: PartDraft = { type: "INPUT", fixedText: "", inputLabel: "", inputRule: "TEXT", maxLength: 100 };
   const draftProblem = (draft: PartDraft) =>
-    draft.type === "FIXED" ? (draft.fixedText.trim() ? "" : "Enter the text.") : draft.inputLabel.trim() ? "" : "Enter the label.";
+    draft.type === "FIXED" ? (draft.fixedText.trim() ? "" : tr("Enter the text.")) : draft.inputLabel.trim() ? "" : tr("Enter the label.");
   const applyEditing = () => {
     if (!editing || draftProblem(editing.draft)) return;
     const { index, draft } = editing;
@@ -175,19 +175,19 @@ export function ReportNameFormatEditView() {
       else await reportNameFormatsApi.update(id, payload);
       showToast({
         type: "success",
-        title: create ? "Report Name Format Created" : "Report Name Format Updated",
+        title: create ? tr("Report Name Format Created") : tr("Report Name Format Updated"),
         message: `"${name.trim()}" has been ${create ? "created" : "updated"} successfully. Example: ${example(parts, separator)}`,
       });
       navigate("/settings/report-name-formats");
     } catch (e) {
-      showToast({ type: "error", title: create ? "Create Failed" : "Update Failed", message: reportError(e) });
+      showToast({ type: "error", title: create ? tr("Create Failed") : tr("Update Failed"), message: reportError(e) });
     } finally {
       setSaving(false);
       setSaveReason(undefined);
     }
   };
 
-  const title = create ? "New Report Name Format" : viewing ? "Report Name Format Details" : "Edit Report Name Format";
+  const title = create ? tr("New Report Name Format") : viewing ? tr("Report Name Format Details") : tr("Edit Report Name Format");
   return (
     <div className="h-full flex flex-col gap-6">
       <PageHeader
@@ -428,7 +428,7 @@ export function ReportNameFormatEditView() {
       <FormModal
         isOpen={!!saveReason}
         onClose={() => setSaveReason(undefined)}
-        title={create ? "Create name format" : "Save name format"}
+        title={create ? tr("Create name format") : tr("Save name format")}
         description={tr("Templates already named by this rule keep their names. Say why this rule changes. The reason is recorded with your name and the time.")}
         confirmText="Save"
         confirmDisabled={!saveReason?.reason.trim() || saving}

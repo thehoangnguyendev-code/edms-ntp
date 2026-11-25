@@ -16,7 +16,11 @@ public class TrainingPreparationController {
     private final TrainingCopyService copies;
     private final CurrentUserService users;
 
-    public TrainingPreparationController(TrainingPreparationService preparation, TrainingCopyService copies, CurrentUserService users) {
+    private final com.eqms.service.training.TrainingDocumentSourcesService documentSources;
+
+    public TrainingPreparationController(TrainingPreparationService preparation, TrainingCopyService copies, CurrentUserService users,
+                                         com.eqms.service.training.TrainingDocumentSourcesService documentSources) {
+        this.documentSources = documentSources;
         this.preparation = preparation;
         this.copies = copies;
         this.users = users;
@@ -24,6 +28,13 @@ public class TrainingPreparationController {
 
     @GetMapping("/activities/{id}/preparation")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(preparation.get(users.requireCurrentUser(), id)); }
+
+    /** The documents a training from Document Control uses as material, and what the form of its first session starts with. */
+    @GetMapping("/activities/{id}/document-sources")
+    public ResponseEntity<?> documentSources(@PathVariable UUID id) { return ResponseEntity.ok(documentSources.get(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/activities/{id}/preparation/fill-in")
+    public ResponseEntity<?> fillIn(@PathVariable UUID id) { return ResponseEntity.ok(preparation.autoFill(users.requireCurrentUser(), id)); }
 
     @PutMapping("/sessions/{id}/preparation/{item}")
     public ResponseEntity<?> update(@PathVariable UUID id, @PathVariable String item, @RequestBody TrainingPreparationService.UpdateRequest request) {

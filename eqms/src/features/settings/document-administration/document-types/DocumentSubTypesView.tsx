@@ -203,8 +203,8 @@ export const DocumentSubTypesView: React.FC = () => {
           extractApiMessage(
             error,
             showEditModal
-              ? "Unable to update sub-type."
-              : "Unable to create sub-type.",
+              ? tr("Unable to update sub-type.")
+              : tr("Unable to create sub-type."),
           ),
         );
         throw error;

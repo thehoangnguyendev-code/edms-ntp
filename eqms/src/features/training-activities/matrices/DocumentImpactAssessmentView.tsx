@@ -78,7 +78,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
     }
   };
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
-    ...(r.canAssess ? [{ label: r.impactStatus === "PENDING" ? "Assess Impact" : "Assess Again", icon: <IconCircleOpenArrowRight className="h-4 w-4" />, onClick: () => void open(r) }] : []),
+    ...(r.canAssess ? [{ label: r.impactStatus === "PENDING" ? tr("Assess Impact") : tr("Assess Again"), icon: <IconCircleOpenArrowRight className="h-4 w-4" />, onClick: () => void open(r) }] : []),
     { label: tr("View Training Activity"), icon: <IconPhotoSensor className="h-4 w-4" />, onClick: () => navigate(`/training-management/activities/${r.id}`) },
   ]);
 
@@ -144,7 +144,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">
               {ctx.effectiveMatrix
                 ? ctx.inEffectiveMatrix
-                  ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : "no Work Position"}.`
+                  ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : tr("no Work Position")}.`
                   : `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) does not have this document.`
                 : tr("The department has no effective matrix yet.")}
             </p>

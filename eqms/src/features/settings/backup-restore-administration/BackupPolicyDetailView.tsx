@@ -232,7 +232,7 @@ export const BackupPolicyDetailView: React.FC = () => {
 
       {gate && (
         <FormSection
-          title="3-2-1-1 Rule"
+          title={tr("3-2-1-1 Rule")}
           icon={<Warehouse className="h-4 w-4" />}
           description={draft ? tr("As it stands now. The targets are also tested when the policy is activated.") : tr("The result recorded when this version was activated.")}
         >

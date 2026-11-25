@@ -73,7 +73,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
       showToast({
         type: 'error',
         title: tr('Missing SMTP Details'),
-        message: 'Please fill in SMTP Host, Port, Username, Password, Sender Email, and Sender Name before testing.',
+        message: tr('Please fill in SMTP Host, Port, Username, Password, Sender Email, and Sender Name before testing.'),
       });
       return;
     }

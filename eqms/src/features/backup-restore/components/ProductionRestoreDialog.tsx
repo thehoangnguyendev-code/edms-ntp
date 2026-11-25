@@ -133,7 +133,7 @@ export const ProductionRestoreDialog: React.FC<{
       onClose={onClose}
       title={tr("Restore a Backup")}
       description={tr("Replaces the live data with what the backup holds. Files are only added, never overwritten.")}
-      confirmText="Continue to Sign"
+      confirmText={tr("Continue to Sign")}
       confirmDisabled={!canContinue}
       onConfirm={() => onContinue(backup, parts)}
       size="2xl"

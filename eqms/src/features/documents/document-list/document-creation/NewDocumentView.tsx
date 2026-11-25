@@ -277,6 +277,8 @@ const defaultFormData = {
   titleLocalLanguage: "",
 };
 
+// A new document does not start ticked: the person who creates it decides whether it needs training (owner decision 2026-11-24, which replaces the default of
+// DEC-TRAINING-2026-11-24-3). Ticking it asks for the training period (SOP.0003 5.1.3: 10 days is the usual one); leaving it unticked asks for the reason.
 const defaultTrainingConfig: TrainingConfig = {
   isRequired: false,
   trainingPeriodDays: null,
@@ -1389,9 +1391,9 @@ export const NewDocumentView: React.FC = () => {
     const mapped = allowedOptions.map((item) => ({ label: item.label, value: item.value }));
     const currentValue = String(formData.subType || "").trim();
     if (!currentValue || mapped.some((option) => option.value === currentValue || option.label === currentValue)) {
-      return [{ label: "— No Sub-Type —", value: "" }, ...mapped];
+      return [{ label: tr("— No Sub-Type —"), value: "" }, ...mapped];
     }
-    return [{ label: "— No Sub-Type —", value: "" }, ...mapped, { label: currentValue, value: currentValue }];
+    return [{ label: tr("— No Sub-Type —"), value: "" }, ...mapped, { label: currentValue, value: currentValue }];
   }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions]);
 
   // Document policy comes from the server, never from its classification Sub-Type.
@@ -1791,10 +1793,10 @@ export const NewDocumentView: React.FC = () => {
       setIsSaving(false);
       showToast({
         type: "success",
-        title: isSaved ? "Document Updated" : "Document Saved",
+        title: isSaved ? tr("Document Updated") : tr("Document Saved"),
         message: isSaved
-          ? "Draft information has been updated."
-          : "Document draft has been created successfully.",
+          ? tr("Draft information has been updated.")
+          : tr("Document draft has been created successfully."),
         duration: 3000,
       });
       return true;
@@ -2567,8 +2569,8 @@ export const NewDocumentView: React.FC = () => {
         }}
         onConfirm={handleCancelConfirm}
         title={tr("Cancel Document Creation")}
-        confirmText="Yes, Cancel"
-        cancelText="No, Continue"
+        confirmText={tr("Yes, Cancel")}
+        cancelText={tr("No, Continue")}
         confirmDisabled={!cancelActivitySummary.trim()}
         showCancel={true}
         size="lg"
@@ -2608,7 +2610,7 @@ export const NewDocumentView: React.FC = () => {
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onConfirm={handleConfirmSave}
-        title={saveAction === "next-step" ? tr("Save & Proceed to Next Step?") : "Save Document?"}
+        title={saveAction === "next-step" ? tr("Save & Proceed to Next Step?") : tr("Save Document?")}
         description={
           saveAction === "next-step"
             ? (numberModes.document === "MANUAL"
@@ -2616,7 +2618,7 @@ export const NewDocumentView: React.FC = () => {
               : tr("This will create the document and generate Document Number. You can then add Reviewers and Approvers."))
             : tr("Are you sure you want to save this document?")
         }
-        confirmText={saveAction === "next-step" ? "Save & Next" : "Save"}
+        confirmText={saveAction === "next-step" ? tr("Save & Next") : "Save"}
         cancelText="Cancel"
         showCancel
         isLoading={isSaving}
@@ -2675,8 +2677,8 @@ export const NewDocumentView: React.FC = () => {
         currentPageTitle="New Document"
         destinationLabel="Document list"
         title={tr("Save Before Leaving?")}
-        primaryActionLabel="Save & Leave"
-        secondaryActionLabel="Leave without saving"
+        primaryActionLabel={tr("Save & Leave")}
+        secondaryActionLabel={tr("Leave without saving")}
         description={
           <div className="space-y-2 text-sm leading-relaxed text-slate-700">
             <p>{tr("Do you want to save the current draft before going back to the document list?")}</p>

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { Loading } from "@/components/ui/loading/Loading";
@@ -44,8 +45,8 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
     }
 
     const previewHint = documentFile
-        ? "Preview is being prepared or the selected file type is not a PDF yet."
-        : "No PDF preview is available yet.";
+        ? tr("Preview is being prepared or the selected file type is not a PDF yet.")
+        : tr("No PDF preview is available yet.");
 
     return (
         <div

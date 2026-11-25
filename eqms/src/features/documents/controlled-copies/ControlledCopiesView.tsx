@@ -214,7 +214,7 @@ const DropdownMenu: React.FC<{
               title={isCapabilityLoading ? tr("Capability information is still loading.") : isDistributeBusy ? tr("A distribution is already being processed.") : ""}
               onClick={() => { onDistribute!(); onClose(); }}
             >
-              {isBatch ? "Distribute Batch" : tr("Distribute")}
+              {isBatch ? tr("Distribute Batch") : tr("Distribute")}
             </DropdownMenuItem>
           )}
           {onRecall && !isCapabilityLoading && recallDecision?.allowed && (
@@ -224,7 +224,7 @@ const DropdownMenu: React.FC<{
               title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
               onClick={() => { onRecall!(); onClose(); }}
             >
-              {isBatch ? "Recall Batch Immediately" : "Recall Immediately"}
+              {isBatch ? tr("Recall Batch Immediately") : tr("Recall Immediately")}
             </DropdownMenuItem>
           )}
           {!isBatch && onReportLostDamaged && !isCapabilityLoading && reportLostDamagedDecision?.allowed && (
@@ -817,7 +817,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             console.error("Failed to load distribution result", error);
             showToast({
               type: hasErrors ? "error" : "success",
-              title: hasErrors ? "Distribution completed with errors" : "Controlled Copy Distributed",
+              title: hasErrors ? tr("Distribution completed with errors") : tr("Controlled Copy Distributed"),
               message: tr("The distribution batch has finished processing."),
               duration: 4000,
             });
@@ -1432,7 +1432,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
         usagePurpose: usagePurposeFilter !== USAGE_PURPOSE_ALL ? usagePurposeFilter : undefined,
         sortBy: sortConfig.key, sortDirection: sortConfig.direction,
       }, options);
-    } catch { showToast({ type: 'error', title: tr('Export failed'), message: 'Unable to export controlled copies.' }); }
+    } catch { showToast({ type: 'error', title: tr('Export failed'), message: tr('Unable to export controlled copies.') }); }
     finally { setIsExporting(false); }
   };
 

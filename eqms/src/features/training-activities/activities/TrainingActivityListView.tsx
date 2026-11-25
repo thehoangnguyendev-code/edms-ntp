@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconChalkboardTeacher, IconCheck, IconChecklist, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconUsersPlus } from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconChecklist, IconClipboardCheck, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconUsersPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -20,7 +20,7 @@ import { dictionaryApi } from "@/services/api/dictionary";
 import { KIND_LABEL, KIND_REASON_LABEL, METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day, when, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 import { tr } from "@/i18n";
 
-const STATUSES = ["PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED", "RESERVED"];
+const STATUSES = ["PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED", "RESERVED"];
 
 /** The training activities the person may see. Search, filters, sort and paging are applied by the server. */
 
@@ -107,6 +107,7 @@ export function TrainingActivityListView() {
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{STATUS_LABEL[r.status] ?? r.status}</Badge> },
     { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentLabel ?? "—") },
     { id: "department", header: "Department", sort: sorted("departmentName"), cell: (r) => r.departmentName },
+    { id: "sessions", header: tr("Sessions"), sort: sorted("sessionCount"), cell: (r) => r.sessionCount ?? 0 },
     { id: "people", header: "People", sort: sorted("participantCount"), cell: (r) => r.participantCount },
     { id: "attended", header: "Attended", sort: sorted("attendedCount"), cell: (r) => (r.participantCount ? `${r.attendedCount ?? 0} / ${r.participantCount}` : "—") },
     { id: "passed", header: "Passed", sort: sorted("passedCount"), cell: (r) => (r.participantCount ? `${r.passedCount ?? 0} / ${r.participantCount}` : "—") },
@@ -210,8 +211,8 @@ export function TrainingActivityListView() {
             {[
               { show: true, icon: <IconInfoCircle className="h-4 w-4" />, label: tr("View Details"), to: `/training-management/activities/${actionRow.id}` },
               { show: actionRow.actions?.edit, icon: <IconPencilMinus className="h-4 w-4" />, label: tr("Edit Training Activity"), to: `/training-management/activities/${actionRow.id}/edit` },
+              { show: actionRow.actions?.prepare, icon: <IconClipboardCheck className="h-4 w-4" />, label: tr("Prepare Training"), to: `/training-management/activities/${actionRow.id}/prepare` },
               { show: actionRow.actions?.conduct, icon: <IconChalkboardTeacher className="h-4 w-4" />, label: tr("Conduct Training"), to: `/training-management/activities/${actionRow.id}/conduct` },
-              { show: actionRow.actions?.review, icon: <IconCheck className="h-4 w-4" />, label: tr("Review Training Content"), to: `/training-management/activities/${actionRow.id}/review` },
               { show: actionRow.actions?.approve, icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Training Content"), to: `/training-management/activities/${actionRow.id}/approve` },
               { show: actionRow.actions?.confirm, icon: <IconChecks className="h-4 w-4" />, label: tr("Confirm Training Completion"), to: `/training-management/activities/${actionRow.id}/confirm` },
               { show: actionRow.actions?.supplementary, icon: <IconUsersPlus className="h-4 w-4" />, label: tr("Supplementary Training"), to: `/training-management/activities/${actionRow.id}`, state: { openSupplementary: true } },

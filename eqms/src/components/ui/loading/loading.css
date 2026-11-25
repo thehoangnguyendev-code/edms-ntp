@@ -1,0 +1,10 @@
+.eqms-loading-static { display: none; }
+/* Loading UI's container utility targets Tailwind 4; this app uses Tailwind 3.
+   Keep cqmin dot geometry relative to the indicator rather than the viewport. */
+.eqms-loading-indicator[data-loading-style="dots-ring"] .eqms-loading-visual > span {
+  container-type: size;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eqms-loading-visual { display: none; }
+  .eqms-loading-static { display: block; }
+}

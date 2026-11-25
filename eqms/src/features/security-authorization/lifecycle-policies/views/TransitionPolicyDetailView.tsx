@@ -98,7 +98,7 @@ export const TransitionPolicyDetailView: React.FC = () => {
       if (kind === "activate") await workflowActionPolicyApi.activatePolicy(policy.id, sig);
       else if (kind === "deactivate") await workflowActionPolicyApi.deactivatePolicy(policy.id, sig);
       else await workflowActionPolicyApi.resetToDefault(policy.id, sig);
-      showToast({ type: "success", title: kind === "activate" ? "Activated" : kind === "deactivate" ? "Deactivated" : "Reset", message: kind === "activate" ? "Policy activated." : kind === "deactivate" ? "Policy deactivated." : "Policy reset to system default." });
+      showToast({ type: "success", title: kind === "activate" ? "Activated" : kind === "deactivate" ? tr("Deactivated") : "Reset", message: kind === "activate" ? "Policy activated." : kind === "deactivate" ? "Policy deactivated." : tr("Policy reset to system default.") });
       await load();
     } catch (err) {
       showToast({ type: "error", title: "Failed", message: extractApiError(err).message });

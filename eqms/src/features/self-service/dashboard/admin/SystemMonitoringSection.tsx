@@ -74,7 +74,7 @@ const RuntimeCard: React.FC<{
         subtitle={
           data
             ? `Checked at ${formatChecked(data.generatedAt)}`
-            : "Server and database"
+            : tr("Server and database")
         }
       />
       {error ? (
@@ -298,8 +298,8 @@ export function useSystemMonitoringWidgets() {
                   ? formatBytes(data.runtime.heapUsedBytes)
                   : dash,
                 footLabel: data
-                  ? `Heap used of ${formatBytes(data.runtime.heapMaxBytes)}`
-                  : "Heap used",
+                  ? trFormat("Heap used of {size}", { size: formatBytes(data.runtime.heapMaxBytes) })
+                  : tr("Heap used"),
               },
             ]}
           />
@@ -333,7 +333,7 @@ export function useSystemMonitoringWidgets() {
                   data && data.database.poolIdle !== null
                     ? data.database.poolIdle
                     : dash,
-                footLabel: "Idle connections",
+                footLabel: tr("Idle connections"),
               },
             ]}
           />
@@ -416,7 +416,7 @@ export function useSystemMonitoringWidgets() {
           centerCaption="Users"
           chartLabel="users by status"
           emptyLabel={
-            totalUsers === 0 && data ? "There are no user accounts" : "No data"
+            totalUsers === 0 && data ? tr("There are no user accounts") : "No data"
           }
           errorMessage={tr("Users by status could not be loaded.")}
           idPrefix="users-status"

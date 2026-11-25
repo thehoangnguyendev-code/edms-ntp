@@ -859,8 +859,8 @@ const RevisionCreateViewContent: React.FC = () => {
             );
             setPreviewMessage(
               isSnapshotGenerating(resolvedDetail?.snapshotStatus)
-                ? "Review snapshot is being regenerated."
-                : "PDF preview is not available yet.",
+                ? tr("Review snapshot is being regenerated.")
+                : tr("PDF preview is not available yet."),
             );
           }
         };

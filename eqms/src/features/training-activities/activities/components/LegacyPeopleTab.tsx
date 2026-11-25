@@ -66,8 +66,8 @@ export function LegacyPeopleTab({ activityId }: { activityId: string }) {
         <h3 className="text-sm font-semibold text-slate-800">{tr("Persons who were trained on paper")}{total ? ` (${total})` : ""}</h3>
         <p className="text-xs text-slate-500">
           {status
-            ? "The evidence is filed: the training records of these persons are written."
-            : "No evidence is filed for this training yet."}
+            ? tr("The evidence is filed: the training records of these persons are written.")
+            : tr("No evidence is filed for this training yet.")}
         </p>
       </div>
       {error && (

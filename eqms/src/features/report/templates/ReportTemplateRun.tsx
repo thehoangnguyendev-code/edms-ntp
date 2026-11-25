@@ -36,7 +36,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { RealtimeReportPreview } from "../shared/RealtimeReportPreview";
 import { ReportFilePreview } from "../shared/ReportFilePreview";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const stages = ["Criteria", "Preview", "Output"];
 function isoDate(value: string): string {
@@ -117,8 +117,8 @@ function PreviewResults({
         scrollProps={drag.dragEvents}
         isDragging={drag.isDragging}
         isLoading={busy}
-        loadingContent={<SectionLoading text="Loading preview..." />}
-        emptyState={<TableEmptyState title="No Records Found" description={tr("No record matches the criteria. Go back and change the filters to continue.")} />}
+        loadingContent={<SectionLoading text={tr("Loading preview...")} />}
+        emptyState={<TableEmptyState title={tr("No Records Found")} description={tr("No record matches the criteria. Go back and change the filters to continue.")} />}
         pagination={
           <TablePagination
             currentPage={preview.pagination.page}
@@ -280,7 +280,7 @@ export function ReportTemplateRun({
             setStage(2);
           }}
         >
-          Continue to Output
+          {tr("Continue to Output")}
         </Button>
       ) : (
         <Button
@@ -289,7 +289,7 @@ export function ReportTemplateRun({
           disabled={!reportTitle.trim()}
           onClick={() => (template.runNeedsSignature ? setSigning(true) : void generate())}
         >
-          {template.runNeedsSignature ? tr("Sign And Generate Report") : "Generate Report"}
+          {template.runNeedsSignature ? tr("Sign And Generate Report") : tr("Generate Report")}
         </Button>
       )}
     </>
@@ -297,7 +297,7 @@ export function ReportTemplateRun({
   return (
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader
-        title="Create Report"
+        title={tr("Create Report")}
         breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, {
           label: tr("Report Library"),
           onClick: onBack,
@@ -306,14 +306,14 @@ export function ReportTemplateRun({
       />
       {template.sourceCode === "BACKUP_RUNS" && <BackupCopyNotice />}
       {/* The steps stand on their own above the form. */}
-      <WorkflowStepper steps={stages} currentStepIndex={stage} numbered />
+      <WorkflowStepper steps={stages.map((step) => tr(step))} currentStepIndex={stage} numbered />
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="min-w-0 p-4 md:p-5">
           {stage === 0 && (
             <div className="space-y-6">
               <section aria-labelledby="report-scope-title">
                 <h3 id="report-scope-title" className="mb-2 text-sm font-semibold text-slate-900">
-                  Scope
+                  {tr("Scope")}
                 </h3>
                 <div role="radiogroup" aria-labelledby="report-scope-title" className="grid gap-3 sm:grid-cols-2">
                   <Radio
@@ -322,7 +322,7 @@ export function ReportTemplateRun({
                     value="filtered"
                     checked={!full}
                     onChange={() => chooseScope(false)}
-                    label="Filtered"
+                    label={tr("Filtered")}
                     description={tr("Narrow the report with at least one filter.")}
                   />
                   <Radio
@@ -340,7 +340,7 @@ export function ReportTemplateRun({
               <section aria-labelledby="report-filters-title">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 id="report-filters-title" className="text-sm font-semibold text-slate-900">
-                    Filters and sort
+                    {tr("Filters and sort")}
                   </h3>
                   <Button variant="outline" size="sm" disabled={busy || !narrowed} onClick={() => changeCriteria({ ...criteria, filters: {} })}>
                     Clear Filters
@@ -409,7 +409,7 @@ export function ReportTemplateRun({
                     ))(item.field),
                   )}
                   <Select
-                    label="Sort by"
+                    label={tr("Sort by")}
                     value={criteria.sortBy}
                     enableSearch={false}
                     options={template.fields
@@ -420,11 +420,11 @@ export function ReportTemplateRun({
                     }
                   />
                   <Select
-                    label="Direction"
+                    label={tr("Direction")}
                     value={criteria.direction}
                     enableSearch={false}
                     options={[
-                      { value: "asc", label: "Ascending" },
+                      { value: "asc", label: tr("Ascending") },
                       { value: "desc", label: tr("Descending") },
                     ]}
                     onChange={(value) =>
@@ -440,13 +440,13 @@ export function ReportTemplateRun({
               <section aria-labelledby="report-columns-title" className="border-t border-slate-200 pt-5">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                   <h3 id="report-columns-title" className="text-sm font-semibold text-slate-900">
-                    Included columns
+                    {tr("Included columns")}
                   </h3>
                   <p className={cn("text-xs", criteria.fields.length > DEFAULT_MAX_COLUMNS ? "font-medium text-red-600" : "text-slate-500")} aria-live="polite">
-                    {criteria.fields.length} of {DEFAULT_MAX_COLUMNS} columns included
+                    {trFormat("{selected} of {max} columns included", { selected: criteria.fields.length, max: DEFAULT_MAX_COLUMNS })}
                   </p>
                 </div>
-                <p className="mb-3 text-xs text-slate-500">Required columns and chart fields remain included. A report carries at most {DEFAULT_MAX_COLUMNS} columns.</p>
+                <p className="mb-3 text-xs text-slate-500">{trFormat("Required columns and chart fields remain included. A report carries at most {max} columns.", { max: DEFAULT_MAX_COLUMNS })}</p>
                 <div className="space-y-3">
                   <ReportFieldFilters
                     narrow
@@ -457,11 +457,11 @@ export function ReportTemplateRun({
                     groups={groupNames(template.fields.filter((field) => field.allowed).map((field) => field.group ?? CORE_GROUP))}
                   />
                   <div className="grid max-h-80 gap-3 overflow-y-auto rounded-lg border border-slate-200 p-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {columnFields.length === 0 && <p className="text-sm text-slate-500 sm:col-span-2 xl:col-span-3">No column matches the search.</p>}
+                    {columnFields.length === 0 && <p className="text-sm text-slate-500 sm:col-span-2 xl:col-span-3">{tr("No column matches the search.")}</p>}
                     {columnFields.map((field) => (
                       <div key={field.code} className="flex min-w-0 flex-wrap items-center gap-2">
                         <Checkbox
-                          label={`${field.name}${field.required ? " (required)" : ""}`}
+                          label={`${field.name}${field.required ? ` ${tr("(required)")}` : ""}`}
                           checked={criteria.fields.includes(field.code)}
                           disabled={
                             field.required ||
@@ -491,7 +491,7 @@ export function ReportTemplateRun({
               {/* Only a result too large for one report file is said here: it is the reason Continue to Output is disabled. */}
               {tooLarge && (
                 <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700 sm:text-sm" role="alert">
-                  {`This result has ${total.toLocaleString()} records, more than a ${full ? "Full " : ""}report file may hold (${limit.toLocaleString()}). ${full ? "Add a filter to narrow it." : "Add a filter to narrow it, or choose Full (up to " + fullLimit.toLocaleString() + ")."} The server never silently truncates a report.`}
+                  {`This result has ${total.toLocaleString()} records, more than a ${full ? "Full " : ""}report file may hold (${limit.toLocaleString()}). ${full ? tr("Add a filter to narrow it.") : "Add a filter to narrow it, or choose Full (up to " + fullLimit.toLocaleString() + ")."} The server never silently truncates a report.`}
                 </p>
               )}
               <PreviewResults
@@ -520,7 +520,7 @@ export function ReportTemplateRun({
                   />
                 </label>
                 <Select
-                  label="Output format"
+                  label={tr("Output format")}
                   value={format}
                   enableSearch={false}
                   options={formatOptions.map((value) => ({
@@ -533,8 +533,8 @@ export function ReportTemplateRun({
                   }}
                 />
                 <p className="text-xs text-slate-500">
-                  The report is made from your current access and is listed in Report Run History when it is ready.
-                  {template.runNeedsSignature ? " It is signed electronically when you generate it; you give the reason in the signature window." : ""}
+                  {tr("The report is made from your current access and is listed in Report Run History when it is ready.")}
+                  {template.runNeedsSignature ? ` ${tr("It is signed electronically when you generate it; you give the reason in the signature window.")}` : ""}
                 </p>
               </div>
               {format === "CSV" || format === "XLSX" ? (
@@ -561,7 +561,7 @@ export function ReportTemplateRun({
       {/* Footer actions: the same buttons again at the bottom of the page, as on Document Details (a plain row, no frame). */}
       <div className="flex flex-wrap items-center gap-2 md:gap-3">{actionButtons}</div>
       {/* What the server refuses (a period that is too long, a limit, a lost right) is said in a window, not in a line above the form. */}
-      <AlertModal isOpen={!!error} onClose={() => setError("")} onConfirm={() => setError("")} type="error" title="Cannot Create Report" description={error} />
+      <AlertModal isOpen={!!error} onClose={() => setError("")} onConfirm={() => setError("")} type="error" title={tr("Cannot Create Report")} description={error} />
       {template.runNeedsSignature && (
         <ESignatureModal
           isOpen={signing}

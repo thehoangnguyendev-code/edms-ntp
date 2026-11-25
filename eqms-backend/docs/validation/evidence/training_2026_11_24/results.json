@@ -1,0 +1,2156 @@
+{
+ "T1A_part1": [
+  {
+   "check": "T1A.1 Planned with a Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.2 a self-reading needs a material and no test or checklist",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.3 three people on the list",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.3b submit for approval is refused while the two approvers are not chosen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.4 the same person cannot be both approvers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.5 Pending Approval",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.6 the second approver cannot sign before the first",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.7 both approved: still Pending Approval, Notify is offered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.8 Notified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.9 Notified is locked: a session cannot be added",
+   "ok": false,
+   "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"POLICY_NOT_CONFIGURED\",\"details\":[]}}')"
+  },
+  {
+   "check": "T1A.10 Start Training is refused before the preparation is done",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.11 Start Training with a signature: In Progress",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.12 the head cannot confirm before anybody signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.13 the first reader signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.14 the trainer reminds the person who has not signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.15 the second reader signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.16 the head cannot confirm while a person has neither signed nor been recorded",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.17 Cannot Read needs a reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.18 the person who cannot read is recorded absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.19 the head of the department confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.20 the two readers PASSED, the absent person has no result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.21 Finish Training (results go to QA)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.22 Pending QA Confirmation",
+   "ok": false,
+   "detail": "COMPLETED"
+  },
+  {
+   "check": "T1A.23 the organizer cannot confirm (segregation of duties)",
+   "ok": false,
+   "detail": "(403, '{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"POLICY_NOT_CONFIGURED\",\"details\":[]}}')"
+  },
+  {
+   "check": "T1A.24 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.25 a person who passed cannot be given a make-up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.26 make-up created with the number of the parent and a letter",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T1A": [
+  {
+   "check": "T1A.1 Planned with a Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.2 a self-reading needs a material and no test or checklist",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.3 three people on the list",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.3b submit for approval is refused while the two approvers are not chosen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.4 the same person cannot be both approvers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.5 Pending Approval",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.6 the second approver cannot sign before the first",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.7 both approved: still Pending Approval, Notify is offered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.8 Notified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.9 Notified is locked: a session cannot be added (no policy allows it in this state)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.10 Start Training is refused before the preparation is done",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.11 Start Training with a signature: In Progress",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.12 the head cannot confirm before anybody signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.13 the first reader signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.14 the trainer reminds the person who has not signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.15 the second reader signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.16 the head cannot confirm while a person has neither signed nor been recorded",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.17 Cannot Read needs a reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.18 the person who cannot read is recorded absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.19 the head of the department confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.20 the two readers PASSED, the absent person has no result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.21 Finish Training (results go to QA)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.22 Pending QA Confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.23 the organizer cannot confirm (segregation of duties)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.24 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.25 a person who passed cannot be given a make-up",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.26 make-up created with the number of the parent and a letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.27 the make-up has the same session (self-reading) and the person on its list",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.29 the make-up starts",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.30 the person reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.31 the head confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.32 Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.33 QA confirms the make-up: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1A.34 the make-up wrote the training record of the person",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T1B": [
+  {
+   "check": "T1B.1 a classroom with a test needs a material and a test",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.2 submit for approval is refused while the material and the test are missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.3 the test of the library is chosen: nothing is missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.4 both approvers signed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.5 Notified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.6 the test is conducted electronically by default (the delivery mode of the session): nothing to print",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.7 Start Training (signed): In Progress",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.8 an absence needs a reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.9 the absent person is recorded with the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.10 uat31.s1.pass1 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.10 uat31.s1.pass2 attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.10 uat31.s1.fail attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.11 the session has its day after the first attendance",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.12 a score for the absent person is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.13 a score above the maximum is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.14 score 9/10 of uat31.s1.pass1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.14 score 8/10 of uat31.s1.pass2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.14 score 4/10 of uat31.s1.fail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.15 results: 9 and 8 PASSED, 4 FAILED, the absent person has none",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.16 a person who passed cannot be scored again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.17 the person who failed is flagged: work suspended until a pass",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.18 Finish Training (the attendance list goes first)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.19 Pending QA Confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.20 the organizer cannot confirm (separation of duties)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.21 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.22 training records exist for the two who passed and none for the absent and failed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.23 the absent person and the one who failed are offered a supplementary training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.24 the make-up has the number of the parent and a letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.25 the retraining has the next letter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.26 the retraining says why (failed assessment) and the make-up says absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.27 make-up: the same session (classroom, test) and only that person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.29 make-up: starts",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.30 make-up: attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.31 make-up: scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.32 make-up: Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.33 make-up: QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.27 retraining: the same session (classroom, test) and only that person",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.29 retraining: starts",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.30 retraining: attends",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.31 retraining: scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.32 retraining: Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.33 retraining: QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.34 the absent person and the retrained person now have a record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1B.35 the pass of the retraining lifts the work suspension (cleared: retrained and passed)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T1C": [
+  {
+   "check": "T1C.1 an initial training is created Planned with one Training Number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.2 three sessions with their own methods",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.3 the same people are on the three sessions (SOP 4.2: the same group may attend every session)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.4 S3 still has no test: the activity is not complete",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.5 submit for approval is refused while S3 has no test",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.6 each session with a test has its own: nothing is missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.7 Start Training is refused until the paper tests of S1 are printed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.8 after printing: Start Training, In Progress",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.9 C absent from S1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.10 uat31.s2.qa.pass attends S1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.10 uat31.s2.qa.fail attends S1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.11 S1 is held today",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.12 S2 and S3 are not held yet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.13 S1 score 9/10 of uat31.s2.qa.pass",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.13 S1 score 4/10 of uat31.s2.qa.fail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.14 uat31.s2.qa.pass signs the reading of S2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.14 uat31.s2.qa.fail signs the reading of S2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.15 C cannot read S2: recorded absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.16 the head of Quality Assurance confirms the readings of S2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.17 S2: A and B PASSED, C has no result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.18 uat31.s2.qa.pass attends S3",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.18 uat31.s2.qa.fail attends S3",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.18 uat31.s2.qa.absent attends S3",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.19 S3 score 8/10 of uat31.s2.qa.pass",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.19 S3 score 9/10 of uat31.s2.qa.fail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.19 S3 score 7/10 of uat31.s2.qa.absent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.19b Finish Training is refused while the scans of the paper tests of S1 are missing (the electronic S3 and the self-reading S2 need none)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.20 Finish Training: Pending QA Confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.21 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.22 A is recorded on three topics (passed S1, read S2, passed S3)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.23 B is recorded on S2 and S3 only (failed S1)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.24 C is recorded on S3 only (absent S1, could not read S2)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C.25 the make-up candidates are B (failed S1) and C (absent S1, could not read S2); A is not",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T1C2": [
+  {
+   "check": "T1C2.1 retraining created (suffix a)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C2.2 make-up created (suffix b)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C2.3 the make-up of C has a session for S1 (classroom, test) and one for S2 (self-reading)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "retraining of B: Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "retraining of B: attends S1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "retraining of B: scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "retraining of B: Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "retraining of B: QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: attends S1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: scores 9/10",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: reads S2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: the head confirms the reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "make-up of C: QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T1C2.4 B has the record of S1 now; C has the records of S1 and S2",
+   "ok": false,
+   "detail": "{('uat31.s2.qa.absent', 'Supplementary training: RUN24 '), ('uat31.s2.qa.fail', 'Supplementary training: RUN24 ')}"
+  },
+  {
+   "check": "T1C2.5 the pass of the retraining lifts the work suspension of B",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T2A": [
+  {
+   "check": "T2A.1 the document that does not require training has no activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.2 the SOP has one Training Number, waiting for the approval of the documents (Reserved)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.3 the numbers of the two forms are given up (Cancelled)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.4 the activity is a new SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.5 the Training Materials list the SOP and every related document, also the one that needs no training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.6 the SOP and the two forms are in the group (same Training Number), not approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.7 the document in force is a related document that has not changed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.8 SOP written, reviewed and approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.9 after SOP: the training still waits (Reserved)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.8 form 1 written, reviewed and approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.9 after form 1: the training still waits (Reserved)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.10 form 2 approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.11 the last approval opens the training: Planned, the due day counts from today",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.12 all three documents of the group are approved now: they can be opened",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.13 the first session starts as classroom + test, with the author of the SOP as trainer (a first issue)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.14 the people proposed on the document are saved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.15 before the first session they wait as proposed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "screenshot T2A-04__Add_session_prefilled.png",
+   "ok": false,
+   "detail": "Locator.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=\"Add session\").first\n"
+  },
+  {
+   "check": "T2A.16 the two proposed people are on the list of session 1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.17 the document is the material: nothing is missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.18 Start Training: In Progress",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.19 uat31.s1.pass1 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.19 uat31.s1.pass2 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.20 the head of Quality Control confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.21 Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.22 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.23 the three revisions of the group wait for Complete Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10448",
+   "ok": false,
+   "detail": "(500, '{\"error\":{\"code\":\"INTERNAL_ERROR\",\"message\":\"Unexpected server error\",\"details\":[]}}')"
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10445",
+   "ok": false,
+   "detail": "(500, '{\"error\":{\"code\":\"INTERNAL_ERROR\",\"message\":\"Unexpected server error\",\"details\":[]}}')"
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10446",
+   "ok": false,
+   "detail": "(500, '{\"error\":{\"code\":\"INTERNAL_ERROR\",\"message\":\"Unexpected server error\",\"details\":[]}}')"
+  },
+  {
+   "check": "T2A.25 SOP published: Effective",
+   "ok": false,
+   "detail": "('Pending Training', [('generate-preview', 409, '{\"error\":{\"code\":\"INVALID_STATE\",\"message\":\"Revision must be Ready For Publishing\",\"details\":[]}}'), ('publish', 400, '{\"error\":{\"code\":\"RELATED_DOCUMENTS_NOT_READY\",\"message\":\"One or more Related Documents have a revision in progress that has not yet reached Ready for Publishing. This document cannot be published together with them until they do, so the whole package publishes together.\\\\n\\\\nSOP.10445 - RUN24 APD form of the cleaning log - Revision 0.0.1 · Pending Training\\\\nSOP.10446 - RUN24 FRM record of the room status - Revision 0.0.1 · Pen"
+  },
+  {
+   "check": "T2A.25 form 1 published: Effective",
+   "ok": false,
+   "detail": "('Pending Training', [('generate-preview', 409, '{\"error\":{\"code\":\"INVALID_STATE\",\"message\":\"Revision must be Ready For Publishing\",\"details\":[]}}'), ('publish', 409, '{\"error\":{\"code\":\"REVISION_STATE_CHANGED\",\"message\":\"This revision is now \\'PENDING_TRAINING\\'. Someone else may have just acted on it, so your action was not applied. Refresh the page to see the latest state.\",\"details\":[]}}')])"
+  },
+  {
+   "check": "T2A.25 form 2 published: Effective",
+   "ok": false,
+   "detail": "('Pending Training', [('generate-preview', 409, '{\"error\":{\"code\":\"INVALID_STATE\",\"message\":\"Revision must be Ready For Publishing\",\"details\":[]}}'), ('publish', 409, '{\"error\":{\"code\":\"REVISION_STATE_CHANGED\",\"message\":\"This revision is now \\'PENDING_TRAINING\\'. Someone else may have just acted on it, so your action was not applied. Refresh the page to see the latest state.\",\"details\":[]}}')])"
+  }
+ ],
+ "T2A_resume": [
+  {
+   "check": "T2A.23r the activity is Completed and the group waits for Complete Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10448",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10445",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.24 Complete Training of SOP.10446",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.24b the button is gone when all are done",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.25 SOP published: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.25 form 1 published: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.25 form 2 published: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2A.26 the three documents are Effective",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T2C": [
+  {
+   "check": "T2C.1 a checkbox is ticked on the Training tab of a new document (Requires Training)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2C.2 the SOP is approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2C.3 Planned",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2C.4 classroom + test, the author as trainer",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T2B_resume4": [
+  {
+   "check": "T2B.26 form 1 rev 2 published: Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.27 revision 1 of the SOP is obsolete now, form 2 still revision 1 and Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.28 Upgrade Revision of form 2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.29 form 2 has an activity of its own, with its own number",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.30 its group is form 2 alone",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.31 its Training Materials are form 2 only (it lists nothing as related)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.32 form 2 rev 2 approved: Planned",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.33 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.34 the head confirms the self-reading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.35 Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.36 Complete Training of form 2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T2B.37 form 2 revision 2 Effective",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T3": [
+  {
+   "check": "T3.1 both approved: Notify is offered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T3.2 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T3.3 Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T3.4 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T4": [
+  {
+   "check": "T4A.1 the list is confirmed and the third session misses its test",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.2 no reason: refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.3 no signature: refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.4 nothing changed by the refusals",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.5 the extra session is cancelled",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.6 the session stays as CANCELLED, the others are not touched",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.7 the people of the cancelled session went with it, the list of the others is intact",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.8 nothing is missing now: the cancelled session no longer asks for a test",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.9 the list is still confirmed (no new confirmation asked)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.10 the cancellation is in the audit trail with the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.11 a second cancellation of the same session is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.12 the only session: refused TRAINING_LAST_SESSION",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.13 Notified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.14 after the notice a session is not cancelled: 403 with the clear reason TRAINING_ACTIVITY_INVALID_STATE",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.15 after the notice a session is not added either: same clear reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.16 session 2 postponed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.17 only session 2 moved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.18 the postponement is a recorded event with the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.19 and back to today",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.20 a postponement without a reason is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.21 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.22 once a session has started it cannot be postponed (409)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.23 Finish Training with a cancelled session in the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.24 QA confirms: Completed (the cancelled session does not wait for anything)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.25 B failed both sessions: two lines for B (one a session), none for A",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4A.26 one make-up with one session for each session B failed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.1 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.2 the person who left is recorded Absent in the second session",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.3 Finish Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.4 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.5 only the missed session of the person is a candidate (the passed one is not)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.6 no make-up while the account is not Active (409)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4B.7 once the account is Active the make-up of only the missed session is created",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T4_vi": [],
+ "T4_sr": [
+  {
+   "check": "T4C.1 the self-reading activity has only self-reading sessions",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4C.2 a self-reading does not show the table of scores",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4C.3 a classroom + test activity still shows it",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T4D": [
+  {
+   "check": "T4D.1 two sessions",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.2 session 2 changed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.3 the change entry names its component and the session in every field",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.4 session 2 postponed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.5 the postponement entry names its component, the dates and the reason of the session",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.6 session 1 cancelled",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.7 component named",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.8 status Planned to Cancelled, with the session in the field name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.9 the details of the cancelled session are in the entry (topic, day, place, trainer)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.10 the sessions left are counted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.11 the reason and the people told are recorded",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.12 object type Training Activity, signed, the activity status shown is Planned",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.13 the cancellation carries an electronic signature (meaning Training Session Cancelled) on the activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.14 the trainer of the session was NOT told: the training was never notified (e-mail only to people who were told)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.15 the person who opened the activity got the short in-app result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.16 the person who cancelled got the short in-app result too",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.16b nobody was e-mailed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T4D.17 the people on the cancelled session were not told (they were never notified)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T4D_shot": [],
+ "T5": [
+  {
+   "check": "T5.1 session 1 added",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.2 nobody was told so far: no mail for the trainer, no notified people",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.3 session 1 postponed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.4 nobody was e-mailed (the training does not exist for them yet)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.5 the person who postponed got the short in-app result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.6 the audit entry says nobody had been told, and who got the in-app result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.7 trainer changed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.8 neither the previous nor the new trainer was told (no mail)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.9 the audit entry names the component, the trainer field with the session, the in-app result and the trainer notice rule",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.10 Notified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.11 only the trainer of session 1 (T_NEW) was told, by e-mail (SENT); T_OLD was never told so is not told he or she was replaced",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.12 the in-app channel of the trainer notice is off (not sent)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.13 the e-mail reached the Mailhog box of T_NEW, with the trainer subject",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.14 the trainer e-mail has the session, the day, the place",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.15 the notified trainer is remembered (so a replacement can be told later)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.16 session 1 postponed after the notice",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.17 told: the two people on the list of session 1 and its trainer, nobody else",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.18 each by e-mail (SENT)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.19 not in the app (the in-app channel is off for the people concerned)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.20 Mailhog got one e-mail for each of the three, none for T_OLD",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.21 the e-mail has the session, the previous day, the new day, the place, the trainer, the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.22 the person who postponed got only the short in-app result",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.23 the audit entry names the people e-mailed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.24 the content is reopened (Planned)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.25 trainer changed back (still no mail at this point)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.26 the replaced trainer (T_NEW) got \"no longer the trainer\" by e-mail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.27 the new trainer (T_OLD) got \"you are the trainer\" by e-mail",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.28 one e-mail each in Mailhog",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.29 the two e-mails are different: the replaced says \"no longer\" and the new trainer; the new one says \"you are\" and in place of whom",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T5.30 different subjects",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T6": [
+  {
+   "check": "T6.1 the list returns the number of sessions that are not cancelled (3 sessions, 1 cancelled = 2)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T6.2 the list can be sorted by the number of sessions",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T6.3 the heading line \"Results and scanned tests (n)\" is gone from the detail screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T6.4 the table has the columns Employee Code and Department",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T6.5 the list has a Sessions column",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T7": [
+  {
+   "check": "T7.1 the activity is Reserved (waits for the document to be approved)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T7.2 the words \"Due Date\" appear once as a field label on the screen",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T8": [
+  {
+   "check": "T8.1 the documents are in a table with headers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T8.2 the Open button is a button",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T9": [
+  {
+   "check": "T9A.1 SOP.10468 has no activity (it needs no training)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.1 SOP.10469 has no activity (it needs no training)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.1 SOP.10470 has no activity (it needs no training)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.2 the SOP has one Training Number (Reserved, it waits for the SOP only)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.3 the SOP is the document; the forms and the one in force are related documents (none is in the group)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.4 the activity has no group revision but the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.5 the SOP is written, reviewed and approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.6 the last approval is the SOP: the training opens (Planned) without waiting for the forms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.7 APD approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.8 APD is Ready for Publishing (no training for it)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.7 FRM approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.8 FRM is Ready for Publishing (no training for it)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.7 INS approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.8 INS is Ready for Publishing (no training for it)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.9 the Training Materials show the forms as changed in this version and the one in force as not changed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.10 the topic of the session is the SOP only",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.11 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.12 uat31.s1.pass1 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.12 uat31.s1.pass2 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.13 the head confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.14 Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.15 one revision waits for Complete Training (the SOP)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.16 Complete Training of the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.17 the button is gone",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.18 publishing the SOP publishes the forms with it (Document Control rule): all Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.19 the Document Details of the APD show the training that covered it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.20 the APD carries the training completion day of the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.21 the Audit Trail of the APD has the entry TRAINING_COVERED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.19 the Document Details of the FRM show the training that covered it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.20 the FRM carries the training completion day of the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.21 the Audit Trail of the FRM has the entry TRAINING_COVERED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.19 the Document Details of the INS show the training that covered it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.20 the INS carries the training completion day of the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.21 the Audit Trail of the INS has the entry TRAINING_COVERED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9A.22 the covered forms are not members of the group of the SOP activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9B.1 it has its own activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9B.2 the SOP has another activity",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9B.3 the INS keeps its own Training Number: it is not given up, not merged",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9B.4 the two activities have no revision in common",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T9B.5 the INS is in the Training Materials of the SOP as a related document",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T10": [
+  {
+   "check": "T10.1 the button is not offered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.2 the list starts with the session",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.3 the server refuses with the same first reason (409)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.4 now the people are missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.5 refused: TRAINING_PARTICIPANT_REQUIRED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.6 the list is not confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.7 refused: TRAINING_LIST_NOT_CONFIRMED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.8 the material and the test are missing, and the approvers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.9 only the approvers are missing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.10 refused: TRAINING_APPROVERS_NOT_SAVED",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.11 nothing is missing and the button is offered",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.12 a person who does not organize trainings is refused (403)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.13 the activity is still Planned",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.14 without a signature: refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.15 submitted",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.16 in Pending Approval the button is not offered and nothing is listed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T10.17 a second submission is refused",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T11": [
+  {
+   "check": "T11.0 the SOP is approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T11.1 the activity is Planned and starts from a document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T11.2 the server offers the upload of a material",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T11.3 the screen shows the documents of Document Control and the place to add a file or a link",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T11.4 a link can be added next to the document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T11.5 the material counts next to the document (the document stays the material)",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T14": [
+  {
+   "check": "T14.1 the tab explains why the revision has no Pending Training of its own",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T15": [
+  {
+   "check": "T15.1 the SOP is approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.2 the form 1 is approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.3 before the training is done the form already says it will be covered (COVERING, number, document)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.4 the screen lists the reason",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.5 the server refuses (409 TRAINING_RELATED_NOT_APPROVED)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.6 nothing is written down yet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.7 the other two forms are approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.8 Start Training now",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.9 the three forms and the one in force are written down, with their revision, on the day the training starts",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.10 the Training Materials show the frozen revisions",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.11 uat31.s1.pass1 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.11 uat31.s1.pass2 reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.12 the head confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.13 before QA confirms the form is still only \"covering\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.14 QA confirms: Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.15 each of the two people has a line for each of the four related documents (8 lines), result READ, with the frozen revision",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.16 the SOP itself has its own lines as before",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.17 the APD is covered as soon as QA confirms (before the publication)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.18 the Audit Trail of the APD has TRAINING_COVERED once",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.17 the FRM is covered as soon as QA confirms (before the publication)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.18 the Audit Trail of the FRM has TRAINING_COVERED once",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.17 the INS is covered as soon as QA confirms (before the publication)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.18 the Audit Trail of the INS has TRAINING_COVERED once",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.19 the revision in force (SOP.7203) is not stamped: it is not a revision of this release",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.20 Complete Training of the SOP",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.21 the SOP and the forms are Effective",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T15.22 the entry TRAINING_COVERED is still one for each form",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "T16": [],
+ "T18": [
+  {
+   "check": "T18.1 the SOP is approved",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.2 no blocker: the form has no revision yet",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.3 Start Training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.4 nothing is frozen at the start (the form has no revision)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.5 the form revision is approved during the training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.6 the person reads and signs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.7 the head confirms",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.8 Completed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.9 the form is frozen in phase COMPLETION",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.10 the person has the line of the late form",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.11 the form revision is COVERED by the training",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.12 TRAINING_COVERED is in its Audit Trail once",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.13 the export of the personal record is asked for",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.14 approved by QA",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.15 PDF of the record",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.16 the PDF lists the late form line \"(read with <SOP>)\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.17 the PDF has no template token",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.18 the compliance predicate (document number, not voided) finds the line of the form",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.19 last_done is set (the person is OK, not MISSING, for a matrix row of this form)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "check": "T18.20 the coverage endpoint still answers",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

@@ -45,6 +45,8 @@ public class TrainingActivityResourceAdapter extends PolicyBackedAdapter {
         Facts facts = facts(actor, resourceId);
         if (facts == null) return false;
         if ("SEND_ATTENDANCE_LIST".equals(action) || "FINISH".equals(action)) return true;
+        // Choosing the approvers, submitting the content and cancelling the activity are taken by the people of the department that organizes the training, also not by a person who may see every department (owner decision 2026-11-25)
+        if ("SUBMIT_FOR_APPROVAL".equals(action) || "DESIGNATE".equals(action) || "CANCEL".equals(action)) return access.inOwnDepartment(actor, facts.departmentId());
         return access.inScope(actor, facts.departmentId());
     }
 
@@ -60,6 +62,7 @@ public class TrainingActivityResourceAdapter extends PolicyBackedAdapter {
         if (jdbc.queryForList("select confirmed_by from training_active_confirmations where activity_id=? and kind='CONTENT_REVIEWED'", UUID.class, id).contains(me)) relations.add("CONTENT_REVIEWER");
         if (pendingAssignees(TYPE, id, "CONTENT_REVIEW").contains(me)) relations.add("CONTENT_REVIEW_ASSIGNEE");
         if (pendingAssignees(TYPE, id, "CONTENT_APPROVE").contains(me)) relations.add("CONTENT_APPROVE_ASSIGNEE");
+        if (pendingAssignees(TYPE, id, "CONTENT_APPROVE_FIRST").contains(me)) relations.add("CONTENT_APPROVE_FIRST_ASSIGNEE");
         if (isSender(actor, id, department)) relations.add("SENDER");
         if (access.has(actor, "training.activity.conduct", "training.activity.organize")) relations.add("CONDUCTOR");
         return new Facts(department, relations);
@@ -69,6 +72,18 @@ public class TrainingActivityResourceAdapter extends PolicyBackedAdapter {
     @Override
     protected String policyState(String action, String state) {
         return "DESIGNATE".equals(action) && state != null ? "ANY" : state;
+    }
+
+    /**
+     * An action that has a policy for other states but none for the state of this activity is not offered because of the state (for example, content cannot be edited once the people are
+     * told), not because nobody configured it: the refusal says so. The refusal itself does not change; only its reason code.
+     */
+    @Override
+    public java.util.Optional<String> explainMissingPolicy(String actionCode, String state) {
+        if (state == null) return java.util.Optional.empty();
+        Integer configured = jdbc.queryForObject("select count(*) from workflow_action_policies where module_key = 'TRAINING' and workflow_key = 'TRAINING_ACTIVITY' and object_type = ? and action_code = ? and active = true",
+                Integer.class, TYPE, actionCode);
+        return configured != null && configured > 0 ? java.util.Optional.of("TRAINING_ACTIVITY_INVALID_STATE") : java.util.Optional.empty();
     }
 
     /** Mirrors {@code TrainingActivityService.isSender}. */

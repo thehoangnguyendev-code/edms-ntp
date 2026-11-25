@@ -115,7 +115,7 @@ class TrainingParticipationRoleTest {
 
     @Test
     void aRoleOtherThanTraineeNeedsAReason() {
-        activity("NOTIFIED", "INTERNAL");
+        activity("IN_PROGRESS", "INTERNAL");
         session("CLASSROOM");
         participant("TRAINEE", null, "INVITED", "PENDING", UUID.randomUUID());
         usedResults(0);
@@ -127,7 +127,7 @@ class TrainingParticipationRoleTest {
 
     @Test
     void theTrainerIsNotARoleOnTheList() {
-        activity("NOTIFIED", "INTERNAL");
+        activity("IN_PROGRESS", "INTERNAL");
         session("CLASSROOM");
         participant("TRAINEE", null, "INVITED", "PENDING", UUID.randomUUID());
 
@@ -137,7 +137,7 @@ class TrainingParticipationRoleTest {
 
     @Test
     void anUnknownRoleIsRefused() {
-        activity("NOTIFIED", "INTERNAL");
+        activity("IN_PROGRESS", "INTERNAL");
         session("CLASSROOM");
         participant("TRAINEE", null, "INVITED", "PENDING", UUID.randomUUID());
 
@@ -157,13 +157,13 @@ class TrainingParticipationRoleTest {
 
     @Test
     void theRoleDoesNotApplyToAnExternalTrainingOrASelfReading() {
-        activity("NOTIFIED", "EXTERNAL");
+        activity("IN_PROGRESS", "EXTERNAL");
         session(null);
         participant("TRAINEE", null, "INVITED", "PENDING", UUID.randomUUID());
         assertThatThrownBy(() -> service.setParticipation(actor, participantId, new TrainingActivityService.ParticipationRequest("ATTENDEE", "r")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_PARTICIPATION_NOT_APPLICABLE");
 
-        activity("NOTIFIED", "INTERNAL");
+        activity("IN_PROGRESS", "INTERNAL");
         session("SELF_READING");
         assertThatThrownBy(() -> service.setParticipation(actor, participantId, new TrainingActivityService.ParticipationRequest("ATTENDEE", "r")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_PARTICIPATION_NOT_APPLICABLE");
@@ -208,7 +208,7 @@ class TrainingParticipationRoleTest {
 
     @Test
     void thePersonThenHasTheirResultWrittenAsTheRoleSaysWhereAuditIsKept() {
-        activity("NOTIFIED", "INTERNAL");
+        activity("IN_PROGRESS", "INTERNAL");
         session("CLASSROOM");
         participant("TRAINEE", null, "INVITED", "PENDING", UUID.randomUUID());
         usedResults(0);

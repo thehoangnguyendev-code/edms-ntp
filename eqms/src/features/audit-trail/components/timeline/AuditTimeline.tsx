@@ -81,6 +81,19 @@ interface MarkProps {
   onExport: (record: AuditTrailRecord) => void;
 }
 
+/** The detail of an entry: one line when it has one, a list with a dot for each line when it has several (one line for each field that changed). */
+function DetailLines({ text }: { text: string }) {
+  const lines = text.split("\n").filter((line) => line.trim() !== "");
+  if (lines.length <= 1) return <>{text}</>;
+  return (
+    <ul className="m-0 list-disc space-y-0.5 pl-4">
+      {lines.map((line, index) => (
+        <li key={index}>{line}</li>
+      ))}
+    </ul>
+  );
+}
+
 /** The picture of the person, or their initials when there is none (the shared avatar of the application, the same as on the audit detail page). */
 const Avatar: React.FC<{ item: AuditTimelineItem; size: number }> = ({ item, size }) => (
   <span className="aud-av" style={{ width: size, height: size }}>
@@ -134,7 +147,7 @@ const RailMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => (
         </div>
       </div>
       <div className="aud-rail__obj">{item.object}</div>
-      {item.detail && <div className="aud-rail__det">{item.detail}</div>}
+      {item.detail && <div className="aud-rail__det"><DetailLines text={item.detail} /></div>}
     </div>
   </div>
 );
@@ -152,7 +165,7 @@ const CenterMark: React.FC<MarkProps & { side: "left" | "right" }> = ({ item, si
       </div>
       <div className="aud-center__what">{item.verb}</div>
       <div className="aud-center__obj">{item.object}</div>
-      {item.detail && <div className="aud-center__obj">{item.detail}</div>}
+      {item.detail && <div className="aud-center__obj"><DetailLines text={item.detail} /></div>}
       <div className="aud-center__act">
         <Signed item={item} />
         <Actions item={item} onOpenDetails={onOpenDetails} onExport={onExport} />
@@ -194,7 +207,7 @@ const CompactMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => 
           )}
           {item.detail && (
             <span>
-              <b>{tr("Details")}</b> {item.detail}
+              <b>{tr("Details")}</b> <span className="block"><DetailLines text={item.detail} /></span>
             </span>
           )}
         </p>
@@ -222,7 +235,7 @@ const LitMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => (
           <b>{item.verb}</b>
           {item.object}
         </div>
-        {item.detail && <div className="aud-lit__what text-slate-500">{item.detail}</div>}
+        {item.detail && <div className="aud-lit__what text-slate-500"><DetailLines text={item.detail} /></div>}
       </div>
       <div className="aud-lit__tip">{item.fullTime}</div>
     </div>

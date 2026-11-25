@@ -3,7 +3,7 @@ import { CalendarClock } from "lucide-react";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { formatDateTime } from "@/utils/format";
 import type { UncontrolledCopy } from "@/services/api/uncontrolledCopy";
-import { tr } from "@/i18n";
+import { tr, useLanguage } from "@/i18n";
 
 const ReadOnlyField: React.FC<{
   label: string;
@@ -30,23 +30,25 @@ const RECIPIENT_TYPE_LABELS: Record<string, string> = {
 
 export const UncontrolledCopyRecipientTab: React.FC<{
   copy: UncontrolledCopy;
-}> = ({ copy }) => (
+}> = ({ copy }) => {
+  const { tLabel } = useLanguage();
+  return (
   <div className="space-y-4 md:space-y-5">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
       <ReadOnlyField
         label={tr("Recipient Type")}
         value={
           copy.recipientType
-            ? (RECIPIENT_TYPE_LABELS[copy.recipientType] ?? copy.recipientType)
+            ? tLabel(RECIPIENT_TYPE_LABELS[copy.recipientType] ?? copy.recipientType)
             : "-"
         }
       />
       <ReadOnlyField
-        label={copy.externalRecipient ? tr("Held by (hands over)") : "Recipient"}
+        label={copy.externalRecipient ? tr("Held by (hands over)") : tr("Recipient")}
         value={copy.recipientName}
       />
       <ReadOnlyField
-        label={copy.externalRecipient ? "Holder e-mail" : "Recipient e-mail"}
+        label={copy.externalRecipient ? tr("Holder e-mail") : tr("Recipient e-mail")}
         value={copy.recipientEmail}
       />
       {copy.externalRecipient && (
@@ -60,7 +62,7 @@ export const UncontrolledCopyRecipientTab: React.FC<{
         value={
           copy.validUntil
             ? formatDateTime(copy.validUntil)
-            : "Set when distributed"
+            : tr("Set when distributed")
         }
       />
       <ReadOnlyField label={tr("Downloads")} value={copy.downloadCount ?? 0} />
@@ -77,4 +79,5 @@ export const UncontrolledCopyRecipientTab: React.FC<{
       </p>
     )}
   </div>
-);
+  );
+};

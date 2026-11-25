@@ -41,7 +41,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
             <button
               type="button"
               onClick={() => setVisible((v) => !v)}
-              aria-label={visible ? 'Hide password' : 'Show password'}
+              aria-label={visible ? tr('Hide password') : tr('Show password')}
               className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-slate-400 hover:text-slate-600"
             >
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

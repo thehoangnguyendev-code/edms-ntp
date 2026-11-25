@@ -18,8 +18,8 @@ import { ROUTES } from "@/app/routes.constants";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { emailTemplateApi } from "@/services/api/emailTemplates";
 import type { NotificationVariable } from "@/services/api/notificationPolicy";
-import { EMAIL_VARIABLES } from "@/features/settings/email-templates/constants";
-import type { EmailTemplate } from "@/features/settings/email-templates/types";
+import { EMAIL_VARIABLES } from "./emailTemplateConstants";
+import type { EmailTemplate } from "./emailTemplateTypes";
 import {
   RichTextEditor,
   type RichTextEditorHandle,
@@ -243,7 +243,7 @@ export const EmailMessageEditView: React.FC = () => {
         type: "success",
         title: "Saved",
         message:
-          "The email message is saved. The change is recorded in the Audit Trail.",
+          tr("The email message is saved. The change is recorded in the Audit Trail."),
       });
       await load();
     } catch (e) {
@@ -251,7 +251,7 @@ export const EmailMessageEditView: React.FC = () => {
       showToast({
         type: "error",
         title: isChangedByOthers(e)
-          ? "Not saved: changed by someone else"
+          ? tr("Not saved: changed by someone else")
           : "Not saved",
         message: getApiErrorMessage(e, "The email message could not be saved."),
       });

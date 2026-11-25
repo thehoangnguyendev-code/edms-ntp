@@ -11,6 +11,32 @@ import java.util.Set;
 public final class NotificationDefaultChannels {
 
     private static final Set<String> ALSO_BY_EMAIL = Set.of(
+            "access_review.campaign_completed",
+            "audit.review_campaign_changed",
+            "audit_trail.export_completed",
+            "backup.inspection_decided",
+            "backup.rehearsal_requested",
+            "backup.store_scrub_started",
+            "controlled_copy.recall_evidence_uploaded",
+            "controlled_copy.request_decided",
+            "document.editing_lock_changed",
+            "document.legacy_import_finished",
+            "document.number_changed",
+            "knowledge.sharing_changed",
+            "report.template_decided",
+            "report.type_or_property_changed",
+            "security.access_profile_changed_audit",
+            "security.object_access_rule_changed",
+            "security.permission_set_changed",
+            "system.retention_blocked_deletion",
+            "uncontrolled_copy.request_decided",
+            "controlled_copy.destroyed",
+            "controlled_copy.distributed",
+            "document.published",
+            "document.review_completed",
+            "knowledge.document_published",
+            "system.maintenance_scheduled",
+            "training.content_rejected",
             "document.action_escalated",
             "document.action_reminder",
             "document.approval_rejected",
@@ -81,7 +107,6 @@ public final class NotificationDefaultChannels {
             "training.matrix_rejected",
             "training.overdue",
             "training.periodic_requirement_due",
-            "training.postponed",
             "training.preparation_assigned",
             "training.qa_confirm_waiting",
             "training.qa_list_late",
@@ -97,11 +122,21 @@ public final class NotificationDefaultChannels {
             "training.review_open_due",
             "training.review_ready",
             "training.step_assigned",
-            "training.step_ready",
             "training.step_waiting",
             "training.submitted_to_qa",
-            "training.work_resumed",
             "training.work_suspended"
+    );
+
+    /**
+     * Events whose notice is the e-mail only (owner decision 2026-11-24): the person who has to know may not be in the system at that time, so the e-mail carries the whole
+     * information; the in-app notification is for short results shown to the person who runs the training (see training.session_changed). An administrator may still turn the
+     * in-app channel on.
+     */
+    private static final Set<String> EMAIL_ONLY = Set.of(
+            "training.postponed",
+            "training.session_cancelled",
+            "training.trainer_assigned",
+            "training.trainer_removed"
     );
 
     private NotificationDefaultChannels() {
@@ -109,6 +144,7 @@ public final class NotificationDefaultChannels {
 
     /** The default channels of an event: in-app, plus e-mail when the event is on the list and can be sent by e-mail. */
     public static String of(String eventCode, String supportedChannels) {
+        if (EMAIL_ONLY.contains(eventCode) && supportedChannels != null && supportedChannels.contains("EMAIL")) return "EMAIL";
         boolean email = ALSO_BY_EMAIL.contains(eventCode) && supportedChannels != null && supportedChannels.contains("EMAIL");
         return email ? "IN_APP,EMAIL" : "IN_APP";
     }

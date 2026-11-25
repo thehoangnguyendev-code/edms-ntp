@@ -245,6 +245,7 @@ public class SystemConfigurationService {
         validateDesktopFilterConfig(nextGeneral);
         validateAlternatingRecordColors(nextGeneral);
         validateMenuColors(nextGeneral);
+        LoadingAppearancePolicy.validate(nextGeneral);
         validateTableColumnDividers(nextGeneral);
         validatePageBackgrounds(nextGeneral);
         JsonNode videoBackground = nextGeneral.path("appearance").path("authBackground");
@@ -479,7 +480,9 @@ public class SystemConfigurationService {
                 auditTabTimelineStyle(appearance),
                 notificationInboxLayout(appearance),
                 loginLayout(appearance),
-                loginCarousel(appearance)
+                loginCarousel(appearance),
+                LoadingAppearancePolicy.publicStyle(appearance),
+                LoadingAppearancePolicy.publicColor(appearance)
         );
     }
 

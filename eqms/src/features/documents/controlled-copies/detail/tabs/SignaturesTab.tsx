@@ -3,7 +3,7 @@ import type { AuditTrailRecord } from "@/features/audit-trail/types";
 import { ControlledCopy } from "../../types";
 import { formatDateTime } from "@/utils/format";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { tr } from "@/i18n";
+import { tr, useLanguage } from "@/i18n";
 
 export interface SignatureRecord {
   actionBy: string;
@@ -91,6 +91,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
   auditTrailRecords = [],
   isBatchParent = false,
 }) => {
+  const { tLabel } = useLanguage();
   const signatureRecords = useMemo<SignatureRecord[]>(() => {
     if (records.length > 0) {
       return records.map((record) => ({
@@ -160,7 +161,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
           <React.Fragment key={index}>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {record.actionBy}
+                {tLabel(record.actionBy)}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -174,7 +175,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {record.actionOn}
+                {tLabel(record.actionOn)}
               </label>
               <input
                 type="text"

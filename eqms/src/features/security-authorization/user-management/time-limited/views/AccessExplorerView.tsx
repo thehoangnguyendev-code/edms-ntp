@@ -106,7 +106,7 @@ export const AccessExplorerView: React.FC = () => {
       setTotalItems(res.totalElements ?? 0);
       setTotalPages(res.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load permissions" });
+      showToast({ type: "error", message: tr("Failed to load permissions") });
     } finally {
       setIsLoading(false);
     }

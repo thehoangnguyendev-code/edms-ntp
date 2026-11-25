@@ -114,7 +114,7 @@ export const ReportNameFormatsTab: React.FC = () => {
       reload();
       showToast({
         type: "success",
-        title: item.active ? "Format Deactivated" : "Format Activated",
+        title: item.active ? tr("Format Deactivated") : tr("Format Activated"),
         message: `"${item.name}" was ${item.active ? "deactivated" : "activated"} successfully.`,
       });
     } catch (error) {

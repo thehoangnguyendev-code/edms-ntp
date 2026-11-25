@@ -39,7 +39,7 @@ export const MaintenanceNoticeHost: React.FC = () => {
       onConfirm={() => void logout()}
       type="warning"
       title={tr("System Maintenance")}
-      confirmText="Sign out now"
+      confirmText={tr("Sign out now")}
       cancelText="Close"
       showCancel
       description={

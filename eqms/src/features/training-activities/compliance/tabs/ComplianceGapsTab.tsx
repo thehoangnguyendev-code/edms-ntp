@@ -104,7 +104,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
   const addTo = async (session: TrainingPlannedSession) => {
     setBusy(session.sessionId);
     try {
-      await trainingActivitiesApi.addParticipants(session.activityId, { sessionId: session.sessionId, personUserIds: [...new Set(chosen.map((g) => g.pid))], reason: allNew ? "Initial training of new employees" : "Training required by the matrix" });
+      await trainingActivitiesApi.addParticipants(session.activityId, { sessionId: session.sessionId, personUserIds: [...new Set(chosen.map((g) => g.pid))], reason: allNew ? tr("Initial training of new employees") : tr("Training required by the matrix") });
       showToast({ type: "success", title: tr("Added to the training"), message: `${new Set(chosen.map((g) => g.pid)).size} people, ${session.trainingNumber}` });
       setPicked({});
       setAdding(false);
@@ -122,7 +122,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
     if (allNew) query.set("kind", "INITIAL");
     query.set("topic", first.tname ?? first.title);
     for (const p of people) { query.append("person", p.pid); query.append("personName", p.fullName); query.append("personCode", p.employeeCode ?? ""); }
-    query.set("reason", allNew ? "Initial training of new employees" : "Training required by the matrix");
+    query.set("reason", allNew ? tr("Initial training of new employees") : tr("Training required by the matrix"));
     navigate(`/training-management/activities/new?${query.toString()}`);
   };
 

@@ -4,7 +4,7 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), overview: vi.fn(), participantPage: vi.fn() }));
-vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingActivitiesApi: api }));
+vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingActivitiesApi: api, trainingDocumentSourcesApi: { get: async () => ({ documents: [], sessionDefaults: null }) } }));
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true, hasPermissionAlias: () => true }) }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
@@ -32,10 +32,14 @@ it("the tab Signatures lists only the steps that matter, in the order of the flo
   fireEvent.click((await screen.findAllByText(/^Signatures$/))[0]);
   const labels = await waitFor(() => {
     const found = screen.getAllByText(/ By$/).map((e) => e.textContent);
-    expect(found.length).toBe(6);
+    expect(found.length).toBe(7);
     return found;
   });
-  expect(labels).toEqual(["Document Approved By", "Content Reviewed By", "Content Approved By", "Attendance List Sent to QA By", "Training Finished and Results Sent to QA By", "Completion Confirmed by QA By"]);
+  // who created it comes first; the content has one approval (the review step was retired)
+  expect(labels).toEqual(["Created By", "Document Approved By", "First Approval By", "Second Approval By", "Attendance List Sent to QA By", "Training Finished and Results Sent to QA By", "Completion Confirmed by QA By"]);
+  expect(screen.queryByText(/Content Reviewed/)).toBeNull();
+  expect(screen.getByText("Created On (Date - Time)")).toBeTruthy();
+  expect(screen.getByDisplayValue("Admin")).toBeTruthy();
   // the person is the left field and the time the right one of the same row
   const by = screen.getByText("Document Approved By"), on = screen.getByText("Document Approved On (Date - Time)");
   expect(by.compareDocumentPosition(on) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

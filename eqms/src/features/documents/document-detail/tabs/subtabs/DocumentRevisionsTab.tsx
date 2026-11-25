@@ -246,7 +246,7 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
                                             </div>
                                             <p className="text-sm font-medium text-slate-500">
                                                 {debouncedSearch
-                                                    ? "No records matching your search"
+                                                    ? tr("No records matching your search")
                                                     : tr("No records to display")}
                                             </p>
                                         </div>

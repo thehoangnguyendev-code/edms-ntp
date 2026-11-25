@@ -1,3 +1,5 @@
+import { tr } from "@/i18n";
+
 const ACTION_BADGE_CLASS_MAP: Array<{ actions: string[]; className: string }> = [
   {
     actions: ["create", "submit", "publish", "publish to effective", "approve", "review", "login"],
@@ -58,14 +60,14 @@ export const formatAuditActionLabel = (action: string) => {
   const normalized = action.trim().toLowerCase().replace(/^document_(?=legacy_)/, "");
   const mapped = ACTION_LABEL_MAP[normalized];
   if (mapped) {
-    return mapped;
+    return tr(mapped);
   }
-  return normalized
+  return tr(normalized
     .replace(/[_\s-]+/g, " ")
     .split(" ")
     .filter(Boolean)
     .map((word) => LABEL_WORDS[word] ?? word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .join(" "));
 };
 
 /**

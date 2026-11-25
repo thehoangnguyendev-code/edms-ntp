@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, Fragment, isValidElement, type ReactElement, type ReactNode } from "react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Popover } from "@/components/ui/popover/Popover";
@@ -79,8 +79,52 @@ export function ReadonlyField({ label, value, wide, multiline, placeholder = "â€
   );
 }
 
+/** The cells of a grid, with fragments opened and the empty ones (false, null) left out. */
+function gridCells(children: ReactNode): ReactElement[] {
+  const out: ReactElement[] = [];
+  Children.toArray(children).forEach((child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) out.push(...gridCells((child.props as { children?: ReactNode }).children));
+    else out.push(child);
+  });
+  return out;
+}
+
+/** A field that takes the whole row: a wide field or a large text area. Its place is never changed. */
+function isFullWidth(cell: ReactElement): boolean {
+  const props = cell.props as { wide?: boolean; multiline?: boolean; className?: string };
+  return Boolean(props.wide || props.multiline || props.className?.includes("col-span-2"));
+}
+
+/**
+ * Two columns. A field is never left alone in a row beside an empty space: the next ordinary field is brought up to fill it (a full-width field and a large text area keep their place),
+ * and when no ordinary field is left, the lone field takes the whole row.
+ */
 export function ReadonlyGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">{children}</div>;
+  const pending = gridCells(children);
+  const placed: { cell: ReactElement; full: boolean }[] = [];
+  let column = 0;
+  while (pending.length > 0) {
+    const cell = pending.shift() as ReactElement;
+    if (isFullWidth(cell)) {
+      if (column === 1) {
+        const next = pending.findIndex((c) => !isFullWidth(c));
+        if (next >= 0) placed.push({ cell: pending.splice(next, 1)[0], full: false });
+        else placed[placed.length - 1].full = true;
+        column = 0;
+      }
+      placed.push({ cell, full: false });
+    } else {
+      placed.push({ cell, full: false });
+      column = column === 0 ? 1 : 0;
+    }
+  }
+  if (column === 1 && placed.length > 0) placed[placed.length - 1].full = true;
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+      {placed.map(({ cell, full }, index) => (full ? <div key={cell.key ?? index} className="md:col-span-2">{cell}</div> : cell))}
+    </div>
+  );
 }
 
 /** A bordered block inside a tab (a table, an approval step). */

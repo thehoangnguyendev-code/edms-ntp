@@ -181,7 +181,7 @@ const UserSelectionModal: React.FC<{
             onConfirm={handleSave}
             title={multiSelect ? `Setup ${roleLabel}s` : `Setup ${roleLabel}`}
             description={multiSelect ? `Select users who will ${roleLabel.toLowerCase()} this document.` : `Select the final ${roleLabel.toLowerCase()} for this document.`}
-            confirmText={multiSelect ? `Update ${roleLabel}s (${selectedIds.length})` : "Commit Selection"}
+            confirmText={multiSelect ? `Update ${roleLabel}s (${selectedIds.length})` : tr("Commit Selection")}
             confirmDisabled={selectedIds.length === 0 || belowMinimum}
             size="lg"
         >
@@ -231,7 +231,7 @@ const UserSelectionModal: React.FC<{
                                         key={user.id}
                                         onClick={() => !isDisabled && handleToggleUser(user.id)}
                                         disabled={isDisabled}
-                                        title={isCappedOut ? "Selection limit reached for this document's saved workflow policy" : undefined}
+                                        title={isCappedOut ? tr("Selection limit reached for this document's saved workflow policy") : undefined}
                                         className={cn(
                                             "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg transition-all group text-left border",
                                             isSelected
@@ -333,7 +333,7 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
     const maxSelectable: number | undefined = undefined;
     const minRequiredTotal = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED" ? 1 : undefined;
     const requirementHint = roleLabel === "Reviewer" && reviewRequirement === "REQUIRED"
-        ? "This document's saved workflow policy requires at least 1 Reviewer."
+        ? tr("This document's saved workflow policy requires at least 1 Reviewer.")
         : undefined;
 
     const handleModalClose = () => {

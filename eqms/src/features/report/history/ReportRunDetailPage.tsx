@@ -92,7 +92,7 @@ export function ReportRunDetailPage() {
     } catch (e) {
       // A file that expired or was removed answers 409 in the server; the general text of reportError for 409 is about templates.
       const status = (e as { response?: { status?: number } })?.response?.status;
-      setVerifyError(status === 409 ? "The stored file was removed after it expired, so it can no longer be checked." : reportError(e));
+      setVerifyError(status === 409 ? tr("The stored file was removed after it expired, so it can no longer be checked.") : reportError(e));
     } finally {
       setVerifyBusy(false);
     }
@@ -133,7 +133,7 @@ export function ReportRunDetailPage() {
     setSearchParams(next, { replace: true });
     const file = run.status === "COMPLETED" ? run.artifacts.find((artifact) => !artifact.purgedAt) : undefined;
     if (file) void download(file);
-    else showToast({ type: "error", title: tr("The file cannot be downloaded"), message: run.status === "COMPLETED" ? "The file was removed after it expired." : "The report is not complete yet: " + runStatusLabel(run.status) + ". Download it from this page when it is ready." });
+    else showToast({ type: "error", title: tr("The file cannot be downloaded"), message: run.status === "COMPLETED" ? tr("The file was removed after it expired.") : "The report is not complete yet: " + runStatusLabel(run.status) + ". Download it from this page when it is ready." });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, searchParams]);
 
@@ -151,7 +151,7 @@ export function ReportRunDetailPage() {
       );
       showToast({
         type: "success",
-        title: hold.legalHold ? "Legal hold placed" : "Legal hold released",
+        title: hold.legalHold ? tr("Legal hold placed") : tr("Legal hold released"),
         message:
           run?.artifacts.find((file) => file.id === hold.artifactId)
             ?.generatedFilename ?? "",
@@ -202,10 +202,10 @@ export function ReportRunDetailPage() {
       header: "Retention",
       cell: (row) =>
         row.purgedAt
-          ? "Removed after expiry"
+          ? tr("Removed after expiry")
           : row.legalHold
-            ? "Legal hold: kept until released"
-            : "Kept permanently",
+            ? tr("Legal hold: kept until released")
+            : tr("Kept permanently"),
     },
   ];
   // The last column is the fixed Action column of the table (it stays in view while the others scroll); its items are in the menu of the three dots, as in every table.
@@ -376,7 +376,7 @@ export function ReportRunDetailPage() {
                   />
                   <ReadonlyField
                     label={tr("Run Type")}
-                    value={run.fullRun ? "Full (no filter)" : "Filtered"}
+                    value={run.fullRun ? tr("Full (no filter)") : "Filtered"}
                   />
                   <ReadonlyField
                     label={tr("Failure Reason")}
@@ -415,7 +415,7 @@ export function ReportRunDetailPage() {
                       template?.approvalStatus
                         ? (APPROVAL_LABEL[template.approvalStatus] ??
                           template.approvalStatus)
-                        : "Not recorded"
+                        : tr("Not recorded")
                     }
                   />
                   <ReadonlyField
@@ -530,7 +530,7 @@ export function ReportRunDetailPage() {
                               fileMenu.close();
                             }}
                           >
-                            {menuFile.legalHold ? "Release Legal Hold" : "Place Legal Hold"}
+                            {menuFile.legalHold ? tr("Release Legal Hold") : tr("Place Legal Hold")}
                           </DropdownMenuItem>
                         )}
                       </div>
@@ -606,7 +606,7 @@ export function ReportRunDetailPage() {
         onClose={closeVerify}
         title={tr("Verify File")}
         description={`Choose the copy of ${verifying?.generatedFilename ?? "the file"} that you hold. It is read here to calculate its SHA-256 and is not kept. The result is recorded in the Audit Trail.`}
-        confirmText="Check File"
+        confirmText={tr("Check File")}
         confirmDisabled={!verifyFile}
         isLoading={verifyBusy}
         onConfirm={() => void checkFile()}
@@ -644,13 +644,13 @@ export function ReportRunDetailPage() {
       <FormModal
         isOpen={hold?.step === "form"}
         onClose={() => setHold(undefined)}
-        title={hold?.legalHold ? "Place legal hold" : "Release legal hold"}
+        title={hold?.legalHold ? tr("Place legal hold") : tr("Release legal hold")}
         description={
           hold?.legalHold
             ? tr("The file is kept and cannot be removed while the hold is set. Say why.")
             : tr("Releasing a hold lets the file be removed. A person other than the one who placed the hold must release it, and the release is signed.")
         }
-        confirmText={hold?.legalHold ? "Place hold" : "Continue to Sign"}
+        confirmText={hold?.legalHold ? tr("Place hold") : tr("Continue to Sign")}
         confirmDisabled={!hold || !hold.reason.trim() || busy}
         onConfirm={() => {
           if (!hold) return;

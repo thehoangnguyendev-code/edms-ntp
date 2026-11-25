@@ -391,7 +391,7 @@ export function TrainingRequirementListView() {
         onConfirm={() => void create()}
         title={tr("New Training Requirement")}
         description={tr("A draft for your department. The request number is issued by the system.")}
-        confirmText="Create draft"
+        confirmText={tr("Create draft")}
         isLoading={busy}
         confirmDisabled={!year || (kind === "SOP_PERIODIC" && !reviewDone)}
         size="md"

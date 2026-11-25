@@ -99,7 +99,7 @@ export const SodViolationReviewView: React.FC = () => {
       const detail = await settingsApi.getSodScanDetail(id);
       setSelectedRunViolations(detail.results);
     } catch {
-      showToast({ type: "error", message: "Failed to load scan detail" });
+      showToast({ type: "error", message: tr("Failed to load scan detail") });
       setSelectedRunId(null);
     } finally {
       setLoadingRun(false);
@@ -362,7 +362,7 @@ export const SodViolationReviewView: React.FC = () => {
             <>
               <Button variant="default" size="sm" className="whitespace-nowrap gap-2" onClick={scan} disabled={scanning}>
                 {scanning ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
-                {scanning ? "Scanning…" : "Scan Now"}
+                {scanning ? tr("Scanning…") : tr("Scan Now")}
               </Button>
             </>
           ) : undefined

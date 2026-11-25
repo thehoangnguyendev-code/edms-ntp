@@ -86,7 +86,7 @@ export const ReportAppearanceView: React.FC = () => {
 
   const isDirty = !!value && !!original && (isNew ? !!value.name.trim() : JSON.stringify(value.appearance) !== JSON.stringify(original.appearance) || value.name !== original.name);
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful create is not a leave.
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isNew ? "Create Appearance" : "Report Appearance Details", "the list");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isNew ? tr("Create Appearance") : tr("Report Appearance Details"), "the list");
 
   const save = async () => {
     if (!value) return;
@@ -95,7 +95,7 @@ export const ReportAppearanceView: React.FC = () => {
       if (isNew) {
         const created = await reportAppearanceApi.create(value.name, value.appearance, startFrom === STANDARD ? undefined : startFrom);
         setShowSaveModal(false);
-        showToast({ type: "success", title: tr("Appearance created"), message: "It is Inactive: activate it from the list when it is ready." });
+        showToast({ type: "success", title: tr("Appearance created"), message: tr("It is Inactive: activate it from the list when it is ready.") });
         navigate(`/settings/report-appearance/${created.id}`, { replace: true });
         return;
       }
@@ -103,7 +103,7 @@ export const ReportAppearanceView: React.FC = () => {
       setValue(saved);
       setOriginal(JSON.parse(JSON.stringify(saved)));
       setShowSaveModal(false);
-      showToast({ type: "success", title: tr("Changes saved"), message: "The report appearance has been updated." });
+      showToast({ type: "success", title: tr("Changes saved"), message: tr("The report appearance has been updated.") });
     } catch (saveError) {
       setShowSaveModal(false);
       showToast({ type: "error", title: tr("Save failed"), message: reportError(saveError) });
@@ -112,7 +112,7 @@ export const ReportAppearanceView: React.FC = () => {
     }
   };
 
-  const title = isNew ? "Create Appearance" : "Report Appearance Details";
+  const title = isNew ? tr("Create Appearance") : tr("Report Appearance Details");
   return (
     <div className="space-y-4 md:space-y-6 w-full flex-1 flex flex-col">
       <PageHeader
@@ -176,17 +176,17 @@ export const ReportAppearanceView: React.FC = () => {
         onClose={() => setShowSaveModal(false)}
         onConfirm={save}
         type="confirm"
-        title={isNew ? "Create this appearance?" : "Save Report Appearance?"}
+        title={isNew ? tr("Create this appearance?") : tr("Save Report Appearance?")}
         description={
           <p className="text-sm text-slate-600">
             {isNew
-              ? "The new appearance is created Inactive: activate it from the list when it is ready. "
-              : `You are about to save changes to the report appearance. ${value?.status === "ACTIVE" ? "It is the Active appearance, so every new report will be drawn with the change. " : ""}`}
+              ? `${tr("The new appearance is created Inactive: activate it from the list when it is ready.")} `
+              : `${tr("You are about to save changes to the report appearance.")} ${value?.status === "ACTIVE" ? `${tr("It is the Active appearance, so every new report will be drawn with the change.")} ` : ""}`}
             {tr("This action will be recorded in the Audit Trail.")}
           </p>
         }
-        confirmText={isNew ? "Create" : "Save"}
-        cancelText="Cancel"
+        confirmText={isNew ? tr("Create") : tr("Save")}
+        cancelText={tr("Cancel")}
         isLoading={saving}
       />
       {leaveModal}

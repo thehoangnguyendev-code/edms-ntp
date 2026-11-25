@@ -85,9 +85,9 @@ public class TrainingAssessmentLibraryController {
     }
 
     @PostMapping("/activities/{id}/assessment/remove")
-    public ResponseEntity<?> clear(@PathVariable UUID id) {
+    public ResponseEntity<?> clear(@PathVariable UUID id, @RequestParam(required = false) UUID sessionId) {
         var actor = users.requireCurrentUser();
-        library.clear(actor, id);
+        library.clear(actor, id, sessionId);
         return ResponseEntity.ok(activities.get(actor, id));
     }
 }

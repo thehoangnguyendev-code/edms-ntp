@@ -398,7 +398,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         if (requestSequence !== previewRequestSequenceRef.current) return;
         setRevisionFile(null);
         setPreviewStatus("error");
-        setPreviewMessage("Unable to load PDF preview from server.");
+        setPreviewMessage(tr("Unable to load PDF preview from server."));
       } finally {
         if (requestSequence === previewRequestSequenceRef.current) {
           filePromiseRef.current = null;
@@ -487,7 +487,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         position: "—",
         department: currentRevision?.department || "—",
       },
-      action: formatAuditActionLabel(entry.actionType),
+                    action: tr(formatAuditActionLabel(entry.actionType)),
       actionType: normalizeAuditActionType(entry.actionType),
       changes:
         entry.fromStatus || entry.toStatus
@@ -530,7 +530,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       })
       .map((entry: any) => ({
         id: entry.id,
-        label: formatAuditActionLabel(entry.actionType || entry.action),
+                  label: tr(formatAuditActionLabel(entry.actionType || entry.action)),
         timestamp: entry.timestamp || entry.created || "â€”",
         comment: entry.reason || entry.comment || "-",
       }));
@@ -1074,7 +1074,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         onConfirm={handleBatchPublishConfirm}
         title={tr("Publish Together With Related Documents")}
         type="warning"
-        confirmText="Continue to Sign"
+        confirmText={tr("Continue to Sign")}
         cancelText="Cancel"
         description={
           <div className="space-y-3">
@@ -1423,7 +1423,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         title={tr("Cancel Revision")}
         description={tr("Cancelling is available only for a Draft revision. It moves this revision to Closed - Cancelled and does not change the Document Master.")}
         confirmText={tr("Cancel Revision")}
-        cancelText="Keep Working"
+        cancelText={tr("Keep Working")}
         confirmVariant="destructive"
         isLoading={isCancelSubmitting}
         confirmDisabled={!cancelReason.trim()}

@@ -119,9 +119,9 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
-  const title = viewType === "review" ? "Pending My Review" : "Pending My Approval";
+  const title = viewType === "review" ? tr("Pending My Review") : tr("Pending My Approval");
   const breadcrumbKey = viewType === "review" ? "pending-review" : "pending-approval";
-  const fixedStatusLabel = viewType === "review" ? "Pending My Review" : "Pending My Approval";
+  const fixedStatusLabel = viewType === "review" ? tr("Pending My Review") : tr("Pending My Approval");
   const fixedStatusValue = viewType === "review" ? "PENDING_REVIEW" : "PENDING_APPROVAL";
   const fixedStatusOptions = [{ label: fixedStatusLabel, value: fixedStatusValue }];
 

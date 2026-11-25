@@ -308,7 +308,7 @@ export const AccessProfileListView: React.FC = () => {
     if (!sig) return;
     try {
       await settingsApi.deleteAccessProfile(deleteModal.profile.id, sig);
-      showToast({ type: "success", message: "Access profile deleted" });
+      showToast({ type: "success", message: tr("Access profile deleted") });
       setDeleteModal({ open: false, profile: null });
       void fetchProfiles();
     } catch {
@@ -331,7 +331,7 @@ export const AccessProfileListView: React.FC = () => {
   };
 
   const handleToggle = async (profile: AccessProfileResponse) => {
-    const sig = await requestSignature(`${profile.active ? "Deactivate" : "Activate"} Access Profile "${profile.name}"`, "Access Profile Change");
+    const sig = await requestSignature(`${profile.active ? tr("Deactivate") : "Activate"} Access Profile "${profile.name}"`, "Access Profile Change");
     if (!sig) return;
     try {
       await settingsApi.toggleAccessProfileStatus(profile.id, sig);

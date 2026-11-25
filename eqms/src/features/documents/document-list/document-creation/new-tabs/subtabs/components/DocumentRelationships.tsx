@@ -776,7 +776,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
         className="max-w-[95%] sm:max-w-3xl"
         showCancel={true}
         cancelText="Cancel"
-        confirmText="Save Selection"
+        confirmText={tr("Save Selection")}
         onConfirm={handleSaveRelated}
       >
         <div className="flex flex-col h-full">

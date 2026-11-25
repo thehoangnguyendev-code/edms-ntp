@@ -156,7 +156,7 @@ export const AnnouncementEditorView: React.FC = () => {
 
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty(values, !loading);
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, creating ? "New Announcement" : "Edit Announcement", "the list");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, creating ? tr("New Announcement") : tr("Edit Announcement"), "the list");
   const back = () => go(ROUTES.SETTINGS.ANNOUNCEMENTS);
   const breadcrumbs = useMemo(
     () =>
@@ -190,8 +190,8 @@ export const AnnouncementEditorView: React.FC = () => {
         type: "success",
         title: tr("Announcement saved"),
         message: values.enabled
-          ? "It is shown to users during its period."
-          : "It is saved switched off.",
+          ? tr("It is shown to users during its period.")
+          : tr("It is saved switched off."),
       });
       navigate(ROUTES.SETTINGS.ANNOUNCEMENTS);
     } catch (error) {
@@ -201,7 +201,7 @@ export const AnnouncementEditorView: React.FC = () => {
         type: "error",
         title: tr("Unable to save"),
         message: conflict
-          ? "Someone else changed this announcement. Reload it and make your change again."
+          ? tr("Someone else changed this announcement. Reload it and make your change again.")
           : getApiErrorMessage(error, "The announcement could not be saved."),
       });
     } finally {

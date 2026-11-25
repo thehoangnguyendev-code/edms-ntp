@@ -305,7 +305,7 @@ export function ReportTemplateRevisionPage({
                     value={whenText(detail.submittedAt)}
                   />
                   <ReadonlyField
-                    label="Last Review Comment"
+                    label={tr("Last Review Comment")}
                     value={detail.approvalComment ?? "—"}
                   />
                   <ReadonlyField
@@ -313,11 +313,11 @@ export function ReportTemplateRevisionPage({
                     value={detail.approvalBasis === "NOT_REQUIRED" ? tr("Not required (in force when saved, under the earlier rule)") : (detail.approvedByName ?? "—")}
                   />
                   <ReadonlyField
-                    label={detail.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : tr("Approved On")}
+                    label={detail.approvalBasis === "NOT_REQUIRED" ? tr("In Use Since") : tr("Approved On")}
                     value={whenText(detail.approvalBasis === "NOT_REQUIRED" ? detail.effectiveAt : detail.approvedAt)}
                   />
                   <ReadonlyField
-                    label="Effective From"
+                    label={tr("Effective From")}
                     value={whenText(detail.effectiveAt)}
                   />
                   <ReadonlyField
@@ -372,7 +372,7 @@ export function ReportTemplateRevisionPage({
                 <div>
                   <div className="mb-3 w-full sm:w-72">
                     <Select
-                      label="Compare with"
+                      label={tr("Compare with")}
                       value={withRevision}
                       options={[
                         { value: "previous", label: tr("Previous revision") },
@@ -429,7 +429,7 @@ export function ReportTemplateRevisionPage({
                   columns={scopeColumns}
                   emptyState={
                     <TableEmptyState
-                      title="No role scopes"
+                      title={tr("No role scopes")}
                       description={tr("No role may run this revision.")}
                     />
                   }

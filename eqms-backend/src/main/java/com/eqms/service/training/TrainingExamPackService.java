@@ -70,7 +70,7 @@ public class TrainingExamPackService {
         if (!Set.of("TEST", "CHECKLIST").contains(String.valueOf(session.get("assessment_method")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_A_TEST");
 
         // The exam is the file of the activity: written in the editor, uploaded, or made from an assessment of the library (a Word file like the others).
-        Map<String, Object> exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null order by created_at desc limit 1", activityId)
+        Map<String, Object> exam = jdbc.queryForList("select * from training_materials where activity_id = ? and purpose = 'EXAM' and removed_at is null and link_url is null and (session_id is null or session_id = ?) order by (session_id is null), created_at desc limit 1", activityId, sessionId)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_MISSING"));
         boolean word = String.valueOf(exam.get("original_name")).toLowerCase(java.util.Locale.ROOT).endsWith(".docx");
         if (!word && !"application/pdf".equalsIgnoreCase(String.valueOf(exam.get("content_type")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_NOT_PDF");

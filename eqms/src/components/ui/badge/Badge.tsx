@@ -21,7 +21,13 @@ export type BadgeColor =
   | 'rose'
   | 'indigo'
   | 'teal'
-  | 'gray';
+  | 'gray'
+  | 'violet'
+  | 'lime'
+  | 'pink'
+  | 'fuchsia'
+  | 'yellow'
+  | 'green';
 
 export type BadgeVariant = 'soft' | 'outline' | 'solid';
 export type BadgeSize = 'xs' | 'sm' | 'default' | 'lg';
@@ -51,6 +57,12 @@ const COLOR_STYLES: Record<BadgeColor, string> = {
   indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200/70',
   teal: 'bg-teal-50 text-teal-700 border-teal-200/70',
   gray: 'bg-gray-50 text-gray-600 border-gray-200/70',
+  violet: 'bg-violet-50 text-violet-700 border-violet-200/70',
+  lime: 'bg-lime-50 text-lime-700 border-lime-200/70',
+  pink: 'bg-pink-50 text-pink-700 border-pink-200/70',
+  fuchsia: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/70',
+  yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200/70',
+  green: 'bg-green-50 text-green-700 border-green-200/70',
 };
 
 const DOT_COLOR: Record<BadgeColor, string> = {
@@ -67,6 +79,12 @@ const DOT_COLOR: Record<BadgeColor, string> = {
   indigo: 'bg-indigo-500',
   teal: 'bg-teal-500',
   gray: 'bg-gray-400',
+  violet: 'bg-violet-500',
+  lime: 'bg-lime-500',
+  pink: 'bg-pink-500',
+  fuchsia: 'bg-fuchsia-500',
+  yellow: 'bg-yellow-500',
+  green: 'bg-green-500',
 };
 
 // One responsive scale for every badge: `sm` dimensions on desktop (xl, 1280px and up) and `xs`

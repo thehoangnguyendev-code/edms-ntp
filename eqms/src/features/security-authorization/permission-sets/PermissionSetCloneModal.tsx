@@ -46,7 +46,7 @@ export const PermissionSetCloneModal: React.FC<PermissionSetCloneModalProps> = (
         },
         sig,
       );
-      showToast({ type: "success", message: "Permission set cloned successfully" });
+      showToast({ type: "success", message: tr("Permission set cloned successfully") });
       onCloned(result);
       onClose();
     } catch (err: any) {

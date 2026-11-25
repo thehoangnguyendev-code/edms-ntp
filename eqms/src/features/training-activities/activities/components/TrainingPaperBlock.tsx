@@ -119,7 +119,7 @@ export function useTrainingPaper(activity: TrainingActivityDetail, onChanged: ()
         onClose={() => { setAsk(undefined); setReason(""); }}
         onConfirm={() => (ask.kind === "print" ? print(ask.session, reason.trim()) : ask.kind === "exam" ? printExam(ask.session, reason.trim(), ask.format) : changeMode(ask.session, ask.mode, reason.trim()))}
         title={ask.kind === "print" ? `Reprint the paper pack of session ${ask.session.sessionNo}` : ask.kind === "exam" ? `Reprint the exam copies of session ${ask.session.sessionNo}` : `Change the delivery of session ${ask.session.sessionNo}`}
-        description={ask.kind !== "mode" ? "Another copy is numbered and recorded. Say why it is needed." : "A pack was already printed for this session. The reason stays in the Audit Trail."}
+        description={ask.kind !== "mode" ? tr("Another copy is numbered and recorded. Say why it is needed.") : tr("A pack was already printed for this session. The reason stays in the Audit Trail.")}
         confirmText={ask.kind !== "mode" ? "Print" : "Change"}
         isLoading={busy}
         confirmDisabled={!reason.trim()}

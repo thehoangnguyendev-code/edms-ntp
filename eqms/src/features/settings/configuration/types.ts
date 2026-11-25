@@ -54,6 +54,8 @@ export interface LocaleSettings {
 }
 
 export interface AppearanceSettings {
+  loadingStyle?: import('@/config/loading').LoadingStyle;
+  loadingColor?: string;
   mainBackground?: PageBackground | null;
   authBackground?: PageBackground | null;
   /** Background of the Knowledge Base explorer: a colour or a gradient. */

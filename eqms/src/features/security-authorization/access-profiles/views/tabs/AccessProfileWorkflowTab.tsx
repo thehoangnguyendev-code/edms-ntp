@@ -124,7 +124,7 @@ export const WorkflowTab: React.FC<{
   };
 
   return <div className="space-y-4">
-    {canAssign && <WarningBanner variant="info" description={<>Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Roles exist for Document Control and Training Management; the actions of the other modules (such as Reports and Security Review) follow permissions alone, which are set on the Permissions tab. Changes are applied when you click <b>{tr("Save")}</b>.</>} />}
+    {canAssign && <WarningBanner variant="info" description={<>{tr("Workflow eligibility determines which workflow steps users assigned this Access Profile can participate in. The catalog and allowed actions are configured in Workflow Authorization. Roles exist for Document Control and Training Management; the actions of the other modules (such as Reports and Security Review) follow permissions alone, which are set on the Permissions tab. Changes are applied when you click")} <b>{tr("Save")}</b>.</>} />}
     {!canAssign && deniedReason && <WarningBanner variant="warning" description={deniedReason} />}
     <div className="relative">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

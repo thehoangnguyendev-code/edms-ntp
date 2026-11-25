@@ -1,3 +1,5 @@
+import { tr } from "@/i18n";
+
 export type ControlledCopyActionCode =
   | "requestCopy"
   | "distributeBatch"
@@ -101,7 +103,7 @@ export const getControlledCopyActionDeniedReason = (
     CAPABILITY_NOT_LOADED: "Capability information is still loading.",
   };
 
-  return fallbackMessages[reasonCode] || backendMessage || "You are not allowed to perform this action.";
+  return tr(fallbackMessages[reasonCode] || backendMessage || "You are not allowed to perform this action.");
 };
 
 export const getControlledCopyActionTooltip = (

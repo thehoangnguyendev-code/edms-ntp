@@ -16,6 +16,18 @@ Nguồn đối chiếu: `docs/training_docs/SOP.0003.02 Training_261014.md` (SOP
 
 Cột "Mức đáp ứng": **Có** (đã làm theo điều khoản), **Một phần** (làm một phần, nói rõ phần còn lại), **Ngoài hệ thống** (điều khoản là việc thủ công), **Chưa xác nhận** (tôi không tìm được bằng chứng trong mã; QA cần đọc lại).
 
+## 1b. Cập nhật 2026-11-23: các dòng bên dưới đã thay đổi
+
+Các dòng sau của mục 2 **không còn đúng như viết** (lập 2026-10-28). Nguồn: DEC-TRAINING-2026-11-23-10, -11, -12 trong `DECISION_LOG.md` và báo cáo `docs/to-be-sds/training/GAP-TR-006-sop0003-versus-software-2026-11-23.md`.
+
+| Dòng | Thay đổi |
+|---|---|
+| 5.3.5 (duyệt nội dung) | Không còn "hai bước theo quyền, người xử lý do người gửi chỉ định". Nay: **trạng thái Pending Approval, hai người duyệt tuần tự**, chọn theo quyền `training.content.approve` (không buộc là trưởng phòng); người dùng chọn tự do, **màn chọn hiện thông báo** nếu không phải trưởng đơn vị liên quan và Quản lý chất lượng (quyền `training.quality_manager`); từ chối (lý do, chữ ký) về Planned giữ nguyên người duyệt |
+| 5.3.6 (thông báo, thực hiện) | Thông báo gửi **nền** theo lô, có tiến độ và gửi lại cho người chưa nhận được; sau khi thông báo hoạt động ở trạng thái Notified **khoá mọi sửa đổi** trừ Postpone; có màn **Prepare Training** (điền từ hồ sơ, tải và in bài kiểm tra có ghi nhận) và **Start Training** có chữ ký trước khi Conduct Training |
+| 5.3.6 (chuẩn bị: "báo HCNS và các bộ phận") | Mức đáp ứng đúng là **Một phần**: danh sách việc gán cho một người được thông báo; không tự thông báo HCNS hay bộ phận liên quan |
+| 5.3.7 (mã đào tạo lại) | Hậu tố chữ cái dùng cho cả người vắng và người trượt (SOP chỉ nêu người vắng); chủ dự án chấp nhận 2026-11-23 |
+| Số test | Training backend 362 test (1 lỗi cũ `TrainingNotifierRegistryTest`), Training frontend 294 test, ngày 2026-11-23 |
+
 ## 2. Đối chiếu từng điều khoản
 
 ### 5.1 Nguyên tắc chung

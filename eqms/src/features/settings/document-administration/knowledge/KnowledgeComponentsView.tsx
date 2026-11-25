@@ -124,7 +124,7 @@ export const KnowledgeComponentsView: React.FC = () => {
 
   const menuRow = useMemo(() => rows.find((row) => row.id === openId), [rows, openId]);
   const deleteBlockedReason = (row: KnowledgeComponent) =>
-    row.systemDefined ? "A system-defined component cannot be deleted" : row.usedByHierarchies > 0 ? "This component is used by a hierarchy" : undefined;
+    row.systemDefined ? tr("A system-defined component cannot be deleted") : row.usedByHierarchies > 0 ? tr("This component is used by a hierarchy") : undefined;
 
   type ComponentRow = (typeof rows)[number];
   const componentColumns: DataTableColumn<ComponentRow>[] = [
@@ -318,7 +318,7 @@ export const KnowledgeComponentsView: React.FC = () => {
         isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void confirmDelete()} type="warning"
         title={tr("Delete Component")}
         description={`Delete "${deleteTarget?.name ?? ""}"? This is recorded in the Audit Trail and cannot be undone.`}
-        confirmText="Yes, Delete" cancelText="Cancel" showCancel
+        confirmText={tr("Yes, Delete")} cancelText="Cancel" showCancel
       />
 
       <FilterDrawer isOpen={isFilterDrawerOpen} onClose={() => setIsFilterDrawerOpen(false)} onClear={clearFilters} onApply={() => setIsFilterDrawerOpen(false)}>

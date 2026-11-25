@@ -98,7 +98,7 @@ export const EducationSchoolsView: React.FC = () => {
       .then((updated) => {
         setShowToggleModal(false);
         reload();
-        showToast({ type: "success", title: updated.isActive ? "School Activated" : "School Deactivated", message: `"${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.` });
+        showToast({ type: "success", title: updated.isActive ? tr("School Activated") : tr("School Deactivated"), message: `"${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.` });
       })
       .catch((error) => {
         setShowToggleModal(false);
@@ -359,7 +359,7 @@ export const EducationSchoolsView: React.FC = () => {
         <div className="px-4 md:px-5 pb-4 md:pb-5 flex-1 flex flex-col relative">
           {isLoading && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/40 backdrop-blur-[4px]">
-              <SectionLoading text={searchQuery ? "Searching..." : "Loading schools..."} minHeight="150px" />
+              <SectionLoading text={searchQuery ? "Searching..." : tr("Loading schools...")} minHeight="150px" />
             </div>
           )}
         <div className={cn("flex-1 overflow-hidden border border-slate-200 rounded-xl bg-white flex flex-col transition-all duration-300", isLoading && "blur-[2px] opacity-80")}>

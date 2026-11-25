@@ -123,7 +123,7 @@ const NotificationItem: React.FC<{
         {notification.body && <span className="mt-0.5 line-clamp-2 block text-xs font-normal leading-relaxed text-slate-600">{notification.body}</span>}
         {urgent && (
           <span className="mt-1.5 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-2xs font-semibold text-red-700">
-            {notification.priority === 'critical' ? 'Critical' : 'High priority'}
+            {notification.priority === 'critical' ? 'Critical' : tr('High priority')}
           </span>
         )}
         <span className="mt-2 flex items-center gap-1 text-2xs font-medium tabular-nums text-slate-500">
@@ -266,7 +266,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     .filter(({ items }) => items.length > 0);
 
   const iconButton = cn('grid shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-emerald-600 disabled:pointer-events-none disabled:opacity-40', isScreen ? 'h-11 w-11' : 'h-8 w-8');
-  const pinLabel = pin?.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin?.pinned ? 'Unpin notifications' : 'Pin notifications to the side';
+  const pinLabel = pin?.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin?.pinned ? tr('Unpin notifications') : tr('Pin notifications to the side');
   const PinIcon = pin?.pinned ? PinOff : Pin;
 
   return (
@@ -279,7 +279,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
         <div className="min-w-0 flex-1">
           <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">{tr("Notifications")}</h3>
-          <p className="text-xs text-slate-500">{counts.unread > 0 ? `${counts.unread} unread` : 'All caught up'}</p>
+          <p className="text-xs text-slate-500">{counts.unread > 0 ? `${counts.unread} unread` : tr('All caught up')}</p>
         </div>
         <button
           type="button"
@@ -344,8 +344,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         ) : groups.length === 0 ? (
           <div className="px-4 py-16 text-center">
             <Bell className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-            <p className="text-sm font-medium text-slate-700">{tab === 'unread' ? 'Nothing unread' : 'No notifications here'}</p>
-            <p className="mt-1 text-xs text-slate-500">{tab === 'unread' ? "You're all caught up." : 'New notifications will appear here.'}</p>
+            <p className="text-sm font-medium text-slate-700">{tab === 'unread' ? tr('Nothing unread') : tr('No notifications here')}</p>
+            <p className="mt-1 text-xs text-slate-500">{tab === 'unread' ? tr("You're all caught up.") : tr('New notifications will appear here.')}</p>
           </div>
         ) : (
           groups.map(({ group, items }) => (
@@ -623,7 +623,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
           variant="ghost"
           size="icon"
           onClick={isDocked ? dock.requestFocus : onToggle}
-          aria-label={isDocked ? 'Notifications (pinned to the side)' : 'Notifications'}
+          aria-label={isDocked ? tr('Notifications (pinned to the side)') : 'Notifications'}
           aria-pressed={isDocked ? true : undefined}
           className="relative text-slate-600 hover:bg-transparent hover:text-emerald-600 transition-colors"
         >

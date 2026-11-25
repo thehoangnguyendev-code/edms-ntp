@@ -146,12 +146,12 @@ export const ObjectNumberingView: React.FC = () => {
 
   const columns: DataTableColumn<ObjectNumberFormat>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => index + 1 },
-    { id: "label", header: "Number", label: "Number", cell: (row) => <span className="font-medium text-slate-900">{row.label}</span> },
-    { id: "module", header: "Module", label: "Module", cellClassName: "text-slate-600", cell: (row) => moduleDisplayName(row.module) },
+    { id: "label", header: tr("Number"), label: tr("Number"), cell: (row) => <span className="font-medium text-slate-900">{tr(row.label)}</span> },
+    { id: "module", header: tr("Module"), label: tr("Module"), cellClassName: "text-slate-600", cell: (row) => tr(moduleDisplayName(row.module)) },
     {
       id: "format",
-      header: "Format",
-      label: "Format",
+      header: tr("Format"),
+      label: tr("Format"),
       cellClassName: "text-slate-600",
       cell: (row) => `${row.prefix} ${row.separator} ${row.includeYear ? `year ${row.separator} ` : ""}${row.digits} digits`,
     },

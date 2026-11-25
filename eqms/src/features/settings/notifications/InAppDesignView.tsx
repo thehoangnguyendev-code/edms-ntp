@@ -29,7 +29,7 @@ import {
   type ToastPlace,
 } from "@/services/api/inAppDesign";
 import { IconBrush } from "@tabler/icons-react";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const COLOUR = /^#[0-9a-fA-F]{6}$/;
 /** The small heading of an area of the form, as the other configuration screens write it. */
@@ -142,7 +142,7 @@ export const InAppDesignView: React.FC = () => {
       showToast({
         type: "error",
         title: isChangedByOthers(e)
-          ? "Not saved: changed by someone else"
+          ? tr("Not saved: changed by someone else")
           : "Not saved",
         message: getApiErrorMessage(
           e,
@@ -290,8 +290,8 @@ export const InAppDesignView: React.FC = () => {
                       >
                         {contrast.toFixed(1)}:1 —{" "}
                         {contrast >= MIN_CONTRAST
-                          ? "easy to see"
-                          : `faint, ${MIN_CONTRAST}:1 or more is recommended`}
+                          ? tr("easy to see")
+                          : trFormat("faint, {min}:1 or more is recommended", { min: MIN_CONTRAST })}
                       </span>
                     </div>
                     <Slider

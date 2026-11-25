@@ -57,7 +57,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
 
   const copy = async (token: string) => {
     const ok = await copyText(token);
-    showToast({ type: ok ? 'success' : 'error', title: ok ? 'Copied' : 'Not copied', message: ok ? `${token} is on the clipboard.` : 'Select the placeholder and copy it by hand.' });
+    showToast({ type: ok ? 'success' : 'error', title: ok ? 'Copied' : tr('Not copied'), message: ok ? `${token} is on the clipboard.` : tr('Select the placeholder and copy it by hand.') });
   };
 
   const columns: LocalColumn<Row>[] = [
@@ -85,7 +85,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
       sortValue: (r) => (r.offered ? 0 : 1),
       cell: (r) => (
         <Badge semantic={r.offered ? 'success' : undefined} color={r.offered ? undefined : 'slate'}>
-          {r.offered ? 'Offered' : 'Not offered'}
+          {r.offered ? 'Offered' : tr('Not offered')}
         </Badge>
       ),
     },
@@ -129,7 +129,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
             rows={rows}
             getRowKey={(r) => `${r.offered ? 'o' : 'x'}:${r.variable.name}`}
             columns={columns}
-            searchText={(r) => [r.variable.name, r.variable.token, r.variable.label, r.variable.sample, r.variable.module ?? '', r.offered ? 'offered' : 'not offered'].join(' ')}
+            searchText={(r) => [r.variable.name, r.variable.token, r.variable.label, r.variable.sample, r.variable.module ?? '', r.offered ? 'offered' : tr('not offered')].join(' ')}
             searchLabel="Search placeholders"
             searchPlaceholder={tr("Search a placeholder by its name, meaning, example or module…")}
             emptyTitle={tr("No Placeholders")}

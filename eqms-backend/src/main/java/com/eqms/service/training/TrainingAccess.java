@@ -56,6 +56,12 @@ public class TrainingAccess {
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
+    /** The person belongs to the department itself; the permission to see every department does not count (a step that only the people of the department take). */
+    public boolean inOwnDepartment(UserAccount user, UUID departmentId) {
+        UUID own = departmentOf(user);
+        return own != null && own.equals(departmentId);
+    }
+
     public boolean inScope(UserAccount user, UUID departmentId) {
         if (allDepartments(user)) return true;
         UUID own = departmentOf(user);

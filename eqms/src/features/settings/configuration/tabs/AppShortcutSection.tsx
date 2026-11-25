@@ -126,7 +126,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
         message:
           error instanceof Error
             ? error.message
-            : "The file could not be read.",
+            : tr("The file could not be read."),
       });
     }
   };

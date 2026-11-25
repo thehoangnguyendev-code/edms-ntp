@@ -268,9 +268,6 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|ADD_SESSION|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_SESSION", "PLANNED", "training.activity.organize", 100, true,
                 "An organizer adds a session before the training starts.",
                 List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|ADD_SESSION|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_SESSION", "NOTIFIED", "training.activity.organize", 100, true,
-                "An organizer adds a session before the training starts.",
-                List.of(permission("training.activity.organize")))));
         m.put("TRAINING_ACTIVITY|ADD_PARTICIPANTS|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("ADD_PARTICIPANTS", "PLANNED", "training.activity.organize", 100, true,
                 "An organizer adds people to a session until the list is confirmed.",
                 List.of(permission("training.activity.organize")))));
@@ -280,21 +277,18 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|NOTIFY|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("NOTIFY", "PLANNED", "training.activity.organize", 100, true,
                 "An organizer notifies the participants once the list is confirmed and the content is approved.",
                 List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|CANCEL|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PLANNED", "training.activity.organize", 100, true,
-                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|CANCEL|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "NOTIFIED", "training.activity.organize", 100, true,
-                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|CANCEL|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "IN_PROGRESS", "training.activity.organize", 100, true,
-                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|CANCEL|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PENDING_QA_CONFIRMATION", "training.activity.organize", 100, true,
-                "An organizer cancels the activity with a reason and a signature, unless somebody already passed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "PLANNED", "training.activity.organize", 100, true,
-                "An organizer reopens the reviewed and approved content, with a reason and a signature.",
-                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PLANNED", "training.activity.cancel", 100, true,
+                "A person of the department who may cancel trainings cancels the activity with a reason and a signature, unless somebody already passed or the training is the training of a document revision.",
+                List.of(permission("training.activity.cancel")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "NOTIFIED", "training.activity.cancel", 100, true,
+                "A person of the department who may cancel trainings cancels the activity with a reason and a signature, unless somebody already passed or the training is the training of a document revision.",
+                List.of(permission("training.activity.cancel")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "IN_PROGRESS", "training.activity.cancel", 100, true,
+                "A person of the department who may cancel trainings cancels the activity with a reason and a signature, unless somebody already passed or the training is the training of a document revision.",
+                List.of(permission("training.activity.cancel")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PENDING_QA_CONFIRMATION", "training.activity.cancel", 100, true,
+                "A person of the department who may cancel trainings cancels the activity with a reason and a signature, unless somebody already passed or the training is the training of a document revision.",
+                List.of(permission("training.activity.cancel")))));
         m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "NOTIFIED", "training.activity.organize", 100, true,
                 "An organizer reopens the reviewed and approved content, with a reason and a signature.",
                 List.of(permission("training.activity.organize")))));
@@ -302,18 +296,29 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|SUPPLEMENTARY|COMPLETED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUPPLEMENTARY", "COMPLETED", "training.activity.organize", 100, true,
                 "An organizer opens a supplementary training for people who were absent or failed.",
                 List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|CONTENT_REVIEW|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_REVIEW", "PLANNED", "training.content.review", 100, true,
-                "The person designated to review the content, who did not create the activity, signs the review.",
-                List.of(permission("training.content.review")))));
-        m.put("TRAINING_ACTIVITY|CONTENT_REVIEW|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_REVIEW", "NOTIFIED", "training.content.review", 100, true,
-                "The person designated to review the content, who did not create the activity, signs the review.",
-                List.of(permission("training.content.review")))));
-        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE", "PLANNED", "training.content.approve", 100, true,
-                "The person designated to approve the content, who neither created the activity nor reviewed the content, signs the approval.",
+        // The review of the content is not a step any more: one approver signs it (owner decision 2026-11-23, DEC-TRAINING-2026-11-23-08; V843 retired the CONTENT_REVIEW policies).
+        // The content is approved by two people in turn through the status Pending Approval (owner decision 2026-11-23, DEC-TRAINING-2026-11-23-10; V844).
+        m.put("TRAINING_ACTIVITY|SUBMIT_FOR_APPROVAL|PLANNED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SUBMIT_FOR_APPROVAL", "PLANNED", "training.activity.organize", 100, true,
+                "An organizer submits the content and the test for approval, with a signature, once the two approvers are chosen and saved.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE_FIRST|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE_FIRST", "PENDING_APPROVAL", "training.content.approve", 100, true,
+                "The person designated to approve first, who did not create the activity, signs the first approval.",
                 List.of(permission("training.content.approve")))));
-        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE|NOTIFIED", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE", "NOTIFIED", "training.content.approve", 100, true,
-                "The person designated to approve the content, who neither created the activity nor reviewed the content, signs the approval.",
+        m.put("TRAINING_ACTIVITY|CONTENT_APPROVE|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_APPROVE", "PENDING_APPROVAL", "training.content.approve", 100, true,
+                "The person designated to approve second, after the first approval, who did not create the activity, signs the second approval.",
                 List.of(permission("training.content.approve")))));
+        m.put("TRAINING_ACTIVITY|CONTENT_REJECT|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONTENT_REJECT", "PENDING_APPROVAL", "training.content.approve", 100, true,
+                "The approver whose turn it is rejects the content with a reason and a signature; the activity returns to Planned.",
+                List.of(permission("training.content.approve")))));
+        m.put("TRAINING_ACTIVITY|NOTIFY|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("NOTIFY", "PENDING_APPROVAL", "training.activity.organize", 100, true,
+                "An organizer notifies the participants once both approvers have signed and the list is confirmed.",
+                List.of(permission("training.activity.organize")))));
+        m.put("TRAINING_ACTIVITY|CANCEL|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CANCEL", "PENDING_APPROVAL", "training.activity.cancel", 100, true,
+                "A person of the department who may cancel trainings cancels the activity with a reason and a signature, unless somebody already passed or the training is the training of a document revision.",
+                List.of(permission("training.activity.cancel")))));
+        m.put("TRAINING_ACTIVITY|REOPEN_CONTENT|PENDING_APPROVAL", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("REOPEN_CONTENT", "PENDING_APPROVAL", "training.activity.organize", 100, true,
+                "An organizer takes the content back to edit it (Edit Content), with a reason and a signature; the approvals start again.",
+                List.of(permission("training.activity.organize")))));
         m.put("TRAINING_ACTIVITY|SEND_ATTENDANCE_LIST|IN_PROGRESS", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SEND_ATTENDANCE_LIST", "IN_PROGRESS", "", 100, true,
                 "The trainer of a session (or, for a session without a trainer, a conductor of the department) sends the attendance list.",
                 List.of())));
@@ -506,8 +511,8 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("UNCONTROLLED_COPY|CANCEL|READY_FOR_DISTRIBUTION", new ModuleDefault("DOCUMENT_CONTROL", "UNCONTROLLED_COPY", "UNCONTROLLED_COPY", new DefaultPolicy("CANCEL", "READY_FOR_DISTRIBUTION", "documents.uncontrolled_copy.cancel_request", 100, true,
                 "A person who may cancel uncontrolled copy requests cancels a copy that is ready, with a reason and a signature.",
                 List.of(permission("documents.uncontrolled_copy.cancel_request")))));
-        m.put("TRAINING_ACTIVITY|HOLD_SESSION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("HOLD_SESSION", "NOTIFIED", "", 100, true,
-                "A conductor, in the department of the activity, holds a session; the first one starts the activity, with a signature.",
+        m.put("TRAINING_ACTIVITY|START_TRAINING|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("START_TRAINING", "NOTIFIED", "", 100, true,
+                "A conductor, in the department of the activity, starts the training with a signature, once the preparation is done and the tests are printed; the activity goes in progress.",
                 List.of())));
         m.put("TRAINING_ACTIVITY|HOLD_SESSION|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("HOLD_SESSION", "IN_PROGRESS", "", 100, true,
                 "A conductor, in the department of the activity, holds a session; the first one starts the activity, with a signature.",
@@ -527,13 +532,7 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|UPDATE_SESSION|PLANNED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE_SESSION", "PLANNED", "training.activity.organize", 100, true,
                 "A person who organizes, in the department, changes a session that has not started, with a reason.",
                 List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|UPDATE_SESSION|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("UPDATE_SESSION", "NOTIFIED", "training.activity.organize", 100, true,
-                "A person who organizes, in the department, changes a session that has not started, with a reason.",
-                List.of(permission("training.activity.organize")))));
         m.put("TRAINING_ACTIVITY|SET_CONTENT_EXEMPTIONS|PLANNED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SET_CONTENT_EXEMPTIONS", "PLANNED", "training.activity.organize", 100, true,
-                "A person who organizes, in the department, sets the exemption of the materials or of the assessment, until the content is reviewed.",
-                List.of(permission("training.activity.organize")))));
-        m.put("TRAINING_ACTIVITY|SET_CONTENT_EXEMPTIONS|NOTIFIED", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("SET_CONTENT_EXEMPTIONS", "NOTIFIED", "training.activity.organize", 100, true,
                 "A person who organizes, in the department, sets the exemption of the materials or of the assessment, until the content is reviewed.",
                 List.of(permission("training.activity.organize")))));
         m.put("TRAINING_ACTIVITY|RECORD_ASSESSMENT|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("RECORD_ASSESSMENT", "IN_PROGRESS", "training.assessment.record", 100, true,

@@ -24,7 +24,7 @@ import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
 import { BACKUP_STATUS_COLOR, COMPONENT_LABEL, VERIFICATION_COLOR, statusLabel } from "../types";
 import { formatBytes, formatDateTime, formatDuration } from "../format";
 import { displayDate } from "@/utils/format";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type MainTab = "general" | "integrity" | "stored" | "contents";
 type SubTab = "verifications" | "restoreTests";
@@ -251,7 +251,7 @@ export const BackupDetailView: React.FC = () => {
                 columns={[
                   { id: "target", header: "Target", cell: (row) => <span className="font-medium">{row.target}</span> },
                   { id: "path", header: "Location", cell: (row) => <span className="break-all font-mono text-xs">{row.path}</span> },
-                  { id: "ok", header: "Result", cell: (row) => <Badge color={row.ok ? "emerald" : "red"}>{row.ok ? "Confirmed" : "Not confirmed"}</Badge> },
+                  { id: "ok", header: "Result", cell: (row) => <Badge color={row.ok ? "emerald" : "red"}>{row.ok ? "Confirmed" : tr("Not confirmed")}</Badge> },
                 ]}
               />
             ))}
@@ -314,8 +314,8 @@ export const BackupDetailView: React.FC = () => {
         isOpen={rehearsing}
         onClose={() => setRehearsing(false)}
         title={tr("Test Restore")}
-        description={`Restore ${backupNumber} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.`}
-        confirmText={rehearseBusy ? "Requesting…" : "Start Test"}
+        description={trFormat("Restore {batch} into a scratch database and run the checks. Production is not changed; the scratch database is dropped afterwards.", { batch: backupNumber })}
+        confirmText={rehearseBusy ? tr("Requesting…") : tr("Start Test")}
         confirmDisabled={!rehearseReason.trim() || rehearseBusy}
         onConfirm={() => void requestRehearsal()}
       >

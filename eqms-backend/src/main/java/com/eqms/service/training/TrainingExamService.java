@@ -23,21 +23,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The test of APD.0009 taken in the system (SOP.0003 5.1.2 and 5.3.7). The trainer writes the questions with the training content; they are reviewed and approved with it and cannot change after.
- * A trainee the trainer has marked present opens the test, answers, and signs. The server grades it against the key it keeps (the key never leaves the server for a trainee) and writes the result
+ * The test of APD.0009 taken in the system (SOP.0003 5.1.2 and 5.3.7), for the activities whose questions were written in the system before 2026-11-23: a test is no longer written there (only an approved
+ * assessment of the library is put into a training), but the tests that exist are still taken. A trainee the trainer has marked present opens the test, answers, and signs. The server grades it against the key it keeps (the key never leaves the server for a trainee) and writes the result
  * through the same assessment table as a result typed by a person, with the pass mark of the settings. A question is right only when exactly the right options are chosen.
  */
 @Service
 public class TrainingExamService {
-    private static final int MAX_QUESTIONS = 100;
     private static final int GRACE_SECONDS = 60;
     private static final String TYPE = "TRAINING_EXAM_ATTEMPT";
-    private static final List<String> LETTERS = List.of("A", "B", "C", "D", "E", "F", "G", "H");
 
-    public record OptionDto(String id, String text) {}
-    /** {@code image}: a picture under the text of the question, as a data URL (PNG or JPEG), like a question of the assessment library. */
-    public record QuestionDto(String kind, String prompt, List<OptionDto> options, List<String> correct, BigDecimal points, String image) {}
-    public record SaveRequest(Integer minutes, List<QuestionDto> questions) {}
     public record SubmitRequest(Map<String, List<String>> answers, String signatureToken) {}
     public record ResetRequest(String reason) {}
 
@@ -59,15 +53,10 @@ public class TrainingExamService {
         this.suspensions = suspensions;
     }
 
-    // ------------------------------------------------------------------------------------------------------------------------------ writing the questions
+    // ------------------------------------------------------------------------------------------------------------------------------ reading the questions
 
     private Map<String, Object> activityOf(UUID id) {
         return store.activity(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-    }
-
-    private boolean confirmed(UUID activityId) {
-        Integer n = jdbc.queryForObject("select count(*) from training_active_confirmations where activity_id = ? and kind in ('CONTENT_REVIEWED','CONTENT_APPROVED')", Integer.class, activityId);
-        return n != null && n > 0;
     }
 
     private boolean assignedReviewer(UserAccount actor, UUID activityId) {
@@ -101,67 +90,7 @@ public class TrainingExamService {
         out.put("minutes", activity.get("exam_minutes"));
         out.put("questions", questions);
         out.put("canSeeKey", keyViewer);
-        out.put("canEdit", manager && Set.of("PLANNED", "RESERVED").contains(String.valueOf(activity.get("status"))) && !confirmed(activityId));
         return out;
-    }
-
-    @Transactional
-    public Map<String, Object> save(UserAccount actor, UUID activityId, SaveRequest request) {
-        access.require(actor, "training.activity.organize");
-        Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
-        if (!Set.of("PLANNED", "RESERVED").contains(String.valueOf(activity.get("status"))) || confirmed(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_EXAM_LOCKED");
-        if (request == null || request.questions() == null || request.questions().size() > MAX_QUESTIONS) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-        Integer minutes = request.minutes();
-        if (minutes != null && (minutes < 1 || minutes > 480)) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-        List<Object[]> rows = new ArrayList<>();
-        int no = 0;
-        for (QuestionDto q : request.questions()) {
-            no++;
-            if (q == null || q.kind() == null || q.prompt() == null || q.prompt().isBlank() || q.prompt().length() > 2000) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-            BigDecimal points = q.points() == null ? BigDecimal.ONE : q.points();
-            if (points.signum() <= 0 || points.compareTo(BigDecimal.valueOf(100)) > 0) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-            String image;
-            try {
-                image = TrainingAssessmentLibraryService.checkedImage(q.kind(), q.image());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("TRAINING_ASSESSMENT_IMAGE_INVALID");
-            }
-            List<Map<String, String>> options = new ArrayList<>();
-            List<String> correct = q.correct() == null ? List.of() : q.correct();
-            switch (q.kind()) {
-                case "TRUE_FALSE" -> {
-                    options.add(Map.of("id", "A", "text", "True"));
-                    options.add(Map.of("id", "B", "text", "False"));
-                    if (correct.size() != 1 || !Set.of("A", "B").contains(correct.get(0))) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                }
-                case "SINGLE", "MULTI" -> {
-                    int n = q.options() == null ? 0 : q.options().size();
-                    if (n < 2 || n > ("SINGLE".equals(q.kind()) ? 6 : 8)) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                    for (int i = 0; i < n; i++) {
-                        String text = q.options().get(i) == null ? null : q.options().get(i).text();
-                        if (text == null || text.isBlank() || text.length() > 500) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                        options.add(Map.of("id", LETTERS.get(i), "text", text.trim()));
-                    }
-                    Set<String> ids = new HashSet<>();
-                    options.forEach(o -> ids.add(o.get("id")));
-                    if (correct.isEmpty() || !ids.containsAll(correct) || new HashSet<>(correct).size() != correct.size()) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                    if ("SINGLE".equals(q.kind()) && correct.size() != 1) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                    if ("MULTI".equals(q.kind()) && correct.size() == options.size()) throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-                }
-                default -> throw new IllegalArgumentException("TRAINING_EXAM_INVALID");
-            }
-            rows.add(new Object[]{no, q.kind(), q.prompt().trim(), write(options), write(correct), points, image});
-        }
-        jdbc.update("delete from training_exam_questions where activity_id = ?", activityId);
-        for (Object[] r : rows) {
-            jdbc.update("insert into training_exam_questions(id, activity_id, q_no, kind, prompt, options, correct, points, created_by, image) values (?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),?,?,?)",
-                    UUID.randomUUID(), activityId, r[0], r[1], r[2], r[3], r[4], r[5], actor.getId(), r[6]);
-        }
-        jdbc.update("update training_activities set exam_minutes = ?, version = version + 1, updated_at = now() where id = ?", minutes, activityId);
-        store.auditActivity(actor, activity, "TRAINING_EXAM_SAVED", null, null, rows.size() + " question(s)" + (minutes == null ? "" : ", " + minutes + " minutes"),
-                minutes == null ? List.of(TrainingStore.change("Questions", null, rows.size())) : List.of(TrainingStore.change("Questions", null, rows.size()), TrainingStore.change("Time Allowed (Minutes)", null, minutes)));
-        return get(actor, activityId);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------ taking the test

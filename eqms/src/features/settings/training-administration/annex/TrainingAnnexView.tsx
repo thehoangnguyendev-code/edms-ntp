@@ -66,7 +66,7 @@ export function TrainingAnnexView() {
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
     ...(r.actions.view ? [{ label: tr("View Details"), icon: <IconInfoCircle className="h-4 w-4" />, onClick: () => open(r) }] : []),
     ...(r.actions.edit ? [{ label: tr("Edit Training Annex"), icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX_EDIT(r.code)) }] : []),
-    ...(r.actions.enable ? [{ label: r.status === "ACTIVE" ? "Enable Another Version" : "Enable Training Annex", icon: <IconToggleRight className="h-4 w-4" />, onClick: () => void withVersions(r, (all) => {
+    ...(r.actions.enable ? [{ label: r.status === "ACTIVE" ? tr("Enable Another Version") : tr("Enable Training Annex"), icon: <IconToggleRight className="h-4 w-4" />, onClick: () => void withVersions(r, (all) => {
       const versions = all.filter((t) => t.status === "DISABLED" && !(t.tokenMode === "TOKENS" && t.checkProblems));
       setEnabling({ row: r, versions, chosen: versions[0]?.id ?? "", sign: false });
     }) }] : []),

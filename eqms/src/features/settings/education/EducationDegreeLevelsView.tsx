@@ -328,7 +328,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
             reload();
             openResultModal("success", showEditModal ? "Degree Level Updated" : "Degree Level Created", `"${saved.name}" has been ${showEditModal ? "updated" : "created"} successfully.`);
           } catch (error) {
-            openResultModal("error", showEditModal ? "Update Failed" : "Creation Failed", extractApiMessage(error, showEditModal ? "Unable to update degree level." : "Unable to create degree level."));
+            openResultModal("error", showEditModal ? tr("Update Failed") : "Creation Failed", extractApiMessage(error, showEditModal ? "Unable to update degree level." : tr("Unable to create degree level.")));
             throw error;
           }
         }}

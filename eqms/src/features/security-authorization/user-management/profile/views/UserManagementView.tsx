@@ -885,7 +885,7 @@ export const UserManagementView: React.FC = () => {
                                     pill
                                     title={
                                       user.accountLocked && user.status === "Active"
-                                        ? "Login is locked out after too many failed attempts"
+                                        ? tr("Login is locked out after too many failed attempts")
                                         : USER_STATUS_DESCRIPTIONS[user.status]
                                     }
                                   >
@@ -1144,7 +1144,7 @@ export const UserManagementView: React.FC = () => {
         type="confirm"
         title={tr("Reinstate User")}
         description={`Are you sure you want to reinstate ${reinstateModal.userName}? Their account will be set to Active.`}
-        confirmText="Yes, Reinstate"
+        confirmText={tr("Yes, Reinstate")}
         cancelText="Cancel"
         showCancel
       />

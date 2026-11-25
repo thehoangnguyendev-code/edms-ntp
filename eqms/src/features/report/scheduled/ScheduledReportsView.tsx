@@ -400,7 +400,7 @@ export function ScheduledReportsView() {
                   }
                 }}
               >
-                {row.active ? "Pause Schedule" : "Resume Schedule"}
+                {row.active ? tr("Pause Schedule") : tr("Resume Schedule")}
               </DropdownMenuItem>
             </div>
           ))}
@@ -412,7 +412,7 @@ export function ScheduledReportsView() {
         }}
         title={tr("Change Schedule Owner")}
         description={`The owner of "${ownerChange?.name ?? ""}" is told when the schedule stops. Owning it does not give the right to change or run it; that stays with the creator.`}
-        confirmText="Change owner"
+        confirmText={tr("Change owner")}
         confirmDisabled={
           !ownerChange?.ownerUserId || !ownerChange.reason.trim() || ownerChange.busy
         }

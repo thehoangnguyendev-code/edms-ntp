@@ -29,6 +29,12 @@ const COLOR_STYLES: Record<BadgeColor, string> = {
   indigo: 'bg-indigo-50 text-indigo-600',
   teal: 'bg-teal-50 text-teal-600',
   gray: 'bg-gray-50 text-gray-600',
+  violet: 'bg-violet-50 text-violet-600',
+  lime: 'bg-lime-50 text-lime-600',
+  pink: 'bg-pink-50 text-pink-600',
+  fuchsia: 'bg-fuchsia-50 text-fuchsia-600',
+  yellow: 'bg-yellow-50 text-yellow-600',
+  green: 'bg-green-50 text-green-600',
 };
 
 export interface IconTileProps {

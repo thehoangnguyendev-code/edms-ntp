@@ -161,7 +161,7 @@ public class TrainingMatrixCompletionService {
                                       order by rec.completed_on desc limit 1) lr on true
                   left join lateral (select a.id as activity_id from training_participants p join training_activities a on a.id = p.activity_id
                                       join training_session_topics st on st.session_id = p.session_id
-                                      where p.person_user_id = pe.pid and a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
+                                      where p.person_user_id = pe.pid and a.status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
                                         and ((ro.dnum is not null and st.document_number = ro.dnum) or (ro.tname is not null and training_topic_key(st.topic_text) = training_topic_key(ro.tname)))
                                       limit 1) oa on true
                 """.formatted(peopleMarks, rowMarks);
@@ -304,7 +304,7 @@ public class TrainingMatrixCompletionService {
         List<Map<String, Object>> open = TrainingRows.camel(jdbc.queryForList("""
             select distinct a.id, a.training_number, training_activity_topics(a.id) as training_topics, a.status, a.due_date, s.scheduled_on
               from training_participants p join training_activities a on a.id = p.activity_id join training_sessions s on s.id = p.session_id join training_session_topics st on st.session_id = s.id
-             where p.person_user_id = ? and a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
+             where p.person_user_id = ? and a.status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
                and ((?::text is not null and st.document_number = ?) or (?::text is not null and training_topic_key(st.topic_text) = training_topic_key(?)))
              order by a.due_date nulls last limit 5
             """, personId, row.get("dnum"), row.get("dnum"), row.get("tname"), row.get("tname")));

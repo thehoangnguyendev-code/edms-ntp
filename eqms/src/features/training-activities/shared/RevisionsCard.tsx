@@ -111,7 +111,7 @@ export function RevisionsCard<T extends { id: string; current: boolean }>({ tabL
                 ) : (
                   <TableMarkup.Row>
                     <TableMarkup.Cell colSpan={span} className="py-12 text-center">
-                      <TableEmptyState title={debouncedSearch ? "No records matching your search" : tr("No records to display")} />
+                      <TableEmptyState title={debouncedSearch ? tr("No records matching your search") : tr("No records to display")} />
                     </TableMarkup.Cell>
                   </TableMarkup.Row>
                 )}

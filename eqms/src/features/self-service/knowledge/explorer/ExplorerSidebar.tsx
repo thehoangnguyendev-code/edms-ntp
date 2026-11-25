@@ -76,8 +76,8 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
             <button
               type="button"
               onClick={onToggleCollapsed}
-              aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-              title={collapsed ? "Expand navigation" : "Collapse navigation"}
+              aria-label={collapsed ? tr("Expand navigation") : tr("Collapse navigation")}
+              title={collapsed ? tr("Expand navigation") : tr("Collapse navigation")}
               className="pointer-events-auto absolute right-0 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 translate-x-1/2 items-center justify-center overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
             >
               <motion.div

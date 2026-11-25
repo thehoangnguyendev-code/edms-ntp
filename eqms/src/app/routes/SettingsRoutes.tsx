@@ -192,9 +192,6 @@ export function settingsRoutes(navigate: NavigateFunction) {
           <Route path="in-app-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage"]}><Suspense fallback={<LoadingFallback />}><InAppDesignView /></Suspense></ProtectedRoute>} />
           <Route path="email-design" element={<ProtectedRoute requiredPermissions={["settings.notification_policy.view", "settings.notification_policy.manage", "settings.email_template.view", "settings.email_template.manage"]}><Suspense fallback={<LoadingFallback />}><EmailDesignView /></Suspense></ProtectedRoute>} />
         </Route>
-        {/* the old addresses keep working: a bookmark or a link in a mail opens the new screen */}
-        <Route path="email-templates/*" element={<Navigate to="/settings/notifications?tab=email" replace />} />
-        <Route path="notification-policy/*" element={<Navigate to="/settings/notifications" replace />} />
         <Route path="announcements">
           <Route index element={<ProtectedRoute requiredPermissions={["settings.announcement.view", "settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementsView /></Suspense></ProtectedRoute>} />
           <Route path="new" element={<ProtectedRoute requiredPermissions={["settings.announcement.manage"]}><Suspense fallback={<LoadingFallback />}><AnnouncementEditorView /></Suspense></ProtectedRoute>} />

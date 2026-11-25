@@ -147,7 +147,7 @@ export const RecallScanPanel: React.FC<{
         <span className="shrink-0 font-semibold tabular-nums">{progress.percent}%</span>
       </div>
       <p className="mt-1 text-2xs text-emerald-700">
-        {done ? "All codes are read." : progress.processing ? progress.step ?? "Reading the code..." : "Sending the file. Keep this page open."}
+        {done ? tr("All codes are read.") : progress.processing ? (progress.step ? tr(progress.step) : tr("Reading the code...")) : tr("Sending the file. Keep this page open.")}
       </p>
 
       {queue.length > 1 && (

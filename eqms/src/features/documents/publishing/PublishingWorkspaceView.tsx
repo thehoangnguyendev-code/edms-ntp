@@ -564,7 +564,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       } catch (error) {
         console.error("Failed to load publishing workspace preview", error);
         if (alive) {
-          showToast({ type: "error", title: tr("Publishing Workspace"), message: "Couldn't load preview PDF." });
+          showToast({ type: "error", title: tr("Publishing Workspace"), message: tr("Couldn't load preview PDF.") });
         }
       }
     })();
@@ -740,11 +740,11 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         documentApi.getPublishingJobStatus(revisionId, initialWs.publishingJobId!));
       if (!result.completed) {
         setWorkspace({ ...initialWs, ...result.status });
-        showToast({ type: "info", title: tr("Publishing in Progress"), message: "Your confirmed request is still running on the server. This page will continue checking its status." });
+        showToast({ type: "info", title: tr("Publishing in Progress"), message: tr("Your confirmed request is still running on the server. This page will continue checking its status.") });
         return;
       }
 
-      showToast({ type: "success", title: tr("Revision Published"), message: "Revision has been published to Effective successfully." });
+      showToast({ type: "success", title: tr("Revision Published"), message: tr("Revision has been published to Effective successfully.") });
       const refreshed = await documentApi.getRevisionByIdSnapshot(revisionId, { force: true });
       navigateTo(ROUTES.DOCUMENTS.REVISIONS.DETAIL(revisionId), {
         state: buildRevisionDetailNavigationState({
@@ -847,7 +847,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         onConfirm={handleForcePublishRelated}
         title={tr("Related Documents Not Ready")}
         type="warning"
-        confirmText="Force Publish"
+        confirmText={tr("Force Publish")}
         cancelText="Cancel"
         showCancel
         description={

@@ -154,7 +154,7 @@ export const TrainingNotificationsView: React.FC = () => {
     { id: "event", header: "Event", label: "Event", sort: sortFor("event"), cell: (item) => <span className="font-medium text-slate-900">{readable(item.eventCode)}</span> },
     { id: "recipient", header: "Recipient", label: "Recipient", sort: sortFor("recipient"), cell: (item) => item.recipientName },
     { id: "channel", header: "Channel", label: "Channel", sort: sortFor("channel"), cell: (item) => <Badge color={item.channel === "EMAIL" ? "amber" : "blue"} size="sm">{item.channel === "EMAIL" ? "E-mail" : "In-app"}</Badge> },
-    { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (item) => <Badge color={STATUS_COLOR[item.status]} size="sm">{STATUS_LABEL[item.status]}</Badge> },
+    { id: "status", header: "Status", label: "Status", sort: sortFor("status"), cell: (item) => <Badge color={STATUS_COLOR[item.status]} size="sm">{tr(STATUS_LABEL[item.status])}</Badge> },
     { id: "reason", header: "Reason", label: "Reason", cellClassName: "text-slate-600", cell: (item) => (item.reasonCode ? readable(item.reasonCode) : "—") },
     { id: "title", header: "Notice", label: "Notice", sort: sortFor("title"), cellClassName: "max-w-xs truncate text-slate-600", cell: (item) => item.title || "—" },
   ];
@@ -172,7 +172,7 @@ export const TrainingNotificationsView: React.FC = () => {
       )}
     >
       <span className="font-semibold tabular-nums text-slate-900">{summary[status].toLocaleString()}</span>
-      {STATUS_LABEL[status]}
+      {tr(STATUS_LABEL[status])}
     </button>
   );
 

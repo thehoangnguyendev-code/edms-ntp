@@ -206,7 +206,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
     exportDocuments,
   } = useDocumentServerTable({ viewType, currentUser: user });
 
-  const title = viewType === "owned-by-me" ? "Documents Owned By Me" : "All Documents";
+  const title = viewType === "owned-by-me" ? tr("Documents Owned By Me") : tr("All Documents");
   const fromOwned = viewType === "owned-by-me";
   const showNewDocButton = viewType === "all";
   const canCreateDocument = canCreateDocumentShell;

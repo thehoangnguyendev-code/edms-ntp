@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button/Button";
-import { FormField } from "@/components/ui/form/ResponsiveForm";
-import { FormModal } from "@/components/ui/modal/FormModal";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { Textarea } from "@/components/ui/form/ResponsiveForm";
 import type { TrainingActivityDetail } from "@/services/api/trainingActivities";
-import { Textarea } from "../../shared/TrainingFields";
 import { tr, trFormat } from "@/i18n";
 
 export type AssessmentFormKind = "TEST" | "CHECKLIST" | "BOTH" | "NONE";
@@ -22,10 +21,6 @@ const NOTE = "rounded-lg border px-3 py-2 text-sm";
 const INFO = `${NOTE} border-slate-200 bg-slate-50 text-slate-700`;
 const WARN = `${NOTE} border-amber-200 bg-amber-50 text-amber-900`;
 
-/**
- * Says, at the top of the Training Materials and the Assessment tab, what this activity needs and why (PLAN-TR-002), and lets the organizer exempt it with a reason until the
- * content is reviewed. The rules are decided by the server; this panel only tells them.
- */
 /** What the activity needs of this tab and why, as a sentence and its tone (the server decides the rules; this only tells them). */
 function describe(activity: TrainingActivityDetail, part: "materials" | "assessment", canExempt: boolean) {
   const rules = activity.contentRules;
@@ -35,8 +30,7 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
   const exemptReason = isMaterials ? activity.materialsExemptReason : activity.assessmentExemptReason;
   const external = activity.kind === "EXTERNAL";
   const visitor = activity.kindReason === "VISITOR";
-  const supplementary = !!rules?.inherited;
-  const freeByRule = external || visitor || supplementary;
+  const freeByRule = external || visitor;
   const required = isMaterials ? rules?.materialsRequired : rules?.testRequired || rules?.checklistRequired;
   // What the server says is still missing for this tab: the warning follows it, so the screen and the validation of the server never disagree.
   const missingHere = !!rules?.missing.some((code) => (isMaterials ? code === "TRAINING_MATERIALS_REQUIRED" : code === "TRAINING_TEST_REQUIRED" || code === "TRAINING_CHECKLIST_REQUIRED"));
@@ -45,19 +39,16 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
   let tone = INFO;
   if (!rules) return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
   if (isMaterials) {
-    if (supplementary) text = tr("This is a supplementary training: it keeps the material of the training it supplements, so nothing has to be added.");
-    else if (external) text = tr("An external training needs no material of its own; add one if it helps.");
+    if (external) text = tr("An external training needs no material of its own; add one if it helps.");
     else if (visitor) text = tr("A visitor is instructed by the department: no material is needed; add one if it helps.");
     else if (exempt) text = tr("Training Materials are not required for this training.");
     else if (rules.materialsSource === "DOCUMENT") text = trFormat("This training is on {document}: the approved document is the material. Add slides or other material below if you want.", { document: activity.documentLabel ?? tr("a document") });
-    else if (missingHere && canExempt) { text = tr("Required before the content is reviewed: a file or a link."); tone = WARN; }
-  } else if (supplementary) text = tr("This is a supplementary training: it uses the test of the training it supplements.");
-  else if (external) text = tr("An external training has no test of its own; keep the certificate or the proof of attendance as evidence.");
+    else if (missingHere && canExempt) { text = tr("Required before the content is approved: a file or a link."); tone = WARN; }
+  } else if (external) text = tr("An external training has no test of its own; keep the certificate or the proof of attendance as evidence.");
   else if (visitor) text = tr("A visitor needs no test.");
   else if (exempt) text = tr("No test or checklist is required for this training.");
   else if (kind === "NONE") text = tr("No test or checklist is required: no session of this training is assessed by one (observation or reading confirmation).");
-  else if (rules.onlineTest && (kind === "TEST" || kind === "BOTH")) text = tr("The test is written in the system (Test in the system), so no test file is needed; a file can still be added.");
-  else if (missingHere && required && canExempt) { text = trFormat("Required before the content is reviewed: the {form} (APD.0009).", { form: tr(FORM_NAME[kind]) }); tone = WARN; }
+  else if (missingHere && required && canExempt) { text = trFormat("Required before the content is approved: choose an approved assessment of the library for the {form} (APD.0009).", { form: tr(FORM_NAME[kind]) }); tone = WARN; }
   return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
 }
 
@@ -68,53 +59,99 @@ export function contentRuleNote(activity: TrainingActivityDetail, part: "materia
   return d.exempt && d.exemptReason ? `${d.text} Reason: ${d.exemptReason}` : d.text;
 }
 
+/**
+ * Says, at the top of the Training Materials and the Assessment tab, whether this activity needs them: a checkbox that is ticked by default, as "Requires Training?" is in Document Control. Unticking it asks
+ * for the reason, which stays on the record and in the Audit Trail; it can be given only until the content is approved. The rules are decided by the server; this panel only tells them.
+ */
 export function ContentRulesPanel({ activity, part, canExempt, onExempt }: {
   activity: TrainingActivityDetail;
   part: "materials" | "assessment";
   canExempt: boolean;
   onExempt: (body: { materialsExempt?: boolean; assessmentExempt?: boolean; reason?: string }) => Promise<boolean>;
 }) {
-  const rules = activity.contentRules;
-  const [asking, setAsking] = useState(false);
-  const [reason, setReason] = useState("");
-  if (!rules) return null;
-  // Only what has to be done is said above the table (a warning); what is not needed is said in the table itself.
-  const { text, tone, kind, isMaterials, exempt, freeByRule } = describe(activity, part, canExempt);
+  const { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule } = describe(activity, part, canExempt);
+  const savedReason = exemptReason ?? "";
+  // Unticked but not saved yet: the reason is being written.
+  const [skipping, setSkipping] = useState(false);
+  const [reason, setReason] = useState(savedReason);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setReason(savedReason);
+    if (!exempt) setSkipping(false);
+  }, [savedReason, exempt]);
+  // The tab Training Materials and the tab Assessment share this panel: what is being written in one is not carried to the other.
+  useEffect(() => {
+    setSkipping(false);
+  }, [part]);
+  if (!activity.contentRules) return null;
+  // Nothing to decide: an external training, a visitor, or no session assessed by a test or a checklist (the tab then only says so, in its table).
+  const decidable = !freeByRule && (isMaterials || kind !== "NONE");
+  if (!decidable) return null;
 
-  const toggle = (value: boolean, why?: string) => onExempt({ ...(isMaterials ? { materialsExempt: value } : { assessmentExempt: value }), reason: why });
-  const showExemptButton = canExempt && !freeByRule && !exempt && (isMaterials || kind !== "NONE");
-  // Nothing to say or to do above the table: no block at all, so that the tab starts as the others do (the sentence of what is not needed is in the table).
-  if (!(text && tone === WARN) && !showExemptButton && !(canExempt && exempt) && !asking) return null;
+  const required = !(exempt || skipping);
+  const key = isMaterials ? "materialsExempt" : "assessmentExempt";
+  const changed = reason.trim() !== savedReason.trim();
+  const toggle = (checked: boolean) => {
+    if (checked) {
+      setSkipping(false);
+      if (exempt) void onExempt({ [key]: false });
+    } else {
+      setSkipping(true);
+    }
+  };
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onExempt({ [key]: true, reason: reason.trim() });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="mb-4 space-y-2">
-      {text && tone === WARN && <p role="status" className={tone}>{text}</p>}
-      {(showExemptButton || (canExempt && exempt)) && (
-        <div>
-          {exempt ? (
-            <Button size="sm" variant="outline" onClick={() => void toggle(false)}>
-              {tr("Require")} {isMaterials ? tr("materials") : tr("the form")} {tr("again")}
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => { setReason(""); setAsking(true); }}>
-              {isMaterials ? tr("Training Materials are not required…") : tr("An assessment form is not required…")}
-            </Button>
+    <div className="mb-4 space-y-4">
+      <div className="flex items-center justify-between font-semibold text-slate-900">
+        <Checkbox
+          id={`requires-${part}`}
+          label={isMaterials ? tr("Required Training Materials?") : tr("Required Assessment?")}
+          checked={required}
+          onChange={toggle}
+          disabled={!canExempt}
+        />
+      </div>
+      {required ? (
+        text && tone === WARN ? <p role="status" className={tone}>{text}</p> : null
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`skip-${part}`} className="text-xs font-medium text-slate-700 capitalize sm:text-sm">
+              {isMaterials ? tr("Reason for skipping the training materials") : tr("Reason for skipping the assessment")} {canExempt && <span className="text-red-500">*</span>}
+            </label>
+            <Textarea
+              id={`skip-${part}`}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              disabled={!canExempt}
+              placeholder={isMaterials ? tr("Provide a reason for skipping the training materials...") : tr("Provide a reason for skipping the assessment...")}
+            />
+          </div>
+          {canExempt && (
+            <>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2">
+                <p className="text-xs leading-relaxed text-amber-800">
+                  {tr("If this is not required, you must give a reason. It stays on the record and in the Audit Trail, and it can be given only until the content is approved.")}
+                </p>
+              </div>
+              <div>
+                <Button size="sm" variant="outline-emerald" loading={saving} disabled={!reason.trim() || (exempt && !changed)} onClick={() => void save()}>
+                  {tr("Save")}
+                </Button>
+              </div>
+            </>
           )}
         </div>
       )}
-      <FormModal
-        isOpen={asking}
-        onClose={() => setAsking(false)}
-        onConfirm={async () => { if (await toggle(true, reason.trim())) setAsking(false); }}
-        title={isMaterials ? tr("Training Materials not required") : tr("Assessment form not required")}
-        description={tr("The reason stays on the record and in the Audit Trail. It can be set only until the content is reviewed.")}
-        confirmText="Save"
-        confirmDisabled={!reason.trim()}
-        size="md"
-      >
-        <FormField label={tr("Reason")} required>
-          <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-        </FormField>
-      </FormModal>
     </div>
   );
 }

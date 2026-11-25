@@ -53,7 +53,7 @@ export function userDashboardWidgets(summary: DashboardResource<DashboardSummary
 
     { id: 'document-activity', label: tr('Document activity'), width: 'half', defaultVisible, content: <DocumentActivityPanel /> },
     { id: 'workflow-pipeline', label: tr('Workflow pipeline'), width: 'half', defaultVisible, content: <Card aria-label={tr("Workflow pipeline")}>
-        <CardHeader title={tr("Workflow pipeline")} subtitle={s ? `${openItems.toLocaleString()} revisions in review, approval or training` : 'Revisions waiting in each stage'} />
+        <CardHeader title={tr("Workflow pipeline")} subtitle={s ? `${openItems.toLocaleString()} revisions in review, approval or training` : tr('Revisions waiting in each stage')} />
         {s ? (
           <GrowthColumns
             columns={[

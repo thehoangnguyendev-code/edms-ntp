@@ -166,7 +166,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
         navigate(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES_EDIT(created.id), { replace: true });
       } else {
         apply(await knowledgeApi.updateHierarchy(id!, { ...payload, levels: levels.map((l) => ({ id: l.id, fieldCode: l.fieldCode })) }));
-        showToast({ type: "success", title: "Saved", message: "The hierarchy was updated." });
+        showToast({ type: "success", title: "Saved", message: tr("The hierarchy was updated.") });
       }
     } catch (error) {
       showToast({ type: "error", title: tr("Save failed"), message: errorMessage(error, "Unable to save the hierarchy.") });

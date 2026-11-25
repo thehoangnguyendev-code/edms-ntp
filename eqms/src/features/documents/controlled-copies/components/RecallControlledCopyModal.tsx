@@ -58,7 +58,7 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
           {controlledCopyNumber ? ` (${controlledCopyNumber})` : ""}{tr(". The recall date will be recorded automatically at the moment you complete the electronic signature in the next step, and you will be asked for the reason there too.")}
         </>
       }
-      confirmText="Continue to Signature"
+      confirmText={tr("Continue to Signature")}
       size="md"
     >
       {!isBatch && (
@@ -76,7 +76,7 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
             >
               <Upload className="h-5 w-5 text-slate-400" />
               <span className="text-xs text-slate-600">
-                {file ? file.name : "Click to select the scanned, signed form"}
+                {file ? file.name : tr("Click to select the scanned, signed form")}
               </span>
               <input
                 id="recall-executed-scan-file"

@@ -257,7 +257,7 @@ export const RequestControlledCopyView: React.FC = () => {
               name: dept.name,
               description: dept.manager
                 ? `Manager: ${dept.manager}`
-                : "Department-level distribution",
+                : tr("Department-level distribution"),
             })),
           );
         } else {
@@ -789,7 +789,7 @@ export const RequestControlledCopyView: React.FC = () => {
         location:
           distributionMode === "internal"
             ? selectedTargets[0]?.label || ""
-            : "External Recipients",
+            : tr("External Recipients"),
         purpose: request.reason,
         usagePurpose,
         copies: selectedRecipientCount,
@@ -866,7 +866,7 @@ export const RequestControlledCopyView: React.FC = () => {
       return page.data.map((b) => ({ value: b.id, label: `${b.abbreviation} - ${b.name}`, description: tr("Business Unit") }));
     }
     const page = await dictionaryApi.getDepartmentsPage({ search: query, status: "Active", limit: 50 });
-    return page.data.map((d) => ({ value: d.id, label: `${d.abbreviation} - ${d.name}`, description: d.departmentHeadName ? `Manager: ${d.departmentHeadName}` : "Department-level distribution" }));
+    return page.data.map((d) => ({ value: d.id, label: `${d.abbreviation} - ${d.name}`, description: d.departmentHeadName ? `Manager: ${d.departmentHeadName}` : tr("Department-level distribution") }));
   }, []);
 
   const locationLabelByScope: Record<DistributionScope, string> = {
@@ -1248,7 +1248,7 @@ export const RequestControlledCopyView: React.FC = () => {
                         }}
                         placeholder={
                           externalRecipients.length
-                            ? "Add more emails..."
+                            ? tr("Add more emails...")
                             : tr("Enter email and press Enter")
                         }
                         className="min-w-[220px] flex-1 border-0 bg-transparent px-1 py-1 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
@@ -1437,10 +1437,10 @@ export const RequestControlledCopyView: React.FC = () => {
                   {distributionMode === "internal"
                     ? selectedLocationOptions.length > 0
                       ? `${locationLabelByScope[distributionScope]} - ${selectedLocationOptions.map((option) => option.label).join(", ")}`
-                      : "Not selected"
+                      : tr("Not selected")
                     : parsedExternalRecipients.length > 0
                       ? parsedExternalRecipients.join(", ")
-                      : "Not selected"}
+                      : tr("Not selected")}
                 </span>
               </span>
             </li>

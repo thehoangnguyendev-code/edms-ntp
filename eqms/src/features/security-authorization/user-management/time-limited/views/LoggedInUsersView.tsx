@@ -146,7 +146,7 @@ export const LoggedInUsersView: React.FC = () => {
       showToast({
         type: "error",
         title: tr("Force Logout Failed"),
-        message: "Unable to log out this user. Please try again.",
+        message: tr("Unable to log out this user. Please try again."),
       });
     } finally {
       setIsForceLoggingOut(false);
@@ -413,7 +413,7 @@ export const LoggedInUsersView: React.FC = () => {
         type="warning"
         title={`Log Out ${forceLogoutModal.userName} Immediately?`}
         description={tr("This will revoke every active session for this user. The action is recorded in the audit trail.")}
-        confirmText="Log Out Now"
+        confirmText={tr("Log Out Now")}
         isLoading={isForceLoggingOut}
       />
 

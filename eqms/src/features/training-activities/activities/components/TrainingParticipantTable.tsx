@@ -13,8 +13,8 @@ import { tr } from "@/i18n";
 const SORTABLE = new Set(["code", "name", "department", "state", "result", "read", "sign", "participation"]);
 
 /** Only one authorized group/session page is held in the browser; commands still use the original row IDs. */
-export function TrainingParticipantTable({ activityId, sessionId, group, title, columns, refreshToken, renderRow }: {
-  activityId: string; sessionId?: string; group: string; title: string;
+export function TrainingParticipantTable({ activityId, sessionId, group, title, hideHeading, columns, refreshToken, renderRow }: {
+  activityId: string; sessionId?: string; group: string; title: string; hideHeading?: boolean;
   columns: DataTableColumn<TrainingParticipant>[]; refreshToken: unknown;
   /** Draws each person as a line of a list instead of a row of the table (the attendance step of the workspace); the server paging, search and sort are the same. */
   renderRow?: (p: TrainingParticipant, index: number) => ReactNode;
@@ -53,8 +53,11 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   }, [activityId, sessionId, group, query, page, limit, sort, refreshToken]);
   // A group other than the employees is drawn only when it has people (or a search is on): while the first answer is on its way it is not drawn at all, so an empty group never flashes.
   if (group !== "EMPLOYEES" && !search && (!loaded || (!loading && !error && total === 0))) return null;
+  // a column with the id "actions" is the action column of the table: it stays in view on the right
+  const actionColumn = columns.find((column) => column.id === "actions");
+  const dataColumns = columns.filter((column) => column.id !== "actions");
   return <section>
-    <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>
+    {!hideHeading && <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>}
     <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder={tr("Search name or employee ID…")} /></div>
     {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
     {renderRow ? (
@@ -67,7 +70,8 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
         {total > 0 && <TablePagination currentPage={page} totalPages={pages} totalItems={total} itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />}
       </div>
     ) : <DataTable rows={rows} getRowKey={(p) => p.id} isLoading={loading}
-      columns={columns.map((column) => column.id === "rowNo" ? { ...column, cell: (_p: TrainingParticipant, i: number) => (page - 1) * limit + i + 1 }
+      action={actionColumn ? { header: actionColumn.header, cell: actionColumn.cell } : undefined}
+      columns={dataColumns.map((column) => column.id === "rowNo" ? { ...column, cell: (_p: TrainingParticipant, i: number) => (page - 1) * limit + i + 1 }
         : SORTABLE.has(column.id) ? { ...column, sort: { direction: sort.key === column.id ? sort.direction : undefined, onSort: () => { setSort((s) => ({ key: column.id, direction: s.key === column.id && s.direction === "asc" ? "desc" : "asc" })); setPage(1); } } }
         : column)}
       emptyState={<TableEmptyState title={tr("No Participants")} description={tr("No participant matches this session and search.")} />}

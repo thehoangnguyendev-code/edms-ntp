@@ -143,7 +143,7 @@ export function ShareScrollList<T>({
         </div>
       ) : total === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-500">
-          {query ? "Nobody matches your search." : emptyText}
+          {query ? tr("Nobody matches your search.") : emptyText}
         </p>
       ) : (
         <>

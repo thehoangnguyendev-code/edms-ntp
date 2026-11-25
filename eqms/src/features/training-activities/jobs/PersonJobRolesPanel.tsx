@@ -41,7 +41,7 @@ export function PersonJobRolesPanel() {
     { id: "department", header: "Department", sort: sorted("department"), cell: (r) => r.department ?? "—" },
     { id: "text", header: tr("Work Position"), sort: sorted("positionText"), cell: (r) => r.positionText ?? "—" },
     { id: "roles", header: tr("Work Positions"), sort: sorted("jobRoleNames"), cell: (r) => (r.jobRoleCount > 0 ? <WorkPositionsPreview personId={r.personId} personName={r.fullName} positions={r.firstPositionName ? [r.firstPositionName, r.secondPositionName].filter((name): name is string => Boolean(name)).map((name, index) => ({ id: String(index), name, carried: false })) : undefined} totalCount={r.jobRoleCount} fallback={r.jobRoleNames} /> : <Badge color="amber">{tr("None")}</Badge>) },
-    { id: "source", header: "Given By", cell: (r) => (r.sources ?? "").split(", ").filter(Boolean).map((x) => (x === "JOB_ASSIGNMENT" ? "Job assignment" : "Mapped by Training Administration")).join(", ") || "—" },
+    { id: "source", header: "Given By", cell: (r) => (r.sources ?? "").split(", ").filter(Boolean).map((x) => (x === "JOB_ASSIGNMENT" ? tr("Job assignment") : "Mapped by Training Administration")).join(", ") || "—" },
   ];
   const { layout, control } = useCustomColumnLayout("training.person.positions", columns);
   const filters: ReportSelectFilter[] = [

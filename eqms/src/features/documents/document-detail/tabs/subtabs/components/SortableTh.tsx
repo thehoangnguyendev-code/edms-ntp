@@ -2,6 +2,7 @@ import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
+import { useLanguage } from "@/i18n";
 
 export type SortDirection = "asc" | "desc";
 
@@ -17,6 +18,7 @@ interface SortableThProps {
 
 /** Column header of a server-sorted table: clicking asks the parent to re-query the server with this key. */
 export const SortableTh: React.FC<SortableThProps> = ({ label, sortKey, activeKey, direction, onSort, className }) => {
+    const { tLabel } = useLanguage();
     const active = activeKey === sortKey;
     return (
         <TableMarkup.HeaderCell
@@ -28,7 +30,7 @@ export const SortableTh: React.FC<SortableThProps> = ({ label, sortKey, activeKe
             )}
         >
             <div className="flex items-center gap-2">
-                <span>{label}</span>
+                <span>{tLabel(label)}</span>
                 <div className="flex flex-col text-slate-400 flex-shrink-0 group-hover:text-slate-500">
                     <ChevronUp className={cn("h-3 w-3 -mb-1", active && direction === "asc" ? "text-emerald-600" : "")} />
                     <ChevronDown className={cn("h-3 w-3", active && direction === "desc" ? "text-emerald-600" : "")} />

@@ -103,6 +103,18 @@ public class TrainingActivityController {
         return ResponseEntity.ok(activities.designate(users.requireCurrentUser(), id, request.step(), request.assigneeUserId()));
     }
 
+    /** Save: the two approvers of the content (first and second), chosen together by the organizer. */
+    @PutMapping("/activities/{id}/approver-pair")
+    public ResponseEntity<?> saveApprovers(@PathVariable UUID id, @RequestBody TrainingActivityService.ApproversRequest request) {
+        return ResponseEntity.ok(activities.saveApprovers(users.requireCurrentUser(), id, request));
+    }
+
+    @PostMapping("/activities/{id}/submit-for-approval")
+    public ResponseEntity<?> submitForApproval(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.submitForApproval(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/activities/{id}/reject-content")
+    public ResponseEntity<?> rejectContent(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.rejectContent(users.requireCurrentUser(), id, request)); }
+
     @PostMapping("/activities/{id}/approvers/{assignmentId}/reassign")
     public ResponseEntity<?> reassign(@PathVariable UUID id, @PathVariable UUID assignmentId, @RequestBody ReassignRequest request) {
         return ResponseEntity.ok(activities.reassign(users.requireCurrentUser(), id, assignmentId, request.assigneeUserId(), request.reason()));
@@ -115,6 +127,12 @@ public class TrainingActivityController {
 
     @PostMapping("/activities/{id}/notify")
     public ResponseEntity<?> notifyActivity(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.notifyActivity(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/activities/{id}/resend-notifications")
+    public ResponseEntity<?> resendNotifications(@PathVariable UUID id) { return ResponseEntity.ok(activities.resendInvitations(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/activities/{id}/start-training")
+    public ResponseEntity<?> startTraining(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.startTraining(users.requireCurrentUser(), id, request)); }
 
     @PostMapping("/activities/{id}/verify-self-reading")
     public ResponseEntity<?> verifySelfReading(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.verifySelfReading(users.requireCurrentUser(), id, request)); }
@@ -168,6 +186,9 @@ public class TrainingActivityController {
 
     @PostMapping("/me/participations/{id}/confirm-read")
     public ResponseEntity<?> confirmRead(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.confirmRead(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/sessions/{sessionId}/cancel")
+    public ResponseEntity<?> cancelSession(@PathVariable UUID sessionId, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.cancelSession(users.requireCurrentUser(), sessionId, request)); }
 
     @PutMapping("/sessions/{sessionId}")
     public ResponseEntity<?> updateSession(@PathVariable UUID sessionId, @RequestBody SessionUpdateRequest request) { return ResponseEntity.ok(activities.updateSession(users.requireCurrentUser(), sessionId, request)); }

@@ -101,7 +101,7 @@ export const ReportTypesView: React.FC = () => {
       await reportTypesApi.setEnabled(item.code, item.version, !item.enabled, toggleReason.trim());
       closeToggle();
       reload();
-      showToast({ type: "success", title: item.enabled ? "Report Type Disabled" : "Report Type Enabled", message: `"${item.name}" was ${item.enabled ? "disabled" : "enabled"} successfully.` });
+      showToast({ type: "success", title: item.enabled ? tr("Report Type Disabled") : tr("Report Type Enabled"), message: `"${item.name}" was ${item.enabled ? "disabled" : "enabled"} successfully.` });
     } catch (error) {
       setToggleError(reportError(error));
     } finally {

@@ -153,7 +153,7 @@ public class WorkflowReminderScheduler {
         variables.put("documentTitle", document == null || document.getDocumentName() == null ? "" : document.getDocumentName());
         variables.put("revisionNumber", revision.getRevisionNumber() == null ? "" : revision.getRevisionNumber());
         variables.put("participantType", participant.getParticipantType().toLowerCase(Locale.ROOT));
-        variables.put("userName", assignee.getFullName() == null ? assignee.getUsername() : assignee.getFullName());
+        variables.put("fullName", assignee.getFullName() == null ? assignee.getUsername() : assignee.getFullName());
         variables.put("daysPending", String.valueOf(days));
         String area = "REVIEWER".equals(participant.getParticipantType()) ? "review" : "approval";
         variables.put("actionUrl", "/documents/revisions/" + area + "/" + revision.getId());

@@ -3,7 +3,8 @@ import { TemplateNoTrainingNotice } from "./TemplateNoTrainingNotice";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
 import { trainingLinksApi, type TrainingLink } from "@/services/api/trainingLinks";
-import { tr } from "@/i18n";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
+import { tr, trFormat } from "@/i18n";
 
 export interface TrainingInformationValue {
   trainingPlannedDate?: string | null;
@@ -100,7 +101,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
 }) => {
   const [fetchedLink, setFetchedLink] = useState<TrainingLink | null>(null);
   useEffect(() => {
-    if (!revisionId || trainingNumber) return;
+    if (!revisionId) return;
     let active = true;
     trainingLinksApi
       .forRevision(revisionId)
@@ -109,7 +110,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
     return () => {
       active = false;
     };
-  }, [revisionId, trainingNumber]);
+  }, [revisionId]);
   const shownNumber = trainingNumber ?? (fetchedLink?.status === "CANCELLED" ? null : fetchedLink?.trainingNumber ?? null);
   const shownStatus = trainingStatusLabel ?? fetchedLink?.statusLabel ?? "";
   const trainingPeriodDays = useMemo(() => data?.trainingPeriodDays ?? null, [data?.trainingPeriodDays]);
@@ -201,7 +202,11 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
             <FormField label={tr("Training Status")}>
               <Input type="text" value={shownStatus} disabled readOnly />
             </FormField>
-            <div className="hidden xl:block" />
+            {fetchedLink?.mode === "COVERED" ? (
+              <FormField label={tr("Covered by the training of")}>
+                <Input type="text" value={fetchedLink.coveredBy ?? ""} disabled readOnly />
+              </FormField>
+            ) : <div className="hidden xl:block" />}
           </>
         )}
         <DateTimePicker
@@ -229,6 +234,19 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
           disabled={isReadOnly || !canEditCompletionDate}
         />
       </div>
+
+      {fetchedLink?.mode === "COVERING" && (
+        <WarningBanner
+          variant="info"
+          description={trFormat("This revision needs no training of its own. It will be read in the training {number} of {document} (now {status}); when QA confirms that training the revision is covered by it.", { number: shownNumber ?? "", document: fetchedLink.coveredBy ?? "", status: shownStatus || "-" })}
+        />
+      )}
+      {fetchedLink?.mode === "COVERED" && (
+        <WarningBanner
+          variant="info"
+          description={trFormat("This revision needs no training of its own: it was read in the training {number} of {document}, completed on the day shown, and was published with that document. For this reason its own Pending Training step is not part of its flow (SOP.0003: the need for training is decided for each document by the training impact assessment).", { number: shownNumber ?? "", document: fetchedLink.coveredBy ?? "" })}
+        />
+      )}
 
       <p className="text-xs text-slate-500">
         {tr("Training Planned Date is the start of the training period (the day the document is approved), not the day the training is held; the period ends after the Training Period (Days). The Training Completion Date is the day the training was held.")}

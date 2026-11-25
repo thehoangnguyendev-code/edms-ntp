@@ -109,7 +109,7 @@ export function TrainingFileDropzone({ label, description, accept, hint, maxMb, 
           <div className={cn("mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-colors", dragging ? "bg-emerald-100" : "bg-slate-100")}>
             <Upload className={cn("h-6 w-6", dragging ? "text-emerald-600" : "text-slate-400")} />
           </div>
-          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? "Drop your file here" : tr("Click to upload or drag & drop")}</p>
+          <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? tr("Drop your file here") : tr("Click to upload or drag & drop")}</p>
           <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">{hint}</p>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
@@ -56,11 +56,19 @@ describe("New Training Activity, General Information", () => {
     renderAt("");
 
     await screen.findByRole("tab", { name: /General Information/ });
-    const order = ["Training Number", "Department", "Opened By", "Created Time", "Type", "Reason", "Training Topic", "Mode", "Assessment", "Due Date", "Scheduled date", "Location Type", "Description"];
+    const order = ["Training Number", "Department", "Opened By", "Created Time", "Type", "Reason", "Due Date", "Description"];
     // a label may carry the star of a required field
     const labelled = (label: string) => screen.getAllByText((text, el) => el?.tagName === "LABEL" && text.replace(/\s*\*$/, "").trim() === label)[0];
     for (let i = 1; i < order.length; i += 1) {
       expect(labelled(order[i - 1]).compareDocumentPosition(labelled(order[i])) & Node.DOCUMENT_POSITION_FOLLOWING, `${order[i - 1]} before ${order[i]}`).toBeTruthy();
+    }
+    // the sessions are cards under the Due Date; the form of a session opens in a dialog, with the same fields in the same order as before
+    expect(screen.getByText("No session yet. Press Add session to add the first one: the people, the materials and the test all belong to a session.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add session" }));
+    await screen.findByRole("dialog");
+    const inDialog = ["Training Topic", "Mode", "Assessment", "Scheduled date", "Location Type"];
+    for (let i = 1; i < inDialog.length; i += 1) {
+      expect(labelled(inDialog[i - 1]).compareDocumentPosition(labelled(inDialog[i])) & Node.DOCUMENT_POSITION_FOLLOWING, `${inDialog[i - 1]} before ${inDialog[i]}`).toBeTruthy();
     }
     expect(screen.getByRole("radio", { name: "Internal expert" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "On-site (Physical)" })).toBeTruthy();

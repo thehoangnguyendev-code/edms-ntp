@@ -38,10 +38,10 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
   const focus = detail?.openTrainings[0]?.id ?? detail?.lastActivityId;
   return (
     <Drawer
-      title={detail ? `${detail.requirement.code ? `${detail.requirement.code} — ` : ""}${detail.requirement.title}` : "Matrix cell"}
+      title={detail ? `${detail.requirement.code ? `${detail.requirement.code} — ` : ""}${detail.requirement.title}` : tr("Matrix cell")}
       subtitle={detail?.person.fullName}
       onClose={onClose}
-      footer={focus ? <Button size="sm" onClick={() => open(focus)}>{detail?.openTrainings[0] ? "Open the running training" : "Open the last training"}</Button> : undefined}
+      footer={focus ? <Button size="sm" onClick={() => open(focus)}>{detail?.openTrainings[0] ? tr("Open the running training") : tr("Open the last training")}</Button> : undefined}
     >
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!detail && !error && <SectionLoading text="Loading…" />}
@@ -65,8 +65,8 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
             <h3 className="mb-2 text-sm font-semibold text-slate-900">{tr("Requirement")}</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Fact label={tr("Kind")}>{GROUP_LABEL[detail.requirement.group]}</Fact>
-              <Fact label={detail.requirement.sop ? "SOP" : "Training Topic code"}>{detail.requirement.code ?? "—"}</Fact>
-              <Fact label={tr("Annual training")}>{detail.requirement.annual ? "Required every year" : tr("Not required")}</Fact>
+              <Fact label={detail.requirement.sop ? "SOP" : tr("Training Topic code")}>{detail.requirement.code ?? "—"}</Fact>
+              <Fact label={tr("Annual training")}>{detail.requirement.annual ? tr("Required every year") : tr("Not required")}</Fact>
               {detail.requirement.sop && <Fact label={tr("Revision in force")}>{detail.requirement.currentRevision ?? "—"}</Fact>}
               <Fact label={tr("Last trained")}>{day(detail.lastDoneOn) || "—"}</Fact>
               <Fact label={tr("Revision trained")}>{detail.lastRevision ?? "—"}</Fact>
@@ -88,7 +88,7 @@ export function CompletionCellDrawer({ departmentId, personId, rowId, onClose }:
                       <Badge color={STATUS_COLOR[a.status as keyof typeof STATUS_COLOR] ?? "slate"}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
                     </div>
                     <div className="mt-1 text-slate-700">{a.trainingTopics}</div>
-                    <div className="mt-1 text-xs text-slate-500">{a.scheduledOn ? `Session on ${day(a.scheduledOn)}` : "No date yet"}{a.dueDate ? ` · due ${day(a.dueDate)}` : ""}</div>
+                    <div className="mt-1 text-xs text-slate-500">{a.scheduledOn ? `Session on ${day(a.scheduledOn)}` : tr("No date yet")}{a.dueDate ? ` · due ${day(a.dueDate)}` : ""}</div>
                   </li>
                 ))}
               </ul>

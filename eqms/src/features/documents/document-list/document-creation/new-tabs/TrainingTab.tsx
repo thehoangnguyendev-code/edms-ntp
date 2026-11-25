@@ -230,8 +230,8 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({
                         {tr("Training Number")} <strong>{trainingLink?.trainingNumber}</strong> {tr("will be cancelled when you save the document. A cancelled number is never used again. If you tick Requires Training later, a new Training Number is issued.")}
                     </p>
                 }
-                confirmText="Remove training"
-                cancelText="Keep training"
+                confirmText={tr("Remove training")}
+                cancelText={tr("Keep training")}
                 showCancel
             />
         </div>

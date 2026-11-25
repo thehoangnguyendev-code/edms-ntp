@@ -99,7 +99,7 @@ export const SodViolationPanel: React.FC<{ violations: SodProfileCombinationViol
                       className="mt-1 inline-flex items-center gap-1 text-2xs font-medium underline decoration-dotted underline-offset-2 hover:opacity-80"
                     >
                       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      {isExpanded ? "Hide other options" : "Other options (affects other users)"}
+                      {isExpanded ? "Hide other options" : tr("Other options (affects other users)")}
                     </button>
                     {isExpanded && (
                       <div className="mt-1.5 space-y-2">

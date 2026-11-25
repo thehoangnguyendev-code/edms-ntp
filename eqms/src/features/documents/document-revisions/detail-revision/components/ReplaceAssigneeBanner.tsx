@@ -99,7 +99,7 @@ export const ReplaceAssigneeBanner: React.FC<Props> = ({
         reason: reason.trim(),
         signatureToken: signature.signatureToken as string,
       });
-      showToast({ type: "success", title: tr("Assignee replaced"), message: "The new assignee has been notified.", duration: 3000 });
+      showToast({ type: "success", title: tr("Assignee replaced"), message: tr("The new assignee has been notified."), duration: 3000 });
       close();
       await onReplaced();
     } catch (error) {

@@ -591,7 +591,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
             >
               <IconPencilMinus className="h-4 w-4 flex-shrink-0" />
               <span className="font-medium text-slate-500">
-                {canManage ? "Edit Hierarchy" : "View Hierarchy"}
+                {canManage ? tr("Edit Hierarchy") : tr("View Hierarchy")}
               </span>
             </button>
             {canManage && (
@@ -653,7 +653,7 @@ export const KnowledgeCategoriesView: React.FC = () => {
         type="warning"
         title={tr("Delete Hierarchy")}
         description={`Delete "${deleteTarget?.name ?? ""}" and its levels? This is recorded in the Audit Trail and cannot be undone.`}
-        confirmText="Yes, Delete"
+        confirmText={tr("Yes, Delete")}
         cancelText="Cancel"
         showCancel
       />

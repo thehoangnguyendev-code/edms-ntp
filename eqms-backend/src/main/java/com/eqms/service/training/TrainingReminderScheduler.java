@@ -155,7 +155,7 @@ public class TrainingReminderScheduler {
         String week = today.get(IsoFields.WEEK_BASED_YEAR) + "-W" + today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         List<Map<String, Object>> rows = jdbc.queryForList("""
             select id, training_number, training_activity_topics(id) as training_topics, due_date, created_by from training_activities
-             where status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and due_date < ? and created_by is not null
+             where status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and due_date < ? and created_by is not null
             """, today);
         for (Map<String, Object> row : rows) {
             UserAccount organizer = users.findById((UUID) row.get("created_by")).orElse(null);

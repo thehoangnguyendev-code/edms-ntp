@@ -50,8 +50,8 @@ export function TrainingVendorsView() {
   const [details, setDetails] = useState<TrainingVendor>();
   const [signing, setSigning] = useState<"approve" | "deactivate" | "activate">();
 
-  const approvedRange = useDateRange("training.vendors.approved", "Approved Date Range");
-  const validRange = useDateRange("training.vendors.valid", "Valid Until Range");
+  const approvedRange = useDateRange("training.vendors.approved", tr("Approved Date Range"));
+  const validRange = useDateRange("training.vendors.valid", tr("Valid Until Range"));
   useEffect(() => { trainingVendorsApi.approvers().then(setApprovers).catch(() => setApprovers([])); }, []);
 
   const fetcher = useCallback(
@@ -79,7 +79,7 @@ export function TrainingVendorsView() {
     { id: "rowNo", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "name", header: tr("Training Vendor"), sort: sorted("name"), cell: (r) => <div className="max-w-80 whitespace-normal font-medium text-slate-900">{r.name}</div> },
     { id: "reference", header: tr("Approval Reference"), sort: sorted("reference"), cell: (r) => r.reference ?? "—" },
-    { id: "validUntil", header: tr("Valid Until"), sort: sorted("validUntil"), cell: (r) => (r.validUntil ? day(r.validUntil) : "No end date") },
+    { id: "validUntil", header: tr("Valid Until"), sort: sorted("validUntil"), cell: (r) => (r.validUntil ? day(r.validUntil) : tr("No end date")) },
     { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={STATUS_COLOR[r.status]}>{r.statusLabel}</Badge> },
     { id: "approvedBy", header: tr("Approved By"), sort: sorted("approvedBy"), cell: (r) => r.approvedByName ?? "—" },
     { id: "approvedAt", header: tr("Approved Date"), sort: sorted("approvedAt"), cell: (r) => (r.approvedAt ? day(r.approvedAt) : "—") },
@@ -97,7 +97,7 @@ export function TrainingVendorsView() {
     try {
       const body = { name: editing.name.trim(), reference: editing.reference.trim() || undefined, validUntil: editing.validUntil || undefined };
       await (editing.id ? trainingVendorsApi.update(editing.id, body) : trainingVendorsApi.create(body));
-      showToast({ type: "success", title: editing.id ? "Training vendor saved" : "Training vendor written as a draft", message: body.name });
+      showToast({ type: "success", title: editing.id ? "Training vendor saved" : tr("Training vendor written as a draft"), message: body.name });
       setEditing(undefined);
       table.reload();
     } catch (e) {

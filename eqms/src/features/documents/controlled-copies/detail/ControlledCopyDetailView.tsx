@@ -302,7 +302,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       : normalizeControlledCopyDetail(response, entityId);
     setControlledCopy(refreshed);
     await refreshDetailRelatedData(
-      isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+      isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
       isBatchParent ? refreshed.distributionBatchId || refreshed.id : refreshed.id,
       isBatchParent ? refreshed.copyIds || [] : [],
     );
@@ -600,7 +600,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             console.error("Failed to load distribution result", error);
             showToast({
               type: hasErrors ? "error" : "success",
-              title: hasErrors ? "Distribution completed with errors" : "Controlled Copy Distributed",
+              title: hasErrors ? tr("Distribution completed with errors") : tr("Controlled Copy Distributed"),
               message: tr("The distribution batch has finished processing."),
               duration: 4000,
             });
@@ -690,7 +690,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
         if (!mounted || !resolvedMapped) return;
         try {
           await refreshDetailRelatedData(
-            isBatch ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+            isBatch ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
             relatedEntityId,
             batchCopyIds,
           );
@@ -829,7 +829,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setControlledCopy(resolvedMapped);
       await refreshDetailCapabilities();
       await refreshDetailRelatedData(
-        isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+        isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
         isBatchParent ? (resolvedMapped as any).distributionBatchId || resolvedMapped.id : resolvedMapped.id,
         isBatchParent ? (resolvedMapped.copyIds || controlledCopy.copyIds || []) : [],
       );
@@ -844,7 +844,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       if ([403, 409, 410].includes(getHttpStatus(error))) {
         await refreshDetailCapabilities();
         await refreshDetailRelatedData(
-          isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+          isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
           isBatchParent ? (controlledCopy as any).distributionBatchId || controlledCopy.id : controlledCopy.id,
           isBatchParent ? (controlledCopy.copyIds || []) : [],
         );
@@ -890,7 +890,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setControlledCopy(resolvedMapped);
       await refreshDetailCapabilities();
       await refreshDetailRelatedData(
-        isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+        isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
         isBatchParent ? (resolvedMapped as any).distributionBatchId || resolvedMapped.id : resolvedMapped.id,
         isBatchParent ? (resolvedMapped.copyIds || controlledCopy.copyIds || []) : [],
       );
@@ -917,7 +917,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       if ([403, 409, 410].includes(getHttpStatus(error))) {
         await refreshDetailCapabilities();
         await refreshDetailRelatedData(
-          isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+          isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
           isBatchParent ? (controlledCopy as any).distributionBatchId || controlledCopy.id : controlledCopy.id,
           isBatchParent ? (controlledCopy.copyIds || []) : [],
         );
@@ -993,7 +993,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       setControlledCopy(resolvedMapped);
       await refreshDetailCapabilities();
       await refreshDetailRelatedData(
-        isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+        isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
         isBatchParent ? (resolvedMapped as any).distributionBatchId || resolvedMapped.id : resolvedMapped.id,
         isBatchParent ? (resolvedMapped.copyIds || controlledCopy.copyIds || []) : [],
       );
@@ -1020,7 +1020,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       if ([403, 409, 410].includes(getHttpStatus(error))) {
         await refreshDetailCapabilities();
         await refreshDetailRelatedData(
-          isBatchParent ? "Controlled Copy Distribution Batch" : "Controlled Copy",
+          isBatchParent ? tr("Controlled Copy Distribution Batch") : tr("Controlled Copy"),
           isBatchParent ? (controlledCopy as any).distributionBatchId || controlledCopy.id : controlledCopy.id,
           isBatchParent ? (controlledCopy.copyIds || []) : [],
         );
@@ -1107,7 +1107,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
       {/* Header */}
       <div className="flex flex-col gap-4">
         <PageHeader
-          title={isBatchParent ? "Controlled Copy Batch Details" : tr("Controlled Copy Details")}
+          title={isBatchParent ? tr("Controlled Copy Batch Details") : tr("Controlled Copy Details")}
           breadcrumbItems={controlledCopyDetail(navigate, location.state?.from)}
           actions={
             <>
@@ -1155,7 +1155,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   disabled={isCapabilityLoading || distributeProgress !== null}
                   title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  {isBatchParent ? "Distribute Batch" : tr("Distribute")}
+                  {isBatchParent ? tr("Distribute Batch") : tr("Distribute")}
                 </Button>
               )}
               {!isCapabilityLoading && recallDecision?.allowed && (
@@ -1167,7 +1167,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   disabled={isCapabilityLoading}
                   title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
                 >
-                  {isBatchParent ? "Recall Batch Immediately" : "Recall Immediately"}
+                  {isBatchParent ? tr("Recall Batch Immediately") : tr("Recall Immediately")}
                 </Button>
               )}
               {!isBatchParent && !isCapabilityLoading && noticeDecision?.allowed && (
@@ -1178,7 +1178,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
                   className="whitespace-nowrap flex items-center gap-1.5 md:gap-2 touch-manipulation shadow-sm"
                   disabled={isDownloadingNotice}
                 >
-                  {isDownloadingNotice ? "Preparing..." : "Recall / Withdrawal Notice"}
+                  {isDownloadingNotice ? tr("Preparing...") : tr("Recall / Withdrawal Notice")}
                 </Button>
               )}
               {!isBatchParent && !isCapabilityLoading && reportLostDamagedDecision?.allowed && (
@@ -1324,7 +1324,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             disabled={isCapabilityLoading || distributeProgress !== null}
             title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            {isBatchParent ? "Distribute Batch" : tr("Distribute")}
+            {isBatchParent ? tr("Distribute Batch") : tr("Distribute")}
           </Button>
         )}
         {!isCapabilityLoading && recallDecision?.allowed && (
@@ -1336,7 +1336,7 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
             disabled={isCapabilityLoading}
             title={isCapabilityLoading ? tr("Capability information is still loading.") : ""}
           >
-            {isBatchParent ? "Recall Batch Immediately" : "Recall Immediately"}
+            {isBatchParent ? tr("Recall Batch Immediately") : tr("Recall Immediately")}
           </Button>
         )}
         {!isBatchParent && !isCapabilityLoading && reportLostDamagedDecision?.allowed && (

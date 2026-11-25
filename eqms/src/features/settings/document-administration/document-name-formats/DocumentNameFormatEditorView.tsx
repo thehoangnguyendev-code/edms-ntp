@@ -239,15 +239,15 @@ export const DocumentNameFormatEditorView: React.FC = () => {
         : await documentNameFormatApi.createFormat(payload);
       showToast({
         type: "success",
-        title: isEdit ? "Document Name Format Updated" : "Document Name Format Created",
+        title: isEdit ? tr("Document Name Format Updated") : tr("Document Name Format Created"),
         message: `"${saved.name}" has been ${isEdit ? "updated" : "created"} successfully. Example: ${saved.previewExample || "-"}`,
       });
       navigate(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
     } catch (error) {
       showToast({
         type: "error",
-        title: isEdit ? "Update Failed" : "Create Failed",
-        message: extractApiMessage(error, isEdit ? "Unable to update document name format." : "Unable to create document name format."),
+        title: isEdit ? tr("Update Failed") : tr("Create Failed"),
+        message: extractApiMessage(error, isEdit ? tr("Unable to update document name format.") : tr("Unable to create document name format.")),
       });
     } finally {
       setIsSaving(false);

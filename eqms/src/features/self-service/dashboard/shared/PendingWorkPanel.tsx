@@ -57,7 +57,7 @@ export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work,
     ? awaitingAction !== undefined && awaitingAction > 0
       ? `${work.total.toLocaleString()} assigned to you · ${share(work.total, awaitingAction)}% of the ${awaitingAction.toLocaleString()} revisions awaiting review or approval`
       : `${work.total.toLocaleString()} assigned to you`
-    : 'Documents waiting for your review or approval';
+    : tr('Documents waiting for your review or approval');
 
   return (
     <Card className={className} aria-label={tr("Pending work")}>
@@ -70,7 +70,7 @@ export const PendingWorkPanel: React.FC<PendingWorkPanelProps> = ({ tasks, work,
         {tasks.loading && !tasks.data ? <RowsSkeleton /> : tasks.error ? (
           <PanelError message={tr("Your pending work could not be loaded.")} onRetry={tasks.reload} />
         ) : rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-slate-400">{loaded.length === 0 ? tr('Nothing is waiting for you') : 'No document matches your search'}</p>
+          <p className="p-8 text-center text-sm text-slate-400">{loaded.length === 0 ? tr('Nothing is waiting for you') : tr('No document matches your search')}</p>
         ) : (
           <FlatTable
             columns={COLUMNS}

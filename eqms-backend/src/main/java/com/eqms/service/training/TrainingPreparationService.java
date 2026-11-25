@@ -72,6 +72,45 @@ public class TrainingPreparationService {
         return out;
     }
 
+    /**
+     * Fills in what the record already answers (owner decision 2026-11-23: Prepare Training fills everything the system can): the room is Done when the session has a place or a meeting link;
+     * the materials when the training has material or comes from a document; the notice when the people were notified; the equipment is Not needed unless the session is practical, where only
+     * a person can say. A line a person already set is never changed. Each line written says it came from the record and who pressed the button; the Audit Trail keeps the change.
+     */
+    @Transactional
+    public List<Map<String, Object>> autoFill(UserAccount actor, UUID activityId) {
+        access.require(actor, "training.activity.organize", "training.activity.conduct");
+        Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
+        if (!"NOTIFIED".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_PREPARATION_NOT_NOTIFIED");
+        List<String> written = new ArrayList<>();
+        for (Map<String, Object> session : jdbc.queryForList("select * from training_sessions where activity_id = ? and status = 'PLANNED' order by session_no", activityId)) {
+            UUID sessionId = (UUID) session.get("id");
+            Integer materials = jdbc.queryForObject("select count(*) from training_materials where activity_id = ? and removed_at is null and purpose = 'CONTENT' and (session_id is null or session_id = ?)", Integer.class, activityId, sessionId);
+            boolean haveMaterial = (materials != null && materials > 0) || activity.get("document_id") != null;
+            String location = String.valueOf(session.get("location_type"));
+            boolean place = ("ONLINE".equals(location) ? false : session.get("venue") != null && !String.valueOf(session.get("venue")).isBlank())
+                    || (!"ONSITE".equals(location) && session.get("meeting_link") != null && !String.valueOf(session.get("meeting_link")).isBlank());
+            Map<String, String> answers = new LinkedHashMap<>();
+            if (place) answers.put("VENUE", "DONE");
+            if (haveMaterial) answers.put("MATERIALS", "DONE");
+            answers.put("NOTICE", "DONE");
+            if (!"PRACTICAL".equals(session.get("method"))) answers.put("EQUIPMENT", "NOT_NEEDED");
+            for (Map.Entry<String, String> answer : answers.entrySet()) {
+                String current = jdbc.queryForList("select status from training_session_preparation where session_id = ? and item_code = ?", String.class, sessionId, answer.getKey()).stream().findFirst().orElse("PENDING");
+                if (!"PENDING".equals(current)) continue;
+                jdbc.update("""
+                    insert into training_session_preparation(session_id, item_code, status, note, updated_by, updated_at) values (?,?,?,?,?, now())
+                    on conflict (session_id, item_code) do update set status = excluded.status, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()
+                    """, sessionId, answer.getKey(), answer.getValue(), "Filled in from the record", actor.getId());
+                written.add("S" + session.get("session_no") + " " + TrainingStore.words(answer.getKey()) + ": " + TrainingStore.words(answer.getValue()));
+            }
+        }
+        if (!written.isEmpty()) store.auditActivity(actor, activity, "TRAINING_PREPARATION_FILLED", null, null, "Filled in from the record: " + String.join("; ", written),
+                List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse("Preparation Filled In From The Record", null, String.valueOf(written.size()))));
+        return get(actor, activityId);
+    }
+
     @Transactional
     public List<Map<String, Object>> update(UserAccount actor, UUID sessionId, String itemCode, UpdateRequest request) {
         if (itemCode == null || !ITEMS.contains(itemCode)) throw new IllegalArgumentException("TRAINING_PREPARATION_ITEM_INVALID");

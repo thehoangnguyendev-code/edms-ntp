@@ -264,7 +264,7 @@ const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRem
         <div className="flex-1 min-w-0 pt-0.5">
           <div className="flex items-start justify-between gap-2">
             <h4 className="mb-0.5 text-sm font-semibold tracking-normal text-slate-900">
-              {resolveToastTitle(toast)}
+              {tr(resolveToastTitle(toast))}
             </h4>
             <button
               className="shrink-0 -mr-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
@@ -275,7 +275,7 @@ const ToastItem: React.FC<{ toast: Toast; color?: string; shadow?: number; onRem
             </button>
           </div>
           <p className="text-[13px] leading-relaxed text-slate-600 font-medium">
-            {toast.message}
+            {tr(toast.message)}
           </p>
         </div>
       </div>

@@ -333,7 +333,7 @@ export const PermissionSetDetailView: React.FC = () => {
                       {assignedProfilesLoading
                         ? "Fetching assignments…"
                         : assignedProfiles.length === 0
-                          ? "This permission set is not linked to any Access Profile."
+                          ? tr("This permission set is not linked to any Access Profile.")
                           : `Linked to ${assignedUserCount} user${assignedUserCount === 1 ? "" : "s"} across ${assignedProfiles.length} profile${assignedProfiles.length === 1 ? "" : "s"}.`}
                     </p>
                   </div>

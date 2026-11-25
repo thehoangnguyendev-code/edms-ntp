@@ -228,7 +228,7 @@ export const AnnouncementsView: React.FC = () => {
       await announcementApi.setEnabled(row.id, !row.enabled, row.version);
       showToast({
         type: "success",
-        title: row.enabled ? "Switched off" : "Switched on",
+        title: row.enabled ? tr("Switched off") : tr("Switched on"),
         message: row.title,
       });
     } catch (e) {
@@ -238,7 +238,7 @@ export const AnnouncementsView: React.FC = () => {
         type: "error",
         title: tr("Unable to change"),
         message: conflict
-          ? "Someone else changed this announcement. The list was reloaded."
+          ? tr("Someone else changed this announcement. The list was reloaded.")
           : getApiErrorMessage(e, "The change could not be saved."),
       });
     } finally {

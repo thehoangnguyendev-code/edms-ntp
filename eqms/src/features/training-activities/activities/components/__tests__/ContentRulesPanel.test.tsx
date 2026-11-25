@@ -26,7 +26,7 @@ describe("assessmentFormKind", () => {
 describe("ContentRulesPanel", () => {
   it("asks for a file or a link when a training that is not on a document has no material", () => {
     show(activity({}, { missing: ["TRAINING_MATERIALS_REQUIRED"] }), "materials");
-    expect(screen.getByText(/Required before the content is reviewed: a file or a link/)).toBeTruthy();
+    expect(screen.getByText(/Required before the content is approved: a file or a link/)).toBeTruthy();
   });
 
   it("says that the approved document is the material when the training comes from a document", () => {
@@ -39,57 +39,93 @@ describe("ContentRulesPanel", () => {
 
   it("asks for the test of a session assessed by a test, and for no file when the sessions are observed or read", () => {
     show(activity({}, { testRequired: true, missing: ["TRAINING_TEST_REQUIRED"] }), "assessment");
-    expect(screen.getByText(/the test \(APD\.0009\)/)).toBeTruthy();
+    expect(screen.getByText(/choose an approved assessment of the library for the test \(APD\.0009\)/)).toBeTruthy();
     cleanup();
     const observed = activity({}, {}, ["SELF_READING_CONFIRMATION"]);
     show(observed, "assessment");
     expect(screen.queryByText(/No test or checklist is required/)).toBeNull();
+    // nothing to decide: no checkbox either
+    expect(screen.queryByRole("checkbox")).toBeNull();
     expect(contentRuleNote(observed, "assessment")).toMatch(/No test or checklist is required/);
   });
 
-  it("tells a supplementary training, a visitor and an external training that nothing is required", () => {
-    const supplementary = activity({}, { inherited: true });
-    show(supplementary, "materials");
-    expect(contentRuleNote(supplementary, "materials")).toMatch(/keeps the material of the training it supplements/);
-    cleanup();
+  it("offers no decision to a visitor or an external training", () => {
     const visitor = activity({ kindReason: "VISITOR" } as never);
     show(visitor, "assessment");
     expect(contentRuleNote(visitor, "assessment")).toBe("A visitor needs no test.");
-    expect(screen.queryByRole("button", { name: /not required/ })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    cleanup();
+    show(activity({ kind: "EXTERNAL" } as never), "materials");
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
-  it("records an exemption only with a reason, and can take it back", async () => {
+  it("treats a supplementary training like any other: its content is required, and copied into it when it is arranged", () => {
+    const supplementary = activity({ parentActivityId: "a0" } as never, { missing: ["TRAINING_MATERIALS_REQUIRED"] });
+    show(supplementary, "materials");
+    expect((screen.getByRole("checkbox", { name: "Required Training Materials?" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText(/Required before the content is approved: a file or a link/)).toBeTruthy();
+  });
+
+  it("is ticked by default, and unticking it asks for a reason that is saved only when it is given", async () => {
     const onExempt = show(activity(), "materials");
-    fireEvent.click(screen.getByRole("button", { name: /Training Materials are not required/ }));
-    const save = await screen.findByRole("button", { name: "Save" });
+    const box = screen.getByRole("checkbox", { name: "Required Training Materials?" });
+    expect((box as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole("textbox")).toBeNull();
+
+    fireEvent.click(box);
+    expect((screen.getByRole("checkbox", { name: "Required Training Materials?" }) as HTMLInputElement).checked).toBe(false);
+    const save = screen.getByRole("button", { name: "Save" });
     expect((save as HTMLButtonElement).disabled).toBe(true);
+    // nothing is sent to the server until the reason is saved
+    expect(onExempt).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Short briefing" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onExempt).toHaveBeenCalledWith({ materialsExempt: true, reason: "Short briefing" }));
+  });
 
-    cleanup();
+  it("shows the reason of an exemption that is saved, and ticking the box again requires it again", () => {
     const exempted = activity({ materialsExempt: true, materialsExemptReason: "Short briefing" } as never);
     const again = show(exempted, "materials");
-    // the reason is written in the table, with the sentence that nothing is needed
+    // the reason is written in the table too, with the sentence that nothing is needed
     expect(contentRuleNote(exempted, "materials")).toBe("Training Materials are not required for this training. Reason: Short briefing");
-    fireEvent.click(screen.getByRole("button", { name: "Require materials again" }));
-    expect(again).toHaveBeenCalledWith({ materialsExempt: false, reason: undefined });
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Short briefing");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Required Training Materials?" }));
+    expect(again).toHaveBeenCalledWith({ materialsExempt: false });
   });
 
-  it("does not offer an exemption to a person who may not set it", () => {
+  it("covers the assessment the same way", async () => {
+    const onExempt = show(activity({}, { testRequired: true }), "assessment");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Required Assessment?" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Observed on the floor" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onExempt).toHaveBeenCalledWith({ assessmentExempt: true, reason: "Observed on the floor" }));
+  });
+
+  it("does not carry an unticked box from one tab to the other", () => {
+    const a = activity({}, { testRequired: true });
+    const view = render(<ContentRulesPanel activity={a} part="materials" canExempt onExempt={vi.fn()} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Required Training Materials?" }));
+    expect(screen.getByRole("textbox")).toBeTruthy();
+
+    view.rerender(<ContentRulesPanel activity={a} part="assessment" canExempt onExempt={vi.fn()} />);
+    expect((screen.getByRole("checkbox", { name: "Required Assessment?" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("only shows the state to a person who may not set it", () => {
     show(activity(), "materials", false);
-    expect(screen.queryByRole("button", { name: /not required/ })).toBeNull();
+    expect((screen.getByRole("checkbox", { name: "Required Training Materials?" }) as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 
-  it("says that a test written in the system needs no file, and shows no warning for it", () => {
-    const online = activity({}, { testRequired: true, onlineTest: true, missing: [] });
+  it("does not take a test written in the system for the test of the library", () => {
+    const online = activity({}, { testRequired: true, onlineTest: true, missing: ["TRAINING_TEST_REQUIRED"] });
     show(online, "assessment");
-    expect(contentRuleNote(online, "assessment")).toMatch(/The test is written in the system/);
-    expect(screen.queryByText(/is required before the content can be reviewed/)).toBeNull();
+    expect(screen.getByText(/choose an approved assessment of the library/)).toBeTruthy();
   });
 
   it("warns for what the server says is missing, and for nothing else", () => {
     show(activity({}, { materialsRequired: true, materialsSatisfied: false, missing: [] }), "materials");
-    expect(screen.queryByText(/are required before the content can be reviewed/)).toBeNull();
+    expect(screen.queryByText(/Required before the content is approved/)).toBeNull();
   });
 });

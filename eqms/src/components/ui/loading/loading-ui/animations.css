@@ -1,0 +1,220 @@
+/* Loading UI keyframes, collected once from the MIT components. */
+
+        @keyframes loading-ui-arc-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-wave-bars {
+          0%,
+          100% {
+            transform: scaleY(1);
+            opacity: 0.5;
+          }
+
+          50% {
+            transform: scaleY(0.6);
+            opacity: 1;
+          }
+        }
+      
+
+        @keyframes loading-ui-bouncing-dots {
+          0%,
+          100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+          }
+
+          50% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
+        }
+      
+
+        @keyframes loading-ui-classic-fade {
+          0% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0.15;
+          }
+        }
+      
+
+        @keyframes loading-ui-clock-ring-rotation {
+          0% {
+            transform: rotate(0deg);
+          }
+
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-concentric-ring-rotation {
+          0% {
+            transform: rotate(0deg);
+          }
+
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-dots-ring-pulse {
+          0%,
+          100% {
+            opacity: 0.25;
+            transform: scale(0.65);
+          }
+
+          12.5% {
+            opacity: 1;
+            transform: scale(1);
+          }
+
+          25% {
+            opacity: 0.75;
+            transform: scale(0.85);
+          }
+
+          50% {
+            opacity: 0.35;
+            transform: scale(0.7);
+          }
+        }
+      
+
+        @keyframes loading-ui-dots-blink {
+          0%,
+          100% {
+            opacity: 0.2;
+          }
+
+          20% {
+            opacity: 1;
+          }
+        }
+      
+
+        @keyframes loading-ui-dual-arc-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-fade-arc-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-orbit-ring-rotation {
+          0% {
+            transform: rotate(0deg);
+          }
+
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-pulse-dot {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+
+          50% {
+            transform: scale(1.5);
+            opacity: 1;
+          }
+        }
+      
+
+        @keyframes loading-ui-thin-pulse {
+          0%,
+          100% {
+            transform: scale(0.95);
+            opacity: 0.8;
+          }
+
+          50% {
+            transform: scale(1.05);
+            opacity: 0.4;
+          }
+        }
+      
+
+        @keyframes loading-ui-quarter-ring-rotation {
+          0% {
+            transform: rotate(0deg);
+          }
+
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-ring-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-satellite-ring-rotation {
+          0% {
+            transform: rotate(0deg);
+          }
+
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-spokes-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      
+
+        @keyframes loading-ui-typing {
+          0%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.5;
+          }
+
+          50% {
+            transform: translateY(-50%);
+            opacity: 1;
+          }
+        }
+      
+
+        @keyframes loading-ui-wave {
+          0%,
+          100% {
+            transform: scaleY(1);
+          }
+
+          50% {
+            transform: scaleY(0.6);
+          }
+        }
+      

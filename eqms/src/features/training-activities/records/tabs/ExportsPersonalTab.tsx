@@ -69,7 +69,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
     setBusy(true);
     try {
       await trainingExportsApi.create({ personUserId: personId, reason: reason.trim(), approverUserId: approverId, signatureToken });
-      showToast({ type: "success", title: tr("Export prepared"), message: "It waits for the approver." });
+      showToast({ type: "success", title: tr("Export prepared"), message: tr("It waits for the approver.") });
       setSignNew(false); setCreating(false); setPersonId(""); setApproverId(""); setReason("");
       table.reload();
     } catch (e) {
@@ -83,7 +83,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
     setBusy(true);
     try {
       await trainingExportsApi.approve(signApprove.id, token);
-      showToast({ type: "success", title: tr("Export approved"), message: "The PDF was generated." });
+      showToast({ type: "success", title: tr("Export approved"), message: tr("The PDF was generated.") });
       setSignApprove(undefined);
       table.reload();
     } catch (e) {
@@ -170,7 +170,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
         )}
       </PortalDropdownMenu>
       <FormModal isOpen={creating && !signNew} onClose={() => setCreating(false)} onConfirm={() => setSignNew(true)} title={tr("Prepare an Export")} description={tr("You sign as the person who prepared it. The person you choose approves with a signature, and the PDF is generated at that moment.")}
-        confirmText="Continue to Signature" confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
+        confirmText={tr("Continue to Signature")} confirmDisabled={!personId || !reason.trim() || !approverId} size="md">
         <div className="grid gap-4">
           <FormField label={tr("Employee")} required><Select value={personId} onChange={(v) => { setPersonId(v); setApproverId(""); }} options={people} onSearch={searchPeople} placeholder={tr("Search by name")} /></FormField>
           <FormField label={tr("Reason for the export")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>

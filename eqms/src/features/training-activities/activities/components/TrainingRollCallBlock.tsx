@@ -56,7 +56,7 @@ export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
       )}
 
       {session && !signing && (
-        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description={tr("Everyone starts as present. Change the ones who were absent and say why. Next you sign.")} confirmText="Continue to Sign" confirmDisabled={!valid} size="xl">
+        <FormModal isOpen onClose={() => setSession(undefined)} onConfirm={() => setSigning(true)} title={`Roll-Call of Session ${session.sessionNo}`} description={tr("Everyone starts as present. Change the ones who were absent and say why. Next you sign.")} confirmText={tr("Continue to Sign")} confirmDisabled={!valid} size="xl">
           <div className="space-y-2">
             {rows.map((p, i) => {
               const m = marks[p.id];

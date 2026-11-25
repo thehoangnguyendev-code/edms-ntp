@@ -198,7 +198,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
       showToast({
         type: "success",
         title: tr("Changes saved"),
-        message: "System configuration has been updated successfully.",
+        message: tr("System configuration has been updated successfully."),
       });
     } catch (error) {
       setShowSaveModal(false);
@@ -235,7 +235,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
       showToast({
         type: "info",
         title: tr("Changes discarded"),
-        message: "Configuration reset to last saved state.",
+        message: tr("Configuration reset to last saved state."),
       });
     }
   };
@@ -420,7 +420,7 @@ const ConfigurationPageBody: React.FC<{ page: ConfigurationPage }> = ({ page }) 
           </div>
         }
         primaryActionLabel={tr("Discard Changes")}
-        secondaryActionLabel="Keep Editing"
+        secondaryActionLabel={tr("Keep Editing")}
       />
 
       {/* The page */}

@@ -26,6 +26,11 @@ import java.util.UUID;
 public class TrainingDocumentIntegrationService implements TrainingRevisionHooks {
     public static final String MODE_INTEGRATED = "INTEGRATED";
     public static final String MODE_MANUAL = "MANUAL";
+    /**
+     * A revision of a related document that needs no training of its own and was published with the document whose training covered it (DEC-TRAINING-2026-11-24-8): it carries the Training
+     * Number, the day and the link of that training as evidence, and nothing is asked of it (no Complete Training, no activity of its own).
+     */
+    public static final String MODE_COVERED = "COVERED";
     public static final String ORIGIN_LEGACY = "LEGACY_IMPORT";
 
     /** The statuses of a revision that is approved (Pending Training and after): the activity of a group opens when every revision of the group is there. */
@@ -92,8 +97,6 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         Optional<Map<String, Object>> pending = store.pendingByDocument(document.getId());
         if (required) {
             if (pending.isEmpty()) {
-                // A document that another one lists as related goes with it: it takes the Training Number of that one when its revision is created, not a number of its own.
-                if (leadFor(document.getId()).isPresent()) return;
                 // A screen that lets the person type the number (manual mode) must have received one: the system does not pick it instead.
                 if (manualNumbers() && TYPED_NUMBER.get() != null && TYPED_NUMBER.get().isEmpty()) {
                     throw new IllegalArgumentException("Enter the Training Number: training numbers are typed by hand.");
@@ -103,7 +106,6 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
             } else {
                 updatePeriod(pending.get(), document.getTrainingPeriodDays(), actor);
             }
-            pending.ifPresent(activity -> reconcileGroup(activity, document.getId(), actor));
         } else if (pending.isPresent()) {
             cancelOrRefuse(pending.get(), "Requires Training was removed before the first revision was created", actor);
         }
@@ -145,33 +147,25 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         // The revision row must exist before the activity row points at it.
         entityManager.flush();
         Optional<Map<String, Object>> pending = store.pendingByDocument(document.getId());
-        Optional<Map<String, Object>> lead = leadFor(document.getId());
-        if (lead.isPresent()) {
-            // The document goes with another one (it is listed as related): one Training Number for the group. A number of its own that nobody used is given up.
-            pending.ifPresent(own -> mergeInto(lead.get(), own, actor));
-            join(lead.get(), revision, actor);
-            return;
-        }
+        // A related document is not part of the Training Number of another document (owner decision 2026-11-24): the training counts on the document that requires it; a related
+        // document that requires training itself has an activity of its own.
         if (pending.isPresent()) {
             bind(pending.get(), revision, actor);
-            store.activity((UUID) pending.get().get("id")).ifPresent(activity -> reconcileGroup(activity, document.getId(), actor));
             return;
         }
         createForDocument(document, revision, days, actor);
-        store.byRevision(revision.getId()).ifPresent(activity -> reconcileGroup(activity, document.getId(), actor));
     }
 
     private void syncedInner(DocumentRevisionRecord revision, UserAccount actor) {
         DocumentRecord document = revision == null ? null : revision.getDocument();
         if (document == null || document.isTemplate() || ORIGIN_LEGACY.equals(revision.getTrainingOrigin())) return;
-        if (MODE_MANUAL.equals(revision.getTrainingMode())) return;
+        if (MODE_MANUAL.equals(revision.getTrainingMode()) || MODE_COVERED.equals(revision.getTrainingMode())) return;
         Optional<Map<String, Object>> existing = store.byRevision(revision.getId());
         boolean required = revision.isRequiresTraining() && revision.getTrainingPeriodDays() != null && revision.getTrainingPeriodDays() >= 1;
         if (required) {
             if (existing.isPresent()) {
                 if (revision.getId().equals(existing.get().get("revision_id"))) {
                     updatePeriod(existing.get(), revision.getTrainingPeriodDays(), actor);
-                    reconcileGroup(existing.get(), document.getId(), actor);
                 }
             } else {
                 entityManager.flush();
@@ -190,7 +184,7 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
 
     @Override
     public void onRevisionStatusChanged(DocumentRevisionRecord revision, String fromStatus, String toStatus, UserAccount actor) {
-        if (revision == null || revision.getId() == null || toStatus == null) return;
+        if (revision == null || revision.getId() == null || toStatus == null || MODE_COVERED.equals(revision.getTrainingMode())) return;
         Optional<Map<String, Object>> existing = store.byRevision(revision.getId());
         if (existing.isEmpty()) return;
         Map<String, Object> activity = existing.get();
@@ -288,91 +282,6 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // documents that go together: one Training Number (SOP.0003 5.1.4: one number for one topic)
     // ------------------------------------------------------------------------------------------------------------------------------------------
-
-    /** The documents that the document lists as related (the "Related Document" field of the document). */
-    private List<UUID> relatedOf(UUID documentId) {
-        return jdbc.queryForList("select target_document_id from document_relations where source_document_id = ? and relation_type = 'RELATED'", UUID.class, documentId);
-    }
-
-    /** The activity that opened first for a document that lists this one as related, while it is still planned (not yet notified): the activity this document joins. */
-    private Optional<Map<String, Object>> leadFor(UUID documentId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-            select a.*, training_activity_topics(a.id) as training_topics from training_activities a
-             where a.parent_activity_id is null and a.status in ('RESERVED','PLANNED') and a.document_id in
-                   (select r.source_document_id from document_relations r where r.target_document_id = ? and r.relation_type = 'RELATED')
-             order by a.created_at limit 1
-            """, documentId);
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
-    /** The revision joins the activity of the document it goes with. Nothing changes for the activity but the people to wait for: it waits again if it was open. */
-    private void join(Map<String, Object> lead, DocumentRevisionRecord revision, UserAccount actor) {
-        UUID id = (UUID) lead.get("id");
-        revision.setTrainingActivityId(id);
-        revision.setTrainingNumber(String.valueOf(lead.get("training_number")));
-        revision.setTrainingMode(MODE_INTEGRATED);
-        if (revision.getTrainingPeriodDays() != null && lead.get("training_period_days") != null && revision.getTrainingPeriodDays() < ((Number) lead.get("training_period_days")).intValue()) {
-            // The shortest period of the group rules it.
-            jdbc.update("update training_activities set training_period_days = ?, version = version + 1, updated_at = now() where id = ?", revision.getTrainingPeriodDays(), id);
-        }
-        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "RELATED_REVISION_JOINED", Map.of("document", String.valueOf(revision.getDocumentNumber()), "revision", String.valueOf(revision.getRevisionNumber())), actor == null ? null : actor.getId());
-        store.auditActivity(actor, lead, "TRAINING_RELATED_DOCUMENT_JOINED", String.valueOf(lead.get("status")), String.valueOf(lead.get("status")),
-                "Revision " + revision.getRevisionNumber() + " of the related document " + revision.getDocumentNumber() + " goes with this Training Number",
-                java.util.List.of(com.eqms.util.AuditChanges.of("Related Document",null,revision.getDocumentNumber() + " Rev " + revision.getRevisionNumber())));
-        waitAgainIfOpen(id, actor);
-    }
-
-    /** A planned activity (already open) waits again when a revision that is not approved yet joins it, and the clock stops. */
-    private void waitAgainIfOpen(UUID activityId, UserAccount actor) {
-        Map<String, Object> activity = store.activity(activityId).orElse(null);
-        if (activity == null || !"PLANNED".equals(String.valueOf(activity.get("status")))) return;
-        Integer notApproved = jdbc.queryForObject("select count(*) from document_revisions where training_activity_id = ? and status_code not in ('PENDING_TRAINING','READY_FOR_PUBLISHING','EFFECTIVE','CLOSED_CANCELLED','OBSOLETED')", Integer.class, activityId);
-        if (notApproved == null || notApproved == 0) return;
-        jdbc.update("update training_activities set status='RESERVED', approved_on=null, due_date=null, version=version+1, updated_at=now() where id=?", activityId);
-        store.event(TrainingStore.OBJECT_ACTIVITY, activityId, activityId, "RETURNED_TO_DRAFT", Map.of("reason", "a related revision is not approved yet"), actor == null ? null : actor.getId());
-        store.auditActivity(actor, activity, "TRAINING_ACTIVITY_RETURNED", "PLANNED", "RESERVED", "A related revision joined and is not approved yet");
-    }
-
-    /**
-     * The activity of a document that is listed as related is given up for the activity of the document it goes with, while nothing was planned on it. The revisions it had go to the lead.
-     * After the people were notified or the training has started the Training Numbers cannot be merged: the document is refused with a clear code.
-     */
-    private void mergeInto(Map<String, Object> lead, Map<String, Object> own, UserAccount actor) {
-        if (lead.get("id").equals(own.get("id"))) return;
-        String status = String.valueOf(own.get("status"));
-        Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ?", Integer.class, own.get("id"));
-        if (!("RESERVED".equals(status) || "PLANNED".equals(status)) || (sessions != null && sessions > 0)) throw new IllegalStateException("TRAINING_RELATED_DOCUMENT_TRAINING_STARTED");
-        jdbc.update("update document_revisions set training_activity_id = ?, training_number = ?, training_mode = 'INTEGRATED' where training_activity_id = ?",
-                lead.get("id"), lead.get("training_number"), own.get("id"));
-        store.cancel(own, "Merged into " + lead.get("training_number") + ": the document goes with the document of that Training Number", actor);
-        store.event(TrainingStore.OBJECT_ACTIVITY, (UUID) lead.get("id"), (UUID) lead.get("id"), "RELATED_NUMBER_MERGED", Map.of("merged", String.valueOf(own.get("training_number"))), actor == null ? null : actor.getId());
-        store.auditActivity(actor, lead, "TRAINING_RELATED_NUMBER_MERGED", String.valueOf(lead.get("status")), String.valueOf(lead.get("status")),
-                "The Training Number " + own.get("training_number") + " of the related document " + own.get("document_number") + " was given up for this one",
-                java.util.List.of(com.eqms.util.AuditChanges.of("Training Number Given Up",own.get("training_number"),null), com.eqms.util.AuditChanges.of("Related Document",null,own.get("document_number"))));
-        waitAgainIfOpen((UUID) lead.get("id"), actor);
-    }
-
-    /**
-     * Makes the activity of a document the activity of the documents it lists as related: their activities that nobody used are merged into it, and a related document that was already
-     * in the group stays only while the document lists it (one that was removed from the list is refused while its revision is in the group).
-     */
-    private void reconcileGroup(Map<String, Object> activity, UUID documentId, UserAccount actor) {
-        if (!activity.get("document_id").equals(documentId)) return;
-        String status = String.valueOf(activity.get("status"));
-        if (!"RESERVED".equals(status) && !"PLANNED".equals(status)) return;
-        List<UUID> related = relatedOf(documentId);
-        for (UUID other : related) {
-            for (Map<String, Object> own : jdbc.queryForList("""
-                select a.*, training_activity_topics(a.id) as training_topics from training_activities a where document_id = ? and parent_activity_id is null and id <> ? and status not in ('CANCELLED','COMPLETED')
-                 order by created_at
-                """, other, activity.get("id"))) {
-                mergeInto(activity, own, actor);
-            }
-        }
-        for (Map<String, Object> member : jdbc.queryForList("select id, document_id, document_number from document_revisions where training_activity_id = ? and document_id <> ?", activity.get("id"), documentId)) {
-            if (!related.contains((UUID) member.get("document_id"))) throw new IllegalStateException("TRAINING_RELATED_DOCUMENT_IN_GROUP");
-        }
-    }
 
     private int otherRevisionsOf(Map<String, Object> activity, UUID revisionId) {
         Integer n = jdbc.queryForObject("select count(*) from document_revisions where training_activity_id = ? and id <> ? and status_code not in ('CLOSED_CANCELLED','OBSOLETED')", Integer.class, activity.get("id"), revisionId);

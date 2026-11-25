@@ -442,7 +442,7 @@ export const AddUserView: React.FC = () => {
  return;
  }
  if (hasBlockingSodViolation) {
- showToast({ type: "error", title: tr("Segregation of Duties Conflict"), message: "Resolve the blocked Access Profile conflict before creating this user." });
+ showToast({ type: "error", title: tr("Segregation of Duties Conflict"), message: tr("Resolve the blocked Access Profile conflict before creating this user.") });
  return;
  }
 
@@ -518,7 +518,7 @@ export const AddUserView: React.FC = () => {
       newErrors[detail.field] = detail.message;
      });
      setFormErrors((prev) => ({ ...prev, ...newErrors }));
-     showToast({ type: "error", title: tr("Validation Failed"), message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: tr("Validation Failed"), message: tr("Please fix the highlighted fields") });
      return;
     } else if (body.code === "BAD_REQUEST") {
      const msg = body.message || "Bad Request";
@@ -531,7 +531,7 @@ export const AddUserView: React.FC = () => {
      } else {
       setApiErrorModal({ isOpen: true, title: tr("Create Failed"), message: msg });
      }
-     showToast({ type: "error", title: tr("Validation Failed"), message: "Please fix the highlighted fields" });
+     showToast({ type: "error", title: tr("Validation Failed"), message: tr("Please fix the highlighted fields") });
      return;
     }
    }
@@ -668,7 +668,7 @@ export const AddUserView: React.FC = () => {
  const missingTotal = Object.values(missing).reduce((sum, count) => sum + count, 0);
  const doneTotal = TOTAL_REQUIRED - missingTotal;
  const tabs = profileTabItems((id) => ({
-  description: missing[id] > 0 ? `${missing[id]} required left` : id === "qualifications" ? "Optional" : "Complete",
+  description: missing[id] > 0 ? trFormat("{count} required left", { count: missing[id] }) : id === "qualifications" ? tr("Optional") : tr("Complete"),
   count: missing[id] > 0 ? missing[id] : undefined,
  }));
 
@@ -780,7 +780,7 @@ export const AddUserView: React.FC = () => {
  currentPageTitle="Add User"
  title={tr("Cancel User Creation?")}
  primaryActionLabel="Cancel"
- secondaryActionLabel="Continue editing"
+ secondaryActionLabel={tr("Continue editing")}
  description={tr("Are you sure you want to cancel? All entered information will be lost.")}
  />
 

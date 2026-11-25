@@ -57,7 +57,7 @@ export function RealtimeReportPreview({
           {tr("Live PDF preview")}
         </h3>
         <span role="status" className="text-xs text-slate-500">
-          {busy ? "Updating from server…" : "Unsaved preview"}
+          {busy ? tr("Updating from server…") : tr("Unsaved preview")}
         </span>
       </div>
       {error && (
@@ -82,10 +82,10 @@ export function RealtimeReportPreview({
       ) : (
         <div className="flex h-[650px] min-h-[360px] items-center justify-center bg-white p-5 text-center text-sm text-slate-500">
           {disabled
-            ? "Complete the required configuration to preview."
+            ? tr("Complete the required configuration to preview.")
             : busy
-              ? "Rendering PDF on the server…"
-              : "No preview available."}
+              ? tr("Rendering PDF on the server…")
+              : tr("No preview available.")}
         </div>
       )}
     </div>

@@ -63,7 +63,7 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
     setPicked(picked.filter((u) => failed.some((f) => f.startsWith(`${u.fullName}:`))));
     if (added > 0) {
       setReloadKey((k) => k + 1);
-      showToast({ type: "success", title: "Added", message: `${added === 1 ? "The person" : `${added} people`} may now share like you. The change was recorded in the Audit Trail.` });
+      showToast({ type: "success", title: "Added", message: `${added === 1 ? tr("The person") : `${added} people`} may now share like you. The change was recorded in the Audit Trail.` });
     }
     if (failed.length > 0) showToast({ type: "error", title: tr("Could not add everyone"), message: failed.join(" ") });
     setAdding(false);

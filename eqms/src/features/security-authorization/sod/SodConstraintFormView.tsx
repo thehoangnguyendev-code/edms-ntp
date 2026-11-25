@@ -174,8 +174,8 @@ export const SodConstraintFormView: React.FC = () => {
 
   const errors = {
     codeA: codeA.trim() ? "" : "Select Permission A.",
-    codeB: !codeB.trim() ? "Select Permission B." : codeA.trim() === codeB.trim() ? "Permission B must be different from Permission A." : "",
-    name: name.trim() ? "" : "Enter a name for this constraint.",
+    codeB: !codeB.trim() ? "Select Permission B." : codeA.trim() === codeB.trim() ? tr("Permission B must be different from Permission A.") : "",
+    name: name.trim() ? "" : tr("Enter a name for this constraint."),
   };
   const shown = {
     codeA: submitted ? errors.codeA : "",

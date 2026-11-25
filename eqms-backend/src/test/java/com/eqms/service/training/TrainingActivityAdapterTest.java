@@ -47,6 +47,8 @@ class TrainingActivityAdapterTest {
     private static final UUID OTHER = UUID.randomUUID();
     private static final String MIGRATION = "src/main/resources/db/migration/V811__training_activity_in_workflow_authorization.sql";
     private static final String RETIRED_SUPPLEMENTARY = "src/main/resources/db/migration/V842__retire_training_supplementary_before_completed.sql";
+    private static final String PENDING_APPROVAL = "src/main/resources/db/migration/V844__training_activity_pending_approval.sql";
+    private static final String RETIRED_REVIEW = "src/main/resources/db/migration/V843__retire_training_content_review_step.sql";
 
     /** The scenario of the cell being checked. */
     private static final class Scenario {
@@ -81,6 +83,11 @@ class TrainingActivityAdapterTest {
         Matcher m = Pattern.compile("\\('TRAINING_ACTIVITY', '([A-Z_]+)', '([A-Z_]+)', '([A-Z_]+)', (TRUE|FALSE)\\)").matcher(block);
         Map<String, List<WorkflowActionPolicyRelation>> out = new HashMap<>();
         while (m.find()) out.computeIfAbsent(m.group(1) + "|" + m.group(2), k -> new ArrayList<>()).add(relation(m.group(3), "TRUE".equals(m.group(4))));
+        // V844 (Pending Approval) adds the relations of the new approvals and does not retire a relation row, only the policies that carried them
+        String later = java.nio.file.Files.readString(java.nio.file.Path.of(PENDING_APPROVAL)).replaceAll("\\s+", " ");
+        String laterBlock = later.substring(later.indexOf("INSERT INTO workflow_action_policy_relations"));
+        Matcher n = Pattern.compile("\\('([A-Z_]+)', '([A-Z_]+)', '([A-Z_]+)', (TRUE|FALSE)\\)").matcher(laterBlock);
+        while (n.find()) out.computeIfAbsent(n.group(1) + "|" + n.group(2), k -> new ArrayList<>()).add(relation(n.group(3), "TRUE".equals(n.group(4))));
         return out;
     }
 
@@ -99,7 +106,8 @@ class TrainingActivityAdapterTest {
                 String step = String.valueOf(args[args.length - 1]);
                 boolean review = step.equals("CONTENT_REVIEW") && scenario.relations.contains("CONTENT_REVIEW_ASSIGNEE");
                 boolean approve = step.equals("CONTENT_APPROVE") && scenario.relations.contains("CONTENT_APPROVE_ASSIGNEE");
-                return review || approve ? List.of(ME) : List.of();
+                boolean approveFirst = step.equals("CONTENT_APPROVE_FIRST") && scenario.relations.contains("CONTENT_APPROVE_FIRST_ASSIGNEE");
+                return review || approve || approveFirst ? List.of(ME) : List.of();
             }
             if (sql.startsWith("select confirmed_by")) return scenario.relations.contains("CONTENT_REVIEWER") ? List.of(ME) : List.of();
             Map<String, Object> row = new HashMap<>();
@@ -110,6 +118,8 @@ class TrainingActivityAdapterTest {
         });
         TrainingAccess access = mock(TrainingAccess.class);
         when(access.inScope(any(), any())).thenAnswer(i -> scenario.inScope);
+        // Select Approver and Submit for Approval are for the people of the department itself (owner decision 2026-11-25): the matrix models "in scope" as that department
+        when(access.inOwnDepartment(any(), any())).thenAnswer(i -> scenario.inScope);
         when(access.has(any(), any(String[].class))).thenReturn(false);
 
         WorkflowActionPolicyService service = mock(WorkflowActionPolicyService.class);
@@ -130,30 +140,34 @@ class TrainingActivityAdapterTest {
                 List.of(new TrainingActivityResourceAdapter(jdbc, access, service, repo)));
     }
 
-    private static final List<String> STATES = List.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED");
-    private static final List<String> PERMS = List.of("training.activity.organize", "training.content.review", "training.content.approve", "training.activity.close");
-    private static final List<String> RELATIONS = List.of("SENDER", "CONTENT_CREATOR", "CONTENT_REVIEWER", "CONTENT_REVIEW_ASSIGNEE", "CONTENT_APPROVE_ASSIGNEE", "LIST_PREPARER");
+    private static final List<String> STATES = List.of("PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED");
+    private static final List<String> PERMS = List.of("training.activity.organize", "training.content.review", "training.content.approve", "training.activity.close", "training.activity.cancel");
+    private static final List<String> RELATIONS = List.of("SENDER", "CONTENT_CREATOR", "CONTENT_REVIEWER", "CONTENT_REVIEW_ASSIGNEE", "CONTENT_APPROVE_ASSIGNEE", "CONTENT_APPROVE_FIRST_ASSIGNEE", "LIST_PREPARER");
     private static final Map<String, Set<String>> ORGANIZER_STATES = Map.of(
             "UPDATE", Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION"),
-            "ADD_SESSION", Set.of("PLANNED", "NOTIFIED"),
+            "ADD_SESSION", Set.of("PLANNED"),
             "ADD_PARTICIPANTS", Set.of("PLANNED"),
             "CONFIRM_LIST", Set.of("PLANNED"),
-            "NOTIFY", Set.of("PLANNED"),
-            "CANCEL", Set.of("PLANNED", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION"),
-            "REOPEN_CONTENT", Set.of("PLANNED", "NOTIFIED"),
+            "NOTIFY", Set.of("PLANNED", "PENDING_APPROVAL"),
+            "CANCEL", Set.of("PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION"),
+            "REOPEN_CONTENT", Set.of("PENDING_APPROVAL", "NOTIFIED"),
+            "SUBMIT_FOR_APPROVAL", Set.of("PLANNED"),
             "SUPPLEMENTARY", Set.of("COMPLETED"));
     private static final List<String> ACTIONS = List.of("UPDATE", "ADD_SESSION", "ADD_PARTICIPANTS", "CONFIRM_LIST", "NOTIFY", "CANCEL", "REOPEN_CONTENT", "SUPPLEMENTARY",
-            "CONTENT_REVIEW", "CONTENT_APPROVE", "SEND_ATTENDANCE_LIST", "FINISH", "CONFIRM_COMPLETION", "RETURN_FOR_CORRECTION");
+            "SUBMIT_FOR_APPROVAL", "CONTENT_APPROVE_FIRST", "CONTENT_REJECT", "CONTENT_APPROVE", "SEND_ATTENDANCE_LIST", "FINISH", "CONFIRM_COMPLETION", "RETURN_FOR_CORRECTION");
 
     /** The rule the owner approved, written once. */
     private static boolean expected(String action, String state, Set<String> perms, Set<String> rel, boolean inScope) {
-        if (ORGANIZER_STATES.containsKey(action)) return ORGANIZER_STATES.get(action).contains(state) && perms.contains("training.activity.organize") && inScope;
-        boolean planned = state.equals("PLANNED") || state.equals("NOTIFIED");
+        if (ORGANIZER_STATES.containsKey(action)) return ORGANIZER_STATES.get(action).contains(state) && perms.contains(action.equals("CANCEL") ? "training.activity.cancel" : "training.activity.organize") && inScope;
+        boolean pending = state.equals("PENDING_APPROVAL");
         switch (action) {
-            case "CONTENT_REVIEW":
-                return planned && perms.contains("training.content.review") && inScope && rel.contains("CONTENT_REVIEW_ASSIGNEE") && !rel.contains("CONTENT_CREATOR");
             case "CONTENT_APPROVE":
-                return planned && perms.contains("training.content.approve") && inScope && rel.contains("CONTENT_APPROVE_ASSIGNEE") && !rel.contains("CONTENT_CREATOR") && !rel.contains("CONTENT_REVIEWER");
+                return pending && perms.contains("training.content.approve") && inScope && rel.contains("CONTENT_APPROVE_ASSIGNEE") && !rel.contains("CONTENT_CREATOR");
+            case "CONTENT_APPROVE_FIRST":
+                return pending && perms.contains("training.content.approve") && inScope && rel.contains("CONTENT_APPROVE_FIRST_ASSIGNEE") && !rel.contains("CONTENT_CREATOR");
+            case "CONTENT_REJECT":
+                // the approver whose turn it is is checked by the service when the person signs; the engine asks for the permission and the department
+                return pending && perms.contains("training.content.approve") && inScope;
             case "SEND_ATTENDANCE_LIST":
             case "FINISH":
                 // the trainer, whatever the permissions and the department
@@ -191,22 +205,31 @@ class TrainingActivityAdapterTest {
                                     .isEqualTo(expected(action, state, scenario.permissions, scenario.relations, inScope));
                             cells++;
                         }
-        assertThat(cells).isEqualTo(6 * 16 * 64 * 2 * 14);
+        assertThat(cells).isEqualTo(7 * (1 << PERMS.size()) * 128 * 2 * ACTIONS.size());
     }
 
     @Test
     void theMigrationAndTheRegistryHaveTheSamePolicies() throws Exception {
         String sql = java.nio.file.Files.readString(java.nio.file.Path.of(MIGRATION)).replaceAll("\\s+", " ");
         var defaults = WorkflowActionDefaultPolicyRegistry.allTraining().stream().filter(d -> d.workflowKey().equals("TRAINING_ACTIVITY")).toList();
-        // 26 rows were seeded by V811; V842 retired the two SUPPLEMENTARY rows that start from IN_PROGRESS and PENDING_QA_CONFIRMATION (only a Completed activity gets a supplementary training), so the registry has 24
-        assertThat(defaults).hasSize(24);
+        // 26 rows were seeded by V811; V842 retired the two SUPPLEMENTARY rows that start from IN_PROGRESS and PENDING_QA_CONFIRMATION (only a Completed activity gets a supplementary training) and V843 the two
+        // CONTENT_REVIEW rows (one approver signs the content); V844 retired CONTENT_APPROVE from Planned and Notified and REOPEN_CONTENT from Planned (3 rows, the registry has 19) and added
+        // 7 rows for the course through Pending Approval, and V845 retired ADD_SESSION from Notified (nothing of the plan is edited once the people are notified), so the registry has 25
+        assertThat(defaults).hasSize(25);
+        assertThat(defaults.stream().map(d -> d.policy().actionCode())).doesNotContain("CONTENT_REVIEW");
+        String review = java.nio.file.Files.readString(java.nio.file.Path.of(RETIRED_REVIEW)).replaceAll("\s+", " ");
+        assertThat(review).contains("action_code = 'CONTENT_REVIEW'").contains("from_status IN ('PLANNED', 'NOTIFIED')").doesNotContain("'CONTENT_APPROVE'")
+                .contains("step_code = 'CONTENT_REVIEW'").contains("status = 'PENDING'");
         assertThat(defaults.stream().filter(d -> d.policy().actionCode().equals("SUPPLEMENTARY")).map(d -> d.policy().fromStatus())).containsExactly("COMPLETED");
         String retired = java.nio.file.Files.readString(java.nio.file.Path.of(RETIRED_SUPPLEMENTARY)).replaceAll("\s+", " ");
         assertThat(retired).contains("action_code = 'SUPPLEMENTARY'").contains("from_status IN ('IN_PROGRESS', 'PENDING_QA_CONFIRMATION')").doesNotContain("'COMPLETED'");
         for (var d : defaults) {
             String row = "('TRAINING_ACTIVITY', 'TRAINING_ACTIVITY', '" + d.policy().actionCode() + "', '" + d.policy().fromStatus() + "', '" + d.policy().requiredPermissionCode() + "', '"
                     + d.policy().description().replace("'", "''") + "')";
-            assertThat(sql).as(d.policy().actionCode() + " " + d.policy().fromStatus()).contains(row);
+            String laterRow = "('" + d.policy().actionCode() + "', '" + d.policy().fromStatus() + "', '" + d.policy().requiredPermissionCode() + "', '" + d.policy().description().replace("'", "''") + "')";
+            String later = java.nio.file.Files.readString(java.nio.file.Path.of(PENDING_APPROVAL)).replaceAll("\\s+", " ");
+            String cancelMigration = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/db/migration/V851__training_activity_cancel_permission.sql")).replaceAll("\\s+", " ");
+            assertThat(sql.contains(row) || later.contains(laterRow) || cancelMigration.contains(laterRow)).as(d.policy().actionCode() + " " + d.policy().fromStatus()).isTrue();
         }
         assertThat(ACTIONS).containsExactlyInAnyOrderElementsOf(defaults.stream().map(d -> d.policy().actionCode()).distinct().toList());
     }

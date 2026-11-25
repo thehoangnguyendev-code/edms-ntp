@@ -6,12 +6,14 @@ import apiClient from "./client";
  */
 export interface TrainingLink {
   /** INTEGRATED (completed through Training Management), MANUAL (dates typed in Document Control) or null (no training). */
-  mode: "INTEGRATED" | "MANUAL" | null;
+  mode: "INTEGRATED" | "MANUAL" | "COVERED" | "COVERING" | null;
   origin: "NATIVE" | "LEGACY_IMPORT";
   /** True when the person may open Training Management. */
   canOpen: boolean;
   activityId?: string;
   trainingNumber: string | null;
+  /** COVERED: the number of the document whose training this revision was read in (a related document that needs no training of its own). */
+  coveredBy?: string | null;
   status?: TrainingActivityStatus;
   /** The text of the status, as the server gives it. */
   statusLabel?: string | null;
@@ -26,7 +28,7 @@ export interface TrainingLink {
   finishedOn?: string | null;
 }
 
-export type TrainingActivityStatus = "RESERVED" | "PLANNED" | "NOTIFIED" | "IN_PROGRESS" | "PENDING_QA_CONFIRMATION" | "COMPLETED" | "CANCELLED";
+export type TrainingActivityStatus = "RESERVED" | "PLANNED" | "PENDING_APPROVAL" | "NOTIFIED" | "IN_PROGRESS" | "PENDING_QA_CONFIRMATION" | "COMPLETED" | "CANCELLED";
 
 export const trainingLinksApi = {
   forDocument: async (documentId: string) => (await apiClient.get<TrainingLink>(`/training/links/documents/${documentId}`)).data,

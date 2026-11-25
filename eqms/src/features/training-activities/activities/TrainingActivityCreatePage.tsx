@@ -32,10 +32,17 @@ import {
 import { TrainingDateField, DATE_HINT } from "../shared/TrainingDateField";
 import {
   ParticipantsDraftPanel,
-  SessionPanel,
   type ParticipantsDraft,
   type SessionDraft,
 } from "./components/TrainingActivityPlanning";
+import { SessionsSection } from "./components/SessionsSection";
+import { SessionPills } from "./components/SessionPills";
+import type { SessionCardData } from "./components/SessionCards";
+import { sessionFormFrom, type CopySource } from "./components/SessionFormModal";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { DataTable } from "@/components/ui/table/DataTable";
+import { Badge } from "@/components/ui/badge/Badge";
+import { ASSESSMENT_LABEL, METHOD_LABEL, day } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { TrainingMaterialsBoard, type MaterialItem } from "./components/TrainingMaterialsBoard";
 import { useBranding } from "@/components/branding/BrandLogo";
@@ -51,7 +58,10 @@ const CREATE_KINDS: TrainingKind[] = [
 const LATER = ["assessment", "signatures"];
 
 /** A material added on this screen: it waits here and is saved with the activity (the same board as in planning, so the person meets one layout). */
-type StagedMaterial = { id: string; title: string; file?: File; url?: string };
+type StagedMaterial = { id: string; title: string; file?: File; url?: string; /** The session it is for (its key here); empty for every session. */ sessionKey?: string };
+
+/** A session of the activity, still a draft on this screen: it is saved with the activity. */
+type DraftSession = { key: string; body: SessionDraft; trainerName?: string };
 
 /** A new training activity as a page with tabs, like Document Details. Basic Information and the sessions are filled here; the Training Number is issued when the activity is saved, and the other tabs open on the next screen. */
 export function TrainingActivityCreatePage() {
@@ -75,13 +85,17 @@ export function TrainingActivityCreatePage() {
     trainingUnitName: "",
     vendorRef: "",
   });
-  const [session, setSession] = useState<SessionDraft | null>(null);
+  const [sessions, setSessions] = useState<DraftSession[]>([]);
+  // The people who do NOT attend a session ("person|session"): everybody attends every session until a tick is taken off.
+  const [notAttending, setNotAttending] = useState<Set<string>>(new Set());
+  // The session the tabs Participants and Training Materials look at ("" is all of them).
+  const [look, setLook] = useState("");
   const [people, setPeople] = useState<ParticipantsDraft | null>(null);
   const [staged, setStaged] = useState<StagedMaterial[]>([]);
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after the activity is created is not a leave.
   // The session and the people are filled by their own editors, so each is compared from the first time it has a value.
   const basicsDirty = useFormDirty({ form, materials: staged.length }).isDirty;
-  const sessionDirty = useFormDirty(session, session !== null).isDirty;
+  const sessionDirty = useFormDirty(sessions, sessions.length > 0).isDirty;
   const peopleDirty = useFormDirty(people, people !== null).isDirty;
   const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(basicsDirty || sessionDirty || peopleDirty, "New Training Activity", "the previous page");
   const { trainingMaterialsLayout } = useBranding();
@@ -94,6 +108,55 @@ export function TrainingActivityCreatePage() {
     { id: "assessment", label: "Assessment" },
     { id: "signatures", label: tr("Signatures") },
   ];
+
+  const attends = (rowKey: string, sessionKey: string) => !notAttending.has(`${rowKey}|${sessionKey}`);
+  const toggleAttend = (rowKey: string, sessionKey: string) =>
+    setNotAttending((old) => {
+      const next = new Set(old);
+      const k = `${rowKey}|${sessionKey}`;
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  // the people chosen, as the rows of the table of who attends which session
+  const rows = people ? [...people.people.map((p) => ({ key: p.id, name: p.fullName, meta: [p.employeeCode, p.department].filter(Boolean).join(" · ") })), ...people.externals.map((o, i) => ({ key: `ext:${i}`, name: o.name, meta: o.org }))] : [];
+  const external = form.kind === "EXTERNAL";
+  const sessionCards: SessionCardData[] = sessions.map((d, index) => {
+    const mine = staged.filter((m) => !m.sessionKey || m.sessionKey === d.key).length;
+    return {
+      key: d.key,
+      no: index + 1,
+      topics: d.body.topics.map((t) => t.topicText),
+      mode: !external && d.body.method ? (METHOD_LABEL[d.body.method] ?? d.body.method) : null,
+      modeCode: d.body.method,
+      assessmentCode: d.body.assessmentMethod,
+      assessment: !external && d.body.assessmentMethod ? (ASSESSMENT_LABEL[d.body.assessmentMethod] ?? d.body.assessmentMethod) : null,
+      trainer: d.trainerName || d.body.externalTrainerName || null,
+      date: d.body.scheduledOn ? day(d.body.scheduledOn) : null,
+      place: d.body.locationType !== "ONLINE" ? (d.body.venue ?? null) : null,
+      online: d.body.locationType !== "ONSITE" ? [d.body.onlinePlatform, d.body.meetingLink].filter(Boolean).join(" · ") || null : null,
+      people: people ? rows.filter((r) => attends(r.key, d.key)).length : 0,
+      content: external ? null : { materials: mine, materialsNeeded: true, materialsOk: mine > 0, assessmentNeeded: false, assessmentOk: false, assessmentWord: tr("Test") },
+    };
+  });
+  const sessionSources: (CopySource & { editForm: CopySource["form"] })[] = sessions.map((d, index) => ({
+    key: d.key,
+    no: index + 1,
+    label: `${tr("Session")} ${index + 1} · ${d.body.topics[0]?.topicText ?? ""}`,
+    form: sessionFormFrom(d.body),
+    editForm: { ...sessionFormFrom(d.body), scheduledOn: d.body.scheduledOn ?? "" },
+    people: 0,
+  }));
+  const saveSession = (draft: SessionDraft, options: { editKey?: string; trainerName?: string }) => {
+    if (options.editKey) setSessions((old) => old.map((d) => (d.key === options.editKey ? { ...d, body: draft, trainerName: options.trainerName } : d)));
+    else setSessions((old) => [...old, { key: crypto.randomUUID(), body: draft, trainerName: options.trainerName }]);
+    return true;
+  };
+  const removeSession = (key: string) => {
+    setSessions((old) => old.filter((d) => d.key !== key));
+    // what was for that session only is now for every session
+    setStaged((old) => old.map((m) => (m.sessionKey === key ? { ...m, sessionKey: "" } : m)));
+  };
+  const pills = [{ id: "", label: `All (${sessions.length})` }, ...sessions.map((d, i) => ({ id: d.key, label: `S${i + 1} ${d.body.topics[0]?.topicText ?? ""}`.trim() }))];
 
   const save = async () => {
     setBusy(true);
@@ -122,14 +185,14 @@ export function TrainingActivityCreatePage() {
       return;
     }
     let failed = 0;
-    let sessionId: string | undefined;
-    for (const s of session ? [session] : []) {
+    // the id the server gave each session, by the key it had here
+    const ids: Record<string, string> = {};
+    let known = new Set<string>();
+    for (const draft of sessions) {
       try {
-        const withSession = await trainingActivitiesApi.addSession(
-          created.id,
-          s,
-        );
-        sessionId = withSession.sessions[0]?.id;
+        const withSession = await trainingActivitiesApi.addSession(created.id, draft.body);
+        const added = withSession.sessions.find((x) => !known.has(x.id));
+        if (added) { ids[draft.key] = added.id; known = new Set(withSession.sessions.map((x) => x.id)); }
       } catch (e) {
         failed += 1;
         showToast({
@@ -139,29 +202,35 @@ export function TrainingActivityCreatePage() {
         });
       }
     }
-    if (people && sessionId) {
-      try {
-        await trainingActivitiesApi.addParticipants(created.id, {
-          sessionId,
-          personUserIds: people.personUserIds.length
-            ? people.personUserIds
-            : undefined,
-          externals: people.externals.length ? people.externals : undefined,
-          reason: people.reason,
-        });
-      } catch (e) {
-        showToast({
-          type: "error",
-          title: tr("The participants were not added"),
-          message: trainingError(e),
-        });
+    if (people) {
+      for (const draft of sessions) {
+        const sessionId = ids[draft.key];
+        if (!sessionId) continue;
+        const personUserIds = people.personUserIds.filter((id) => attends(id, draft.key));
+        const externals = people.externals.filter((_, i) => attends(`ext:${i}`, draft.key));
+        if (personUserIds.length === 0 && externals.length === 0) continue;
+        try {
+          await trainingActivitiesApi.addParticipants(created.id, {
+            sessionId,
+            personUserIds: personUserIds.length ? personUserIds : undefined,
+            externals: externals.length ? externals : undefined,
+            reason: people.reason,
+          });
+        } catch (e) {
+          showToast({
+            type: "error",
+            title: tr("The participants were not added"),
+            message: trainingError(e),
+          });
+        }
       }
     }
     let materialsFailed = 0;
     for (const m of staged) {
       try {
-        if (m.file) await trainingFilesApi.uploadMaterial(created.id, m.file, m.title || undefined, "CONTENT");
-        else await trainingFilesApi.addLink(created.id, m.title, m.url ?? "");
+        const forSession = m.sessionKey ? ids[m.sessionKey] : undefined;
+        if (m.file) await trainingFilesApi.uploadMaterial(created.id, m.file, m.title || undefined, "CONTENT", undefined, forSession);
+        else await trainingFilesApi.addLink(created.id, m.title, m.url ?? "", forSession);
       } catch (e) {
         materialsFailed += 1;
         showToast({
@@ -190,7 +259,7 @@ export function TrainingActivityCreatePage() {
       className="whitespace-nowrap"
       loading={busy}
       disabled={
-        !session || !form.remarks.trim() || (form.kind === "EXTERNAL" && !form.trainingUnitName.trim())
+        sessions.length === 0 || !form.remarks.trim() || (form.kind === "EXTERNAL" && !form.trainingUnitName.trim())
       }
       onClick={() => void save()}
     >
@@ -287,13 +356,23 @@ export function TrainingActivityCreatePage() {
           )}
         </div>
       )}
-      {/* The session and the people stay mounted while another tab is open, so what was typed is not lost when the tab is changed. */}
+      {/* The sessions and the people stay mounted while another tab is open, so what was typed is not lost when the tab is changed. */}
       <div className={tab === "basic" ? "mt-3 space-y-3 md:mt-4 md:space-y-4" : "hidden"}>
-        <SessionPanel
-          onDraft={setSession}
-          dueDate={<TrainingDateField label={tr("Due Date")} hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />}
-          external={form.kind === "EXTERNAL"}
-          initialTopic={prefill.get("topic") ?? undefined}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+          <TrainingDateField label={tr("Due Date")} hint={DATE_HINT.due} value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+        </div>
+        <SessionsSection
+          cards={sessionCards}
+          sources={sessionSources}
+          canAdd
+          canEdit
+          external={external}
+          busy={busy}
+          canCopyPeople={false}
+          autoOpenTopic={prefill.get("topic") ?? undefined}
+          emptyNote={tr("No session yet. Press Add session to add the first one: the people, the materials and the test all belong to a session.")}
+          onSave={saveSession}
+          onRemove={removeSession}
         />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
           <div className="md:col-span-2">
@@ -305,30 +384,69 @@ export function TrainingActivityCreatePage() {
               />
             </FormField>
           </div>
-          <p className="text-xs text-slate-500 md:col-span-2">
-            {tr("A training on a document is opened by the system when the revision is approved. Use this screen for periodic, unplanned and outside training.")}
-          </p>
         </div>
       </div>
       <div className={tab === "participants" ? undefined : "hidden"}>
-        {!session && (
+        {sessions.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center text-sm text-slate-600">
-            {tr("The people are added to the session. Complete the session first (General Information): the Topic, the Instructor and the Physical Location, or the Platform and the Meeting Link.")}
+            {tr("The people are added to the sessions. Add a session first (General Information): the Topic, the Instructor and the Physical Location, or the Platform and the Meeting Link.")}
           </div>
         )}
-        <div className={session ? undefined : "hidden"}>
+        <div className={sessions.length > 0 ? "space-y-4" : "hidden"}>
+          {sessions.length > 1 && <SessionPills pills={pills.map((p) => (p.id ? p : { ...p, label: `All (${rows.length})` }))} value={look} onChange={setLook} />}
           <ParticipantsDraftPanel onDraft={setPeople} initialPeople={prefillPeople} initialReason={prefillPeople.length ? prefill.get("reason") ?? "Training required by the matrix" : undefined} />
+          {sessions.length > 1 && rows.length > 0 && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">{tr("Who attends which session")}</h3>
+                <p className="mt-0.5 text-xs text-slate-500">{tr("The same people can attend several sessions. Untick a session a person does not attend.")}</p>
+              </div>
+              <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
+                <DataTable
+                  rows={rows}
+                  getRowKey={(r) => r.key}
+                  columns={[
+                    { id: "name", header: tr("Name"), cell: (r) => <span><span className="font-medium text-slate-900">{r.name}</span>{r.meta && <span className="ml-2 text-slate-500">{r.meta}</span>}</span> },
+                    ...sessions.filter((d) => !look || d.key === look).map((d) => ({
+                      id: `session-${d.key}`,
+                      header: <span title={d.body.topics[0]?.topicText}>S{sessions.indexOf(d) + 1}</span>,
+                      headerClassName: "text-center",
+                      cellClassName: "text-center",
+                      cell: (r: (typeof rows)[number]) => <span className="inline-flex"><Checkbox aria-label={`${r.name} ${tr("Session")} ${sessions.indexOf(d) + 1}`} checked={attends(r.key, d.key)} onChange={() => toggleAttend(r.key, d.key)} /></span>,
+                    })),
+                  ]}
+                />
+              </div>
+              <div className="space-y-2 md:hidden">
+                {rows.map((r) => (
+                  <div key={r.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="text-sm font-medium text-slate-900">{r.name}</div>
+                    {r.meta && <div className="mt-0.5 text-xs text-slate-500">{r.meta}</div>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {sessions.filter((d) => !look || d.key === look).map((d) => (
+                        <label key={d.key} className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${attends(r.key, d.key) ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500"}`}>
+                          <Checkbox checked={attends(r.key, d.key)} onChange={() => toggleAttend(r.key, d.key)} />S{sessions.indexOf(d) + 1}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      {tab === "materials" && sessions.length > 1 && <div className="mb-4"><SessionPills pills={pills} value={look} onChange={setLook} /></div>}
       {tab === "materials" && (
         <TrainingMaterialsBoard
+          scope={sessions.length > 1 ? { label: tr("Use for"), value: look, options: [{ label: tr("All sessions"), value: "" }, ...sessions.map((d, i) => ({ label: `${tr("Session")} ${i + 1} · ${d.body.topics[0]?.topicText ?? ""}`, value: d.key }))], onChange: setLook } : undefined}
           layout={trainingMaterialsLayout === "TILES" ? "TILES" : "TABLE"}
-          items={staged.map((m): MaterialItem => ({ id: m.id, title: m.title || m.file?.name || m.url || "", linkUrl: m.url ?? null, fileName: m.file?.name ?? null, sizeBytes: m.file?.size ?? null, staged: true }))}
+          items={staged.filter((m) => !look || !m.sessionKey || m.sessionKey === look).map((m): MaterialItem => ({ sessionLabel: sessions.length > 1 ? (m.sessionKey ? `S${sessions.findIndex((d) => d.key === m.sessionKey) + 1}` : tr("All sessions")) : null, id: m.id, title: m.title || m.file?.name || m.url || "", linkUrl: m.url ?? null, fileName: m.file?.name ?? null, sizeBytes: m.file?.size ?? null, staged: true }))}
           canAdd
           canRemove
-          emptyText="No material yet. A file (PDF, slides, video) or a link can be added here and is saved with the activity; more can be added until the content is reviewed."
-          onAddFile={(file, title) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, file }]); return true; }}
-          onAddLink={(title, url) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, url }]); return true; }}
+          emptyText={tr("No material yet. A file (PDF, slides, video) or a link can be added here and is saved with the activity; more can be added until the content is approved.")}
+          onAddFile={(file, title) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, file, sessionKey: look }]); return true; }}
+          onAddLink={(title, url) => { setStaged((old) => [...old, { id: crypto.randomUUID(), title, url, sessionKey: look }]); return true; }}
           onRemove={(m) => setStaged((old) => old.filter((x) => x.id !== m.id))}
         />
       )}

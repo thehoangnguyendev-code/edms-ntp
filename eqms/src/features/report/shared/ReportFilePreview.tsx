@@ -58,13 +58,13 @@ export function ReportFilePreview({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">{format} {tr("file preview")}</h3>
         <span role="status" className="text-xs text-slate-500">
-          {busy ? "Making the file…" : file ? file.fileName : ""}
+          {busy ? tr("Making the file…") : file ? file.fileName : ""}
         </span>
       </div>
       <p className="mb-3 text-xs text-slate-500">
         {tr("This is a temporary copy to look at before you generate the report. It is kept until the report is complete, then removed. It is not a report and is not recorded.")}
       </p>
-      {busy && <SectionLoading text="Making the preview file..." />}
+      {busy && <SectionLoading text={tr("Making the preview file...")} />}
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}

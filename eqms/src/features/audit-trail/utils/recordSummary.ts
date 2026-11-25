@@ -2,7 +2,7 @@ import type { AuditTrailRecord } from "../types";
 import { formatWorkflowStatusLabel } from "./statusLabel";
 
 /**
- * What changed in a record, in one line: the fields with their old and new values (a status that did not move is left out; older rows kept a synthetic
+ * What changed in a record, one line for each field (shown with the line breaks kept): the fields with their old and new values (a status that did not move is left out; older rows kept a synthetic
  * "Obsoleted -> Obsoleted" for actions that change nothing), or else the description or the reason.
  */
 export const buildChangeSummary = (record: AuditTrailRecord) => {
@@ -19,9 +19,11 @@ export const buildChangeSummary = (record: AuditTrailRecord) => {
         const isStatusField = /status|state/i.test(field);
         const oldValue = isStatusField ? formatWorkflowStatusLabel(change.oldValue) : change.oldValue || "-";
         const newValue = isStatusField ? formatWorkflowStatusLabel(change.newValue) : change.newValue || "-";
-        return `${field}: ${oldValue} → ${newValue}`;
+        // a value that was not there before is written as "Field: new value"; one line for each field, so that a long entry can be read
+        const wasEmpty = !isStatusField && (!change.oldValue || ["-", "not specified"].includes(change.oldValue.trim().toLowerCase()));
+        return wasEmpty ? `${field}: ${newValue}` : `${field}: ${oldValue} → ${newValue}`;
       })
-      .join("; ");
+      .join("\n");
     if (rendered) return rendered;
   }
   return record.description || record.reason || record.metadata?.reason || record.metadata?.comment || "-";

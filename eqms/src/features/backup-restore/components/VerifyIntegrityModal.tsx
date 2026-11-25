@@ -7,7 +7,7 @@ import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { backupRestoreApi, type IntegrityCheckResult } from "@/services/api/backupRestore";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { statusLabel } from "../types";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type Phase = "starting" | "running" | "done" | "error";
 type RowState = "pending" | "running" | "passed" | "failed" | "skipped";
@@ -113,7 +113,7 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
             setProgress(100);
             setVerification(result.verification ?? "");
             setArrived(result.checks ?? parseChecks(job.steps_json));
-            if (!result.verification) setMessage(result.errorCode ? statusLabel(result.errorCode) : "The agent reported a failure.");
+            if (!result.verification) setMessage(result.errorCode ? statusLabel(result.errorCode) : tr("The agent reported a failure."));
             setPhase(result.verification ? "done" : "error");
             onFinished();
             return;
@@ -169,7 +169,7 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
       onClose={onClose}
       onConfirm={onClose}
       title={tr("Verify Integrity")}
-      description={`Checks that ${backupNumber} is complete, unchanged and signed. The data is not decrypted and nothing is changed.`}
+      description={trFormat("Checks that {batch} is complete, unchanged and signed. The data is not decrypted and nothing is changed.", { batch: backupNumber })}
       confirmText="Close"
       showCancel={false}
       size="xl"
@@ -177,7 +177,7 @@ export const VerifyIntegrityModal: React.FC<{ isOpen: boolean; backupNumber: str
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-medium text-slate-700 sm:text-sm">
-            <span>{running ? "Checking…" : phase === "done" ? (passed ? "Check passed" : "Check failed") : "Check not completed"}</span>
+            <span>{running ? "Checking…" : phase === "done" ? (passed ? tr("Check passed") : tr("Check failed")) : tr("Check not completed")}</span>
             <span aria-live="polite">{progress}%</span>
           </div>
           <Progress value={progress} size="lg" variant={running ? "emerald" : phase === "done" && passed ? "success" : "error"} />

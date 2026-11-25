@@ -268,9 +268,9 @@ export const AuditTrailDetailView: React.FC<{
   type TechnicalItem = { label: string; value: React.ReactNode };
   const technicalItems: TechnicalItem[] = [];
   if (r) {
-    technicalItems.push({ label: "Record ID", value: r.id });
-    if (r.entityId) technicalItems.push({ label: "Entity ID", value: r.entityId });
-    if (r.severity) technicalItems.push({ label: "Severity", value: r.severity });
+    technicalItems.push({ label: tr("Record ID"), value: r.id });
+    if (r.entityId) technicalItems.push({ label: tr("Entity ID"), value: r.entityId });
+    if (r.severity) technicalItems.push({ label: tr("Severity"), value: r.severity });
     technicalItems.push({ label: tr("IP Address"), value: r.ipAddress || "-" });
     if (r.userAgent || r.device) technicalItems.push({ label: tr("Client Device / Agent"), value: r.device || r.userAgent });
     if (r.progressDurationSeconds !== undefined && r.progressDurationSeconds !== null) {

@@ -1,5 +1,6 @@
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
 import { dashboard } from "@/components/ui/breadcrumb/breadcrumbs/shared";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 import { tr } from "@/i18n";
 import { displayDate, displayDateTime } from "@/utils/format";
 
@@ -23,6 +24,7 @@ function localized<T extends Record<string, string>>(map: T): T {
 export const STATUS_LABEL: Record<string, string> = localized({
   RESERVED: "Pending Document Approval",
   PLANNED: "Planned",
+  PENDING_APPROVAL: "Pending Approval",
   NOTIFIED: "Notified",
   IN_PROGRESS: "In Progress",
   PENDING_QA_CONFIRMATION: "Pending QA Confirmation",
@@ -32,6 +34,7 @@ export const STATUS_LABEL: Record<string, string> = localized({
 export const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate" | "blue"> = {
   RESERVED: "slate",
   PLANNED: "blue",
+  PENDING_APPROVAL: "amber",
   NOTIFIED: "blue",
   IN_PROGRESS: "amber",
   PENDING_QA_CONFIRMATION: "amber",
@@ -66,6 +69,10 @@ export const KIND_REASON_LABEL: Record<string, string> = localized({
   OTHER: "Other",
 });
 export const METHOD_LABEL: Record<string, string> = localized({ SELF_READING: "Self-reading", CLASSROOM: "Classroom training", HYBRID: "Hybrid training", PRACTICAL: "Practical training" });
+/** The colour of the badge of a training method, of a way of assessment and of a way of delivery, by the code the API sends (a code not listed is grey). */
+export const METHOD_COLOR: Record<string, BadgeColor> = { SELF_READING: "violet", CLASSROOM: "blue", HYBRID: "cyan", PRACTICAL: "orange" };
+export const ASSESSMENT_COLOR: Record<string, BadgeColor> = { TEST: "indigo", CHECKLIST: "teal", OBSERVATION: "lime", SELF_READING_CONFIRMATION: "pink" };
+export const DELIVERY_COLOR: Record<string, BadgeColor> = { ELECTRONIC: "sky", PAPER: "yellow", MIXED: "fuchsia" };
 export const ASSESSMENT_LABEL: Record<string, string> = localized({
   TEST: "Essay or multiple-choice test (APD.0009)",
   CHECKLIST: "Checklist test (APD.0009)",

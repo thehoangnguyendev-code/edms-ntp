@@ -56,7 +56,7 @@ export const WorkflowPolicyDuplicateView: React.FC = () => {
         if (!cancelled) setPolicy(p);
       })
       .catch(() => {
-        if (!cancelled) showToast({ type: "error", message: "Failed to load source policy" });
+        if (!cancelled) showToast({ type: "error", message: tr("Failed to load source policy") });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

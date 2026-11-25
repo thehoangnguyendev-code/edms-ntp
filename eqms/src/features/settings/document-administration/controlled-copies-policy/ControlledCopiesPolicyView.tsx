@@ -512,8 +512,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
     );
     showToast({
       type: "success",
-      title: editingLimit ? "Rule updated" : "Rule added",
-      message: 'Not saved yet -- click "Save" to persist it.',
+      title: editingLimit ? tr("Rule updated") : tr("Rule added"),
+      message: tr('Not saved yet -- click "Save" to persist it.'),
     });
     setIsLimitModalOpen(false);
   };
@@ -1419,8 +1419,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 {
                                   label:
                                     status === "OBSOLETED"
-                                      ? "Withdrawal date"
-                                      : "Cancellation date",
+                                      ? tr("Withdrawal date")
+                                      : tr("Cancellation date"),
                                   checked: cfg.stampShowDate,
                                   onChange: (v) =>
                                     setStatusMarking(
@@ -1464,8 +1464,8 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 {
                                   label:
                                     status === "OBSOLETED"
-                                      ? "Withdrawal date"
-                                      : "Cancellation date",
+                                      ? tr("Withdrawal date")
+                                      : tr("Cancellation date"),
                                   checked: cfg.watermarkShowDate,
                                   onChange: (v) =>
                                     setStatusMarking(
@@ -1526,7 +1526,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         title={
           editingLimit
             ? editingLimit.isSystem
-              ? "Edit Global Default"
+              ? tr("Edit Global Default")
               : tr("Edit Link Expiry Rule")
             : tr("Add Link Expiry Rule")
         }

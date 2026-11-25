@@ -278,7 +278,7 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
       })}
       title={`Type the Results of Session ${session.sessionNo}`}
       description={tr("Copy what the signed paper says. The scan is required, and a different person checks it before anything is recorded.")}
-      confirmText="Submit for checking"
+      confirmText={tr("Submit for checking")}
       isLoading={busy}
       confirmDisabled={!valid}
       size="xl"

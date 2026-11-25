@@ -77,7 +77,7 @@ function SendDialog({ type, objectId, sentTo, onClose, onSent }: { type: Trainin
     }
   };
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title={tr("Send a Copy")} description={tr("Record that a copy was sent to the departments concerned. Each department confirms when it receives it.")} confirmText="Record sending" isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => void send()} title={tr("Send a Copy")} description={tr("Record that a copy was sent to the departments concerned. Each department confirms when it receives it.")} confirmText={tr("Record sending")} isLoading={busy} confirmDisabled={chosen.size === 0} size="md">
       <div className="grid gap-4">
         <FormField label={tr("Departments")} required>
           <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">

@@ -86,13 +86,13 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
   const today = toIso(new Date());
   const months = plan?.absenceRetrainMonths ?? 6;
 
-  const absenceFromError = form.absenceFrom && form.absenceFrom > today ? "The absence cannot start in the future." : "";
+  const absenceFromError = form.absenceFrom && form.absenceFrom > today ? tr("The absence cannot start in the future.") : "";
   const absenceToError = !form.absenceTo ? ""
-    : form.absenceTo < form.absenceFrom ? "Absent until cannot be before Absent from."
-    : form.absenceTo > today ? "The last day of the absence cannot be in the future."
+    : form.absenceTo < form.absenceFrom ? tr("Absent until cannot be before Absent from.")
+    : form.absenceTo > today ? tr("The last day of the absence cannot be in the future.")
     : form.absenceTo <= addMonths(form.absenceFrom, months) ? `SOP.0003 asks for a review after an absence of more than ${months} months.` : "";
   const eventDateError = !form.eventDate ? ""
-    : form.eventDate > today ? "The date cannot be later than today: the event has already happened."
+    : form.eventDate > today ? tr("The date cannot be later than today: the event has already happened.")
     : isAbsence && form.absenceTo && form.eventDate < form.absenceTo ? "The return date cannot be before the last day of the absence." : "";
 
   // A problem the records report is shown at the field that explains it; "choose the new department" is only the order of the fields.
@@ -131,9 +131,9 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
     }
   };
 
-  const eventDateLabel = isAbsence ? "Return date" : isTransfer ? "Transfer date" : "Start date";
+  const eventDateLabel = isAbsence ? tr("Return date") : isTransfer ? tr("Transfer date") : tr("Start date");
   const eventDateField = (
-    <TrainingDateField label={eventDateLabel} hint={isAbsence ? "The day the employee came back: on or after the last day of the absence, and not later than today." : "The event has already happened: the date cannot be later than today."} value={form.eventDate} disabled={!dateEnabled} error={eventDateError || undefined} onChange={(value) => setForm({ ...form, eventDate: value })} />
+    <TrainingDateField label={eventDateLabel} hint={isAbsence ? tr("The day the employee came back: on or after the last day of the absence, and not later than today.") : tr("The event has already happened: the date cannot be later than today.")} value={form.eventDate} disabled={!dateEnabled} error={eventDateError || undefined} onChange={(value) => setForm({ ...form, eventDate: value })} />
   );
 
   return (
@@ -162,7 +162,7 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
             value={form.kind}
             enableSearch={false}
             disabled={!form.personId}
-            placeholder={form.personId ? "Choose the event" : tr("Choose the employee first")}
+            placeholder={form.personId ? tr("Choose the event") : tr("Choose the employee first")}
             onChange={(value) => setForm({ ...emptyReviewForm, personId: form.personId, kind: value })}
             options={Object.entries(REVIEW_KIND_LABEL).map(([value, label]) => ({ label, value }))}
           />
@@ -170,10 +170,10 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
 
         {isTransfer && (
           <>
-            <FormField label={form.kind === "LOCATION_TRANSFER" ? "Previous site / department" : "Previous department"} hint={tr("The department the employee works in now. It cannot be changed here.")}>
+            <FormField label={form.kind === "LOCATION_TRANSFER" ? tr("Previous site / department") : tr("Previous department")} hint={tr("The department the employee works in now. It cannot be changed here.")}>
               <Input readOnly value={plan?.departmentFrom ?? ""} placeholder={tr("The department of the employee")} />
             </FormField>
-            <FormField label={form.kind === "LOCATION_TRANSFER" ? "New site / department" : "New department"} required hint={tr("The head of this department closes the review.")}>
+            <FormField label={form.kind === "LOCATION_TRANSFER" ? tr("New site / department") : tr("New department")} required hint={tr("The head of this department closes the review.")}>
               <Select
                 value={form.departmentTo}
                 disabled={!kindReady}

@@ -167,7 +167,7 @@ export const AccessReviewView: React.FC = () => {
       setTotalItems(res.pagination?.total ?? 0);
       setTotalPages(res.pagination?.totalPages ?? 1);
     } catch {
-      showToast({ type: "error", message: "Failed to load access reviews" });
+      showToast({ type: "error", message: tr("Failed to load access reviews") });
     } finally {
       setLoading(false);
     }
@@ -220,7 +220,7 @@ export const AccessReviewView: React.FC = () => {
         reviewerUserId: reviewerUserId || undefined,
       });
       setIsCreateModalOpen(false);
-      showToast({ type: "success", message: "Access review campaign created" });
+      showToast({ type: "success", message: tr("Access review campaign created") });
       navigate(`${ROUTES.SECURITY.ACCESS_REVIEW}/${detail.campaign.id}`);
     } catch (e: any) {
       showToast({ type: "error", message: e?.response?.data?.message ?? "Failed to create campaign" });
@@ -595,7 +595,7 @@ export const AccessReviewView: React.FC = () => {
         onConfirm={() => void createCampaign()}
         title={tr("New Access Review Campaign")}
         description={tr("Snapshots every user's current access for periodic review (EU-GMP Annex 11).")}
-        confirmText="Create Campaign"
+        confirmText={tr("Create Campaign")}
         isLoading={creating}
         size="lg"
       >

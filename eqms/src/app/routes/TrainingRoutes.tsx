@@ -65,8 +65,10 @@ export function trainingRoutes() {
       <Route path="activities/:activityId" element={guardedTrainingElement("training.activity.view", <TrainingActivityDetailPage />)} />
       <Route path="activities/:activityId/edit" element={guardedTrainingElement("training.activity.organize", <TrainingActivityDetailPage mode="edit" />)} />
       <Route path="activities/:activityId/sessions/:sessionId/workspace" element={guardedTrainingElement("training.module.view", <TrainingSessionWorkspacePage />)} />
+      <Route path="activities/:activityId/prepare" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="prepare" />)} />
       <Route path="activities/:activityId/conduct" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="conduct" />)} />
-      <Route path="activities/:activityId/review" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="review" />)} />
+      {/* The review step of the content was retired (2026-11-23): a link to it, from a notice sent before, opens the approval. */}
+      <Route path="activities/:activityId/review" element={<Navigate to="../approve" relative="path" replace />} />
       <Route path="activities/:activityId/approve" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="approve" />)} />
       <Route path="activities/:activityId/confirm" element={guardedTrainingElement("training.activity.close", <TrainingActivityDetailPage mode="confirm" />)} />
       <Route path="activities/:activityId/participate" element={guardedTrainingElement("training.module.view", <TrainingActivityDetailPage mode="participate" />)} />

@@ -66,7 +66,7 @@ export const AccountInfoTab: React.FC<AccountInfoTabProps> = ({
         if (file) {
             // Validate file size (5MB)
             if (file.size > 5 * 1024 * 1024) {
-                showToast({ type: 'error', title: 'Error', message: 'File size exceeds 5MB limit.' });
+                showToast({ type: 'error', title: 'Error', message: tr('File size exceeds 5MB limit.') });
                 return;
             }
             // Validate file type

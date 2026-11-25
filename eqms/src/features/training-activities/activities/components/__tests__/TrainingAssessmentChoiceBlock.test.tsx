@@ -25,9 +25,9 @@ beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
 afterEach(cleanup);
 
 describe("Assessment from the library, in the tab Assessment of an activity", () => {
-  it("is optional: it says so and offers the choice to the organizer", () => {
+  it("says that only an approved assessment can be put into a training, and offers the choice to the organizer", () => {
     render(<TrainingAssessmentChoiceBlock activity={activity()} editable onChanged={vi.fn()} />);
-    expect(screen.getByText(/Optional\. Choose an effective test or checklist/)).toBeTruthy();
+    expect(screen.getByText(/Only an approved assessment can be put into a training/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose Assessment" })).toBeTruthy();
   });
 
@@ -56,7 +56,7 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
     expect((screen.getByRole("button", { name: "Choose" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(select, { target: { value: "d1" } });
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));
-    await waitFor(() => expect(api.choose).toHaveBeenCalledWith("a1", "d1"));
+    await waitFor(() => expect(api.choose).toHaveBeenCalledWith("a1", "d1", undefined));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith(next));
   });
 
@@ -89,11 +89,43 @@ describe("Assessment from the library, in the tab Assessment of an activity", ()
     expect(screen.getByText("TAS-0001 2.0.0")).toBeTruthy();
     expect(screen.getByText(/4 question\(s\), total 10 point\(s\)/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    await waitFor(() => expect(api.unchoose).toHaveBeenCalledWith("a1"));
+    await waitFor(() => expect(api.unchoose).toHaveBeenCalledWith("a1", undefined));
     cleanup();
     render(<TrainingAssessmentChoiceBlock activity={activity({ assessment: { ...CHOSEN, kind: "CHECKLIST", maxScore: null, itemCount: 6 } }, ["CHECKLIST"])} editable={false} onChanged={vi.fn()} />);
     expect(screen.getByText(/6 line\(s\), no score/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Choose Assessment" })).toBeNull();
+  });
+});
+
+describe("The assessment of one session", () => {
+  const two = () => activity({}, ["TEST", "TEST"]);
+  const session = (assessment: unknown) => ({ id: "s1", sessionNo: 2, status: "PLANNED", assessmentMethod: "TEST", topics: [], assessment }) as never;
+
+  it("chooses for that session only, and its title says which session", async () => {
+    api.approved.mockResolvedValue([{ id: "d1", code: "TAS-0001", revisionNumber: "2.0.0", name: "Quiz", kind: "QUESTIONS", itemCount: 4, maxScore: 10 }]);
+    api.choose.mockResolvedValue(two());
+    render(<TrainingAssessmentChoiceBlock activity={two()} session={session(null)} editable onChanged={vi.fn()} />);
+
+    expect(screen.getByText("Assessment from the library · Session 2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Choose Assessment" }));
+    const select = (await screen.findByLabelText("Assessment")) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(2));
+    fireEvent.change(select, { target: { value: "d1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Choose" }));
+    await waitFor(() => expect(api.choose).toHaveBeenCalledWith("a1", "d1", "s1"));
+  });
+
+  it("shows what the session chose, removes it for that session, and marks a choice made for all sessions", async () => {
+    api.unchoose.mockResolvedValue(two());
+    render(<TrainingAssessmentChoiceBlock activity={two()} session={session({ defCode: "TAS-0009", defRevision: "1.0.0", name: "Quiz of session 2", kind: "QUESTIONS", shared: false, itemCount: 5, maxScore: 10 })} editable onChanged={vi.fn()} />);
+    expect(screen.getByText("Quiz of session 2")).toBeTruthy();
+    expect(screen.queryByText("Chosen for all sessions")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(api.unchoose).toHaveBeenCalledWith("a1", "s1"));
+    cleanup();
+
+    render(<TrainingAssessmentChoiceBlock activity={two()} session={session({ defCode: "TAS-0001", defRevision: "2.0.0", name: "Old quiz", kind: "QUESTIONS", shared: true, itemCount: 4, maxScore: 10 })} editable onChanged={vi.fn()} />);
+    expect(screen.getByText("Chosen for all sessions")).toBeTruthy();
   });
 });

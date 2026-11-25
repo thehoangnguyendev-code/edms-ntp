@@ -18,6 +18,7 @@ import { PageBackgroundEditor } from './PageBackgroundEditor';
 import { LoginCarouselEditor } from './LoginCarouselEditor';
 import { ConfigTabs } from './ConfigTabs';
 import { ConfigHistory } from './ConfigHistory';
+import { LoadingSettings } from './LoadingSettings';
 import { GENERAL_TABS, changedGeneralTabs, revertGeneralTab, type GeneralTabId } from './generalTabs';
 import { DEFAULT_MENU_COLOR } from '@/config/menu-colors';
 import type { PageBackground } from '@/config/page-background';
@@ -142,11 +143,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
   const selectBrandImage = async (file: File | undefined, key: 'systemLogo' | 'systemSidebarCollapsedLogo' | 'systemFavicon', maxBytes: number) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast({ type: 'error', title: tr('Invalid file'), message: 'Please select an image file.' });
+      showToast({ type: 'error', title: tr('Invalid file'), message: tr('Please select an image file.') });
       return;
     }
     if (file.size > maxBytes) {
-      const label = key === 'systemFavicon' ? 'favicon' : key === 'systemSidebarCollapsedLogo' ? 'collapsed sidebar logo' : 'logo';
+      const label = key === 'systemFavicon' ? 'favicon' : key === 'systemSidebarCollapsedLogo' ? tr('collapsed sidebar logo') : 'logo';
       showToast({ type: 'error', title: tr('File too large'), message: `The ${label} must be smaller than ${Math.round(maxBytes / 1024)} KB.` });
       return;
     }
@@ -307,6 +308,12 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
               </div>
             </div>
             <AppShortcutSection config={config} onChange={onChange} />
+            <LoadingSettings
+              variant={config.appearance?.loadingStyle}
+              color={config.appearance?.loadingColor}
+              onStyleChange={(value) => onChange({ ...config, appearance: { ...config.appearance, loadingStyle: value } })}
+              onColorChange={(value) => onChange({ ...config, appearance: { ...config.appearance, loadingColor: value } })}
+            />
           </div>
           </div>
         )}

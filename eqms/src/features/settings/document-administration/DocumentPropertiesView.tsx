@@ -421,8 +421,8 @@ export const DocumentPropertiesView: React.FC = () => {
                   />
                   <p className="text-xs text-slate-500">
                     {documents.documentNumberEntryMode === "MANUAL"
-                      ? "The person creating the Document types the number."
-                      : "The system generates the number when the Document is first saved."}
+                      ? tr("The person creating the Document types the number.")
+                      : tr("The system generates the number when the Document is first saved.")}
                   </p>
                 </div>
                 {documents.documentNumberEntryMode === "MANUAL" && (

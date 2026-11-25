@@ -728,7 +728,7 @@ public class EmailNotificationService {
             return false;
         }
         String recipientLabel = payload == null ? recipientEmail
-                : payload.getOrDefault("fullName", payload.getOrDefault("recipientName", recipientEmail));
+                : payload.getOrDefault("recipientName", payload.getOrDefault("fullName", recipientEmail)); // recipientName first: fullName may name another person (the pending participant of a notice)
         try {
             boolean sent = sendRenderedEmailWithRetry(emailService, recipientEmail, subject, body, attachmentFileName, attachmentBytes);
             if (!sent) {

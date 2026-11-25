@@ -22,20 +22,20 @@ class TrainingWorkflowsTest {
     @Test
     void runningActivityShowsItsOwnStep() {
         WorkflowProgressResponse p = TrainingWorkflows.activity("IN_PROGRESS", null);
-        assertThat(labels(p)).containsExactly("Pending Document Approval", "Planned", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
-        assertThat(p.currentStepIndex()).isEqualTo(3);
+        assertThat(labels(p)).containsExactly("Pending Document Approval", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
+        assertThat(p.currentStepIndex()).isEqualTo(4);
         assertThat(ended(p)).isFalse();
         assertThat(p.terminalProgressStep()).isEmpty();
-        assertThat(TrainingWorkflows.activity("COMPLETED", null).currentStepIndex()).isEqualTo(5);
+        assertThat(TrainingWorkflows.activity("COMPLETED", null).currentStepIndex()).isEqualTo(6);
         assertThat(ended(TrainingWorkflows.activity("COMPLETED", null))).isFalse();
     }
 
     @Test
     void cancelledActivityEndsAtTheClosedStepAndReportsWhereItStopped() {
         WorkflowProgressResponse p = TrainingWorkflows.activity("CANCELLED", "NOTIFIED");
-        assertThat(p.steps()).hasSize(7);
-        assertThat(labels(p).get(6)).isEqualTo("Closed - Cancelled");
-        assertThat(p.currentStepIndex()).isEqualTo(6);
+        assertThat(p.steps()).hasSize(8);
+        assertThat(labels(p).get(7)).isEqualTo("Closed - Cancelled");
+        assertThat(p.currentStepIndex()).isEqualTo(7);
         assertThat(ended(p)).isTrue();
         assertThat(p.terminalProgressStep()).isEqualTo("Notified");
         assertThat(TrainingWorkflows.activity("CANCELLED", null).terminalProgressStep()).isEqualTo("Pending Document Approval");
@@ -44,7 +44,7 @@ class TrainingWorkflowsTest {
     @Test
     void newActivityStartsAtNew() {
         WorkflowProgressResponse p = TrainingWorkflows.newActivity();
-        assertThat(labels(p)).containsExactly("New", "Planned", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
+        assertThat(labels(p)).containsExactly("New", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
         assertThat(p.currentStepIndex()).isZero();
         assertThat(ended(p)).isFalse();
     }

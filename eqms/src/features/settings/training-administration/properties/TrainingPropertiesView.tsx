@@ -247,15 +247,13 @@ export const TrainingPropertiesView: React.FC = () => {
             />
             <p className="text-xs text-slate-500">
               {settings.trainingNumberEntryMode === "MANUAL"
-                ? "The person creating the document types the number."
-                : "The system issues the number when Requires Training is saved."}
+                ? tr("The person creating the document types the number.")
+                : tr("The system issues the number when Requires Training is saved.")}
             </p>
           </div>
           {settings.trainingNumberEntryMode === "MANUAL" && (
             <p className="mt-3 text-xs text-slate-500">
-              The number is typed as TRN/&lt;department code&gt;/&lt;YY&gt;-&lt;NNN&gt;. The screen warns at once when it is already used, and warns (without refusing) when the
-              year is not the current one. It can be changed, with a reason, until the training opens. A training created without that screen (for example by upgrading a
-              revision) still gets a number from the system, which can then be changed the same way.
+              {tr("The number is typed as TRN/<department code>/<YY>-<NNN>. The screen warns at once when it is already used, and warns (without refusing) when the year is not the current one. It can be changed, with a reason, until the training opens. A training created without that screen (for example by upgrading a revision) still gets a number from the system, which can then be changed the same way.")}
             </p>
           )}
         </FormSection>

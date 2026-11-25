@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { LoadingIndicator } from '../loading/LoadingIndicator';
 import { cn } from '../utils';
 import { useLanguage } from '@/i18n';
 
@@ -67,7 +67,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading ? (
           <span className="inline-flex items-center justify-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <LoadingIndicator size={16} color={variant === 'default' || variant === 'destructive' ? '#ffffff' : undefined} />
             <span>{resolvedLoadingText}</span>
           </span>
         ) : content}

@@ -177,8 +177,8 @@ export function ReportTemplateRevisions({
     <div>
       <div className="mb-3">
         <FilterSearchInput
-          aria-label="Search revisions"
-          placeholder="Search by revision, reason or person…"
+          aria-label={tr("Search revisions")}
+          placeholder={tr("Search by revision, reason or person…")}
           value={search}
           onChange={(value) => {
             setPage(1);
@@ -210,8 +210,8 @@ export function ReportTemplateRevisions({
         action={action}
         emptyState={
           <TableEmptyState
-            title="No revisions"
-            description="No revision matches your search."
+            title={tr("No revisions")}
+            description={tr("No revision matches your search.")}
           />
         }
         pagination={

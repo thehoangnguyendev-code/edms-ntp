@@ -78,9 +78,10 @@ class NotificationEscalationSchedulerTest {
     @Test
     void overdueUnreadNotification_escalationEnabled_dispatchesToResolvedAudience() {
         UserNotification notification = notification("test.event", Instant.now().minusSeconds(3600));
-        when(userNotificationRepository.findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(
-                UserNotification.STATUS_UNREAD)).thenReturn(List.of(notification));
+        when(userNotificationRepository.findAllByTypeInAndStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(
+                List.of("test.event"), UserNotification.STATUS_UNREAD)).thenReturn(List.of(notification));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(escalationEnabledPolicy(30)));
+        when(policyRepository.findAllByEscalationEnabledTrue()).thenReturn(List.of(escalationEnabledPolicy(30)));
         when(notificationDispatcher.resolveRecipients(any(), eq(List.of()))).thenReturn(List.of(escalationTarget));
 
         scheduler.escalateOverdueUnread();
@@ -92,9 +93,10 @@ class NotificationEscalationSchedulerTest {
     @Test
     void notYetOverdue_doesNotEscalate() {
         UserNotification notification = notification("test.event", Instant.now().minusSeconds(60)); // 1 min old
-        when(userNotificationRepository.findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(
-                UserNotification.STATUS_UNREAD)).thenReturn(List.of(notification));
+        when(userNotificationRepository.findAllByTypeInAndStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(
+                List.of("test.event"), UserNotification.STATUS_UNREAD)).thenReturn(List.of(notification));
         when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(escalationEnabledPolicy(30)));
+        when(policyRepository.findAllByEscalationEnabledTrue()).thenReturn(List.of(escalationEnabledPolicy(30)));
 
         scheduler.escalateOverdueUnread();
 
@@ -103,17 +105,12 @@ class NotificationEscalationSchedulerTest {
     }
 
     @Test
-    void escalationNotEnabledForPolicy_skipsWithoutDispatch() {
-        UserNotification notification = notification("test.event", Instant.now().minusSeconds(3600));
-        when(userNotificationRepository.findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(
-                UserNotification.STATUS_UNREAD)).thenReturn(List.of(notification));
-        NotificationPolicy policy = new NotificationPolicy();
-        policy.setEventCode("test.event");
-        policy.setEscalationEnabled(false);
-        when(policyRepository.findByEventCode("test.event")).thenReturn(Optional.of(policy));
+    void noPolicyWithEscalation_doesNotLoadNotifications() {
+        when(policyRepository.findAllByEscalationEnabledTrue()).thenReturn(List.of());
 
         scheduler.escalateOverdueUnread();
 
+        verify(userNotificationRepository, never()).findAllByTypeInAndStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(any(), any());
         verify(notificationDispatcher, never()).dispatch(any(), any(), any());
     }
 
@@ -125,6 +122,6 @@ class NotificationEscalationSchedulerTest {
 
         scheduler.escalateOverdueUnread();
 
-        verify(userNotificationRepository, never()).findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(any());
+        verify(policyRepository, never()).findAllByEscalationEnabledTrue();
     }
 }

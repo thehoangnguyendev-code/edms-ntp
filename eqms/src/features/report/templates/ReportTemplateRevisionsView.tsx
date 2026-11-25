@@ -204,7 +204,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
       header: "Approval",
       cell: (row) =>
         row.approvalBasis === "NOT_REQUIRED" ? (
-          <span className="whitespace-nowrap">Not required</span>
+          <span className="whitespace-nowrap">{tr("Not required")}</span>
         ) : row.approvedByName ? (
           <span className="whitespace-nowrap">{row.approvedByName}</span>
         ) : (
@@ -226,7 +226,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
     },
   ];
   const { layout, control } = useCustomColumnLayout(pendingApproval ? "reportRevisionsPending" : "reportRevisions", columns, rowAction);
-  const title = pendingApproval ? "Pending My Approval" : "All Revisions";
+  const title = pendingApproval ? tr("Pending My Approval") : tr("All Revisions");
 
   const statusOptions = pendingApproval
     ? [{ label: tr("Pending Approval"), value: "PENDING_APPROVAL" }]
@@ -304,7 +304,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
             loadingContent={<SectionLoading text="Loading report template revisions..." />}
             emptyState={
               <TableEmptyState
-                title={error ? tr("Unable to load revisions") : pendingApproval ? tr("Nothing Is Waiting For Your Approval") : "No Revisions Found"}
+                title={error ? tr("Unable to load revisions") : pendingApproval ? tr("Nothing Is Waiting For Your Approval") : tr("No Revisions Found")}
                 description={error || (pendingApproval ? tr("No revision is waiting for an approval you may give.") : tr("No revision matches these filters."))}
               />
             }

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Wireframe: Sessions của Training Activity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style type="text/tailwindcss">
+  @theme inline { --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif; --text-2xs: 0.625rem; --text-2xs--line-height: 0.875rem; }
+  /* Nấc Xám: màu nhấn emerald của dự án (primary #059669) thành xám; mọi thứ khác giữ nguyên */
+  :root[data-mau="xam"] {
+    --color-emerald-50: #f4f4f5; --color-emerald-100: #e4e4e7; --color-emerald-200: #d4d4d8; --color-emerald-500: #52525b;
+    --color-emerald-600: #3f3f46; --color-emerald-700: #27272a; --color-emerald-800: #18181b;
+  }
+</style>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+  /* thanh công cụ và khung lý do: của wireframe, ngoài bản thiết kế */
+  .wf-bar { position: relative; z-index: 50; display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 16px; overflow-x: auto; white-space: nowrap; background: #fff; border-bottom: 1px solid #e5e5e5; color: #737373; font: 14px/1 system-ui, -apple-system, sans-serif; }
+  @media (max-width: 1279px) { .wf-bar { mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); } }
+  .wf-bar *, .wf-reason * { box-sizing: border-box; }
+  .wf-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .wf-set { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 3px; border-radius: 10px; background: #f4f4f5; }
+  .wf-set a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 7px; color: #737373; text-decoration: none; }
+  .wf-set a:hover { color: #171717; }
+  .wf-switch { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; color: #737373; text-decoration: none; }
+  .wf-switch i { position: relative; width: 36px; height: 20px; border-radius: 10px; background: #e4e4e7; transition: background .15s; }
+  .wf-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2); transition: translate .15s; }
+  .wf-switch[aria-checked="true"] i { background: #171717; }
+  .wf-switch[aria-checked="true"] i::after { translate: 16px 0; }
+  .wf-set a[aria-current="page"], .wf-flags a[aria-pressed="true"] { background: #fff; color: #171717; font-weight: 500; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 0 0 1px rgb(0 0 0 / .04); }
+  .wf-bar svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .wf-flags a::before { content: ""; width: 12px; height: 12px; border: 1.5px solid #a3a3a3; border-radius: 3px; }
+  .wf-flags a[aria-pressed="true"]::before { border-color: #171717; background: #171717 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat; }
+  body[data-gon="1"] [data-wf-gon], body[data-bolap="1"] [data-wf-lap] { display: none !important; }
+  [data-wf-param="v"] a { justify-content: center; min-width: 32px; padding: 0 10px; }
+  [data-wf-param="v"] a[data-recommended]::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: #059669; }
+  .wf-menu { flex-shrink: 0; }
+  .wf-menu summary { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 8px; cursor: pointer; list-style: none; }
+  .wf-menu summary::-webkit-details-marker { display: none; }
+  .wf-menu summary:hover, .wf-menu[open] summary { background: #f4f4f5; }
+  .wf-menu b { color: #171717; font-weight: 500; }
+  .wf-popover { position: fixed; z-index: 60; display: grid; gap: 4px; min-width: 168px; padding: 4px; background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / .08); }
+  .wf-popover a { display: flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 6px; color: #404040; text-decoration: none; }
+  .wf-popover a:hover, .wf-popover a[aria-current="page"] { background: #f4f4f5; color: #171717; }
+  .wf-popover a[aria-current="page"] { font-weight: 500; }
+  .wf-reason { border-bottom: 1px solid #e5e5e5; background: #fafafa; color: #404040; font: 13px/1.5 system-ui, -apple-system, sans-serif; }
+  .wf-reason summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 44px; padding: 8px 16px; cursor: pointer; list-style: none; }
+  .wf-reason summary::-webkit-details-marker { display: none; }
+  .wf-reason-name { min-width: 0; overflow: hidden; color: #171717; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .wf-reason-tag { flex-shrink: 0; height: 20px; padding: 0 8px; border-radius: 10px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 500; line-height: 20px; }
+  .wf-reason-why { flex: 1; min-width: 0; overflow: hidden; color: #525252; text-overflow: ellipsis; white-space: nowrap; }
+  .wf-reason[open] .wf-reason-why { white-space: normal; }
+  .wf-reason-toggle { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; height: 28px; margin-left: auto; padding: 0 8px; border-radius: 6px; color: #171717; font-weight: 500; }
+  .wf-reason summary:hover .wf-reason-toggle { background: #f0f0f0; }
+  .wf-reason-toggle svg { width: 16px; height: 16px; transition: rotate .15s; }
+  .wf-reason[open] .wf-reason-toggle svg { rotate: 180deg; }
+  .wf-reason-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 4px 16px 16px; }
+  .wf-reason-cols { display: grid; max-width: 1120px; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px 32px; }
+  .wf-reason h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: #171717; font-size: 12px; font-weight: 600; }
+  .wf-reason h3 i { width: 6px; height: 6px; border-radius: 50%; background: #a3a3a3; }
+  .wf-reason h3 i[data-tone="uu"] { background: #16a34a; }
+  .wf-reason h3 i[data-tone="nhuoc"] { background: #d97706; }
+  .wf-reason ul { display: grid; gap: 2px; margin: 0; padding-left: 16px; }
+  .wf-reason p { margin: 0; }
+  .wf-reason-tips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #ebebeb; }
+  .wf-reason-tips h3 { margin: 0 4px 0 0; }
+  .wf-reason-tips button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; color: #262626; font: inherit; white-space: nowrap; cursor: pointer; }
+  .wf-reason-tips button:hover { border-color: #d4d4d4; background: #f5f5f5; }
+  .wf-reason-tips button svg { width: 14px; height: 14px; color: #737373; }
+  .wf-reason-tips button [data-icon="da-chep"], .wf-reason-tips button[data-copied] [data-icon="chep"] { display: none; }
+  .wf-reason-tips button[data-copied] [data-icon="da-chep"] { display: block; color: #16a34a; }
+  @media (max-width: 767px) {
+    .wf-reason-why { order: 1; flex-basis: 100%; }
+    .wf-reason-toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .wf-reason-tips h3 { flex-basis: 100%; }
+  }
+  @layer base { [data-wf-block] { position: relative; } }
+  [data-wf-block]::before { content: attr(data-wf-block); position: absolute; top: 4px; left: 4px; z-index: 5; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 9px; background: #1f1f1f; color: #fff; font-size: 11px; }
+  [data-wf-block][data-wf-block-out]::before { top: auto; bottom: 100%; }
+  body[data-frame] .wf-bar, body[data-frame] .wf-reason { display: none; }
+  /* khung app của wireframe */
+  .wf-sidebar { display: none; }
+  @media (min-width: 1024px) { .wf-sidebar { display: flex; } .wf-burger { display: none; } }
+  .wf-menu-layer { position: fixed; inset: 0; z-index: 45; }
+  .wf-menu-layer[hidden] { display: none; }
+  .skel { background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9); background-size: 200% 100%; animation: skel 1.2s linear infinite; border-radius: 8px; }
+  @keyframes skel { to { background-position: -200% 0; } }
+  .drawer { position: fixed; inset: 0; z-index: 40; display: none; }
+  body[data-dr="1"] .drawer { display: block; }
+  .drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 480px; max-width: 100%; background: #fff; box-shadow: -8px 0 24px rgb(15 23 42 / .12); display: flex; flex-direction: column; }
+  body[data-frame] .drawer-panel { width: 100%; }
+  input.wf-in, select.wf-in, textarea.wf-in { display: block; width: 100%; height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; font: inherit; font-size: 14px; color: #0f172a; }
+  textarea.wf-in { height: auto; padding: 8px 12px; }
+  select.wf-in { appearance: none; padding-right: 32px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") right 10px center / 16px no-repeat; text-overflow: ellipsis; }
+  .tbl input.wf-in, .tbl select.wf-in { padding-left: 8px; }
+  .tbl select.wf-in { padding-right: 26px; background-position: right 6px center; }
+  .tbl td { vertical-align: middle; }
+  input.wf-in:focus, select.wf-in:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgb(5 150 105 / .12); }
+  :root[data-mau="xam"] input.wf-in:focus { border-color: #3f3f46; box-shadow: 0 0 0 3px rgb(63 63 70 / .12); }
+  .wf-in[data-err] { border-color: #dc2626; background: #fef2f2; }
+</style>
+</head>
+<body>
+<nav class="wf-bar" aria-label="Wireframe">
+  <div class="wf-group">
+    <span style="font-size:14px">Phương án</span>
+    <span class="wf-set" data-wf-param="v">
+      <a data-value="a" title="A · Thẻ session + khung 3 bước (khuyên dùng)" data-recommended>A</a><a data-value="b" title="B · Bảng một trang">B</a><a data-value="c" title="C · Trình dẫn từng bước">C</a><a data-value="d" title="D · Chọn mẫu theo SOP trước">D</a>
+    </span>
+  </div>
+  <span class="wf-set wf-flags"><a data-wf-toggle="gon" data-on="1" data-off="0">Gọn chữ</a><a data-wf-toggle="bolap" data-on="1" data-off="0">Bỏ lặp</a></span>
+  <a class="wf-switch" data-wf-toggle="mau" data-on="mau" data-off="xam" role="switch">Màu <i></i></a>
+  <span class="wf-set" data-wf-param="kho">
+    <a data-value="desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Desktop</a>
+    <a data-value="mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>Mobile</a>
+  </span>
+  <details class="wf-menu">
+    <summary><span>Trạng thái:</span><b data-wf-current="tt"></b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div class="wf-popover" data-wf-param="tt"><a data-value="du-lieu">Có dữ liệu</a><a data-value="dang-tai">Đang tải</a><a data-value="rong">Rỗng</a><a data-value="loi">Lỗi</a><a data-value="khoa">Đã khoá</a></div>
+  </details>
+</nav>
+<details class="wf-reason" data-wf-reason>
+  <summary>
+    <span class="wf-reason-name"></span>
+    <span class="wf-reason-tag" hidden>Khuyên dùng</span>
+    <span class="wf-reason-why"></span>
+    <span class="wf-reason-toggle"><span>Ưu, nhược</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+  </summary>
+  <div class="wf-reason-body">
+    <div class="wf-reason-cols">
+      <section><h3><i data-tone="uu"></i>Ưu</h3><ul data-r="uu"></ul></section>
+      <section><h3><i data-tone="nhuoc"></i>Nhược</h3><ul data-r="nhuoc"></ul></section>
+      <section><h3><i></i>Hợp khi</h3><p data-r="hop"></p></section>
+    </div>
+    <div class="wf-reason-tips" data-r="tips"><h3>Gợi ý góp ý</h3></div>
+  </div>
+</details>
+
+<div id="wf-design"></div>
+
+<div class="drawer" id="drawer" aria-hidden="true"></div>
+<div class="wf-menu-layer" id="menu-layer" hidden><div class="absolute inset-0 bg-slate-900/30" data-close-menu></div><nav class="absolute inset-y-0 left-0 w-72 max-w-[85%] bg-white p-3 shadow-xl" id="menu-panel"></nav></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const state = { v: "a", gon: "0", bolap: "0", mau: "xam", kho: "desktop", tt: "du-lieu", uu: "0", dr: "0" };
+for (const key of Object.keys(state)) state[key] = params.get(key) || state[key];
+Object.assign(document.body.dataset, state);
+document.documentElement.dataset.mau = state.mau;
+if (params.has("frame")) document.body.dataset.frame = "1";
+const linkTo = (changes) => `?${new URLSearchParams({ ...state, ...changes })}`;
+const I = (name, cls = "h-4 w-4") => `<i data-lucide="${name}" class="${cls}"></i>`;
+
+/* ---------- dữ liệu thật của một hoạt động: đào tạo ban đầu của nhân viên mới (SOP.0003 5.1.1: ba phần, ba đơn vị) ---------- */
+const DUE = "14/12/2026";
+const SESSIONS = [
+  { n: 1, topic: "Occupational safety and company policy", unit: "HR", mode: "Classroom training", assess: "Test", trainer: "Tran Thi Mai", trainerOf: "Human Resources", date: "12/12/2026", place: "Training Room A", people: 2 },
+  { n: 2, topic: "General principles of GMP", unit: "QA", mode: "Classroom training", assess: "Test", trainer: "Le Van Hung", trainerOf: "Quality Assurance", date: "13/12/2026", place: "Training Room A", people: 2 },
+  { n: 3, topic: "SOP.0042 Gowning for classified areas", unit: "Production", mode: "Practical training", assess: "Checklist", trainer: "Pham Quoc Bao", trainerOf: "Production", date: "15/12/2026", place: "Gowning area, Production", people: 2, late: true },
+];
+const PEOPLE = ["Nguyen Thi Lan · E-0231", "Do Minh Tuan · E-0232"];
+const tt = state.tt;
+const locked = tt === "khoa";
+const err = tt === "loi";
+
+const chip = (t, tone = "slate") => `<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-medium ${tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-700" : tone === "red" ? "border-red-200 bg-red-50 text-red-700" : tone === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}">${t}</span>`;
+const btn = (label, kind = "outline", extra = "", icon = "") => {
+  const cls = kind === "primary" ? "bg-emerald-600 text-white hover:bg-emerald-700" : kind === "ghost" ? "text-slate-600 hover:bg-slate-100" : "border border-emerald-600 text-emerald-700 hover:bg-emerald-50 bg-white";
+  return `<button type="button" ${extra} class="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors ${cls}">${icon}${label}</button>`;
+};
+const iconBtn = (icon, label) => `<button type="button" aria-label="${label}" title="${label}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">${I(icon)}</button>`;
+const field = (label, input, extra = "") => `<label class="block ${extra}"><span class="mb-1 block text-xs font-medium text-slate-600">${label}</span>${input}</label>`;
+const inp = (value, ph = "", bad = false) => `<input class="wf-in" value="${value}" placeholder="${ph}" ${bad ? "data-err" : ""} ${locked ? "disabled" : ""}>`;
+const sel = (value, bad = false) => `<select class="wf-in" ${bad ? "data-err" : ""} ${locked ? "disabled" : ""}><option>${value}</option></select>`;
+const banner = () => {
+  if (locked) return `<div role="status" class="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">${I("lock", "mt-0.5 h-4 w-4 shrink-0")}<span>The sessions are locked: this activity is <b>Pending Approval</b>. To change them press <b>Edit Content</b> (a reason and a signature are required; the approvals start again).</span></div>`;
+  if (err) return `<div role="alert" class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">${I("alert-circle", "mt-0.5 h-4 w-4 shrink-0")}<span><b>Session 3 was not saved.</b> Choose the trainer of Session 3, then save again.</span></div>`;
+  return "";
+};
+const skeleton = () => `<div class="space-y-3 p-4 md:p-5">${[0, 1, 2].map(() => `<div class="flex gap-3"><div class="skel h-8 w-8 shrink-0 rounded-full"></div><div class="flex-1 space-y-2"><div class="skel h-4 w-2/3"></div><div class="skel h-3 w-1/2"></div></div></div>`).join("")}</div>`;
+const sessionMeta = (s, bad) => `<div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+  <span class="inline-flex items-center gap-1">${I("calendar", "h-3.5 w-3.5")}${s.date}</span>
+  <span class="inline-flex items-center gap-1" data-wf-gon>${I("map-pin", "h-3.5 w-3.5")}${s.place}</span>
+  <span class="inline-flex items-center gap-1 whitespace-nowrap ${bad ? "text-red-700 font-medium" : ""}">${I("user", "h-3.5 w-3.5")}${bad ? "Trainer missing" : `${s.trainer} <span data-wf-gon class="hidden text-slate-400 sm:inline">· ${s.trainerOf}</span>`}</span>
+  <span class="inline-flex items-center gap-1">${I("users", "h-3.5 w-3.5")}${s.people} people</span></div>`;
+
+/* ---------- khung app ---------- */
+const SIDE = [["layout-dashboard", "Dashboard"], ["graduation-cap", "Training Activities", true], ["table-2", "Training Matrix"], ["clipboard-list", "Training Requirements"], ["file-text", "Training Records"], ["user", "My Training"]];
+const sidebar = () => `<aside class="wf-sidebar sticky top-0 h-screen w-60 shrink-0 flex-col gap-1 border-r border-slate-200 bg-white p-3">
+  <div class="mb-3 flex h-9 items-center gap-2 px-2 text-sm font-semibold text-slate-900"><span class="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 text-white">${I("shield-check", "h-4 w-4")}</span>eQMS</div>
+  <div class="px-2 pb-1 text-2xs font-medium uppercase tracking-wide text-slate-400">Training Management</div>
+  ${SIDE.map(([ic, label, cur]) => `<a ${cur ? 'aria-current="page"' : ""} class="flex h-9 items-center gap-2 rounded-lg px-2 text-sm ${cur ? "bg-emerald-50 font-medium text-emerald-700" : "text-slate-600 hover:bg-slate-100"}">${I(ic, "h-4 w-4")}${label}</a>`).join("")}
+</aside>`;
+const TABS = ["General Information", "Participants", "Training Materials", "Assessment", "Signatures", "Audit Trail"];
+const header = () => `<header class="border-b border-slate-200 bg-white px-4 py-3 md:px-6">
+  <div class="flex items-center gap-2 text-xs text-slate-500"><button type="button" class="wf-burger -ml-1 inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-100" aria-label="Menu">${I("menu", "h-5 w-5")}</button>Training Management <span>/</span> Training Activities <span>/</span> <span class="text-slate-700">Edit Training Activity</span></div>
+  <div class="mt-1 flex flex-wrap items-center justify-between gap-2"><h1 class="text-lg font-semibold text-slate-900 md:text-xl">Edit Training Activity</h1><div class="flex gap-2">${btn("Back", "outline")}</div></div>
+  <div class="-mb-3 mt-3 flex gap-1 overflow-x-auto md:gap-3">${TABS.map((t, i) => `<a class="whitespace-nowrap border-b-2 px-2 py-2 text-sm ${i === 0 ? "border-emerald-600 font-medium text-emerald-700" : "border-transparent text-slate-500"}">${t}</a>`).join("")}</div></header>`;
+const activityBlock = () => `<section data-wf-block="1" class="rounded-xl border border-slate-200 bg-white p-4 md:p-5"><div class="grid grid-cols-1 gap-3 md:grid-cols-4 md:gap-4">
+  ${[["Training Number", "TRN/QA/26-014"], ["Department", "Quality Assurance"], ["Type", "Initial training"], ["Due Date", DUE]].map(([k, v]) => `<div><div class="text-xs font-medium text-slate-500">${k}</div><div class="mt-0.5 text-sm text-slate-900">${v}</div></div>`).join("")}</div></section>`;
+const descBlock = () => `<section data-wf-block="4" class="rounded-xl border border-slate-200 bg-white p-4 md:p-5"><label class="block"><span class="mb-1 block text-xs font-medium text-slate-600">Description <span class="text-red-600">*</span></span><textarea class="wf-in" rows="2" ${locked ? "disabled" : ""}>Initial training of two new Production employees: company policy and safety, GMP principles, gowning.</textarea></label></section>`;
+const footer = () => `<div data-wf-block="5" class="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-4 py-3 md:px-6">
+  ${locked
+    ? `<span class="text-sm text-slate-500">Session</span><select class="wf-in !w-60"><option>Session 1 · 12/12/2026</option><option>Session 2 · 13/12/2026</option><option>Session 3 · 15/12/2026</option></select>${btn("Postpone")}${btn("Request exception")}<span class="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400" title="Locked once the participants are notified">Change</span><span class="flex-1"></span>${btn("Edit Content")}${btn("Cancel")}`
+    : `${btn("Select Approver")}${btn("Cancel")}<span class="flex-1"></span>${btn("Save")}`}</div>`;
+
+/* ---------- A · thẻ session + khung 3 bước ---------- */
+function renderA() {
+  const head = `<header class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 md:px-5">
+    <div><h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-900">Sessions <span class="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-600">${tt === "rong" ? 0 : SESSIONS.length}</span></h2>
+    <p data-wf-gon class="mt-0.5 text-xs text-slate-500">One Training Number covers all of them; each has its own topics, trainer, date, place and people.</p></div>
+    <div class="flex gap-2">${locked ? "" : `${tt === "rong" ? "" : btn("Copy session", "outline", 'data-open-drawer="copy"', I("copy", "h-4 w-4"))}${btn("Add session", "primary", 'data-open-drawer="new"', I("plus", "h-4 w-4"))}`}</div></header>`;
+  let body;
+  if (tt === "dang-tai") body = skeleton();
+  else if (tt === "rong") body = `<div class="px-4 py-10 text-center md:px-5"><div class="mx-auto grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">${I("calendar-plus", "h-5 w-5")}</div><p class="mt-3 text-sm font-medium text-slate-900">No session yet</p><p class="mt-1 text-sm text-slate-500">The people, the content and the approval all belong to a session. Add the first one.</p><div class="mt-4">${btn("Add session", "primary", 'data-open-drawer="new"', I("plus", "h-4 w-4"))}</div></div>`;
+  else body = `<ul class="divide-y divide-slate-100">${SESSIONS.map((s) => `<li class="flex items-start gap-3 px-4 py-3 md:px-5">
+      <span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-700">${s.n}</span>
+      <div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-medium text-slate-900">${s.topic}</span>${chip(s.unit)}${s.late ? chip("After the due date", "amber") : ""}</div>
+        <div class="mt-1 flex flex-wrap gap-1.5" data-wf-gon>${chip(s.mode)}${chip(s.assess)}</div>
+        ${sessionMeta(s, err && s.n === 3)}</div>
+      ${locked ? "" : `<div class="flex shrink-0 items-center">${iconBtn("users", "People of this session")}${iconBtn("copy", "Copy this session")}${iconBtn("pencil", "Edit")}</div>`}</li>`).join("")}</ul>
+    <div data-wf-lap class="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500 md:px-5 rounded-b-xl"><span>3 sessions</span><span>3 trainers</span><span>2 people</span><span class="text-amber-700">1 session after the due date (${DUE})</span></div>`;
+  return `<section data-wf-block="2" class="rounded-xl border border-slate-200 bg-white">${head}${banner() ? `<div class="px-4 pt-3 md:px-5">${banner()}</div>` : ""}${body}</section>`;
+}
+function drawerA(kind) {
+  const copy = kind === "copy";
+  return `<div class="absolute inset-0 bg-slate-900/30" data-close-drawer></div><div class="drawer-panel" role="dialog" aria-label="${copy ? "Copy session" : "Add session"}">
+    <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3"><h2 class="text-base font-semibold text-slate-900">${copy ? "Copy session" : "Add session"} <span class="text-sm font-normal text-slate-500">· Session 4</span></h2>${iconBtn("x", "Close")}</div>
+    <ol class="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-xs">${["What", "Who", "When and where"].map((t, i) => `<li class="flex items-center gap-2"><span class="grid h-5 w-5 place-items-center rounded-full ${i === 0 ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500"} text-2xs font-semibold">${i + 1}</span><span class="${i === 0 ? "font-medium text-slate-900" : "text-slate-500"}">${t}</span>${i < 2 ? '<span class="h-px w-4 bg-slate-200"></span>' : ""}</li>`).join("")}</ol>
+    <div class="flex-1 space-y-4 overflow-y-auto p-4">
+      ${copy ? `<div class="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-sm">${field("Copy from", sel("Session 2 · General principles of GMP"))}<p class="mt-2 text-xs text-slate-500">Topics, mode, assessment, trainer and place are filled in. Change the date and the group.</p></div>` : ""}
+      ${field("Training topics <span class='text-red-600'>*</span>", `<div class="space-y-2"><div class="flex gap-2"><input class="wf-in" value="${copy ? "General principles of GMP" : ""}" placeholder="What will be taught, e.g., SOP.0009 Qualification of equipment"><button type="button" class="h-9 shrink-0 rounded-lg border border-slate-200 px-2 text-slate-500" aria-label="Remove topic">${I("x")}</button></div><button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-emerald-700">${I("plus", "h-4 w-4")}Add another topic</button></div>`)}
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${field("Mode", sel("Classroom training"))}${field("Assessment", sel("Test (SOP default)"))}</div>
+      <p data-wf-gon class="text-xs text-slate-500">Next: who teaches and who attends (the same people can attend several sessions of an activity), then when and where.</p>
+    </div>
+    <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-3">${btn("Cancel", "ghost")}<div class="flex gap-2">${btn("Next: Who teaches", "primary")}</div></div></div>`;
+}
+
+/* ---------- B · bảng một trang ---------- */
+function renderB() {
+  const cell = (s, k, bad) => k === "topic" ? inp(s.topic) : k === "mode" ? sel(s.mode) : k === "assess" ? sel(s.assess) : k === "trainer" ? (bad ? sel("Choose a trainer…", true) : sel(s.trainer)) : k === "date" ? inp(s.date) : inp(s.place);
+  const cols = [["topic", "Topics", "min-w-[220px]"], ["mode", "Mode", "min-w-[150px]"], ["assess", "Assessment", "min-w-[120px]"], ["trainer", "Trainer", "min-w-[170px]"], ["date", "Date", "min-w-[110px]"], ["place", "Place", "min-w-[170px]"]];
+  const rows = tt === "rong" ? [] : SESSIONS;
+  const table = tt === "dang-tai" ? skeleton() : `<div class="md:overflow-x-visible"><table class="tbl w-full text-left text-sm md:table-fixed"><colgroup class="hidden md:table-column-group"><col style="width:4%"><col style="width:21%"><col style="width:13%"><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:13%"><col style="width:6%"><col style="width:5%"></colgroup><thead class="hidden md:table-header-group"><tr class="border-b border-slate-100 text-2xs font-medium uppercase tracking-wide text-slate-500 md:text-xs"><th class="px-4 py-2 md:px-5 md:pr-1">#</th>${cols.map(([, t]) => `<th class="px-1 py-2">${t}</th>`).join("")}<th class="px-1 py-2">People</th><th></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">${rows.map((s) => `<tr class="block md:table-row"><td class="block px-4 pt-3 font-semibold text-slate-700 md:table-cell md:px-5 md:py-2 md:pr-1">${s.n}${s.late ? ` <span title="After the due date (${DUE})" class="ml-1 inline-flex align-middle text-amber-600">${I("alert-triangle", "h-4 w-4")}</span><span class="ml-1 text-xs font-normal text-amber-700 md:hidden">After the due date</span>` : ""}</td>${cols.map(([k, t, w]) => `<td class="block px-4 py-1 md:table-cell md:px-1 md:py-2"><span class="mb-0.5 block text-2xs text-slate-500 md:hidden">${t}</span>${cell(s, k, err && s.n === 3 && k === "trainer")}</td>`).join("")}<td class="block px-4 py-1 md:table-cell md:px-1 md:py-2"><button type="button" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-2 text-sm text-slate-700">${I("users", "h-4 w-4")}${s.people}</button></td><td class="block px-4 pb-3 md:table-cell md:px-1 md:py-2"><div class="flex">${locked ? "" : `${iconBtn("copy", "Duplicate row")}${iconBtn("trash-2", "Remove row")}`}</div></td></tr>`).join("")}${rows.length === 0 && tt !== "dang-tai" ? `<tr><td colspan="9" class="px-5 py-8 text-center text-sm text-slate-500">No session yet. Add a row, or add several dates at once.</td></tr>` : ""}</tbody></table></div>`;
+  const tools = locked || tt === "dang-tai" ? "" : `<div class="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3 md:px-5">${btn("Add row", "outline", "", I("plus", "h-4 w-4"))}${btn("Add on several dates", "outline", "", I("calendar-range", "h-4 w-4"))}<span data-wf-gon class="text-xs text-slate-500">Several dates: one row for each, with the same topics, trainer and place.</span></div>
+    <div data-wf-lap class="flex flex-wrap items-center gap-1.5 border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-xs text-slate-500 md:px-5">Repeat on: ${["12/12/2026", "13/12/2026"].map((d) => chip(d + " ×", "emerald")).join("")}<button type="button" class="rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-2xs text-slate-500">+ date</button></div>`;
+  return `<section data-wf-block="2" class="rounded-xl border border-slate-200 bg-white"><header class="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 md:px-5"><h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-900">Sessions <span class="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-600">${rows.length}</span></h2><span data-wf-gon class="text-xs text-slate-500">Edit in the row; the changes are saved with Save.</span></header>${banner() ? `<div class="px-4 pt-3 md:px-5">${banner()}</div>` : ""}${table}${tools}</section>`;
+}
+
+/* ---------- C · trình dẫn từng bước ---------- */
+function renderC() {
+  const steps = ["Topics", "Sessions", "People"];
+  const stepper = `<ol class="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-sm md:px-5">${steps.map((t, i) => `<li class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full text-xs font-semibold ${i === 1 ? "bg-emerald-600 text-white" : i === 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}">${i === 0 ? I("check", "h-3.5 w-3.5") : i + 1}</span><span class="${i === 1 ? "font-medium text-slate-900" : "text-slate-500"} ${i === 1 ? "" : "hidden sm:inline"}">${t}</span>${i < 2 ? '<span class="h-px w-4 bg-slate-200 sm:w-8"></span>' : ""}</li>`).join("")}</ol>`;
+  const form = (s, open, bad) => open ? `<div class="rounded-xl border border-emerald-200 bg-white p-3 md:p-4"><div class="mb-3 flex items-center justify-between"><span class="text-sm font-semibold text-slate-900">Session ${s.n}</span>${chip(s.unit)}</div><div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+      ${field("Topic", inp(s.topic), "md:col-span-2")}${field("Mode", sel(s.mode))}${field("Assessment", sel(s.assess))}${field("Trainer", bad ? sel("Choose a trainer…", true) : sel(s.trainer))}${field("Date", inp(s.date))}${field("Place", inp(s.place), "md:col-span-2")}</div></div>`
+    : `<div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 md:px-4"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">${s.n}</span><div class="min-w-0 flex-1"><div class="truncate text-sm font-medium text-slate-900">${s.topic}</div><div class="text-xs text-slate-500">${s.date} · ${s.trainer}</div></div>${s.late ? chip("After due", "amber") : ""}${locked ? "" : iconBtn("pencil", "Edit")}</div>`;
+  let body;
+  if (tt === "dang-tai") body = skeleton();
+  else if (tt === "rong") body = `<div class="space-y-3 p-4 md:p-5"><p class="text-sm text-slate-500">No session yet. Fill in the first one.</p>${form({ n: 1, topic: "", unit: "—", mode: "Classroom training", assess: "Test", trainer: "Choose a trainer…", date: "", place: "" }, true, false)}</div>`;
+  else body = `<div class="space-y-3 p-4 md:p-5">${SESSIONS.map((s) => form(s, !locked && s.n === (err ? 3 : 1), err && s.n === 3)).join("")}${locked ? "" : `<button type="button" class="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50">${I("plus", "h-4 w-4")}Add another session</button>`}</div>`;
+  return `<section data-wf-block="2" class="rounded-xl border border-slate-200 bg-white"><header class="flex items-center justify-between border-b border-slate-200 px-4 py-3 md:px-5"><h2 class="text-sm font-semibold text-slate-900">Plan the training <span data-wf-gon class="font-normal text-slate-500">· step 2 of 3</span></h2></header>${stepper}${banner() ? `<div class="px-4 pt-3 md:px-5">${banner()}</div>` : ""}${body}
+    ${locked ? "" : `<div class="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 md:px-5">${btn("Back: Topics", "ghost")}${btn("Next: People", "primary")}</div>`}</section>`;
+}
+
+/* ---------- D · chọn mẫu theo SOP trước ---------- */
+const PATTERNS = [
+  ["user", "One session", "One topic, one group, one day.", false],
+  ["users", "Same topic, several groups", "Shifts or groups: same content, other dates.", false],
+  ["calendar-range", "Several topics, different dates", "Same organizer, one session per topic (SOP 5.1.4).", false],
+  ["graduation-cap", "Initial training of new employees", "Three parts: HR, QA, the department (SOP 5.1.1).", true],
+  ["building-2", "One SOP, one session per unit", "Each unit head trains the unit (SOP 5.3.6).", false],
+];
+function renderD() {
+  const tiles = `<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">${PATTERNS.map(([ic, t, d, on]) => { const sel_ = on && tt !== "rong"; return `<button type="button" ${locked ? "disabled" : ""} aria-pressed="${sel_}" class="flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${sel_ ? "border-emerald-600 bg-emerald-50/60" : "border-slate-200 bg-white hover:bg-slate-50"} ${locked ? "opacity-60" : ""}"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg ${sel_ ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"}">${I(ic, "h-5 w-5")}</span><span class="min-w-0"><span class="block text-sm font-medium text-slate-900">${t}</span><span data-wf-gon class="mt-0.5 block text-xs text-slate-500">${d}</span></span></button>`; }).join("")}</div>`;
+  const draft = tt === "rong" ? `<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 px-4 py-6 text-center text-sm text-slate-500">Choose the kind of training: the sessions are drafted from it, and you change what differs.</div>`
+    : tt === "dang-tai" ? skeleton()
+    : `<div class="rounded-xl border border-slate-200 bg-white"><div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 md:px-4"><span class="text-sm font-medium text-slate-900">Draft: 3 sessions from “Initial training of new employees”</span><span data-wf-gon class="text-xs text-slate-500">Trainers are chosen from the department of each part.</span></div>
+      <ul class="divide-y divide-slate-100">${SESSIONS.map((s) => `<li class="grid grid-cols-1 items-center gap-2 px-3 py-2.5 md:grid-cols-[28px_minmax(0,1.6fr)_minmax(0,1fr)_120px_auto] md:px-4"><span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-700">${s.n}</span><div class="min-w-0"><div class="truncate text-sm font-medium text-slate-900">${s.topic}</div><div class="flex gap-1.5">${chip(s.unit)}${s.late ? chip("After the due date", "amber") : ""}</div></div>${err && s.n === 3 ? sel("Choose a trainer…", true) : sel(s.trainer)}${inp(s.date)}<span class="flex justify-end">${locked ? "" : btn("Details", "ghost")}</span></li>`).join("")}</ul>
+      ${locked ? "" : `<div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-3 py-2.5 md:px-4 rounded-b-xl"><span data-wf-lap class="text-xs text-slate-500">3 sessions · 3 trainers to confirm · 2 people go to every session</span>${btn("Create 3 sessions", "primary")}</div>`}</div>`;
+  return `<section data-wf-block="2" class="rounded-xl border border-slate-200 bg-white"><header class="border-b border-slate-200 px-4 py-3 md:px-5"><h2 class="text-sm font-semibold text-slate-900">Sessions</h2><p data-wf-gon class="mt-0.5 text-xs text-slate-500">Start from the kind of training the SOP describes.</p></header>${banner() ? `<div class="px-4 pt-3 md:px-5">${banner()}</div>` : ""}<div class="space-y-3 p-4 md:p-5">${tiles}${draft}</div></section>`;
+}
+
+/* ---------- khung lý do ---------- */
+const REASONS = {
+  a: { name: "A · Thẻ session + khung 3 bước", rec: true,
+    why: "Việc chính là thêm và xem các buổi: danh sách thẻ luôn thấy ngay, thêm bằng khung bên cạnh nên không mất trang.",
+    uu: ["Thấy hết các buổi và cảnh báo (quá hạn) ngay trên một danh sách", "“Sao chép từ session” điền sẵn chủ đề, giảng viên, nơi; chỉ đổi ngày và nhóm", "Hợp điện thoại: khung thành màn hình đầy, ba bước thành ba màn"],
+    nhuoc: ["Thêm 6 đến 8 buổi cùng nội dung vẫn phải mở khung nhiều lần (nên có thêm “Lặp theo ngày”)"],
+    hop: "1 đến 8 session, người tổ chức thêm và sửa từng buổi, dùng cả máy tính lẫn điện thoại.",
+    tips: ["Bỏ khối 3", "Thêm ô Lặp theo ngày ở bước 3 của khung", "Đưa nút Add session xuống cuối danh sách", "Thoáng hơn, tăng khoảng cách giữa các thẻ"] },
+  b: { name: "B · Bảng một trang", rec: false,
+    why: "Người quen nhập nhanh: mỗi dòng một buổi, sửa ngay trên dòng, dán nhiều ngày một lúc.",
+    uu: ["Nhập nhiều buổi nhanh nhất, sửa ngay tại dòng", "“Add on several dates” tạo nhiều dòng cùng nội dung", "Thấy mọi thông tin cạnh nhau để so"],
+    nhuoc: ["Rộng: ở 1280 chỉ vừa khi bỏ khung bên", "Điện thoại phải xếp dòng thành khối, mỗi ô một dòng nên dài", "Dễ để trống giảng viên hay địa điểm vì không có bước nào ép"],
+    hop: "Người quản lý đào tạo của phòng, thao tác bằng bàn phím, nhiều buổi cùng nội dung.",
+    tips: ["Bỏ cột People", "Cố định cột Topics khi cuộn ngang", "Thêm cột Unit", "Chữ lớn hơn"] },
+  c: { name: "C · Trình dẫn từng bước", rec: false,
+    why: "Dẫn người mới đi đúng thứ tự SOP: chủ đề, các buổi, người tham gia.",
+    uu: ["Đi đúng thứ tự: không quên người tham gia", "Mỗi lần một việc, ít nhầm", "Rõ nhất cho người chưa quen quy trình"],
+    nhuoc: ["Chậm với người đã quen: luôn phải bấm Next", "Sửa một buổi riêng phải quay lại bước 2", "Thêm một cấp điều hướng ngoài các tab sẵn có"],
+    hop: "Người mới tổ chức lần đầu, hoặc đào tạo ban đầu có nhiều phần.",
+    tips: ["Bỏ thanh bước, giữ các thẻ", "Cho nhảy thẳng sang bước People", "Mở sẵn buổi đầu", "Nút Next to hơn"] },
+  d: { name: "D · Chọn mẫu theo SOP trước", rec: false,
+    why: "Mỗi tình huống của SOP (đào tạo ban đầu, mỗi đơn vị một buổi…) tự dựng sẵn các buổi, người dùng chỉ sửa chỗ khác.",
+    uu: ["Đào tạo ban đầu tạo ngay ba buổi (HCNS, QA, đơn vị) đúng SOP 5.1.1", "Một SOP, mỗi đơn vị một buổi: tạo đủ buổi một lúc", "Người mới thấy được các tình huống SOP cho phép"],
+    nhuoc: ["Cần luật gợi ý từng mẫu: giảng viên theo phòng, nhóm theo đơn vị (logic do bạn nối)", "Thêm một bước chọn mẫu cho trường hợp đơn giản", "Cần dữ liệu đơn vị của từng phần đào tạo ban đầu"],
+    hop: "Phòng QA tổ chức đào tạo ban đầu và đào tạo định kỳ cho nhiều đơn vị.",
+    tips: ["Mẫu đơn giản “One session” hiện đầu tiên và chọn sẵn", "Bỏ mẫu One SOP per unit", "Cho sửa tên mẫu", "Hiện cả hàng nút Details"] },
+};
+const reason = REASONS[state.v];
+const rb = document.querySelector("[data-wf-reason]");
+rb.querySelector(".wf-reason-name").textContent = reason.name;
+rb.querySelector(".wf-reason-tag").hidden = !reason.rec;
+rb.querySelector(".wf-reason-why").textContent = reason.why;
+for (const k of ["uu", "nhuoc"]) rb.querySelector(`[data-r="${k}"]`).innerHTML = reason[k].map((t) => `<li>${t}</li>`).join("");
+rb.querySelector('[data-r="hop"]').textContent = reason.hop;
+rb.querySelector('[data-r="tips"]').insertAdjacentHTML("beforeend", reason.tips.map((t) => `<button type="button" data-copy="${t}">${t}<svg data-icon="chep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg data-icon="da-chep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>`).join(""));
+
+/* ---------- ráp trang ---------- */
+const sessionArea = { a: renderA, b: renderB, c: renderC, d: renderD }[state.v]();
+const page = `<div class="flex min-h-screen bg-slate-50">${sidebar()}<div class="wf-main flex min-w-0 flex-1 flex-col">${header()}
+  <main class="flex-1 space-y-3 p-3 md:space-y-4 md:p-6">${activityBlock()}${sessionArea}${descBlock()}</main>${footer()}</div></div>`;
+if (state.kho === "mobile" && !params.has("frame")) {
+  const src = `?${new URLSearchParams({ ...state, kho: "desktop", frame: "1" })}`;
+  document.getElementById("wf-design").innerHTML = `<div style="display:grid;place-items:center;padding:24px"><iframe src="${src}" title="Mobile" style="width:375px;max-width:100%;height:812px;border:1px solid #ddd;border-radius:24px;background:#fff"></iframe></div>`;
+} else document.getElementById("wf-design").innerHTML = page;
+new MutationObserver(() => { if (document.querySelector("i[data-lucide]")) lucide.createIcons(); }).observe(document.body, { childList: true, subtree: true });
+lucide.createIcons();
+
+/* ---------- thanh công cụ ---------- */
+function updateLinks() {
+  for (const set of document.querySelectorAll("[data-wf-param]")) {
+    for (const link of set.querySelectorAll("a")) {
+      link.href = linkTo({ [set.dataset.wfParam]: link.dataset.value });
+      if (state[set.dataset.wfParam] !== link.dataset.value) continue;
+      link.setAttribute("aria-current", "page");
+      const cur = document.querySelector(`[data-wf-current="${set.dataset.wfParam}"]`);
+      if (cur) cur.textContent = link.textContent.trim();
+    }
+  }
+  for (const toggle of document.querySelectorAll("[data-wf-toggle]")) {
+    const param = toggle.dataset.wfToggle;
+    const isOn = state[param] === toggle.dataset.on;
+    toggle.setAttribute(toggle.getAttribute("role") === "switch" ? "aria-checked" : "aria-pressed", String(isOn));
+    toggle.href = linkTo({ [param]: isOn ? toggle.dataset.off : toggle.dataset.on });
+  }
+}
+updateLinks();
+rb.open = state.uu === "1";
+rb.addEventListener("toggle", () => { state.uu = rb.open ? "1" : "0"; history.replaceState(null, "", linkTo({})); updateLinks(); });
+const barMenus = [...document.querySelectorAll(".wf-menu")];
+for (const m of barMenus) m.addEventListener("toggle", () => { const r = m.querySelector("summary").getBoundingClientRect(); Object.assign(m.querySelector(".wf-popover").style, { top: `${r.bottom + 6}px`, left: `${r.left}px` }); });
+document.addEventListener("click", (e) => { for (const m of barMenus) if (!m.contains(e.target)) m.open = false; });
+for (const b of document.querySelectorAll("[data-copy]")) b.addEventListener("click", async () => { try { await navigator.clipboard.writeText(b.dataset.copy); } catch {} b.setAttribute("data-copied", ""); setTimeout(() => b.removeAttribute("data-copied"), 1500); });
+
+/* ---------- khung thêm session (phương án A) ---------- */
+const drawer = document.getElementById("drawer");
+function openDrawer(kind) { drawer.innerHTML = drawerA(kind); document.body.dataset.dr = "1"; drawer.setAttribute("aria-hidden", "false"); lucide.createIcons(); }
+function closeDrawer() { document.body.dataset.dr = "0"; drawer.innerHTML = ""; drawer.setAttribute("aria-hidden", "true"); }
+document.addEventListener("click", (e) => {
+  const o = e.target.closest("[data-open-drawer]");
+  if (o) { openDrawer(o.dataset.openDrawer); return; }
+  if (e.target.closest("[data-close-drawer]") || e.target.closest('[aria-label="Close"]')) closeDrawer();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDrawer(); document.getElementById("menu-layer").hidden = true; } });
+const menuLayer = document.getElementById("menu-layer");
+document.getElementById("menu-panel").innerHTML = `<div class="mb-3 flex h-9 items-center gap-2 px-2 text-sm font-semibold text-slate-900"><span class="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 text-white">${I("shield-check", "h-4 w-4")}</span>eQMS</div><div class="px-2 pb-1 text-2xs font-medium uppercase tracking-wide text-slate-400">Training Management</div>${SIDE.map(([ic, label, cur]) => `<a ${cur ? 'aria-current="page"' : ""} class="flex h-10 items-center gap-2 rounded-lg px-2 text-sm ${cur ? "bg-emerald-50 font-medium text-emerald-700" : "text-slate-600"}">${I(ic, "h-4 w-4")}${label}</a>`).join("")}`;
+document.addEventListener("click", (e) => { if (e.target.closest(".wf-burger")) { menuLayer.hidden = false; lucide.createIcons(); } if (e.target.closest("[data-close-menu]")) menuLayer.hidden = true; });
+if (state.dr === "1" && state.v === "a") openDrawer("new");
+
+/* số khối không đè chữ */
+function placeBlockNumbers() {
+  const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  for (const block of document.querySelectorAll("[data-wf-block]")) {
+    const r = block.getBoundingClientRect(); if (!r.width) continue;
+    const n = { left: r.left + 4, top: r.top + 4, right: r.left + 22, bottom: r.top + 22 };
+    const rects = [...block.querySelectorAll("svg, img")].map((x) => x.getBoundingClientRect());
+    const w = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    for (let t = w.nextNode(); t; t = w.nextNode()) { if (!t.textContent.trim()) continue; const range = document.createRange(); range.selectNodeContents(t); rects.push(...range.getClientRects()); }
+    block.toggleAttribute("data-wf-block-out", rects.some((x) => x.width > 0 && overlap(x, n)));
+  }
+}
+requestAnimationFrame(() => requestAnimationFrame(placeBlockNumbers));
+addEventListener("resize", placeBlockNumbers);
+</script>
+</body>
+</html>

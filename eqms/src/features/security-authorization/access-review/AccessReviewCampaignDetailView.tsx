@@ -550,7 +550,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
   const { layout: itemLayout, control: itemControl } = useCustomColumnLayout("access-review.campaign-items", itemColumns);
 
   if (loading && !detail) {
-    return <FullPageLoading text="Loading access review campaign..." />;
+    return <FullPageLoading text={tr("Loading access review campaign...")} />;
   }
 
   if (!detail) {

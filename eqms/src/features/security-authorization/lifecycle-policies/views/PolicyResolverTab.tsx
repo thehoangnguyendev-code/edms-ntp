@@ -101,7 +101,7 @@ export const PolicyResolverTab: React.FC = () => {
   // until its parent is chosen, and only what belongs to that parent is offered.
   const workflowOptions: SelectOption[] = useMemo(
     () => [
-      { label: fields.moduleKey ? "Select workflow" : "Select a module first", value: "" },
+      { label: fields.moduleKey ? tr("Select workflow") : tr("Select a module first"), value: "" },
       ...(options?.workflowOptions ?? [])
         .filter((workflow) => Boolean(fields.moduleKey) && workflow.moduleKey === fields.moduleKey)
         .map((workflow) => ({ label: workflow.label, value: workflow.value })),
@@ -122,7 +122,7 @@ export const PolicyResolverTab: React.FC = () => {
           .sort()
       : [];
     return [
-      { label: fields.workflowKey ? "Select resource type" : "Select a workflow first", value: "" },
+      { label: fields.workflowKey ? "Select resource type" : tr("Select a workflow first"), value: "" },
       ...types.map((objectType) => ({ label: objectType, value: objectType })),
     ];
   }, [fields.workflowKey, options]);
@@ -137,7 +137,7 @@ export const PolicyResolverTab: React.FC = () => {
         : [];
     const seen = new Set<string>();
     return [
-      { label: fields.objectType ? "Select action" : "Select a resource type first", value: "" },
+      { label: fields.objectType ? tr("Select action") : tr("Select a resource type first"), value: "" },
       ...relevant
         .filter((action) => !seen.has(action.value) && Boolean(seen.add(action.value)))
         .map((action) => ({ label: action.label || action.value, value: action.value })),

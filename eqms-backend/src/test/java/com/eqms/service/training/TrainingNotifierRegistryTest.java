@@ -149,7 +149,7 @@ class TrainingNotifierRegistryTest {
     @Test
     void everyCodeTheTrainingServicesRaiseIsInTheRegistrySeed() throws IOException {
         // the event is the first argument of send and tell, or the third argument of the helpers of the matrix and the requirement; a call that passes it on in a variable is the helper itself
-        Pattern direct = Pattern.compile("(?:notifier\\.send|\\btell)\\(\\s*\"(TRAINING_[A-Z_]+)\"|\\b(?:tell|tellPreparer)\\([^,\\n]+,[^,\\n]+,\\s*\"(TRAINING_[A-Z_]+)\"");
+        Pattern direct = Pattern.compile("(?:notifier\\.send|notifier\\.sendBatch|\\btell|\\bmailSession)\\(\\s*\"(TRAINING_[A-Z_]+)\"|\\b(?:tell|tellPreparer)\\([^,\\n]+,[^,\\n]+,\\s*\"(TRAINING_[A-Z_]+)\"");
         Pattern either = Pattern.compile("notifier\\.send\\(\\s*\\w+\\s*\\?\\s*\"(TRAINING_[A-Z_]+)\"\\s*:\\s*\"(TRAINING_[A-Z_]+)\"");
         Set<String> raised = new HashSet<>();
         try (Stream<Path> files = Files.walk(Path.of("src/main/java/com/eqms/service/training"))) {

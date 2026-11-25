@@ -15,7 +15,7 @@ import {
   type FrequencyKind,
   type FrequencySpec,
 } from "./scheduleFrequency";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const KINDS: Array<{ value: FrequencyKind; label: string }> = [
   { value: "HOURLY", label: "Hourly" },
@@ -55,7 +55,7 @@ export function ScheduleFrequencyField({ cron, onChange }: { cron: string; onCha
             <Select
               label={tr("Every")}
               value={String(spec.everyHours)}
-              options={HOUR_STEPS.map((n) => ({ value: String(n), label: n === 1 ? "1 hour" : `${n} hours` }))}
+              options={HOUR_STEPS.map((n) => ({ value: String(n), label: n === 1 ? tr("1 hour") : trFormat("{count} hours", { count: n }) }))}
               enableSearch={false}
               onChange={(value) => change({ everyHours: Number(value) })}
             />
@@ -73,7 +73,7 @@ export function ScheduleFrequencyField({ cron, onChange }: { cron: string; onCha
           <Select
             label={tr("Day Of The Month")}
             value={String(spec.dayOfMonth)}
-            options={[...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: `Day ${i + 1}` })), { value: "L", label: tr("Last day of the month") }]}
+            options={[...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: trFormat("Day {day}", { day: i + 1 }) })), { value: "L", label: tr("Last day of the month") }]}
             onChange={(value) => change({ dayOfMonth: value === "L" ? "L" : Number(value) })}
           />
         )}

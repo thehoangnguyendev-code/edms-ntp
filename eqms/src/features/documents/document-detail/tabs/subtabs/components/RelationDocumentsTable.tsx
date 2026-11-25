@@ -113,7 +113,7 @@ export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ 
                             ) : showEmpty ? (
                                 <TableMarkup.Row>
                                     <TableMarkup.Cell colSpan={11} className="py-12 text-center">
-                                        <TableEmptyState title={debouncedSearch ? "No records matching your search" : tr("No records to display")} />
+                                        <TableEmptyState title={debouncedSearch ? tr("No records matching your search") : tr("No records to display")} />
                                     </TableMarkup.Cell>
                                 </TableMarkup.Row>
                             ) : (

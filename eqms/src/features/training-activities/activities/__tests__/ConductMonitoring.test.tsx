@@ -4,7 +4,11 @@ import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), overview: vi.fn(), participantPage: vi.fn(), people: vi.fn() }));
-vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({ ...(await importOriginal<object>()), trainingActivitiesApi: api }));
+const files = vi.hoisted(() => ({ list: vi.fn(), personEvidenceFile: vi.fn() }));
+vi.mock("@/services/api/trainingActivities", async (importOriginal) => {
+  const original = await importOriginal<{ trainingFilesApi: object }>();
+  return { ...original, trainingActivitiesApi: api, trainingDocumentSourcesApi: { get: async () => ({ documents: [], sessionDefaults: null }) }, trainingFilesApi: { ...original.trainingFilesApi, ...files } };
+});
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermission: () => true, hasPermissionAlias: () => true }) }));
 vi.mock("@/features/realtime/useEntityChanged", () => ({ useEntityChanged: () => undefined }));
 vi.mock("@/components/ui/toast/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
@@ -21,7 +25,7 @@ const installQueryMocks = () => {
   api.overview.mockImplementation(async () => withParticipantSummary(await api.get()));
   api.participantPage.mockImplementation(async (_id, query) => {
     const a = await api.get();
-    const rows = a.participants.filter((p: { sessionId: string; personUserId?: string; state: string; plannedAbsence?: string }) => (!query.sessionId || p.sessionId === query.sessionId) && (query.group === "EMPLOYEES" ? p.personUserId && p.state !== "ABSENT" && !(p.state === "INVITED" && p.plannedAbsence) : query.group === "ABSENT" ? p.personUserId && (p.state === "ABSENT" || (p.state === "INVITED" && p.plannedAbsence)) : !p.personUserId));
+    const rows = a.participants.filter((p: { sessionId: string; personUserId?: string; state: string; plannedAbsence?: string }) => (!query.sessionId || p.sessionId === query.sessionId) && (query.group === "ALL" ? true : query.group === "EMPLOYEES" ? p.personUserId && p.state !== "ABSENT" && !(p.state === "INVITED" && p.plannedAbsence) : query.group === "ABSENT" ? p.personUserId && (p.state === "ABSENT" || (p.state === "INVITED" && p.plannedAbsence)) : !p.personUserId));
     return { data: rows, pagination: { total: rows.length, totalPages: 1 } };
   });
 };
@@ -64,6 +68,8 @@ beforeEach(() => {
   window.matchMedia = window.matchMedia ?? ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false }) as MediaQueryList);
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   Object.values(api).forEach(f => f.mockReset());
+  Object.values(files).forEach(f => f.mockReset());
+  files.list.mockResolvedValue({ materials: [], evidence: [], canUploadMaterial: false, canSeeAnswerKey: false, canUploadEvidence: false, canReceive: false });
   installQueryMocks();
 });
 afterEach(cleanup);
@@ -73,7 +79,7 @@ describe("Conduct Training of a training in progress", () => {
     renderPage("IN_PROGRESS");
     await openTab(/^General Information/);
 
-    expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
+    expect(await screen.findByText("Topic 1")).toBeTruthy();
     expect(screen.queryByText(/The work of a session is done in its Session Workspace/)).toBeNull();
     expect(screen.queryByText(/of 2 present/)).toBeNull();
     expect(screen.queryByText("PAPER BLOCK")).toBeNull();
@@ -115,13 +121,11 @@ describe("Sessions (General Information tab)", () => {
     renderPage("NOTIFIED");
     await openTab(/^General Information/);
 
-    expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
-    expect(screen.getAllByDisplayValue("Room 3").length).toBe(2);
-    // the choices are shown as the radio buttons of New Training Activity, with the name beneath
-    expect(screen.getAllByDisplayValue("Tina Trainer").length).toBe(2);
-    expect(screen.getAllByRole("radio", { name: "Internal expert" }).filter((r) => (r as HTMLInputElement).checked).length).toBe(2);
-    expect(screen.getAllByRole("radio", { name: "On-site (Physical)" }).filter((r) => (r as HTMLInputElement).checked).length).toBe(2);
-    expect(screen.getAllByText("Mode").length).toBe(2);
+    // each session is a card, the same card as on New Training Activity: the topic, the place, the trainer, the mode, with its count in the title
+    expect(await screen.findByText("Topic 1")).toBeTruthy();
+    expect(screen.getAllByText("Room 3").length).toBe(2);
+    expect(screen.getAllByText("Tina Trainer").length).toBe(2);
+    expect(screen.getByRole("region", { name: "Session 1" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Session 2" })).toBeTruthy();
     expect(screen.queryAllByRole("columnheader").length).toBe(0);
   });
@@ -141,7 +145,7 @@ describe("Training Activity Details (view)", () => {
     );
     await openTab(/^General Information/);
 
-    expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
+    expect(await screen.findByText("Topic 1")).toBeTruthy();
     expect(screen.queryByText("PAPER BLOCK")).toBeNull();
     expect(screen.queryByText("PREPARATION BLOCK")).toBeNull();
   });
@@ -164,7 +168,7 @@ describe("Training Activity Details of an activity with one session", () => {
   it("shows the session without a status badge, and the participants without the choice of a session, the Session column or the paper results", async () => {
     renderView();
     await openTab(/^General Information/);
-    expect(await screen.findByDisplayValue("Topic 1")).toBeTruthy();
+    expect(await screen.findByText("Topic 1")).toBeTruthy();
     expect(screen.queryByText("held")).toBeNull();
 
     await openTab(/^Participants/);
@@ -176,7 +180,7 @@ describe("Training Activity Details of an activity with one session", () => {
 });
 
 describe("Training Activity in Planned (edit)", () => {
-  it("offers the exemption of the Training Materials to the organizer: the capability is kept by the screen", async () => {
+  it("offers the organizer the checkbox of the Training Materials: the capability is kept by the screen", async () => {
     api.get.mockResolvedValue({ ...activity("PLANNED"), capabilities: { edit: true, setContentExemptions: true }, contentRules: { materialsRequired: true, materialsSatisfied: false, materialsSource: "NONE", testRequired: false, checklistRequired: false, assessmentFormSatisfied: false, inherited: false, missing: ["TRAINING_MATERIALS_REQUIRED"] } });
     render(
       <BreadcrumbProvider>
@@ -189,11 +193,11 @@ describe("Training Activity in Planned (edit)", () => {
     );
     await openTab(/^Training Materials/);
 
-    expect(await screen.findByText(/Required before the content is reviewed: a file or a link/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Training Materials are not required/ })).toBeTruthy();
+    expect(await screen.findByText(/Required before the content is approved: a file or a link/)).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Required Training Materials?" })).toBeTruthy();
   });
 
-  it("does not ask for the topic twice: with a session the form of another one opens on request", async () => {
+  it("does not ask for the topic twice: with a session the form of another one opens on request, in the Add session dialog", async () => {
     api.get.mockResolvedValue({ ...activity("PLANNED"), capabilities: { edit: true, planSessions: true } });
     api.people.mockResolvedValue([]);
     render(
@@ -206,7 +210,7 @@ describe("Training Activity in Planned (edit)", () => {
       </BreadcrumbProvider>,
     );
 
-    const another = await screen.findByRole("button", { name: "Add another session" });
+    const another = await screen.findByRole("button", { name: "Add session" });
     expect(screen.queryByPlaceholderText(/What will be taught/)).toBeNull();
     fireEvent.click(another);
     expect(await screen.findByPlaceholderText(/What will be taught/)).toBeTruthy();
@@ -240,7 +244,7 @@ describe("Retraining of a person who failed, from a finished activity", () => {
     renderDetails("PENDING_QA_CONFIRMATION", "confirm", { addSupplementary: true, confirmCompletion: true });
     await openTab(/^General Information/);
 
-    expect((await screen.findAllByRole("button", { name: "Confirm completion" })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("button", { name: "Confirm Completion" })).length).toBeGreaterThan(0);
     expect(screen.queryByText(/have no supplementary training yet/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Supplementary Training" })).toBeNull();
   });
@@ -287,20 +291,40 @@ describe("Results in Training Activity Details", () => {
     );
   };
 
-  it("shows the score and the result of each person, read only, once the training has started", async () => {
-    renderDetails("PENDING_QA_CONFIRMATION");
-    await openTab(/^Results/);
+  const scan = (participantId: string) => ({ id: `e-${participantId}`, kind: "ASSESSMENT", originalName: `${participantId}-paper.PDF`, sizeBytes: 1200, sha256: "x", uploadedAt: "2026-10-20T08:00:00Z", participantId, uploadedByName: "Admin", contentType: "application/pdf" });
 
-    expect(await screen.findByText("10 / 20")).toBeTruthy();
-    expect(screen.getByText("18 / 20")).toBeTruthy();
-    expect(screen.getByText("Not passed (50%)")).toBeTruthy();
+  it("lists the score, the result and the scan file of everyone under the command buttons, in a sub tab, not in the tabs of the page", async () => {
+    files.list.mockResolvedValue({ materials: [], evidence: [scan("p1")], canUploadMaterial: false, canSeeAnswerKey: false, canUploadEvidence: false, canReceive: false });
+    renderDetails("PENDING_QA_CONFIRMATION");
+
+    // the scan is named Training Number, employee code, name (here with the extension of the uploaded file)
+    expect(await screen.findByText("TRN-QA-26-070_E-1_Trainee 1.pdf")).toBeTruthy();
+    expect(screen.getByText("10 / 20 (50%)")).toBeTruthy();
+    expect(screen.getByText("18 / 20 (90%)")).toBeTruthy();
+    expect(screen.getByText("Not passed")).toBeTruthy();
+    expect(screen.getByText("Passed")).toBeTruthy();
+    // the sub tab is below the Back and command buttons, and the page has no tab of that name any more
+    const subTab = screen.getByRole("tab", { name: /^Results/ });
+    const backButtons = screen.getAllByRole("button", { name: "Back" });
+    expect(backButtons.at(-1)!.compareDocumentPosition(subTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("tab", { name: /^Results/ })).toHaveLength(1);
     // nothing can be typed, saved or uploaded there: the results are written in the Session Workspace
     expect(screen.queryByRole("spinbutton")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Save all/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Upload the scan/ })).toBeNull();
   });
 
-  it("has no Results tab before the training starts, nor for a person who only takes part", async () => {
+  it("offers View Scan and Download Scan in the menu of a person who has a scan, and nothing to a person who has none", async () => {
+    files.list.mockResolvedValue({ materials: [], evidence: [scan("p1")], canUploadMaterial: false, canSeeAnswerKey: false, canUploadEvidence: false, canReceive: false });
+    renderDetails("COMPLETED");
+    await screen.findByText("TRN-QA-26-070_E-1_Trainee 1.pdf");
+
+    expect(screen.queryByRole("button", { name: "Actions for the scan of Trainee 2" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Actions for the scan of Trainee 1" }));
+    expect(await screen.findByText("View Scan")).toBeTruthy();
+    expect(screen.getByText("Download Scan")).toBeTruthy();
+  });
+
+  it("has no results card before the training starts, nor for a person who only takes part", async () => {
     renderDetails("NOTIFIED");
     await screen.findByRole("tab", { name: /^Participants/ });
     expect(screen.queryByRole("tab", { name: /^Results/ })).toBeNull();

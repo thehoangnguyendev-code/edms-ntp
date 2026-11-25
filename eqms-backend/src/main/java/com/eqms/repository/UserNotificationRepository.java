@@ -23,4 +23,7 @@ public interface UserNotificationRepository extends JpaRepository<UserNotificati
      * before. Per-policy {@code escalationAfterMinutes} threshold is applied in Java since it
      * varies per event code, not something a single SQL predicate can express here. */
     List<UserNotification> findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(String status);
+
+    /** Same candidates, but only of the given event types: the scheduler asks for the types whose policy has escalation on, so it does not load every unread notification of the system. */
+    List<UserNotification> findAllByTypeInAndStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(java.util.Collection<String> types, String status);
 }

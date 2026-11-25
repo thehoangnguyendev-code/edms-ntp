@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
@@ -258,7 +259,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
               transition={{ duration: reduceMotion ? 0 : 0.32, ease: EASE_OUT }}
               className="h-full"
               role="img"
-              aria-label={`${view === 'bar' ? 'Bar chart' : 'Donut chart'} of ${chartLabel}: ${summary}`}
+              aria-label={`${view === 'bar' ? 'Bar chart' : tr('Donut chart')} of ${chartLabel}: ${summary}`}
             >
               {view === 'bar'
                 ? <Columns rows={rows} total={total} valueLabel={valueLabel} colorFor={colorFor} />

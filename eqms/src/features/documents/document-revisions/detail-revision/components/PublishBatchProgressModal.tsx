@@ -49,10 +49,10 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
           )}
           <h3 className="text-sm font-semibold text-slate-900 flex-1">
             {isCompleted
-              ? "Publish complete"
+              ? tr("Publish complete")
               : hasErrors
                 ? tr("Publish failed")
-                : "Publishing document package..."}
+                : tr("Publishing document package...")}
           </h3>
           <span className="text-xs font-semibold text-slate-500 tabular-nums shrink-0">
             {total} {total === 1 ? "document" : "documents"}
@@ -86,7 +86,7 @@ export const PublishBatchProgressModal: React.FC<PublishBatchProgressModalProps>
             ? `Successfully published ${total} of ${total} document(s).`
             : hasErrors
               ? errorMessage || "The document package could not be published."
-              : "This may take a few seconds..."}
+              : tr("This may take a few seconds...")}
         </p>
       </div>
     </FormModal>

@@ -7,7 +7,7 @@ import { fillActivityPeriods, longPeriodLabel, shortPeriodLabel, type ActivityPe
 import { PanelError } from '../shared/dashboardParts';
 import { Card, CardHeader } from '../shared/dashboardUi';
 import { useDashboardResource } from '../shared/useDashboardResource';
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const PERIOD_OPTIONS = [
   { label: 'Monthly', value: 'month' },
@@ -29,7 +29,7 @@ export const DocumentActivityPanel: React.FC<{ className?: string }> = ({ classN
     <Card className={className} aria-label={tr("Document activity")}>
       <CardHeader
         title={tr("Document activity")}
-        subtitle={activity.data ? `${total.toLocaleString()} documents created in the ${PERIOD_LABEL[period]}` : 'Documents created over time'}
+        subtitle={activity.data ? trFormat("{count} documents created in the {period}", { count: total.toLocaleString(), period: tr(PERIOD_LABEL[period]) }) : tr("Documents created over time")}
         right={<div className="w-32"><Select value={period} onChange={(value) => setPeriod(value as ActivityPeriod)} enableSearch={false} options={PERIOD_OPTIONS} /></div>}
       />
       {activity.error ? (
@@ -45,7 +45,7 @@ export const DocumentActivityPanel: React.FC<{ className?: string }> = ({ classN
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.2, 0.8, 0.3, 1] }}
         >
-          <ActivityBarChart data={series} color="#10b981" valueLabel="Documents created" titleFor={longPeriodLabel} shortLabel={shortPeriodLabel} showValues={series.length <= 13} />
+          <ActivityBarChart data={series} color="#10b981" valueLabel={tr("Documents created")} titleFor={longPeriodLabel} shortLabel={shortPeriodLabel} showValues={series.length <= 13} />
         </motion.div>
       )}
     </Card>

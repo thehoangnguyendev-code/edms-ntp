@@ -588,8 +588,8 @@ export const DepartmentsTab = React.forwardRef<
               extractApiMessage(
                 error,
                 showEditModal
-                  ? "Unable to update department."
-                  : "Unable to create department.",
+                  ? tr("Unable to update department.")
+                  : tr("Unable to create department."),
               ),
             );
             throw error;

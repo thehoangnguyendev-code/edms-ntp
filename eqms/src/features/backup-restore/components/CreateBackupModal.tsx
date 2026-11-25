@@ -40,7 +40,7 @@ export const CreateBackupModal: React.FC<{
       onClose={onClose}
       title={tr("Create Backup")}
       description={tr("Starts a backup now, in addition to the schedule. It is recorded in the audit trail with your name and reason.")}
-      confirmText={busy ? "Starting…" : "Start Backup"}
+      confirmText={busy ? "Starting…" : tr("Start Backup")}
       confirmDisabled={!valid || busy}
       onConfirm={() => {
         onConfirm({ type, reason: reason.trim(), changeControlRef: preChange ? reference.trim() : undefined, components: PARTS.map((p) => p.value).filter((v) => parts.includes(v)) });
@@ -52,7 +52,7 @@ export const CreateBackupModal: React.FC<{
     >
       <div className="space-y-4">
         <WarningBanner variant="info" description={tr("Choose what to back up. It is encrypted before it is written, and it is kept permanently. A backup can be restored in the same parts it was made of.")} />
-        <FormField label={tr("What to back up")} required hint={parts.length === 0 ? "Choose at least one." : undefined}>
+        <FormField label={tr("What to back up")} required hint={parts.length === 0 ? tr("Choose at least one.") : undefined}>
           <div className="space-y-2">
             {PARTS.map((part) => (
               <PartCheckbox key={part.value} id={`backup-part-${part.value}`} label={part.label} hint={part.hint} checked={parts.includes(part.value)} onChange={() => toggle(part.value)} />

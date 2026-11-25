@@ -45,7 +45,7 @@ function RelatedTable<T extends { id: string }>({ persistKey, personId, fetcher,
       <DataTable
         rows={table.items} getRowKey={(r) => r.id} isLoading={table.isLoading}
         columns={columns((table.currentPage - 1) * table.itemsPerPage, sorted)}
-        emptyState={<TableEmptyState title={empty} description={table.searchQuery ? "Change the search." : ""} />}
+        emptyState={<TableEmptyState title={empty} description={table.searchQuery ? tr("Change the search.") : ""} />}
         scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}
         pagination={table.totalItems > 0 ? <TablePagination currentPage={table.currentPage} totalPages={table.totalPages} totalItems={table.totalItems} itemsPerPage={table.itemsPerPage} onPageChange={table.setCurrentPage} onItemsPerPageChange={table.setItemsPerPage} /> : undefined}
       />

@@ -308,7 +308,7 @@ const MatrixLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => 
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                {identityLocked ? "The action and the status of an existing policy cannot be changed." : "Click the cell where the action starts. "}
+                {identityLocked ? tr("The action and the status of an existing policy cannot be changed.") : "Click the cell where the action starts. "}
                 <span className="inline-flex items-center gap-1 align-middle"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" /> {tr("a policy already exists there")}</span>
               </p>
               <div className="overflow-x-auto rounded-xl border border-slate-200">

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { localizationApi, type UserLocalizationPreferences } from '@/services/api/localization';
 import {
@@ -38,6 +39,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     readCachedLanguage(userId) ?? readLastLanguage() ?? normalizeApplicationLanguage(readSystemLocalizationSettings().language)
   );
   const preferencesRef = useRef<UserLocalizationPreferences | null>(null);
+  /** Discards a response from an older request when the person has chosen another language since. */
+  const languageRequestRef = useRef(0);
+  /** Set once the person chooses a language, so a stale localization poll cannot put the old one back. */
+  const userChoiceRef = useRef<ApplicationLanguage | null>(null);
   // `tr` is used by copy that does not consume this context: set it before the subtree renders.
   setCatalogLanguage(language);
 
@@ -52,6 +57,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Sign-in loads the account's choice; sign-out returns to the language of the installation.
   useEffect(() => {
     let alive = true;
+    const requestId = ++languageRequestRef.current;
+    userChoiceRef.current = null;
     preferencesRef.current = null;
     if (!isAuthenticated || !userId) {
       // Before sign-in the screen uses the last language this person chose; it must not overwrite that memory.
@@ -62,7 +69,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (cached) apply(cached, userId);
     void localizationApi.getMine()
       .then((preferences) => {
-        if (!alive) return;
+        if (!alive || requestId !== languageRequestRef.current) return;
         preferencesRef.current = preferences;
         const stored = normalizeApplicationLanguage(preferences.language ?? readSystemLocalizationSettings().language);
         apply(stored, userId);
@@ -76,10 +83,14 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // The system localization loader can refresh the personal preference; follow it without a second request.
   useEffect(() => {
     const onUpdated = () => {
+      // The person's own choice wins: a localization refresh that was already in flight when they chose must not
+      // bring the previous language back.
+      if (isAuthenticated && userChoiceRef.current) return;
       // Before sign-in the installation settings must not replace the last language this person chose.
       const next = !isAuthenticated
         ? readLastLanguage() ?? normalizeApplicationLanguage(readSystemLocalizationSettings().language)
         : normalizeApplicationLanguage(readSystemLocalizationSettings().language);
+      setCatalogLanguage(next);
       setLanguageState((current) => (current === next ? current : next));
       if (typeof document !== 'undefined') document.documentElement.lang = next;
     };
@@ -89,14 +100,21 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = useCallback(async (nextLanguage: ApplicationLanguage) => {
     const next = normalizeApplicationLanguage(nextLanguage);
-    apply(next, userId);
+    const requestId = ++languageRequestRef.current;
+    userChoiceRef.current = next;
+    // Commit the language before the server request: the person must see the switch on the click, not when the
+    // update round-trip finishes. This also keeps the new catalog value in place for the synchronous render.
+    flushSync(() => apply(next, userId));
     if (!isAuthenticated) {
       writeSystemLocalizationSettings({ ...readSystemLocalizationSettings(), language: next });
       return;
     }
     try {
       const current = preferencesRef.current ?? await localizationApi.getMine();
+      // Another choice was made while this request was in flight; that newer one owns the result.
+      if (requestId !== languageRequestRef.current) return;
       const saved = await localizationApi.updateMine({ ...current, language: next });
+      if (requestId !== languageRequestRef.current) return;
       preferencesRef.current = saved;
       const savedLanguage = normalizeApplicationLanguage(saved.language);
       writeCachedLanguage(userId, savedLanguage);
@@ -114,11 +132,19 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     tLabel: (english) => translateLabel(language, english),
   }), [language, setLanguage]);
 
-  // A new prop on the root child makes the whole subtree render again when the language changes, so `tr` copy updates
-  // without unmounting the page and losing what the person has typed.
-  const content = React.isValidElement(children)
-    ? React.cloneElement(children as React.ReactElement<Record<string, unknown>>, { 'data-language': language })
-    : children;
+  // A new prop on every root child makes the whole subtree render again when the language changes, so `tr` copy updates
+  // without unmounting the page and losing what the person has typed. `AppProviders` renders several children (the
+  // branding, the guards and the app), so handling only one element left the app tree untouched and only the
+  // context consumers (sidebar, header) changed language.
+  const content = useMemo(
+    () =>
+      React.Children.map(children, (child) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { 'data-language': language })
+          : child,
+      ),
+    [children, language],
+  );
   return <LanguageContext.Provider value={value}>{content}</LanguageContext.Provider>;
 };
 

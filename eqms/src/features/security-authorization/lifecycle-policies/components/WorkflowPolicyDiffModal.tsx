@@ -32,9 +32,9 @@ export const WorkflowPolicyDiffModal: React.FC<WorkflowPolicyDiffModalProps> = (
       onConfirm={onConfirm}
       title={tr("Preview Changes")}
       description={isPreviewValid
-        ? "Review the changes before saving. This action cannot be undone."
-        : "The server rejected this configuration. Correct the validation error before saving."}
-      confirmText="Confirm Save"
+        ? tr("Review the changes before saving. This action cannot be undone.")
+        : tr("The server rejected this configuration. Correct the validation error before saving.")}
+      confirmText={tr("Confirm Save")}
       cancelText="Cancel"
       isLoading={isLoading}
       confirmDisabled={!isPreviewValid}

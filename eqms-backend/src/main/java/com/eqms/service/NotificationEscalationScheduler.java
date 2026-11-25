@@ -57,8 +57,16 @@ public class NotificationEscalationScheduler {
                 log.warn("Skipping notification escalation scheduler because another instance owns the lease or Redis is unavailable");
                 return;
             }
+            // Only the events whose policy has escalation on can escalate: without this the run loaded every unread notification
+            // of the system (about 30,000 on DEV) and looked up a policy for each, holding its connection past the leak threshold.
+            List<String> escalating = policyRepository.findAllByEscalationEnabledTrue().stream()
+                    .filter(policy -> policy.getEscalationAfterMinutes() != null)
+                    .map(NotificationPolicy::getEventCode).toList();
+            if (escalating.isEmpty()) {
+                return;
+            }
             List<UserNotification> candidates = userNotificationRepository
-                    .findAllByStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(UserNotification.STATUS_UNREAD);
+                    .findAllByTypeInAndStatusIgnoreCaseAndEscalatedAtIsNullAndDeletedAtIsNull(escalating, UserNotification.STATUS_UNREAD);
             Instant now = Instant.now();
             for (UserNotification notification : candidates) {
                 escalateIfDue(notification, now);

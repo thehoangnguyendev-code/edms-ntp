@@ -519,8 +519,8 @@ export const BusinessUnitsTab = React.forwardRef<
           } catch (error) {
             openResultModal(
               "error",
-              showEditModal ? "Business Unit Update Failed" : "Business Unit Creation Failed",
-              extractApiMessage(error, showEditModal ? "Unable to update business unit." : "Unable to create business unit.")
+              showEditModal ? tr("Business Unit Update Failed") : tr("Business Unit Creation Failed"),
+              extractApiMessage(error, showEditModal ? tr("Unable to update business unit.") : tr("Unable to create business unit."))
             );
             throw error;
           }

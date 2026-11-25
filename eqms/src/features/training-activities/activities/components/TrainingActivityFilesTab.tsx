@@ -26,11 +26,8 @@ import { useToast } from "@/components/ui/toast/Toast";
 import {
   trainingError,
   trainingFilesApi,
-  trainingFormTemplatesApi,
   trainingPaperApi,
-  type AssessmentEditOpen,
   type TrainingPaperPack,
-  type TrainingFormTemplateRef,
   type TrainingActivityFiles,
   type TrainingMaterial,
   type TrainingPaperEvidence,
@@ -42,13 +39,14 @@ import { TrainingScanBatchUpload } from "./TrainingScanBatchUpload";
 import { SpecimenViewModal } from "../../shared/SpecimenViewModal";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import type { ActivityMode } from "../TrainingActivityDetailPage";
-import { TrainingAssessmentEditorFrame } from "./TrainingAssessmentEditorFrame";
 import { Popover } from "@/components/ui/popover/Popover";
 import { LedgerEmpty, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
 import { TrainingMaterialsReader } from "./TrainingMaterialsReader";
 import { TrainingMaterialsBoard, type MaterialItem, type TrainingMaterialsLayout } from "./TrainingMaterialsBoard";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { tr } from "@/i18n";
+import { TrainingDocumentSources } from "./TrainingDocumentSources";
+import { trainingDocumentSourcesApi, type TrainingDocumentSource } from "@/services/api/trainingActivities";
 
 const KIND_LABEL: Record<string, string> = {
   ATTENDANCE_SHEET: "Attendance sheet",
@@ -99,6 +97,8 @@ export function TrainingActivityFilesTab({
   reader = false,
   visible,
   onSummary,
+  sessionId,
+  sessions,
 }: {
   activityId: string;
   participants: TrainingParticipant[];
@@ -121,9 +121,19 @@ export function TrainingActivityFilesTab({
   visible?: "materials" | "scans";
   /** The Session Workspace asks to be told what the assessment blocks hold (the exam file, the scans and how many are still unchecked). */
   onSummary?: (summary: { materials?: { examUploaded: boolean }; scans?: { total: number; unchecked: number } }) => void;
+  /** The session the tab looks at: its own materials and forms and the ones shared by every session. Left out for all of them. */
+  sessionId?: string;
+  /** The sessions of the activity, for the field "Use for" of a new material (only when it has more than one). */
+  sessions?: { id: string; label: string }[];
 }) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<TrainingActivityFiles>();
+  // The documents of Document Control that are the material of a training that comes from a document (the document and every document it lists as related).
+  const [sourceDocs, setSourceDocs] = useState<TrainingDocumentSource[]>([]);
+  useEffect(() => { trainingDocumentSourcesApi.get(activityId).then((r) => setSourceDocs(r.documents)).catch(() => setSourceDocs([])); }, [activityId]);
+  // The session a new material is for ("" is every session): the one the tab looks at, until the person chooses another.
+  const [target, setTarget] = useState(sessionId ?? "");
+  useEffect(() => { setTarget(sessionId ?? ""); }, [sessionId]);
   const [error, setError] = useState("");
   const [previewing, setPreviewing] = useState<{ id: string; name: string; type: "pdf" | "docx" }>();
   const [busy, setBusy] = useState(false);
@@ -135,8 +145,6 @@ export function TrainingActivityFilesTab({
   );
   const [evidence, setEvidence] = useState(EMPTY_EVIDENCE);
   const [removing, setRemoving] = useState<{ id: string; reason: string }>();
-  const [templates, setTemplates] = useState<TrainingFormTemplateRef[]>([]);
-  const [editing, setEditing] = useState<AssessmentEditOpen>();
   const [packs, setPacks] = useState<TrainingPaperPack[]>([]);
   // the specimen signature of the person of a scan, opened beside it for the check against the paper
   const [specimenOf, setSpecimenOf] = useState<{ personId: string; name: string }>();
@@ -159,22 +167,6 @@ export function TrainingActivityFilesTab({
       scans: mode !== "edit" ? { total: files.evidence.length, unchecked: files.evidence.filter((e) => !e.receivedAt).length } : undefined,
     });
   }, [part, files, external, formKind, formNeeded, mode, onSummary]);
-  const canEditHere = !materialsReadOnly && mode === "edit" && !!files?.canUploadMaterial;
-  useEffect(() => {
-    if (canEditHere && part === "assessment")
-      trainingFormTemplatesApi
-        .current()
-        .then((all) => setTemplates(all.filter((t) => t.code === "APD.0009")))
-        .catch(() => setTemplates([]));
-  }, [canEditHere, part]);
-  // The editor saves into the activity while it is open; when it is closed the list is read again (the document server reports the last save a few seconds later).
-  const closeEditor = () => {
-    setEditing(undefined);
-    load();
-    window.setTimeout(load, 3000);
-    window.setTimeout(load, 8000);
-  };
-
   const run = async (
     action: () => Promise<TrainingActivityFiles>,
     done: string,
@@ -259,8 +251,10 @@ export function TrainingActivityFilesTab({
   const canAddMaterial = !materialsReadOnly && mode === "edit" && files.canUploadMaterial && materialsNeeded;
   const canAddEvidence = mode === "conduct" && files.canUploadEvidence;
   const canReceive = mode === "conduct" && files.canReceive;
+  const inScope = (m: TrainingMaterial) => !sessionId || !m.sessionId || m.sessionId === sessionId;
   const toItem = (m: TrainingMaterial): MaterialItem => ({
     id: m.id,
+    sessionLabel: sessions && sessions.length > 1 ? (m.sessionId ? `S${m.sessionNo ?? ""}` : tr("All sessions")) : null,
     title: m.title,
     linkUrl: m.linkUrl,
     fileName: m.originalName,
@@ -334,100 +328,36 @@ export function TrainingActivityFilesTab({
   const openMaterial = files.materials.find((m) => m.id === menu.openId);
   const openEvidence = files.evidence.find((e) => e.id === menu.openId);
 
+  // the form of the session itself comes first, then the one shared by every session
   const slotOf = (purpose: "EXAM" | "ANSWER_KEY") =>
-    files.materials.find((m) => m.purpose === purpose && !m.removedAt);
+    files.materials.find((m) => m.purpose === purpose && !m.removedAt && !!sessionId && m.sessionId === sessionId) ?? files.materials.find((m) => m.purpose === purpose && !m.removedAt && inScope(m));
+  // The exam file and the answer key come only from an approved assessment of the library (chosen above): here they are looked at and saved, never added, edited or removed.
   const assessmentZone = (purpose: "EXAM" | "ANSWER_KEY") => {
     const current = slotOf(purpose);
     const isKey = purpose === "ANSWER_KEY";
-    const active = sending[purpose];
-    const isDocx = !!current && previewType(current.originalName) === "docx";
-    const examDocx = (() => {
-      const exam = slotOf("EXAM");
-      return !!exam && previewType(exam.originalName) === "docx";
-    })();
-    const editButtons =
-      canEditHere && !active ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-          {!isKey && !current && templates.map((t) => (
-            <Button key={t.id} size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "TEMPLATE", templateId: t.id })}>
-                        {tr("Write it from")} {t.code} {t.versionLabel}
-            </Button>
-          ))}
-          {!isKey && isDocx && (
-            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "EXAM", source: "EXISTING" })}>
-              {tr("Open to Edit")}
-            </Button>
-          )}
-          {isKey && isDocx && (
-            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXISTING" })}>
-              {tr("Open to Edit")}
-            </Button>
-          )}
-          {isKey && !current && examDocx && (
-            <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => setEditing({ purpose: "ANSWER_KEY", source: "EXAM_COPY" })}>
-              {tr("Write it from the exam")}
-            </Button>
-          )}
-          {!isKey && !current && templates.map((t) => (
-            <button key={`d-${t.id}`} type="button" className="text-xs font-medium text-emerald-700 hover:underline" onClick={() => void download(() => trainingFormTemplatesApi.download(t.id), t.originalName)}>
-              {tr("Download the blank form")}
-            </button>
-          ))}
-        </div>
-      ) : null;
-    const zoneLabel = isKey ? "Answer Key (optional)" : formKind === "CHECKLIST" ? "Checklist Form" : formKind === "BOTH" ? "Test or Checklist Form" : "Exam";
+    const zoneLabel = isKey ? tr("Answer Key (optional)") : formKind === "CHECKLIST" ? tr("Checklist Form") : formKind === "BOTH" ? tr("Test or Checklist Form") : "Exam";
     return (
-      <div className="space-y-2">
-        <TrainingFileDropzone
-          label={zoneLabel}
-          accept=".pdf,.docx"
-          maxMb={20}
-          hint={isKey ? tr("Word or PDF, max 20 MB. Only organizers and reviewers see it.") : tr("Word or PDF, max 20 MB. It is printed for the employees.")}
-          file={active?.file ?? null}
-          uploading={active ? { percent: active.percent } : undefined}
-          disabled={busy || !!active}
-          existing={
-            !active && current
-              ? {
-                  name: current.originalName ?? "file",
-                  size: current.sizeBytes ?? 0,
-                  note: `${current.uploadedByName}, ${day(current.createdAt)}`,
-                  onPreview: previewType(current.originalName)
-                    ? () => preview(current.id, current.originalName)
-                    : undefined,
-                  onDownload: () =>
-                    void download(
-                      () => trainingFilesApi.downloadMaterial(current.id),
-                      current.originalName ?? "file",
-                    ),
-                  onRemove: canAddMaterial
-                    ? () => setRemoving({ id: current.id, reason: "" })
-                    : undefined,
-                }
-              : undefined
-          }
-          readOnlyText={
-            !active && !current && !canAddMaterial ? "No file." : undefined
-          }
-          onChange={(f) => {
-            if (f)
-              void upload(
-                purpose,
-                f,
-                (onProgress) =>
-                  trainingFilesApi.uploadMaterial(
-                    activityId,
-                    f,
-                    undefined,
-                    purpose,
-                    onProgress,
-                  ),
-                isKey ? "Answer key added" : "Exam template added",
-              );
-          }}
-        />
-        {editButtons}
-      </div>
+      <TrainingFileDropzone
+        label={zoneLabel}
+        accept=".pdf,.docx"
+        maxMb={20}
+        hint=""
+        file={null}
+        disabled
+        existing={
+          current
+            ? {
+                name: current.originalName ?? "file",
+                size: current.sizeBytes ?? 0,
+                note: `${current.uploadedByName}, ${day(current.createdAt)}`,
+                onPreview: previewType(current.originalName) ? () => preview(current.id, current.originalName) : undefined,
+                onDownload: () => void download(() => trainingFilesApi.downloadMaterial(current.id), current.originalName ?? "file"),
+              }
+            : undefined
+        }
+        readOnlyText={current ? undefined : isKey ? tr("The answer key appears here with the exam, from the approved assessment you choose above.") : tr("The exam appears here, made from the approved assessment you choose above.")}
+        onChange={() => undefined}
+      />
     );
   };
 
@@ -455,13 +385,6 @@ export function TrainingActivityFilesTab({
 
   return (
     <div className="space-y-6">
-      {editing && (
-        <TrainingAssessmentEditorFrame
-          activityId={activityId}
-          request={editing}
-          onClose={closeEditor}
-        />
-      )}
       {part === "assessment" && (
         <>
           {external && mode !== "edit" && (
@@ -595,7 +518,7 @@ export function TrainingActivityFilesTab({
                           key={e.id}
                           title={e.originalName}
                           meta={[`${KIND_LABEL[e.kind] ?? e.kind} · ${size(e.sizeBytes)}`, `for ${e.participantName ?? "the whole session"}`, e.packCode, e.formUsed, `uploaded by ${e.uploadedByName} (${day(e.uploadedAt)})`, e.remark].filter(Boolean).join(" · ")}
-                          state={e.receivedAt ? `Checked by ${e.receivedByName}, ${when(e.receivedAt)}` : "Not yet checked"}
+                          state={e.receivedAt ? `Checked by ${e.receivedByName}, ${when(e.receivedAt)}` : tr("Not yet checked")}
                           tone={e.receivedAt ? "mute" : "amber"}
                           primary={menuButton(e.id)}
                         />
@@ -640,10 +563,11 @@ export function TrainingActivityFilesTab({
           )}
         </>
       )}
+      {part === "materials" && reader && <TrainingDocumentSources documents={sourceDocs} />}
       {part === "materials" && reader && (
         <TrainingMaterialsReader
-          items={files.materials.filter((m) => m.purpose === "CONTENT").map(toItem)}
-          lockedNote={materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT") ? "Materials can be added or removed in the planning step, until the content is reviewed. You can still open them here." : undefined}
+          items={files.materials.filter((m) => m.purpose === "CONTENT" && inScope(m)).map(toItem)}
+          lockedNote={materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT" && inScope(m)) ? tr("Materials can be added or removed in the planning step, until the content is approved. You can still open them here.") : undefined}
           emptyText={note ?? (materialsNeeded ? tr("No material yet. A file (PDF, slides, video) or a link can be added in the planning step.") : tr("No material is needed for this training."))}
           onPreview={(m) => preview(m.id, m.fileName)}
           onDownload={(m) => void download(() => trainingFilesApi.downloadMaterial(m.id), m.fileName ?? "file")}
@@ -651,24 +575,26 @@ export function TrainingActivityFilesTab({
       )}
       {part === "materials" && !reader && (
         <>
+          <TrainingDocumentSources documents={sourceDocs} />
           <TrainingMaterialsBoard
             layout={materialsLayout}
-            items={files.materials.filter((m) => m.purpose === "CONTENT").map(toItem)}
+            items={files.materials.filter((m) => m.purpose === "CONTENT" && inScope(m)).map(toItem)}
             canAdd={canAddMaterial}
             canRemove={canAddMaterial}
-            lockedNote={!canAddMaterial && materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT") ? "Materials can be added or removed in the planning step, until the content is reviewed. You can still open them here." : undefined}
+            lockedNote={!canAddMaterial && materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT" && inScope(m)) ? tr("Materials can be added or removed in the planning step, until the content is approved. You can still open them here.") : undefined}
             emptyText={
               note ??
               (materialsNeeded
-                ? tr("No material yet. A file (PDF, slides, video) or a link can be added until the content is reviewed.")
+                ? tr("No material yet. A file (PDF, slides, video) or a link can be added until the content is approved.")
                 : tr("No material is needed for this training."))
             }
             busy={busy}
             sending={sending.material}
             onAddFile={(file, title) =>
-              upload("material", file, (onProgress) => trainingFilesApi.uploadMaterial(activityId, file, title || undefined, "CONTENT", onProgress), "File added")
+              upload("material", file, (onProgress) => trainingFilesApi.uploadMaterial(activityId, file, title || undefined, "CONTENT", onProgress, target || undefined), "File added")
             }
-            onAddLink={(title, url) => run(() => trainingFilesApi.addLink(activityId, title, url), "Link added")}
+            scope={sessions && sessions.length > 1 ? { label: tr("Use for"), value: target, options: [{ label: tr("All sessions"), value: "" }, ...sessions.map((x) => ({ label: x.label, value: x.id }))], onChange: setTarget } : undefined}
+            onAddLink={(title, url) => run(() => trainingFilesApi.addLink(activityId, title, url, target || undefined), "Link added")}
             onRemove={(m) => setRemoving({ id: m.id, reason: "" })}
             onPreview={(m) => preview(m.id, m.fileName)}
             onDownload={(m) => void download(() => trainingFilesApi.downloadMaterial(m.id), m.fileName ?? "file")}

@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { FormField, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { FormModal } from "@/components/ui/modal/FormModal";
@@ -54,7 +55,7 @@ export function ReportTemplateReasonModal({
       confirmDisabled={(reasonRequired && !reason.trim()) || busy}
       onConfirm={() => void confirm()}
     >
-      <FormField label={reasonRequired ? "Reason" : "Reason (optional)"} required={reasonRequired}>
+      <FormField label={reasonRequired ? "Reason" : tr("Reason (optional)")} required={reasonRequired}>
         <Textarea rows={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
       </FormField>
       {error && (

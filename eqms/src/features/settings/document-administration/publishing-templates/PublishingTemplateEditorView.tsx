@@ -302,7 +302,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const formDirty = useFormDirty(form, !isLoading);
   const { confirmLeave, modal: leaveModal } = useLeaveGuard(
     formDirty.isDirty,
-    isEditMode ? "Edit Publishing Template" : "New Publishing Template",
+    isEditMode ? tr("Edit Publishing Template") : tr("New Publishing Template"),
     "Publishing Templates",
   );
   const leaveTo = (path: string) => confirmLeave(() => navigateTo(path));
@@ -1055,7 +1055,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "success",
         title: "Deleted",
-        message: "Publishing template deleted.",
+        message: tr("Publishing template deleted."),
       });
       navigateTo(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
     } catch (error) {
@@ -1089,7 +1089,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
       showToast({
         type: "success",
         title: tr("Duplicated"),
-        message: "Publishing template duplicated.",
+        message: tr("Publishing template duplicated."),
       });
       navigate(ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES_EDIT(duplicated.id || ""), {
         replace: true,
@@ -1421,7 +1421,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: tr("Style saved"), message: "Placeholder style updated." });
+      showToast({ type: "success", title: tr("Style saved"), message: tr("Placeholder style updated.") });
     } catch (error) {
       console.error("Failed to save placeholder style", error);
       showToast({ type: "error", title: tr("Save failed"), message: getApiErrorMessage(error, "Unable to save placeholder style.") });
@@ -1455,7 +1455,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
           getSlotStyleSignature(activeSlotMeta.componentType, activeSlotMeta.layout),
         ),
       );
-      showToast({ type: "success", title: tr("Style cleared"), message: "Placeholder style removed." });
+      showToast({ type: "success", title: tr("Style cleared"), message: tr("Placeholder style removed.") });
     } catch (error) {
       console.error("Failed to delete placeholder style", error);
       showToast({ type: "error", title: tr("Delete failed"), message: getApiErrorMessage(error, "Unable to delete placeholder style.") });
@@ -1472,7 +1472,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
     <div className="flex h-full flex-col gap-4 md:gap-6">
       {(isNavigating || isSaving) && (
         <FullPageLoading
-          text={isSaving ? "Saving publishing template..." : "Navigating..."}
+          text={isSaving ? tr("Saving publishing template...") : "Navigating..."}
         />
       )}
 
@@ -2285,8 +2285,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                           className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-100/70"
                         >
                           <div className="min-w-0">
-                            <p className={TYPOGRAPHY.cardSectionTitle}>{group.title}</p>
-                            <p className={cn(TYPOGRAPHY.helpText, "hidden sm:block mt-0.5")}>{group.description}</p>
+                            <p className={TYPOGRAPHY.cardSectionTitle}>{tr(group.title)}</p>
+                            <p className={cn(TYPOGRAPHY.helpText, "hidden sm:block mt-0.5")}>{tr(group.description)}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
                             <Badge color="slate">{(group.items || []).length}</Badge>

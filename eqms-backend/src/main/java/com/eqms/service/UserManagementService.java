@@ -171,7 +171,7 @@ public class UserManagementService {
             variables.put("documentTitle", document == null || document.getDocumentName() == null ? "" : document.getDocumentName());
             variables.put("revisionNumber", revision.getRevisionNumber() == null ? "" : revision.getRevisionNumber());
             variables.put("participantType", participant.getParticipantType() == null ? "" : participant.getParticipantType().toLowerCase(java.util.Locale.ROOT));
-            variables.put("userName", user.getFullName() == null ? user.getUsername() : user.getFullName());
+            variables.put("fullName", user.getFullName() == null ? user.getUsername() : user.getFullName());
             variables.put("actionUrl", "/documents/revisions/" + revision.getId());
             variables.put("relatedEntityType", "revision");
             variables.put("relatedEntityId", String.valueOf(revision.getId()));

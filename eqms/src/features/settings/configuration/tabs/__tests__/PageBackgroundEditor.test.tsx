@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeAll, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { PageBackgroundEditor } from '../PageBackgroundEditor';
 import { DEFAULT_PAGE_BACKGROUND, type PageBackground } from '@/config/page-background';
 import { api } from '@/services/api/client';
 
 vi.mock('@/components/ui/color-picker/ColorPickerInput', () => ({ ColorPickerInput: ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => <label>{label}<input value={value} onChange={(event) => onChange(event.target.value)} /></label> }));
 beforeAll(() => { window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() })); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function Example() {
   const [value, setValue] = useState<PageBackground>(DEFAULT_PAGE_BACKGROUND);
@@ -32,24 +37,62 @@ it('chooses a gradient, changes colors and angle, adds and removes stops', async
 
 it('uploads video to the server and enables repeat', async () => {
   const id = '12345678-1234-1234-1234-123456789abc';
+  const videoPath = `/settings/system/auth-background-video/${id}`;
+  const uploadedFile = new File(['video'], 'video.webm', { type: 'video/webm' });
   vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { id } } as never);
-  vi.spyOn(api, 'get').mockResolvedValueOnce({ data: new Blob(['video'], { type: 'video/mp4' }) } as never);
-  vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:video'), revokeObjectURL: vi.fn() }));
+  // Shared loading indicators may read Branding while upload is pending. Only the
+  // authenticated video endpoint returns a Blob; unrelated GETs cannot consume it.
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path === videoPath) return { data: new Blob(['video'], { type: 'video/mp4' }) } as never;
+    if (path === '/branding') return { data: { systemDisplayName: 'EQMS', systemLogo: '', systemFavicon: '' } } as never;
+    throw new Error(`Unexpected GET in video preview test: ${path}`);
+  });
+  const createObjectURL = vi.fn(() => 'blob:video');
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal('URL', Object.assign(class extends URL {}, { createObjectURL, revokeObjectURL }));
   function AuthExample() {
     const [value, setValue] = useState<PageBackground>(DEFAULT_PAGE_BACKGROUND);
     return <PageBackgroundEditor title="Authentication" allowImage value={value} onChange={setValue} />;
   }
-  render(<AuthExample />);
+  const { unmount } = render(<AuthExample />);
   fireEvent.click(screen.getByRole('combobox', { name: 'Authentication background style' }));
   fireEvent.click(await screen.findByRole('option', { name: 'Background video' }));
-  fireEvent.change(screen.getByLabelText('Authentication background video'), { target: { files: [new File(['video'], 'video.webm', { type: 'video/webm' })] } });
+  fireEvent.change(screen.getByLabelText('Authentication background video'), { target: { files: [uploadedFile] } });
   await waitFor(() => expect(screen.getByRole('button', { name: /Replace video/i })).toBeTruthy());
-  expect(api.post).toHaveBeenCalledWith('/settings/system/auth-background-video', expect.any(FormData), expect.any(Object));
+  expect(api.post).toHaveBeenCalledWith('/settings/system/auth-background-video', expect.any(FormData), { timeout: 150000 });
+  const uploadBody = vi.mocked(api.post).mock.calls[0][1];
+  expect(uploadBody).toBeInstanceOf(FormData);
+  expect((uploadBody as FormData).get('video')).toBe(uploadedFile);
+  expect(api.get).toHaveBeenCalledWith(videoPath, { responseType: 'blob' });
+  const preview = await screen.findByLabelText('Video preview');
+  expect(preview).toHaveAttribute('src', 'blob:video');
+  expect(preview).toHaveProperty('loop', true);
   expect((screen.getByLabelText('Repeat video') as HTMLInputElement).checked).toBe(true);
   fireEvent.click(screen.getByLabelText('Repeat video'));
   expect((screen.getByLabelText('Repeat video') as HTMLInputElement).checked).toBe(false);
-  await waitFor(() => expect(screen.getByLabelText('Video preview')).toBeTruthy());
-  vi.restoreAllMocks();
+  expect(preview).toHaveProperty('loop', false);
+  fireEvent.click(screen.getByLabelText('Repeat video'));
+  expect(preview).toHaveProperty('loop', true);
+  expect(api.post).toHaveBeenCalledOnce();
+  expect(vi.mocked(api.get).mock.calls.filter(([path]) => path === videoPath)).toHaveLength(1);
+  unmount();
+  expect(revokeObjectURL).toHaveBeenCalledWith('blob:video');
+});
+
+it('keeps the draft unchanged when the server refuses an uploaded video', async () => {
+  const onChange = vi.fn();
+  vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('VIDEO_TOO_LONG'));
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path === '/branding') return { data: { systemDisplayName: 'EQMS', systemLogo: '', systemFavicon: '' } } as never;
+    throw new Error(`Unexpected GET after refused video upload: ${path}`);
+  });
+  render(<PageBackgroundEditor title="Authentication" allowImage value={{ ...DEFAULT_PAGE_BACKGROUND, mode: 'video' }} onChange={onChange} />);
+  fireEvent.change(screen.getByLabelText('Authentication background video'), { target: { files: [new File(['video'], 'long.webm', { type: 'video/webm' })] } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Video could not be processed. Check the file and the 15-second limit, then try again.');
+  expect(onChange).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText('Video preview')).toBeNull();
+  expect(screen.getByRole('button', { name: /Upload video/i })).toBeEnabled();
+  expect(api.post).toHaveBeenCalledOnce();
 });
 
 it('uploads a supported auth image and rejects unsupported files', async () => {

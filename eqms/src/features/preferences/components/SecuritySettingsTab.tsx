@@ -290,14 +290,14 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
                   : 'bg-slate-50 text-slate-600'
               )}
             >
-              {appMfaEnabled ? 'Enabled' : 'Not enabled'}
+                {appMfaEnabled ? tr('Enabled') : tr('Not enabled')}
             </span>
           </div>
 
           {!appMfaEnabled ? (
             <div className="space-y-3">
               <Button type="button" size="sm" onClick={handleSetupStart} disabled={isSaving}>
-                {enrollOpen ? 'Refresh Setup' : 'Setup Authenticator App'}
+                {enrollOpen ? tr('Refresh Setup') : tr('Setup Authenticator App')}
               </Button>
 
               {enrollOpen && (

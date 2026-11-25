@@ -28,7 +28,7 @@ export function useProductionRestoreRun(onSettled: () => void) {
         if (job.status === "DONE") {
           showToast({ type: "success", title: label, message: "Done." });
         } else if (job.status === "FAILED") {
-          const why = result.errorDetail || result.detail || (result.errorCode ? statusLabel(result.errorCode) : "The agent reported a failure.");
+          const why = result.errorDetail || result.detail || (result.errorCode ? statusLabel(result.errorCode) : tr("The agent reported a failure."));
           showToast({ type: "error", title: `${label} did not complete`, message: `${result.failedStep ? `Stopped at ${result.failedStep}. ` : ""}${why}` });
         } else {
           showToast({ type: "info", title: label, message: "Still running. Refresh the list to see how it ended." });

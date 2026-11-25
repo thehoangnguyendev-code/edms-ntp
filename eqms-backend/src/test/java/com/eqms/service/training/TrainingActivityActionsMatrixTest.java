@@ -20,7 +20,8 @@ class TrainingActivityActionsMatrixTest {
         String sql = java.nio.file.Files.readString(java.nio.file.Path.of(MIGRATION)).replaceAll("\s+", " ");
         Set<String> mine = Set.of("HOLD_SESSION", "RECORD_ATTENDANCE", "POSTPONE_SESSION", "UPDATE_SESSION", "SET_CONTENT_EXEMPTIONS", "RECORD_ASSESSMENT", "DESIGNATE");
         var defaults = PolicyMatrixHarness.defaultsOf("TRAINING_ACTIVITY").stream().filter(d -> mine.contains(d.policy().actionCode())).toList();
-        assertThat(defaults).hasSize(12);
+        // 12 until V845 retired HOLD_SESSION, UPDATE_SESSION and SET_CONTENT_EXEMPTIONS from Notified (the migration under test is the one that created them)
+        assertThat(defaults).hasSize(9);
         for (var d : defaults) {
             assertThat(sql).contains("('TRAINING_ACTIVITY', 'TRAINING_ACTIVITY', '" + d.policy().actionCode() + "', '" + d.policy().fromStatus() + "', '" + d.policy().requiredPermissionCode() + "', '"
                     + d.policy().description().replace("'", "''") + "')");
@@ -32,10 +33,10 @@ class TrainingActivityActionsMatrixTest {
                 (action, state, p, rel, inScope) -> {
                     boolean planned = state.equals("PLANNED"), notified = state.equals("NOTIFIED"), inProgress = state.equals("IN_PROGRESS");
                     switch (action) {
-                        case "HOLD_SESSION": return (notified || inProgress) && rel.contains("CONDUCTOR") && inScope;
+                        case "HOLD_SESSION": return inProgress && rel.contains("CONDUCTOR") && inScope;
                         case "RECORD_ATTENDANCE": return inProgress && rel.contains("CONDUCTOR") && inScope;
                         case "POSTPONE_SESSION": return (planned || notified || inProgress) && p.contains("training.activity.organize") && inScope;
-                        case "UPDATE_SESSION": case "SET_CONTENT_EXEMPTIONS": return (planned || notified) && p.contains("training.activity.organize") && inScope;
+                        case "UPDATE_SESSION": case "SET_CONTENT_EXEMPTIONS": return planned && p.contains("training.activity.organize") && inScope;
                         default: return inProgress && p.contains("training.assessment.record") && inScope; // RECORD_ASSESSMENT
                     }
                 });

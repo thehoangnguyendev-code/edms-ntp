@@ -112,7 +112,7 @@ export function TrainingSpecimenView() {
       showToast({
         type: "success",
         title: tr("Specimen signature uploaded"),
-        message: "It is now the current record of the person.",
+        message: tr("It is now the current record of the person."),
       });
       setUploading(false);
       setFile(null);

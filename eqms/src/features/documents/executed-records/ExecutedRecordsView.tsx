@@ -443,7 +443,7 @@ export const ExecutedRecordsView: React.FC = () => {
                 onRowClick={(r) => r.fileAvailable && setPreviewRecord(r)}
                 emptyState={
                   <TableEmptyState
-                    title={error ? "Unable to load records" : "No Records Found"}
+                    title={error ? tr("Unable to load records") : tr("No Records Found")}
                     description={error || "No scanned record matches your filters. A record appears here once a returned paper copy is recalled by scan."}
                   />
                 }

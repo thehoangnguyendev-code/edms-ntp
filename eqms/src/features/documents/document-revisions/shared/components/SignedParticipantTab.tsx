@@ -46,7 +46,7 @@ export const SignedParticipantTab: React.FC<SignedParticipantTabProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
-                {item.isLegacy ? "Historical Date (not a signature)" : tr("Signed On (Date - Time)")}
+                {item.isLegacy ? tr("Historical Date (not a signature)") : tr("Signed On (Date - Time)")}
               </label>
               <input
                 type="text"

@@ -54,7 +54,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
   const [searchedUsers, setSearchedUsers] = useState<SharingGrantee[]>([]);
 
   const ownerName = node.kind === "BUSINESS_UNIT" ? node.businessUnitName : node.departmentName;
-  const ownerWord = node.kind === "BUSINESS_UNIT" ? "Business Unit" : "Department";
+  const ownerWord = node.kind === "BUSINESS_UNIT" ? tr("Business Unit") : "Department";
   const formEmpty = !everyone && !wholeDepartment && positionIds.length === 0 && departmentIds.length === 0 && users.length === 0;
   const anyMine = entries.some((e) => e.createdByMe);
   const removable = useMemo(() => entries.filter((e) => e.removable), [entries]);
@@ -284,7 +284,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
         onClose={() => setRemoveTarget(null)}
         onConfirm={removeOne}
         type="confirm"
-        title={removeTarget?.effect === "DENY" ? "Remove this exclusion?" : `Remove ${removeTarget?.label ?? "this person"}?`}
+        title={removeTarget?.effect === "DENY" ? tr("Remove this exclusion?") : `Remove ${removeTarget?.label ?? "this person"}?`}
         description={
           <p className="text-sm text-slate-600">
             {removeTarget?.effect === "DENY"

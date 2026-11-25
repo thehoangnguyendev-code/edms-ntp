@@ -18,7 +18,7 @@ import { Input, Textarea } from "@/features/training-activities/shared/TrainingF
 import { useTrainingRowMenu } from "@/features/training-activities/shared/useTrainingRowMenu";
 import { when } from "@/features/training-activities/shared/trainingLabels";
 import { trainingCodeRulesApi, trainingError, type TrainingCodeRule } from "@/services/api/trainingActivities";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 /** The parts a pattern can use, with what each one gives. The server checks the pattern; this list only helps to write it. */
 const PARTS: { token: string; text: string }[] = [
@@ -112,7 +112,7 @@ export function TrainingCodeRulesView() {
     { id: "pattern", header: "Pattern", sort: sorted("pattern"), cell: (r) => <span className="break-all font-mono text-slate-900">{r.pattern}</span> },
     { id: "example", header: tr("Next Code Looks Like"), sort: sorted("example"), cell: (r) => <span className="font-mono font-semibold text-emerald-700">{r.example || "—"}</span> },
     { id: "changed", header: tr("Last Changed"), sort: sorted("updatedAt"), cell: (r) => (r.updatedAt ? `${when(r.updatedAt)}${r.updatedByName ? ` by ${r.updatedByName}` : ""}` : "Default rule") },
-    { id: "note", header: "Notes", cell: (r) => <div className="max-w-80 whitespace-normal text-xs text-slate-500">{NOTE[r.entity]}</div> },
+    { id: "note", header: tr("Notes"), cell: (r) => <div className="max-w-80 whitespace-normal text-xs text-slate-500">{tr(NOTE[r.entity])}</div> },
   ];
   const { layout, control } = useCustomColumnLayout("training.code.rules", columns, canManage ? rowMenu.action : undefined);
   const reset = (apply: () => void) => { apply(); table.setCurrentPage(1); };
@@ -159,7 +159,7 @@ export function TrainingCodeRulesView() {
       </ReportListToolbar>
       {canManage && rowMenu.node}
       <FormModal
-        isOpen={!!editing} onClose={() => setEditing(undefined)} title={`Rule of the ${editing?.rule.label ?? "code"}`} confirmText="Save" size="md" isLoading={saving}
+        isOpen={!!editing} onClose={() => setEditing(undefined)} title={trFormat("Rule of the {label}", { label: tr(editing?.rule.label ?? "code") })} confirmText={tr("Save")} size="md" isLoading={saving}
         confirmDisabled={!editing || !editing.pattern.trim() || !!example.error || editing.pattern.trim() === editing.rule.pattern}
         description={tr("Write the pattern with letters, digits, / . _ - and the parts below. The example is made by the server.")}
         onConfirm={() => void save()}
@@ -175,7 +175,7 @@ export function TrainingCodeRulesView() {
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs text-slate-700 hover:border-emerald-400 hover:bg-emerald-50">{p.token}</button>
               ))}
             </div>
-            <ul className="space-y-1 text-xs text-slate-500">{PARTS.map((p) => <li key={p.token}><span className="font-mono text-slate-700">{p.token}</span> {p.text}</li>)}</ul>
+            <ul className="space-y-1 text-xs text-slate-500">{PARTS.map((p) => <li key={p.token}><span className="font-mono text-slate-700">{p.token}</span> {tr(p.text)}</li>)}</ul>
             <div aria-live="polite">
               <div className="text-xs text-slate-500">{tr("The code would look like")}</div>
               {example.error ? <p className="text-sm text-red-700">{example.error}</p> : <p className="font-mono text-base font-semibold text-emerald-700">{example.text || "—"}</p>}

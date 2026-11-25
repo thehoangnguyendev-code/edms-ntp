@@ -53,9 +53,9 @@ export function WorkspaceReadingResultsStep({ departments, canFinish, finished, 
     <>
       <div role="status" className={`rounded-xl border px-4 py-3 text-sm ${canFinish || finished ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
         {finished
-          ? "The training is finished and QA was told, with the list APD.0108 of every department."
+          ? tr("The training is finished and QA was told, with the list APD.0108 of every department.")
           : canFinish
-            ? "Every head of department confirmed. The trainer can now finish the training (button Finish Training at the top): QA is told, with the list APD.0108 of every department."
+            ? tr("Every head of department confirmed. The trainer can now finish the training (button Finish Training at the top): QA is told, with the list APD.0108 of every department.")
             : `${confirmed} of ${withReaders.length} department(s) confirmed by the head. Finish Training appears when every head has confirmed, and nobody is left to sign.`}
       </div>
       <DataTable

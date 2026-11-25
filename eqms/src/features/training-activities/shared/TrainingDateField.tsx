@@ -1,4 +1,5 @@
 import { DateTimePicker } from "@/components/ui/datetime-picker";
+import { tr } from "@/i18n";
 
 /** What each date of a training means: the same words wherever the date is shown. */
 export const DATE_HINT = {
@@ -15,7 +16,7 @@ export function TrainingDateField({ label, value, onChange, disabled, placeholde
       value={value}
       disabled={disabled}
       error={error}
-      placeholder={placeholder ?? "Select date"}
+      placeholder={placeholder ?? tr("Select date")}
       onChange={(v) => {
         const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
         onChange(m ? `${m[3]}-${m[2]}-${m[1]}` : "");
@@ -23,5 +24,5 @@ export function TrainingDateField({ label, value, onChange, disabled, placeholde
     />
   );
   if (!hint) return picker;
-  return <div>{picker}{!error && <p className="mt-1 text-xs text-slate-500">{hint}</p>}</div>;
+  return <div>{picker}{!error && <p className="mt-1 text-xs text-slate-500">{tr(hint)}</p>}</div>;
 }

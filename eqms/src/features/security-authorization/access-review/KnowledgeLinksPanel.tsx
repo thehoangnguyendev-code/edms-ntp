@@ -203,9 +203,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
       <div className="compact-filter-section px-4 pt-4 md:p-5 flex flex-col">
         <div className="px-1.5 -mx-1.5 pb-1.5 -mb-1.5">
           <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-            A link lets a signed-in user who holds the Knowledge permission see a folder or a document of the Knowledge Base until it expires or is revoked.
-            The Heads and the people they named make links in the Share dialog of the Knowledge explorer. Here you see every link and, if you hold the
-            permission to manage object access rules, revoke one at once. The link itself is never shown again after it was made.
+            {tr("A link lets a signed-in user who holds the Knowledge permission see a folder or a document of the Knowledge Base until it expires or is revoked. The Heads and the people they named make links in the Share dialog of the Knowledge explorer. Here you see every link and, if you hold the permission to manage object access rules, revoke one at once. The link itself is never shown again after it was made.")}
           </div>
 
           <div className="flex md:hidden flex-col gap-1.5 w-full mb-4">

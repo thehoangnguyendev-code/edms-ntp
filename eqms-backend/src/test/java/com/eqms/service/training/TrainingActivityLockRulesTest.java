@@ -102,8 +102,8 @@ class TrainingActivityLockRulesTest {
     }
 
     @Test
-    void theDueDateCannotBeChangedAfterTheActivityIsNotified() {
-        activity("NOTIFIED");
+    void theDueDateCannotBeChangedAfterTheTrainingStarts() {
+        activity("IN_PROGRESS");
 
         assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, LocalDate.of(2027, 1, 1), "r", null, null)))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_ACTIVITY_FIELD_LOCKED");
@@ -119,14 +119,48 @@ class TrainingActivityLockRulesTest {
     }
 
     @Test
-    void theTrainerAndThePlaceOfASessionCanBeChangedBeforeTheTrainingStartsAndAreAudited() {
-        activity("NOTIFIED");
+    void theTrainerAndThePlaceOfASessionCanBeChangedWhilePlannedAndAreAudited() {
+        activity("PLANNED");
         session("PLANNED");
 
         service.updateSession(actor, sessionId, change("Trainer is ill"));
 
         verify(jdbc).update(contains("update training_sessions set trainer_user_id=?"), any(), eq("New Trainer"), any(), eq("Room 2"), eq("ONSITE"), any(), any(), eq(sessionId));
         verify(store).auditActivity(eq(actor), any(), eq("TRAINING_SESSION_UPDATED"), any(), any(), contains("Trainer is ill"), any(List.class));
+    }
+
+    @Test
+    void nothingOfThePlanCanBeChangedOnceTheParticipantsAreNotified() {
+        activity("NOTIFIED");
+        session("PLANNED");
+
+        assertThatThrownBy(() -> service.updateSession(actor, sessionId, change("why"))).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.update(actor, activityId, new TrainingActivityService.UpdateRequest(3, null, "r", null, null))).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.setContentExemptions(actor, activityId, new TrainingActivityService.ExemptionRequest(true, true, "r"))).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void theTrainingStartsOnlyFromNotifiedAndOnlyWithASessionToHold() {
+        activity("PLANNED");
+        assertThatThrownBy(() -> service.startTraining(actor, activityId, new TrainingActivityService.CommandRequest(3, null, "token")))
+                .isInstanceOf(ResponseStatusException.class);
+
+        activity("NOTIFIED");
+        assertThatThrownBy(() -> service.startTraining(actor, activityId, new TrainingActivityService.CommandRequest(3, null, "token")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_SESSION_REQUIRED");
+        verify(store, never()).setStatus(eq(activityId), eq("IN_PROGRESS"));
+    }
+
+    @Test
+    void invitationsAreSentAgainOnlyWhileNotifiedAndOnlyToPeopleTheLastBatchMissed() {
+        activity("PLANNED");
+        assertThatThrownBy(() -> service.resendInvitations(actor, activityId)).isInstanceOf(ResponseStatusException.class);
+
+        // notified, but nobody is on the list: nothing to send again
+        activity("NOTIFIED");
+        assertThatThrownBy(() -> service.resendInvitations(actor, activityId))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_NOTIFICATIONS_NOTHING_TO_RESEND");
+        verify(notifier, never()).sendBatch(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -139,7 +173,7 @@ class TrainingActivityLockRulesTest {
 
     @Test
     void aSessionThatHasBeenHeldCannotBeChanged() {
-        activity("NOTIFIED");
+        activity("PLANNED");
         session("HELD");
 
         assertThatThrownBy(() -> service.updateSession(actor, sessionId, change("why")))
@@ -156,8 +190,8 @@ class TrainingActivityLockRulesTest {
     }
 
     @Test
-    void reopeningContentNeedsContentThatWasReviewedOrApproved() {
-        activity("PLANNED");
+    void reopeningContentOfANotifiedActivityNeedsContentThatWasApproved() {
+        activity("NOTIFIED");
         when(jdbc.queryForList(contains("from training_active_confirmations where activity_id=? and kind in"), eq(activityId))).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.reopenContent(actor, activityId, new TrainingActivityService.CommandRequest(3, "wrong slide", "token")))

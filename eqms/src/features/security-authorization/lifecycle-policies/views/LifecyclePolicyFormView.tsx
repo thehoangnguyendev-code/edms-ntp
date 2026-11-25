@@ -293,7 +293,7 @@ const TransitionPolicyForm: React.FC = () => {
 
   // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty(form, !loading);
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, mode === "create" ? "New Transition Policy" : "Edit Transition Policy", "the previous page");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, mode === "create" ? tr("New Transition Policy") : tr("Edit Transition Policy"), "the previous page");
   // Opened from nowhere (a link, a reload): an edit goes back to the details of the policy, a new policy to the list.
   const fallbackRoute = id && mode === "edit" ? `/security/lifecycle-policies/${id}` : `/security/lifecycle-policies?tab=transitions`;
   const handleBack = () => navigateBack(go, location.state, fallbackRoute);
@@ -552,7 +552,7 @@ const TransitionPolicyForm: React.FC = () => {
       showToast({
         type: "success",
         title: tr("Policy Updated"),
-        message: "Policy saved successfully.",
+        message: tr("Policy saved successfully."),
       });
       setShowDiff(false);
       leaveAfterSave();
@@ -568,8 +568,8 @@ const TransitionPolicyForm: React.FC = () => {
     if (!validate()) return;
     const sig = await requestSignature(
       mode === "create"
-        ? "Create Workflow Authorization Policy"
-        : "Create Document-Type Override",
+        ? tr("Create Workflow Authorization Policy")
+        : tr("Create Document-Type Override"),
       "Workflow Authorization Change",
     );
     if (!sig) return;
@@ -602,7 +602,7 @@ const TransitionPolicyForm: React.FC = () => {
         showToast({
           type: "success",
           title: tr("Policy Created"),
-          message: "Policy created successfully.",
+          message: tr("Policy created successfully."),
         });
       } else if (mode === "override") {
         if (!sourcePolicy?.id) {
@@ -625,7 +625,7 @@ const TransitionPolicyForm: React.FC = () => {
         showToast({
           type: "success",
           title: tr("Override Created"),
-          message: "Document-type override created.",
+          message: tr("Document-type override created."),
         });
       }
       leaveAfterSave();
@@ -924,7 +924,7 @@ const PolicyRelationsSection: React.FC<{
         sig,
       );
       onSaved(updated);
-      showToast({ type: "success", message: "Policy relations updated." });
+      showToast({ type: "success", message: tr("Policy relations updated.") });
     } catch (err) {
       const { message } = extractApiError(err);
       showToast({ type: "error", title: tr("Save Failed"), message });
@@ -943,7 +943,7 @@ const PolicyRelationsSection: React.FC<{
     try {
       const updated = await workflowActionPolicyApi.setForbiddenRelations(policy.id, { relationDefinitionIds: forbiddenRelationIds }, sig);
       onSaved(updated);
-      showToast({ type: "success", message: "Forbidden relations updated." });
+      showToast({ type: "success", message: tr("Forbidden relations updated.") });
     } catch (err) {
       const { message } = extractApiError(err);
       showToast({ type: "error", title: tr("Save Failed"), message });
@@ -983,7 +983,7 @@ const PolicyRelationsSection: React.FC<{
             disabled={saving}
             className="whitespace-nowrap"
           >
-            {saving ? "Saving…" : "Save Relations"}
+            {saving ? "Saving…" : tr("Save Relations")}
           </Button>
         </div>
         <MultiSelect
@@ -1002,7 +1002,7 @@ const PolicyRelationsSection: React.FC<{
             disabled={savingForbidden}
             className="whitespace-nowrap"
           >
-            {savingForbidden ? "Saving…" : "Save Forbidden Relations"}
+            {savingForbidden ? "Saving…" : tr("Save Forbidden Relations")}
           </Button>
         </div>
       </div>
@@ -1143,7 +1143,7 @@ const CapabilityPolicyForm: React.FC = () => {
 
   // Leaving with a change that was not saved asks first (Cancel, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ capabilityCode, statusCode, documentTypeId, actorScope, requiredPermissionCode, priority, active, description, changeReason }, !loading);
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit State Policy" : "New State Policy", "the previous page");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? tr("Edit State Policy") : tr("New State Policy"), "the previous page");
   const handleBack = () =>
     navigateBack(
       go,
@@ -1160,8 +1160,8 @@ const CapabilityPolicyForm: React.FC = () => {
   // Errors show only after the first Save; each one clears as soon as its field is valid.
   const [submitted, setSubmitted] = useState(false);
   const errors = {
-    capability: capabilityCode ? "" : "Select a capability.",
-    actorScope: actorScope ? "" : "Select an actor scope.",
+    capability: capabilityCode ? "" : tr("Select a capability."),
+    actorScope: actorScope ? "" : tr("Select an actor scope."),
   };
   const shown = { capability: submitted ? errors.capability : "", actorScope: submitted ? errors.actorScope : "" };
 
@@ -1174,8 +1174,8 @@ const CapabilityPolicyForm: React.FC = () => {
     }
     const sig = await requestSignature(
       isEdit
-        ? "Update Lifecycle State Policy"
-        : "Create Lifecycle State Policy",
+        ? tr("Update Lifecycle State Policy")
+        : tr("Create Lifecycle State Policy"),
       "Workflow Authorization Change",
     );
     if (!sig) return;
@@ -1195,10 +1195,10 @@ const CapabilityPolicyForm: React.FC = () => {
     try {
       if (initial) {
         await lifecycleStatePolicyApi.update(initial.id, payload);
-        showToast({ type: "success", message: "State policy updated" });
+        showToast({ type: "success", message: tr("State policy updated") });
       } else {
         await lifecycleStatePolicyApi.create(payload);
-        showToast({ type: "success", message: "State policy created" });
+        showToast({ type: "success", message: tr("State policy created") });
       }
       leaveAfterSave();
     } catch (e: any) {
@@ -1227,7 +1227,7 @@ const CapabilityPolicyForm: React.FC = () => {
     );
   }
 
-  const title = isEdit ? "Edit State Policy" : "New State Policy";
+  const title = isEdit ? tr("Edit State Policy") : tr("New State Policy");
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -1320,9 +1320,9 @@ const CapabilityPolicyForm: React.FC = () => {
                   s === "ANY"
                     ? tr("Any user (with required permission)")
                     : s === "AUTHOR"
-                      ? "Revision author"
+                      ? tr("Revision author")
                       : s === "PARTICIPANT"
-                        ? "Assigned workflow participant"
+                        ? tr("Assigned workflow participant")
                         : s,
                 value: s,
               }))}

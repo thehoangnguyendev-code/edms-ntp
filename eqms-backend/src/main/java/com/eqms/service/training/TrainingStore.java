@@ -22,6 +22,11 @@ public class TrainingStore {
     private final AuditTrailService audit;
     private final ObjectMapper json = new ObjectMapper();
 
+    /** The audit service, for the services of Training that write an entry for a record that is not an activity (a revision). */
+    public AuditTrailService auditService() {
+        return audit;
+    }
+
     public TrainingStore(JdbcTemplate jdbc, AuditTrailService audit) {
         this.jdbc = jdbc;
         this.audit = audit;

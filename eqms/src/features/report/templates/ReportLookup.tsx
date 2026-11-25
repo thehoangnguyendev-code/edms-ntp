@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import { useEffect, useState, useRef } from "react";
 import { Select } from "@/components/ui/select/Select";
 import {
@@ -116,7 +117,7 @@ export function ReportLookup({
         <p className="text-xs text-slate-500">
           {loading
             ? "Loading…"
-            : "Up to 100 scoped matches. Search to find more."}
+            : tr("Up to 100 scoped matches. Search to find more.")}
         </p>
       )}
     </div>

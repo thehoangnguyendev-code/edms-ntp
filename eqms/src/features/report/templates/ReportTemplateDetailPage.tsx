@@ -122,7 +122,7 @@ export function ReportTemplateDetailPage({
       }
     : { label: tr("Report Library"), onClick: () => navigate("/report/templates") };
   // The library page is for someone who runs the report; the page of the template is for someone who makes it.
-  const title = inAdministration ? "Report Template Details" : "Report Details";
+  const title = inAdministration ? tr("Report Template Details") : tr("Report Details");
 
   const fieldColumns: DataTableColumn<FieldRow>[] = [
     {
@@ -221,8 +221,8 @@ export function ReportTemplateDetailPage({
                   }
                 >
                   {can("disable")
-                    ? "Disable Report Template"
-                    : "Enable Report Template"}
+                    ? tr("Disable Report Template")
+                    : tr("Enable Report Template")}
                 </Button>
               )}
             {template && inAdministration && can("discardRevision") && (
@@ -257,7 +257,7 @@ export function ReportTemplateDetailPage({
                   )
                 }
               >
-                Edit Report Template
+                {tr("Edit Report Template")}
               </Button>
             )}
             {template && !inAdministration && can("createReport") && (
@@ -331,7 +331,7 @@ export function ReportTemplateDetailPage({
                     }
                   />
                   <ReadonlyField
-                    label="Effective Revision"
+                    label={tr("Effective Revision")}
                     value={
                       template.effectiveRevision != null
                         ? reportRevisionLabel(template.effectiveRevision)
@@ -350,7 +350,7 @@ export function ReportTemplateDetailPage({
                     />
                   ) : (
                     <ReadonlyField
-                      label={template.approvalBasis === "NOT_REQUIRED" ? "In Use Since" : tr("Approved On")}
+                      label={template.approvalBasis === "NOT_REQUIRED" ? tr("In Use Since") : tr("Approved On")}
                       value={when(template.approvalBasis === "NOT_REQUIRED" ? template.inUseSince : template.approvedAt)}
                     />
                   )}
@@ -389,7 +389,7 @@ export function ReportTemplateDetailPage({
                     <>
                       {/* What happened to the revision in force: a person approved it, or it came into force when saved. */}
                       <ReadonlyField
-                        label="Approval State"
+                        label={tr("Approval State")}
                         value={template.approvalBasis === "NOT_REQUIRED" ? tr("Not required (in force when saved, under the earlier rule)") : codeLabel(template.approvalStatus)}
                       />
                       <ReadonlyField
@@ -405,7 +405,7 @@ export function ReportTemplateDetailPage({
                         value={when(template.approvedAt)}
                       />
                       <ReadonlyField
-                        label="Submitted Version"
+                        label={tr("Submitted Version")}
                         value={
                           template.submittedVersion != null
                             ? `v${template.submittedVersion}`
@@ -417,7 +417,7 @@ export function ReportTemplateDetailPage({
                         value={when(template.submittedAt)}
                       />
                       <ReadonlyField
-                        label="Last Review Comment"
+                        label={tr("Last Review Comment")}
                         value={template.approvalComment ?? "—"}
                       />
                     </>
@@ -463,7 +463,7 @@ export function ReportTemplateDetailPage({
                       columnLayout={scopeLayout}
                       emptyState={
                         <TableEmptyState
-                          title="No role scopes"
+                          title={tr("No role scopes")}
                           description={tr("No role may run this template yet.")}
                         />
                       }
@@ -527,8 +527,8 @@ export function ReportTemplateDetailPage({
             isOpen={action === "disable" || action === "enable"}
             title={
               action === "enable"
-                ? "Enable Report Template"
-                : "Disable Report Template"
+                ? tr("Enable Report Template")
+                : tr("Disable Report Template")
             }
             description={
               action === "enable"
@@ -551,7 +551,7 @@ export function ReportTemplateDetailPage({
           />
           <ReportTemplateReasonModal
             isOpen={action === "discard"}
-            title="Discard Revision"
+            title={tr("Discard Revision")}
             description={`Revision ${reportRevisionLabel(template.openRevision, "DRAFT")} is discarded and stays on record as Discarded. Revision ${reportRevisionLabel(template.effectiveRevision)} remains the effective revision.`}
             confirmText="Discard"
             reasonRequired

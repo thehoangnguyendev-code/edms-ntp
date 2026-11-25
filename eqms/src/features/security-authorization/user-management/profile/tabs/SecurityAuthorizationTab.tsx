@@ -283,9 +283,9 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
         }
         rows={rows}
         totalCount={selectedProfiles.length}
-        emptyStateTitle="No Access Profile Selected"
-        emptyStateDescription="Use the button above to choose the Access Profile(s) this user will need."
-        noSearchMatchDescription="Try a different search term."
+emptyStateTitle={tr("No Access Profile Selected")}
+          emptyStateDescription={tr("Use the button above to choose the Access Profile(s) this user will need.")}
+        noSearchMatchDescription={tr("Try a different search term.")}
       />
       {selectionError && <p className="text-xs text-red-600 mt-2">{selectionError}</p>}
       <EditAccessProfilesModal
@@ -337,8 +337,8 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
       if (request !== generation.current) return;
       setSummary(null);
       showToast({ type: "error", message: error?.response?.status === 403
-        ? "You do not have permission to view this user's authorization."
-        : "Failed to load authorization summary." });
+        ? tr("You do not have permission to view this user's authorization.")
+        : tr("Failed to load authorization summary.") });
     } finally {
       if (request === generation.current) setLoading(false);
     }

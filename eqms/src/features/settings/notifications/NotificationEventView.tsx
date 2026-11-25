@@ -413,7 +413,7 @@ export const NotificationEventView: React.FC<{
       showToast({
         type: "error",
         title: isChangedByOthers(e)
-          ? "Not saved: changed by someone else"
+          ? tr("Not saved: changed by someone else")
           : "Not saved",
         message: getApiErrorMessage(e, "The wording could not be saved."),
       });
@@ -535,11 +535,11 @@ export const NotificationEventView: React.FC<{
   const previewStyles = getNotificationIconStyles(delivery.priority);
   const title = isEmail
     ? canManage
-      ? "Edit Email Notification"
-      : "Email Notification Details"
+      ? tr("Edit Email Notification")
+      : tr("Email Notification Details")
     : canManage
-      ? "Edit In-App Notification"
-      : "In-App Notification Details";
+      ? tr("Edit In-App Notification")
+      : tr("In-App Notification Details");
   const backPath = `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=${isEmail ? "email" : "in-app"}`;
   // the same notification on its other channel: one button instead of looking for it in the other list
   const otherChannel =

@@ -1,7 +1,8 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { DashLoading } from 'respinner';
+import { LoadingIndicator } from './LoadingIndicator';
 import { cn } from '../utils';
+import { tr } from '@/i18n';
 
 interface LoadingProps {
   size?: 'xs' | 'sm' | 'default' | 'lg' | 'xl';
@@ -21,7 +22,7 @@ const sizeMap = {
 
 export const Loading: React.FC<LoadingProps> = ({
   size = 'default',
-  color = '#059669',
+  color,
   fullPage = false,
   text,
   className,
@@ -29,8 +30,8 @@ export const Loading: React.FC<LoadingProps> = ({
   const sizeConfig = sizeMap[size];
 
   const loadingContent = (
-    <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
-      <DashLoading color={color} size={sizeConfig.size} />
+    <div role="status" aria-live="polite" aria-label={text || tr('Loading')} className={cn("flex flex-col items-center justify-center gap-3", className)}>
+      <LoadingIndicator color={color} size={sizeConfig.size} />
       {text && (
         <span className={cn('text-slate-600 font-medium', sizeConfig.textSize)}>
           {text}
@@ -75,7 +76,7 @@ export const ButtonLoading: React.FC<{ text?: string; light?: boolean; size?: ke
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <DashLoading color={light ? '#ffffff' : '#059669'} size={config.spinner} />
+      <LoadingIndicator color={light ? '#ffffff' : undefined} size={config.spinner} />
       <span className={config.text}>{text}</span>
     </div>
   );

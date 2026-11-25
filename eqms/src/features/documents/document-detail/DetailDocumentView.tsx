@@ -898,8 +898,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     [revisions],
   );
   const upgradeConfigActionLabel = hasInProgressUpgradeDraft
-    ? "Adjust Upgrade Configuration"
-    : "Edit Revision for Upgrade";
+    ? tr("Adjust Upgrade Configuration")
+    : tr("Edit Revision for Upgrade");
 
   // The capability endpoint is authoritative: it evaluates permissions, document state,
   // revision state, assignment and lifecycle policy on the server. This view only renders it.
@@ -1635,7 +1635,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         );
       })
       .map((participant, index, arr) => ({
-        actionBy: arr.length > 1 ? `Reviewed By ${index + 1}` : "Reviewed By",
+        actionBy: arr.length > 1 ? `Reviewed By ${index + 1}` : tr("Reviewed By"),
         actionByName: participant.fullName || "-",
         actionOn: "Reviewed On (Date - Time)",
         actionOnValue: formatTimestamp(participant.actedAt) || "-",
@@ -1646,7 +1646,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         return !!participant.actedAt && status === "approved";
       })
       .map((participant, index, arr) => ({
-        actionBy: arr.length > 1 ? `Approved By ${index + 1}` : "Approved By",
+        actionBy: arr.length > 1 ? `Approved By ${index + 1}` : tr("Approved By"),
         actionByName: participant.fullName || "-",
         actionOn: "Approved On (Date - Time)",
         actionOnValue: formatTimestamp(participant.actedAt) || "-",
@@ -2285,7 +2285,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           setShowEditModeConfirmModal(false);
         }}
         type="warning"
-        title={hasInProgressUpgradeDraft ? "Adjust Upgrade Configuration?" : tr("Edit Revision for Upgrade?")}
+        title={hasInProgressUpgradeDraft ? tr("Adjust Upgrade Configuration?") : tr("Edit Revision for Upgrade?")}
         description={
           hasInProgressUpgradeDraft
             ? tr("A Draft upgrade revision is already in progress. These changes (Author, Co-Author, Reviewers, Approvers, Related/Correlated Documents, Periodic Review Cycle/Notification, Training) will be applied to that in-progress Draft. Nothing is saved until you explicitly click Save. Continue?")

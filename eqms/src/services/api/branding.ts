@@ -23,6 +23,8 @@ export interface LoginCarouselConfig {
 export const LOGIN_CAROUSEL_LIMITS = { maxSlides: 6, minSeconds: 3, maxSeconds: 30, defaultSeconds: 6, maxTitle: 80, maxSubtitle: 200 } as const;
 
 export interface PublicBranding {
+  loadingStyle?: import('@/config/loading').LoadingStyle;
+  loadingColor?: string;
   compactDesktopFilters?: boolean;
   alternatingRecordColors?: boolean;
   alternatingRecordColor?: string;

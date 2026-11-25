@@ -167,8 +167,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onToggleSidebar, isSi
               size="icon-sm"
               onClick={onToggleSidebar}
               className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 relative overflow-hidden transition-colors"
-              title={isMobileMenuOpen ? "Close Menu" : (isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")}
-              aria-label={isMobileMenuOpen ? "Close navigation menu" : (isSidebarCollapsed ? "Expand sidebar" : tr("Collapse sidebar"))}
+              title={isMobileMenuOpen ? tr("Close Menu") : (isSidebarCollapsed ? tr("Expand Sidebar") : tr("Collapse Sidebar"))}
+              aria-label={isMobileMenuOpen ? tr("Close navigation menu") : (isSidebarCollapsed ? tr("Expand sidebar") : tr("Collapse sidebar"))}
             >
               {/* Mobile: Menu Icon - Show when mobile menu is closed */}
               <Menu className={cn(

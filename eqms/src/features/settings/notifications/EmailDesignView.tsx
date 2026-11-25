@@ -193,7 +193,7 @@ export const EmailDesignView: React.FC = () => {
       if (isChangedByOthers(e)) setChangedByOthers(true);
       showToast({
         type: "error",
-        title: isChangedByOthers(e) ? "Not saved: changed by someone else" : "Not saved",
+        title: isChangedByOthers(e) ? tr("Not saved: changed by someone else") : "Not saved",
         message: getApiErrorMessage(e, "The email design could not be saved."),
       });
     } finally {
@@ -225,7 +225,7 @@ export const EmailDesignView: React.FC = () => {
       </div>
     );
   }
-  if (!design || !form) return <FullPageLoading text="Loading email design…" />;
+  if (!design || !form) return <FullPageLoading text={tr("Loading email design…")} />;
 
   const colour = (
     label: string,
@@ -234,7 +234,7 @@ export const EmailDesignView: React.FC = () => {
     // the picker puts 4px between its label and its box, the other fields 6px: the same gap here keeps the boxes of a row level
     <div className="[&>div:first-child]:gap-1.5">
       <ColorPickerInput
-        label={label}
+        label={tr(label)}
         value={form[field]}
         disabled={!canManage}
         onChange={(value) => set(field, value)}

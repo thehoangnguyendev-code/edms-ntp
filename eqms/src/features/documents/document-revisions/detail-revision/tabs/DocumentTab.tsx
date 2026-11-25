@@ -80,8 +80,8 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
 
   const isPreviewLoading = previewStatus === "loading";
   const previewHint = previewMessage || (documentFile
-    ? "The uploaded source file has not produced a PDF preview yet."
-    : "No source file has been uploaded for this revision.");
+    ? tr("The uploaded source file has not produced a PDF preview yet.")
+    : tr("No source file has been uploaded for this revision."));
 
   return (
     <div

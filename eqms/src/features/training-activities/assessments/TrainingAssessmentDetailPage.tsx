@@ -132,7 +132,7 @@ export function reorderAnswers(d: Draft, next: Opt[]): Draft {
  */
 export const itemIssues = (d: Draft): string[] => {
   const issues: string[] = [];
-  if (!d.prompt.trim()) issues.push(d.kind === "CHECK" ? "The line is empty" : "The question text is missing");
+  if (!d.prompt.trim()) issues.push(d.kind === "CHECK" ? tr("The line is empty") : tr("The question text is missing"));
   if (d.kind !== "CHECK") {
     const points = Number(d.points);
     if (!(points > 0) || points > 100) issues.push("The points must be above 0 and not more than 100");
@@ -145,7 +145,7 @@ export const itemIssues = (d: Draft): string[] => {
         if (!o.text.trim()) issues.push(`Answer ${LETTERS[k]} is empty`);
       });
       if (d.kind === "SINGLE" ? d.correct.length !== 1 : d.correct.length < 1) {
-        issues.push(d.kind === "SINGLE" ? "The right answer is not ticked" : "No right answer is ticked");
+        issues.push(d.kind === "SINGLE" ? tr("The right answer is not ticked") : tr("No right answer is ticked"));
       }
       break;
     case "TRUE_FALSE":
@@ -302,8 +302,8 @@ export function TrainingAssessmentDetailPage({
   const editable = isNew || Boolean(caps?.edit);
   const checklist = head.kind === "CHECKLIST";
   const title = isNew
-    ? "New Training Assessment"
-    : "Training Assessment Details";
+    ? tr("New Training Assessment")
+    : tr("Training Assessment Details");
   // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload); the moves after a Save or a delete are not leaves.
   const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(edited, title, "the previous page");
   const crumbs = trainingBreadcrumbs(go, "assessments", title);
@@ -604,7 +604,7 @@ export function TrainingAssessmentDetailPage({
           </FormField>
         </div>
       )}
-      <FormField label={checklist ? "Line to check" : "Question"} required>
+      <FormField label={checklist ? tr("Line to check") : "Question"} required>
         <Textarea
           rows={2}
           maxLength={2000}
@@ -824,7 +824,7 @@ export function TrainingAssessmentDetailPage({
     { id: "overview", label: tr("General Information") },
     {
       id: "items",
-      label: checklist ? "Checklist Lines" : "Questions",
+      label: checklist ? tr("Checklist Lines") : "Questions",
       count: items.length,
     },
     ...(isNew ? [] : [{ id: "audit", label: tr("Audit Trail") }]),
@@ -890,7 +890,7 @@ export function TrainingAssessmentDetailPage({
                 isNew
                   ? trainingAssessmentsApi.create(body())
                   : trainingAssessmentsApi.update(detail!.id, body()),
-              isNew ? "Draft created" : tr("Draft saved"),
+              isNew ? tr("Draft created") : tr("Draft saved"),
             )
           }
         >
@@ -1031,7 +1031,15 @@ export function TrainingAssessmentDetailPage({
               </ReadonlyGrid>
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-              <div className="md:col-span-2">
+              {isNew && (
+                <FormField
+                  label={tr("Assessment Number")}
+                  hint={tr("The system issues it when the draft is created, by the rule of Training Code Rules.")}
+                >
+                  <Input readOnly value="" placeholder={tr("Auto-generated after save")} />
+                </FormField>
+              )}
+              <div className={isNew ? undefined : "md:col-span-2"}>
                 <FormField
                   label={tr("Assessment Name")}
                   required
@@ -1151,7 +1159,7 @@ export function TrainingAssessmentDetailPage({
             {!wide && (
               <TabNav
                 tabs={[
-                  { id: "edit", label: checklist ? "Checklist Lines" : "Questions" },
+                  { id: "edit", label: checklist ? tr("Checklist Lines") : "Questions" },
                   { id: "paper", label: "Paper" },
                 ]}
                 activeTab={pane}
@@ -1222,7 +1230,7 @@ export function TrainingAssessmentDetailPage({
                     }}
                   >
                     <IconPlus className="mr-1 h-4 w-4" />
-                    {checklist ? "Add a Line" : tr("Add a Question")}
+                    {checklist ? tr("Add a Line") : tr("Add a Question")}
                   </Button>
                 ) : undefined}
               </div>

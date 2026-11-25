@@ -122,8 +122,8 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
     } catch (error) {
       openResultModal(
         "error",
-        showEditModal ? "Retention Policy Update Failed" : "Retention Policy Create Failed",
-        extractApiMessage(error, showEditModal ? "Unable to update retention policy." : "Unable to create retention policy.")
+        showEditModal ? tr("Retention Policy Update Failed") : tr("Retention Policy Create Failed"),
+        extractApiMessage(error, showEditModal ? tr("Unable to update retention policy.") : tr("Unable to create retention policy."))
       );
       throw error;
     }

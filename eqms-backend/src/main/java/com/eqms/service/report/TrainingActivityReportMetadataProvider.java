@@ -14,7 +14,7 @@ import java.util.*;
 @Component
 public class TrainingActivityReportMetadataProvider implements ReportMetadataProvider {
     /** The statuses in which an activity still has work to do; a due date in the past makes it late. */
-    private static final String OPEN = "a.status in ('PLANNED','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')";
+    private static final String OPEN = "a.status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION')";
     private static final String PRESENT = "p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')";
     private static final Map<String, String> COLUMNS = new LinkedHashMap<>();
     private static final Map<String, String> LABELS = new LinkedHashMap<>();
@@ -27,7 +27,7 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
         column("kindReason", "Reason for the Training", ReportQueryKit.labelCase("a.kind_reason", "NEW_HIRE", "New hire", "TRANSFER", "Transfer", "NEW_SOP", "New SOP",
                 "SOP_VERSION", "New version of an SOP", "CAPA", "CAPA", "AUDIT_FINDING", "Audit finding", "VISITOR", "Visitor", "ABSENCE_RETURN", "Return after absence",
                 "ABSENT_MAKEUP", "Supplementary for absence", "FAILED_ASSESSMENT", "Failed assessment", "OTHER", "Other"));
-        column("status", "Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "NOTIFIED", "Notified",
+        column("status", "Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "PENDING_APPROVAL", "Pending Approval", "NOTIFIED", "Notified",
                 "IN_PROGRESS", "In Progress", "PENDING_QA_CONFIRMATION", "Pending QA Confirmation", "COMPLETED", "Completed", "CANCELLED", "Closed - Cancelled"));
         column("department", "Organizing Department", "dep.name");
         column("documentNumber", "Document Number", "a.document_number");

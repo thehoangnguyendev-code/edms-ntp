@@ -440,7 +440,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                         type="button"
                         onClick={() => setShowPassword((current) => !current)}
                         className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 focus:outline-none focus:text-slate-700"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? tr("Hide password") : tr("Show password")}
                         tabIndex={-1}
                       >
                         {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}

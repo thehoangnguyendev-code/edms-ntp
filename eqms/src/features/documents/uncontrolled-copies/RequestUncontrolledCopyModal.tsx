@@ -170,7 +170,7 @@ export const RequestUncontrolledCopyModal: React.FC<{
         onConfirm={() => setIsSigning(true)}
         title={tr("Request Uncontrolled Copy")}
         description={tr("A reference copy of the current Effective revision. It is watermarked, not tracked and never recalled after issue.")}
-        confirmText="Sign & Request"
+        confirmText={tr("Sign & Request")}
         confirmDisabled={!canSubmit}
         size="2xl"
       >

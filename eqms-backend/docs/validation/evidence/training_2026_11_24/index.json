@@ -1,0 +1,1209 @@
+[
+ {
+  "kind": "shot",
+  "id": "T1A-01",
+  "file": "T1A-01__Activity_created_planned.png",
+  "caption": "T1-A: activity TRN/QA/26-1990 vừa tạo (Planned), chưa có buổi",
+  "time": "2026-11-24T07:21:57",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-02a",
+  "file": "T1A-02a__Session_and_material_General_Information.png",
+  "caption": "T1-A: một buổi Tự đọc và tài liệu đọc (General Information)",
+  "time": "2026-11-24T07:22:09",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-02b",
+  "file": "T1A-02b__Session_and_material_Training_Materials.png",
+  "caption": "T1-A: một buổi Tự đọc và tài liệu đọc (Training Materials)",
+  "time": "2026-11-24T07:22:16",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-03",
+  "file": "T1A-03__People_listed.png",
+  "caption": "T1-A: danh sách 3 người đã xác nhận",
+  "time": "2026-11-24T07:22:37",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-04",
+  "file": "T1A-04__Pending_approval.png",
+  "caption": "T1-A: Pending Approval, chờ người phê duyệt thứ nhất",
+  "time": "2026-11-24T07:22:55",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-05",
+  "file": "T1A-05__Notified.png",
+  "caption": "T1-A: Notified (khóa nội dung, chỉ còn Hoãn/Sửa nội dung)",
+  "time": "2026-11-24T07:23:26",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-06",
+  "file": "T1A-06__In_progress.png",
+  "caption": "T1-A: In Progress sau Prepare + Start Training",
+  "time": "2026-11-24T07:23:57",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-07a",
+  "file": "T1A-07a__Readers_signed_one_absent_General_Information.png",
+  "caption": "T1-A: 2 người đã ký đã đọc, 1 người vắng (không đọc được) (General Information)",
+  "time": "2026-11-24T07:24:36",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-07b",
+  "file": "T1A-07b__Readers_signed_one_absent_Participants.png",
+  "caption": "T1-A: 2 người đã ký đã đọc, 1 người vắng (không đọc được) (Participants)",
+  "time": "2026-11-24T07:24:43",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-08",
+  "file": "T1A-08__Head_confirmed.png",
+  "caption": "T1-A: trưởng bộ phận đã xác nhận APD.0108",
+  "time": "2026-11-24T07:24:56",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-09",
+  "file": "T1A-09__Pending_QA.png",
+  "caption": "T1-A: chờ QA xác nhận",
+  "time": "2026-11-24T07:25:45",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-10a",
+  "file": "T1A-10a__Completed_General_Information.png",
+  "caption": "T1-A: Completed (General Information)",
+  "time": "2026-11-24T07:26:05",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-10b",
+  "file": "T1A-10b__Completed_Signatures.png",
+  "caption": "T1-A: Completed (Signatures)",
+  "time": "2026-11-24T07:26:12",
+  "user": "admin",
+  "path": "/training-management/activities/49b31045-bfe7-42cf-98ae-00c8e9416f29"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-11",
+  "file": "T1A-11__Makeup_created.png",
+  "caption": "T1-A: bổ sung TRN/QA/26-1990a cho người không đọc được",
+  "time": "2026-11-24T07:26:28",
+  "user": "admin",
+  "path": "/training-management/activities/9cd0a16b-2e2d-40e0-9d98-e6d8af856248"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-12a",
+  "file": "T1A-12a__Makeup_in_progress_General_Information.png",
+  "caption": "T1-A: bổ sung đang In Progress (General Information)",
+  "time": "2026-11-24T07:27:22",
+  "user": "admin",
+  "path": "/training-management/activities/9cd0a16b-2e2d-40e0-9d98-e6d8af856248"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-12b",
+  "file": "T1A-12b__Makeup_in_progress_Participants.png",
+  "caption": "T1-A: bổ sung đang In Progress (Participants)",
+  "time": "2026-11-24T07:27:29",
+  "user": "admin",
+  "path": "/training-management/activities/9cd0a16b-2e2d-40e0-9d98-e6d8af856248"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-13a",
+  "file": "T1A-13a__Makeup_completed_General_Information.png",
+  "caption": "T1-A: bổ sung đã Completed (General Information)",
+  "time": "2026-11-24T07:28:31",
+  "user": "admin",
+  "path": "/training-management/activities/9cd0a16b-2e2d-40e0-9d98-e6d8af856248"
+ },
+ {
+  "kind": "shot",
+  "id": "T1A-13b",
+  "file": "T1A-13b__Makeup_completed_Participants.png",
+  "caption": "T1-A: bổ sung đã Completed (Participants)",
+  "time": "2026-11-24T07:28:38",
+  "user": "admin",
+  "path": "/training-management/activities/9cd0a16b-2e2d-40e0-9d98-e6d8af856248"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-01a",
+  "file": "T1B-01a__Content_missing_General_Information.png",
+  "caption": "T1-B: buổi Tập trung có Bài kiểm tra, còn thiếu tài liệu và bài kiểm tra (General Information)",
+  "time": "2026-11-24T07:45:32",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-01b",
+  "file": "T1B-01b__Content_missing_Assessment.png",
+  "caption": "T1-B: buổi Tập trung có Bài kiểm tra, còn thiếu tài liệu và bài kiểm tra (Assessment)",
+  "time": "2026-11-24T07:45:38",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-02a",
+  "file": "T1B-02a__Test_chosen_Training_Materials.png",
+  "caption": "T1-B: đã chọn bài kiểm tra APD.0009 từ thư viện (Training Materials)",
+  "time": "2026-11-24T07:45:54",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-02b",
+  "file": "T1B-02b__Test_chosen_Assessment.png",
+  "caption": "T1-B: đã chọn bài kiểm tra APD.0009 từ thư viện (Assessment)",
+  "time": "2026-11-24T07:46:01",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-03",
+  "file": "T1B-03__Notified_prepared.png",
+  "caption": "T1-B: Notified, đã Prepare Training",
+  "time": "2026-11-24T07:46:57",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-04",
+  "file": "T1B-04__In_progress.png",
+  "caption": "T1-B: In Progress",
+  "time": "2026-11-24T07:47:09",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-05",
+  "file": "T1B-05__Results.png",
+  "caption": "T1-B: kết quả: 2 đạt, 1 trượt, 1 vắng",
+  "time": "2026-11-24T07:47:46",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-06",
+  "file": "T1B-06__Pending_QA.png",
+  "caption": "T1-B: chờ QA xác nhận",
+  "time": "2026-11-24T07:49:08",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-07a",
+  "file": "T1B-07a__Completed_General_Information.png",
+  "caption": "T1-B: Completed (còn 1 vắng, 1 trượt) (General Information)",
+  "time": "2026-11-24T07:49:28",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-07b",
+  "file": "T1B-07b__Completed_Participants.png",
+  "caption": "T1-B: Completed (còn 1 vắng, 1 trượt) (Participants)",
+  "time": "2026-11-24T07:49:35",
+  "user": "admin",
+  "path": "/training-management/activities/6f4bf2b2-b25f-4b40-a8b5-5fe1762bbac4"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-08",
+  "file": "T1B-08__Retraining_created.png",
+  "caption": "T1-B: đào tạo lại TRN/QA/26-1994b cho người trượt",
+  "time": "2026-11-24T07:49:54",
+  "user": "admin",
+  "path": "/training-management/activities/5198bb4c-b69f-4509-a1ae-8aafe41b3827"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-09",
+  "file": "T1B-09__make_up_scored.png",
+  "caption": "T1-B: TRN/QA/26-1994a (make-up) đã chấm điểm",
+  "time": "2026-11-24T07:50:54",
+  "user": "admin",
+  "path": "/training-management/activities/58012cee-77ea-4aaf-9287-e4e4b7fb9822"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-10",
+  "file": "T1B-10__retraining_scored.png",
+  "caption": "T1-B: TRN/QA/26-1994b (retraining) đã chấm điểm",
+  "time": "2026-11-24T07:53:19",
+  "user": "admin",
+  "path": "/training-management/activities/5198bb4c-b69f-4509-a1ae-8aafe41b3827"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-11a",
+  "file": "T1B-11a__Retraining_completed_General_Information.png",
+  "caption": "T1-B: đào tạo lại đã Completed (General Information)",
+  "time": "2026-11-24T07:54:49",
+  "user": "admin",
+  "path": "/training-management/activities/5198bb4c-b69f-4509-a1ae-8aafe41b3827"
+ },
+ {
+  "kind": "shot",
+  "id": "T1B-11b",
+  "file": "T1B-11b__Retraining_completed_Participants.png",
+  "caption": "T1-B: đào tạo lại đã Completed (Participants)",
+  "time": "2026-11-24T07:54:56",
+  "user": "admin",
+  "path": "/training-management/activities/5198bb4c-b69f-4509-a1ae-8aafe41b3827"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-01",
+  "file": "T1C-01__Three_sessions.png",
+  "caption": "T1-C: một mã đào tạo, ba buổi (Tập trung + Kiểm tra, Tự đọc, Tập trung + Kiểm tra)",
+  "time": "2026-11-24T08:24:54",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-02",
+  "file": "T1C-02__S3_without_test.png",
+  "caption": "T1-C: buổi 3 chưa có bài kiểm tra: chưa thể gửi duyệt",
+  "time": "2026-11-24T08:25:32",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-03a",
+  "file": "T1C-03a__Content_complete_Training_Materials.png",
+  "caption": "T1-C: mỗi buổi có nội dung riêng, đã đủ (Training Materials)",
+  "time": "2026-11-24T08:25:48",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-03b",
+  "file": "T1C-03b__Content_complete_Assessment.png",
+  "caption": "T1-C: mỗi buổi có nội dung riêng, đã đủ (Assessment)",
+  "time": "2026-11-24T08:25:55",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-04",
+  "file": "T1C-04__Notified_prepared.png",
+  "caption": "T1-C: Notified, S1 trên giấy chưa in bài kiểm tra",
+  "time": "2026-11-24T08:27:01",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-05",
+  "file": "T1C-05__S1_done.png",
+  "caption": "T1-C: buổi 1 xong: A đạt, B trượt, C vắng",
+  "time": "2026-11-24T08:27:42",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-06a",
+  "file": "T1C-06a__All_sessions_done_General_Information.png",
+  "caption": "T1-C: cả ba buổi đã có kết quả (General Information)",
+  "time": "2026-11-24T08:28:26",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-06b",
+  "file": "T1C-06b__All_sessions_done_Participants.png",
+  "caption": "T1-C: cả ba buổi đã có kết quả (Participants)",
+  "time": "2026-11-24T08:28:33",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-06b",
+  "file": "T1C-06b__S1_scans_in.png",
+  "caption": "T1-C: đã có bản scan bài kiểm tra giấy của buổi 1",
+  "time": "2026-11-24T08:29:29",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-07a",
+  "file": "T1C-07a__Completed_General_Information.png",
+  "caption": "T1-C: Completed (General Information)",
+  "time": "2026-11-24T08:30:26",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C-07b",
+  "file": "T1C-07b__Completed_Signatures.png",
+  "caption": "T1-C: Completed (Signatures)",
+  "time": "2026-11-24T08:30:33",
+  "user": "admin",
+  "path": "/training-management/activities/d7617033-9d41-4071-a4b6-62c576bd5918"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-01a",
+  "file": "T1C2-01a__Makeup_C_created_General_Information.png",
+  "caption": "T1-C: bổ sung cho C (vắng buổi 1, không đọc được buổi 2) (General Information)",
+  "time": "2026-11-24T08:31:09",
+  "user": "admin",
+  "path": "/training-management/activities/1dc2f411-fa3a-4abf-9e4d-ae6853835585"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-01b",
+  "file": "T1C2-01b__Makeup_C_created_Participants.png",
+  "caption": "T1-C: bổ sung cho C (vắng buổi 1, không đọc được buổi 2) (Participants)",
+  "time": "2026-11-24T08:31:15",
+  "user": "admin",
+  "path": "/training-management/activities/1dc2f411-fa3a-4abf-9e4d-ae6853835585"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-02",
+  "file": "T1C2-02__retraining_of_B_done.png",
+  "caption": "T1-C: retraining of B đã có kết quả",
+  "time": "2026-11-24T08:32:21",
+  "user": "admin",
+  "path": "/training-management/activities/0e76dd29-4fb4-455d-a054-691e85d339e6"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-02b",
+  "file": "T1C2-02b__retraining_of_B_completed.png",
+  "caption": "T1-C: retraining of B Completed",
+  "time": "2026-11-24T08:33:52",
+  "user": "admin",
+  "path": "/training-management/activities/0e76dd29-4fb4-455d-a054-691e85d339e6"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-03",
+  "file": "T1C2-03__make_up_of_C_done.png",
+  "caption": "T1-C: make-up of C đã có kết quả",
+  "time": "2026-11-24T08:35:16",
+  "user": "admin",
+  "path": "/training-management/activities/1dc2f411-fa3a-4abf-9e4d-ae6853835585"
+ },
+ {
+  "kind": "shot",
+  "id": "T1C2-03b",
+  "file": "T1C2-03b__make_up_of_C_completed.png",
+  "caption": "T1-C: make-up of C Completed",
+  "time": "2026-11-24T08:36:46",
+  "user": "admin",
+  "path": "/training-management/activities/1dc2f411-fa3a-4abf-9e4d-ae6853835585"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-01a",
+  "file": "T2A-01a__Reserved_materials_draft_General_Information.png",
+  "caption": "T2-A: Reserved, Training Materials: SOP + APD + FRM (nháp, chưa duyệt) + tài liệu liên quan (General Information)",
+  "time": "2026-11-24T08:58:02",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-01b",
+  "file": "T2A-01b__Reserved_materials_draft_Training_Materials.png",
+  "caption": "T2-A: Reserved, Training Materials: SOP + APD + FRM (nháp, chưa duyệt) + tài liệu liên quan (Training Materials)",
+  "time": "2026-11-24T08:58:09",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-02",
+  "file": "T2A-02__Reserved_two_approved.png",
+  "caption": "T2-A: SOP và FRM1 đã duyệt, activity vẫn Reserved vì FRM2 chưa duyệt",
+  "time": "2026-11-24T08:58:56",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-03a",
+  "file": "T2A-03a__Planned_materials_approved_General_Information.png",
+  "caption": "T2-A: Planned, tài liệu đã duyệt (có nút Open) (General Information)",
+  "time": "2026-11-24T08:59:21",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-03b",
+  "file": "T2A-03b__Planned_materials_approved_Training_Materials.png",
+  "caption": "T2-A: Planned, tài liệu đã duyệt (có nút Open) (Training Materials)",
+  "time": "2026-11-24T08:59:28",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-05a",
+  "file": "T2A-05a__Session_added_General_Information.png",
+  "caption": "T2-A: buổi Tự đọc đã thêm, 2 người đề xuất đã nằm trong danh sách (General Information)",
+  "time": "2026-11-24T09:00:10",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-05b",
+  "file": "T2A-05b__Session_added_Participants.png",
+  "caption": "T2-A: buổi Tự đọc đã thêm, 2 người đề xuất đã nằm trong danh sách (Participants)",
+  "time": "2026-11-24T09:00:17",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-06",
+  "file": "T2A-06__Read_and_confirmed.png",
+  "caption": "T2-A: đã đọc, ký và trưởng bộ phận xác nhận",
+  "time": "2026-11-24T09:01:30",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-07",
+  "file": "T2A-07__Completed_revisions_waiting.png",
+  "caption": "T2-A: Completed, ba revision chờ Complete Training",
+  "time": "2026-11-24T09:02:29",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-07b",
+  "file": "T2A-07b__Revisions_completed.png",
+  "caption": "T2-A: Complete Training của cả ba revision đã xong",
+  "time": "2026-11-24T09:28:35",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T2A-08",
+  "file": "T2A-08__SOP_effective.png",
+  "caption": "T2-A: SOP đã Effective",
+  "time": "2026-11-24T09:34:34",
+  "user": "admin",
+  "path": "/documents/revisions/d1978922-7149-4419-a392-e438c41af878"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-01a",
+  "file": "T2B-01a__Reserved_upgrade_General_Information.png",
+  "caption": "T2-B: nâng revision SOP + FRM1 (không nâng FRM2): Reserved, tài liệu: MAIN, cùng mã, liên quan không đổi (General Information)",
+  "time": "2026-11-24T09:35:43",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-01b",
+  "file": "T2B-01b__Reserved_upgrade_Training_Materials.png",
+  "caption": "T2-B: nâng revision SOP + FRM1 (không nâng FRM2): Reserved, tài liệu: MAIN, cùng mã, liên quan không đổi (Training Materials)",
+  "time": "2026-11-24T09:35:50",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-02a",
+  "file": "T2B-02a__Planned_upgrade_General_Information.png",
+  "caption": "T2-B: Planned sau khi cả hai revision được duyệt (General Information)",
+  "time": "2026-11-24T09:47:12",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-02b",
+  "file": "T2B-02b__Planned_upgrade_Training_Materials.png",
+  "caption": "T2-B: Planned sau khi cả hai revision được duyệt (Training Materials)",
+  "time": "2026-11-24T09:47:19",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-03",
+  "file": "T2B-03__Results.png",
+  "caption": "T2-B: kết quả hai buổi: 2 đạt, 1 trượt, 1 vắng",
+  "time": "2026-11-24T09:52:07",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-04",
+  "file": "T2B-04__Completed.png",
+  "caption": "T2-B: Completed, hai revision chờ Complete Training",
+  "time": "2026-11-24T09:53:40",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-05a",
+  "file": "T2B-05a__Retraining_completed_General_Information.png",
+  "caption": "T2-B: đào tạo lại đã Completed (General Information)",
+  "time": "2026-11-24T09:58:56",
+  "user": "admin",
+  "path": "/training-management/activities/df095c1a-7e6d-4a21-8f88-0b932f875e90"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-05b",
+  "file": "T2B-05b__Retraining_completed_Participants.png",
+  "caption": "T2-B: đào tạo lại đã Completed (Participants)",
+  "time": "2026-11-24T09:59:03",
+  "user": "admin",
+  "path": "/training-management/activities/df095c1a-7e6d-4a21-8f88-0b932f875e90"
+ },
+ {
+  "kind": "shot",
+  "id": "T2C-01",
+  "file": "T2C-01__New_document_training_default.png",
+  "caption": "T2-C: tạo tài liệu mới: Required Training đã tick sẵn, 10 ngày",
+  "time": "2026-11-24T10:03:57",
+  "user": "admin",
+  "path": "/documents/all/new"
+ },
+ {
+  "kind": "shot",
+  "id": "T2C-02",
+  "file": "T2C-02__Add_session_prefilled.png",
+  "caption": "T2-C: hộp thoại Thêm buổi đã điền sẵn: chủ đề là SOP, Tập trung + Kiểm tra, giảng viên là tác giả",
+  "time": "2026-11-24T10:04:32",
+  "user": "admin",
+  "path": "/training-management/activities/1cc2feda-fcf9-4b01-af99-503e07198776/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-06a",
+  "file": "T2B-06a__Form2_own_activity_General_Information.png",
+  "caption": "T2-B: chỉ nâng FRM2: activity riêng, tài liệu chỉ có FRM2 (General Information)",
+  "time": "2026-11-24T10:04:58",
+  "user": "admin",
+  "path": "/training-management/activities/63acc1e1-7c52-44f6-b7ce-66a69618aa68"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-06b",
+  "file": "T2B-06b__Form2_own_activity_Training_Materials.png",
+  "caption": "T2-B: chỉ nâng FRM2: activity riêng, tài liệu chỉ có FRM2 (Training Materials)",
+  "time": "2026-11-24T10:05:05",
+  "user": "admin",
+  "path": "/training-management/activities/63acc1e1-7c52-44f6-b7ce-66a69618aa68"
+ },
+ {
+  "kind": "shot",
+  "id": "T2B-07",
+  "file": "T2B-07__Form2_completed.png",
+  "caption": "T2-B: FRM2 đã Completed và Effective",
+  "time": "2026-11-24T10:07:46",
+  "user": "admin",
+  "path": "/training-management/activities/63acc1e1-7c52-44f6-b7ce-66a69618aa68"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-07",
+  "file": "T4C-07__Self_reading_completed.png",
+  "caption": "T4-C: activity Tự đọc đã hoàn tất: không còn bảng điểm / bài kiểm tra scan",
+  "time": "2026-11-24T12:14:03",
+  "user": "admin",
+  "path": "/training-management/activities/27e45934-a14d-46d7-a2bd-abf307111144"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-08",
+  "file": "T4C-08__Classroom_completed_has_results.png",
+  "caption": "T4-C: activity Tập trung + Kiểm tra vẫn có bảng điểm",
+  "time": "2026-11-24T12:14:11",
+  "user": "admin",
+  "path": "/training-management/activities/f9ba1132-3877-4de8-a9bd-a342f5ee88bf"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-01",
+  "file": "T4A-01__Three_sessions_list_confirmed.png",
+  "caption": "T4-A: ba buổi, danh sách đã xác nhận, buổi 3 thêm nhầm (chưa có bài kiểm tra); mỗi buổi chưa bắt đầu có nút Cancel session",
+  "time": "2026-11-24T12:30:24",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-02",
+  "file": "T4A-02__Cancel_session_dialog.png",
+  "caption": "T4-A: hộp thoại Cancel session (lý do bắt buộc, có chữ ký)",
+  "time": "2026-11-24T12:30:40",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-03",
+  "file": "T4A-03__After_cancel.png",
+  "caption": "T4-A: sau khi huỷ buổi 3: buổi 3 hiện Cancelled, hai buổi còn lại nguyên vẹn",
+  "time": "2026-11-24T12:30:56",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-04",
+  "file": "T4A-04__Audit_trail.png",
+  "caption": "T4-A: Audit Trail ghi huỷ buổi, lý do và những người đã gỡ khỏi buổi",
+  "time": "2026-11-24T12:31:02",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-05",
+  "file": "T4A-05__Notified_locked.png",
+  "caption": "T4-A: sau khi thông báo: nội dung bị khoá, không còn nút Cancel session / Add session",
+  "time": "2026-11-24T12:31:50",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-06",
+  "file": "T4A-06__After_postpone.png",
+  "caption": "T4-A: buổi 2 đã dời rồi đưa về hôm nay; audit ghi hai lần dời",
+  "time": "2026-11-24T12:32:06",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4A-07",
+  "file": "T4A-07__Supplementary_dialog_sessions.png",
+  "caption": "T4-A: hộp thoại Supplementary Training: người trượt cả hai buổi hiện hai dòng, mỗi dòng ghi Session 1 / Session 2",
+  "time": "2026-11-24T12:34:30",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4B-01",
+  "file": "T4B-01__Left_between_sessions.png",
+  "caption": "T4-B: người nghỉ việc giữa hai buổi: buổi 1 đạt, buổi 2 Absent; không bù được tới khi tài khoản Active",
+  "time": "2026-11-24T12:37:41",
+  "user": "admin",
+  "path": "/training-management/activities/ccc54f8f-4f45-4319-afe4-83f1913aa193"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-01",
+  "file": "T4C-01__VI_edit_completed.png",
+  "caption": "T4-C (tiếng Việt): màn của activity nhiều buổi có một buổi đã huỷ",
+  "time": "2026-11-24T12:37:53",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-02",
+  "file": "T4C-02__VI_detail_completed.png",
+  "caption": "T4-C (tiếng Việt): màn chi tiết Completed",
+  "time": "2026-11-24T12:37:59",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-03",
+  "file": "T4C-03__VI_left_between_sessions.png",
+  "caption": "T4-C (tiếng Việt): người nghỉ việc giữa hai buổi",
+  "time": "2026-11-24T12:38:04",
+  "user": "admin",
+  "path": "/training-management/activities/ccc54f8f-4f45-4319-afe4-83f1913aa193"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-04",
+  "file": "T4C-04__VI_edit_planned.png",
+  "caption": "T4-C (tiếng Việt): màn Edit khi Planned, có nút Huỷ buổi",
+  "time": "2026-11-24T12:38:35",
+  "user": "admin",
+  "path": "/training-management/activities/0670d209-df79-4e23-a9cf-82163596eeb4/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-05",
+  "file": "T4C-05__VI_cancel_session_dialog.png",
+  "caption": "T4-C (tiếng Việt): hộp thoại Huỷ buổi",
+  "time": "2026-11-24T12:38:43",
+  "user": "admin",
+  "path": "/training-management/activities/0670d209-df79-4e23-a9cf-82163596eeb4/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T4C-06",
+  "file": "T4C-06__VI_approve_first.png",
+  "caption": "T4-C (tiếng Việt): màn Approve của người phê duyệt thứ nhất",
+  "time": "2026-11-24T12:39:03",
+  "user": "approver.test1",
+  "path": "/training-management/activities/0670d209-df79-4e23-a9cf-82163596eeb4/approve"
+ },
+ {
+  "kind": "shot",
+  "id": "T5-01",
+  "file": "T5-01__Previous_trainer_notice.png",
+  "caption": "T5: thông báo trong app của giảng viên cũ: không còn là giảng viên của buổi 1",
+  "time": "2026-11-24T13:11:48",
+  "user": "uat31.s2.qa.pass",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T5-02",
+  "file": "T5-02__New_trainer_notice.png",
+  "caption": "T5: thông báo trong app của giảng viên mới: được giao buổi 1",
+  "time": "2026-11-24T13:12:02",
+  "user": "uat31.s1.pass1",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T5-03",
+  "file": "T5-03__Participant_postponed_notice.png",
+  "caption": "T5: thông báo trong app của người trong danh sách: buổi 1 được dời",
+  "time": "2026-11-24T13:12:16",
+  "user": "uat31.s2.qa.fail",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T5-01",
+  "file": "T5-01__Coordinator_in_app_result.png",
+  "caption": "T5: thông báo in-app ngắn cho người điều phối: buổi 1 đã được dời",
+  "time": "2026-11-24T21:23:35",
+  "user": "admin",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T5-02",
+  "file": "T5-02__Audit_trail.png",
+  "caption": "T5: Audit Trail: đổi, dời, đổi giảng viên: ghi người nhận e-mail và kết quả in-app",
+  "time": "2026-11-24T21:23:42",
+  "user": "admin",
+  "path": "/training-management/activities/98195fbb-7a02-47a6-aaa3-a572444f9476"
+ },
+ {
+  "kind": "shot",
+  "id": "T6-01",
+  "file": "T6-01__Results_table_columns.png",
+  "caption": "T6: bảng kết quả: bỏ dòng tiêu đề, tách cột Employee Code và Department",
+  "time": "2026-11-24T21:39:50",
+  "user": "admin",
+  "path": "/training-management/activities/fc0a2343-078a-49a8-bce5-172e2c2cd74f"
+ },
+ {
+  "kind": "shot",
+  "id": "T6-02",
+  "file": "T6-02__Activities_list_sessions.png",
+  "caption": "T6: danh sách Training Activities có cột Sessions",
+  "time": "2026-11-24T21:39:57",
+  "user": "admin",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T7-01",
+  "file": "T7-01__Reserved_general_information.png",
+  "caption": "T7: General Information ở trạng thái Reserved: Due Date chỉ một lần",
+  "time": "2026-11-24T21:48:37",
+  "user": "admin",
+  "path": "/training-management/activities/530e1274-7655-4119-b43c-4858e38b451d"
+ },
+ {
+  "kind": "shot",
+  "id": "T8-01",
+  "file": "T8-01__Materials_table.png",
+  "caption": "T8: tab Training Materials: tài liệu từ Document Control trình bày dạng bảng, nút Open dạng mặc định",
+  "time": "2026-11-24T22:06:09",
+  "user": "admin",
+  "path": "/training-management/activities/089472a1-aa8d-4d82-867e-0ea9c5b0f661"
+ },
+ {
+  "kind": "shot",
+  "id": "T10-01",
+  "file": "T10-01__Blocked_list.png",
+  "caption": "T10: màn Edit: chưa đủ điều kiện, không có nút Submit for Approval, danh sách ghi những gì còn thiếu",
+  "time": "2026-11-25T00:46:29",
+  "user": "admin",
+  "path": "/training-management/activities/67691a77-7b9d-49b8-b1ac-c791b710b326/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T10-02",
+  "file": "T10-02__Ready_button.png",
+  "caption": "T10: đủ điều kiện: có nút Submit for Approval",
+  "time": "2026-11-25T00:47:02",
+  "user": "admin",
+  "path": "/training-management/activities/67691a77-7b9d-49b8-b1ac-c791b710b326/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-01",
+  "file": "T9-01__Reserved_materials.png",
+  "caption": "T9-A: Reserved: SOP là tài liệu đào tạo, các form là Related Document trong Training Materials",
+  "time": "2026-11-25T00:51:07",
+  "user": "admin",
+  "path": "/training-management/activities/101654db-24a7-4e0b-b91f-c300373658ae"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-02a",
+  "file": "T9-02a__Planned_materials_General_Information.png",
+  "caption": "T9-A: Planned: Training Materials: các form \"Changed in this version\", SOP.7203 \"Not changed in this version\" (General Information)",
+  "time": "2026-11-25T00:52:29",
+  "user": "admin",
+  "path": "/training-management/activities/101654db-24a7-4e0b-b91f-c300373658ae"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-02b",
+  "file": "T9-02b__Planned_materials_Training_Materials.png",
+  "caption": "T9-A: Planned: Training Materials: các form \"Changed in this version\", SOP.7203 \"Not changed in this version\" (Training Materials)",
+  "time": "2026-11-25T00:52:36",
+  "user": "admin",
+  "path": "/training-management/activities/101654db-24a7-4e0b-b91f-c300373658ae"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-03",
+  "file": "T9-03__Completed_one_button.png",
+  "caption": "T9-A: Completed: một nút Complete Training (SOP)",
+  "time": "2026-11-25T00:54:44",
+  "user": "admin",
+  "path": "/training-management/activities/101654db-24a7-4e0b-b91f-c300373658ae"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-04",
+  "file": "T9-04__Form_effective_with_SOP.png",
+  "caption": "T9-A: form APD đã Effective cùng lúc với SOP",
+  "time": "2026-11-25T00:55:32",
+  "user": "admin",
+  "path": "/documents/revisions/2cb6786d-24aa-4600-b39d-fb7a8e68e9f9"
+ },
+ {
+  "kind": "shot",
+  "id": "T9-05",
+  "file": "T9-05__Form_training_information.png",
+  "caption": "T9-A: Training Information của form APD: Training Number, trạng thái và tài liệu đã đào tạo",
+  "time": "2026-11-25T00:55:54",
+  "user": "admin",
+  "path": "/documents/revisions/2cb6786d-24aa-4600-b39d-fb7a8e68e9f9"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-01",
+  "file": "T3-01__Edit_planning.png",
+  "caption": "T3: màn Edit (lập kế hoạch): buổi, người tham gia, nội dung, người phê duyệt, nút Submit for Approval",
+  "time": "2026-11-25T00:58:13",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-02",
+  "file": "T3-02__Approve_first.png",
+  "caption": "T3: người phê duyệt thứ nhất mở màn Approve",
+  "time": "2026-11-25T00:58:31",
+  "user": "approver.test1",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/approve"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-03",
+  "file": "T3-03__Approve_second.png",
+  "caption": "T3: người phê duyệt thứ hai mở màn Approve (sau khi người thứ nhất đã ký)",
+  "time": "2026-11-25T00:58:47",
+  "user": "user.a.test",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/approve"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-04",
+  "file": "T3-04__Approved_notify_offered.png",
+  "caption": "T3: sau hai chữ ký: nút Notify Participants",
+  "time": "2026-11-25T00:59:01",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-05",
+  "file": "T3-05__Prepare_training.png",
+  "caption": "T3: màn Prepare Training (địa điểm, thiết bị, tài liệu, thông báo)",
+  "time": "2026-11-25T00:59:13",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/prepare"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-06",
+  "file": "T3-06__Prepare_done.png",
+  "caption": "T3: Prepare Training sau khi điền từ hồ sơ: sẵn sàng Start Training",
+  "time": "2026-11-25T00:59:31",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/prepare"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-07",
+  "file": "T3-07__Conduct_attendance.png",
+  "caption": "T3: màn Conduct sau khi điểm danh",
+  "time": "2026-11-25T00:59:49",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/conduct"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-08",
+  "file": "T3-08__Conduct_scored.png",
+  "caption": "T3: màn Conduct sau khi chấm điểm: 1 đạt, 1 trượt, 1 vắng",
+  "time": "2026-11-25T00:59:59",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/conduct"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-09",
+  "file": "T3-09__Session_workspace.png",
+  "caption": "T3: Session Workspace của buổi đào tạo",
+  "time": "2026-11-25T01:00:04",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/sessions/9fb0e2bd-e103-462b-a7d8-563dea1c195f/workspace"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-10",
+  "file": "T3-10__Confirm_QA.png",
+  "caption": "T3: QA mở màn Confirm để xác nhận hoàn tất",
+  "time": "2026-11-25T01:01:34",
+  "user": "approver.test1",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c/confirm"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-11",
+  "file": "T3-11__Completed_supplementary_offered.png",
+  "caption": "T3: Completed, nút Supplementary Training cho người vắng và người trượt",
+  "time": "2026-11-25T01:01:48",
+  "user": "admin",
+  "path": "/training-management/activities/8608ee4d-a2bd-4d46-97ba-acb22c553d9c"
+ },
+ {
+  "kind": "shot",
+  "id": "T3-12",
+  "file": "T3-12__Activities_list.png",
+  "caption": "T3: danh sách Training Activities với các trạng thái và các mã a, b",
+  "time": "2026-11-25T01:01:53",
+  "user": "admin",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T11-01",
+  "file": "T11-01__Materials_tab_document_based.png",
+  "caption": "T11: tab Training Materials của đào tạo từ tài liệu: vẫn có chỗ thêm tệp hoặc liên kết",
+  "time": "2026-11-25T01:26:11",
+  "user": "admin",
+  "path": "/training-management/activities/9727a484-9a8f-4347-8fe7-6dcee04c5124/edit"
+ },
+ {
+  "kind": "shot",
+  "id": "T4D-01",
+  "file": "T4D-01__Audit_trail_tab.png",
+  "caption": "T4-D: tab Audit Trail của activity: các dòng của buổi (đổi, dời, huỷ)",
+  "time": "2026-11-25T01:27:15",
+  "user": "admin",
+  "path": "/training-management/activities/b4746e0f-fdf2-4219-b773-708774efe2f5"
+ },
+ {
+  "kind": "shot",
+  "id": "T4D-02",
+  "file": "T4D-02__Trainer_notice.png",
+  "caption": "T4-D: thông báo trong app của giảng viên: buổi bị huỷ (chuông thông báo)",
+  "time": "2026-11-25T01:27:29",
+  "user": "uat31.s2.qa.pass",
+  "path": "/training-management/activities"
+ },
+ {
+  "kind": "shot",
+  "id": "T14-01",
+  "file": "T14-01__Covered_revision_note.png",
+  "caption": "T14: Training Information của form: ghi rõ vì sao không có bước Pending Training riêng",
+  "time": "2026-11-25T01:43:40",
+  "user": "admin",
+  "path": "/documents/revisions/e0adcf6a-3949-47cc-bd05-077534a79a79"
+ },
+ {
+  "kind": "shot",
+  "id": "T15-01",
+  "file": "T15-01__Form_will_be_covered.png",
+  "caption": "T15: Training Information của form trước khi đào tạo xong: sẽ được đào tạo trong đợt của SOP",
+  "time": "2026-11-25T02:06:54",
+  "user": "admin",
+  "path": "/documents/revisions/ca38bbcd-3bea-4671-9651-22c6c50320a7"
+ },
+ {
+  "kind": "shot",
+  "id": "T15-02",
+  "file": "T15-02__Frozen_materials.png",
+  "caption": "T15: Training Materials sau khi bắt đầu: các form được đánh dấu \"Đã đọc trong đợt đào tạo này\"",
+  "time": "2026-11-25T02:08:42",
+  "user": "admin",
+  "path": "/training-management/activities/c7dc8007-c758-47c4-818e-ff61cd223cbb"
+ },
+ {
+  "kind": "shot",
+  "id": "T15-03",
+  "file": "T15-03__Form_covered_after_completion.png",
+  "caption": "T15: Training Information của form sau khi QA xác nhận: Covered by, ngày hoàn tất",
+  "time": "2026-11-25T02:10:53",
+  "user": "admin",
+  "path": "/documents/revisions/40398a47-889e-4eaf-a4c8-a51b16cdd160"
+ },
+ {
+  "kind": "shot",
+  "id": "T16-01",
+  "file": "T16-01__Cancelled_activity_stepper.png",
+  "caption": "T16: activity đã huỷ: thanh trạng thái",
+  "time": "2026-11-25T02:12:10",
+  "user": "admin",
+  "path": "/training-management/activities/994b52bf-b980-4567-b925-f8825ea4fd1c"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-01",
+  "file": "T18-01__Late_form_covered.png",
+  "caption": "T18: Training Information của form được duyệt SAU khi đào tạo bắt đầu: vẫn được ghi là đã đào tạo (Covered by)",
+  "time": "2026-11-25T02:40:40",
+  "user": "admin",
+  "path": "/documents/revisions/8faa1e7e-5182-4966-8090-82f88a90a104"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-02",
+  "file": "T18-02__Late_form_in_materials.png",
+  "caption": "T18: Training Materials: form duyệt muộn hiện là \"Đã đọc trong đợt đào tạo này\"",
+  "time": "2026-11-25T02:40:52",
+  "user": "admin",
+  "path": "/training-management/activities/f27fa5db-cf54-4e9b-90b9-bed803ab71e7"
+ },
+ {
+  "kind": "apd",
+  "id": "T18-03",
+  "file": "T18-03__APD0014_with_related_lines.pdf",
+  "caption": "T18: hồ sơ đào tạo cá nhân APD.0014 có dòng của tài liệu liên quan",
+  "time": "2026-11-25T02:41:04"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-03",
+  "file": "T18-03__APD0014_with_related_lines-p1.png",
+  "caption": "T18: hồ sơ đào tạo cá nhân APD.0014 có dòng của tài liệu liên quan (trang 1/3)",
+  "time": "2026-11-25T02:41:04"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-03",
+  "file": "T18-03__APD0014_with_related_lines-p2.png",
+  "caption": "T18: hồ sơ đào tạo cá nhân APD.0014 có dòng của tài liệu liên quan (trang 2/3)",
+  "time": "2026-11-25T02:41:04"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-03",
+  "file": "T18-03__APD0014_with_related_lines-p3.png",
+  "caption": "T18: hồ sơ đào tạo cá nhân APD.0014 có dòng của tài liệu liên quan (trang 3/3)",
+  "time": "2026-11-25T02:41:04"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-04",
+  "file": "T18-04__Record_exports.png",
+  "caption": "T18: màn xuất hồ sơ đào tạo cá nhân APD.0014",
+  "time": "2026-11-25T02:41:10",
+  "user": "admin",
+  "path": "/training-management/record-exports"
+ },
+ {
+  "kind": "shot",
+  "id": "T18-05",
+  "file": "T18-05__Compliance.png",
+  "caption": "T18: màn tuân thủ/ma trận đào tạo vẫn hiển thị bình thường",
+  "time": "2026-11-25T02:41:19",
+  "user": "admin",
+  "path": "/training-management/compliance"
+ }
+]

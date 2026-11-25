@@ -225,10 +225,10 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
             else setSign({ title: tr("Review Requirement"), code: "TRAINING_REQUIREMENT_REVIEWED", name: "Training Requirement Reviewed", changes: statusChange("Pending Review", "Pending Approval"), run: (t) => trainingRequirementsApi.review(req.id, req.version, t, personId) });
           }} />
       )}
-      <ReasonDialog open={dialog === "reject"} title={tr("Reject Requirement")} help="It goes back to draft with your reason." confirmText="Reject" destructive busy={busy} onClose={() => setDialog(undefined)} onSave={(reason) => run(() => trainingRequirementsApi.reject(req.id, req.version, reason), "Sent back to draft")} />
-      <ReasonDialog open={typeof dialog === "object" && "postpone" in dialog} title={tr("Postpone to the Next Month")} help="The old month and the reason stay on the line." confirmText="Postpone" busy={busy} onClose={() => setDialog(undefined)}
+      <ReasonDialog open={dialog === "reject"} title={tr("Reject Requirement")} help={tr("It goes back to draft with your reason.")} confirmText="Reject" destructive busy={busy} onClose={() => setDialog(undefined)} onSave={(reason) => run(() => trainingRequirementsApi.reject(req.id, req.version, reason), "Sent back to draft")} />
+      <ReasonDialog open={typeof dialog === "object" && "postpone" in dialog} title={tr("Postpone to the Next Month")} help={tr("The old month and the reason stay on the line.")} confirmText="Postpone" busy={busy} onClose={() => setDialog(undefined)}
         onSave={(reason) => run(() => trainingRequirementsApi.postpone((dialog as { postpone: string }).postpone, reason), "Line postponed")} />
-      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title={tr("QA Signature for the Line")} description={tr("The training of this line is completed. Your signature confirms it.")} confirmText="Continue to Signature" size="md"
+      <FormModal isOpen={typeof dialog === "object" && "qa" in dialog} onClose={() => setDialog(undefined)} title={tr("QA Signature for the Line")} description={tr("The training of this line is completed. Your signature confirms it.")} confirmText={tr("Continue to Signature")} size="md"
         onConfirm={() => { const lineId = (dialog as { qa: string }).qa; setDialog(undefined); setSign({ title: tr("Sign the Line"), code: "TRAINING_COMPLETED", name: "Training Completed", changes: statusChange("Not signed by QA", "Signed by QA", "QA signature of the line"), run: (t) => trainingRequirementsApi.qaSign(lineId, t, qaComment.trim() || undefined) }); }}>
         <FormField label={tr("Comment")}><Textarea rows={3} value={qaComment} onChange={(e) => setQaComment(e.target.value)} /></FormField>
       </FormModal>
@@ -261,8 +261,8 @@ function NextPersonDialog({ requirementId, step, busy, onClose, onPick }: { requ
   useEffect(() => { void search(""); }, [search]);
   const review = step === "REQUIREMENT_REVIEW";
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onPick(id)} title={review ? "Choose who reviews" : "Choose who approves"}
-      description={review ? tr("The reviewer is not you. Only people the system found eligible are listed.") : tr("The approver is neither the preparer nor you.")} confirmText="Continue to Signature" isLoading={busy} confirmDisabled={!id} size="md">
+    <FormModal isOpen onClose={onClose} onConfirm={() => onPick(id)} title={review ? tr("Choose who reviews") : tr("Choose who approves")}
+      description={review ? tr("The reviewer is not you. Only people the system found eligible are listed.") : tr("The approver is neither the preparer nor you.")} confirmText={tr("Continue to Signature")} isLoading={busy} confirmDisabled={!id} size="md">
       {loaded && people.length === 0 ? <p className="text-sm text-amber-700">{tr("No eligible person was found.")}</p> : <Select label={tr("Person")} value={id} onChange={setId} options={people.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} onSearch={search} placeholder={tr("Search by name")} />}
     </FormModal>
   );

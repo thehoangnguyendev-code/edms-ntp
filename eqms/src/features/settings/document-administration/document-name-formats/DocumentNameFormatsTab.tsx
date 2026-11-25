@@ -106,7 +106,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
       reload();
       showToast({
         type: "success",
-        title: updated.isActive ? "Format Activated" : "Format Deactivated",
+        title: updated.isActive ? tr("Format Activated") : tr("Format Deactivated"),
         message: `"${updated.name}" was ${updated.isActive ? "activated" : "deactivated"} successfully.`,
       });
     } catch (error) {

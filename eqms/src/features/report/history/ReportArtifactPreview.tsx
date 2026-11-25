@@ -44,8 +44,8 @@ function PdfArtifact({ runId, artifactId, title, onClose }: { runId: string; art
 
   if (url) return <PdfPreviewModal title={title} description={tr("Read-only preview")} fileUrl={url} onClose={onClose} showCancel={false} wide />;
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={onClose} title={title} confirmText="Close" cancelText="Close" showCancel={false} size="2xl" className="backdrop-blur-none !max-w-[96vw]">
-      {error ? <WarningBanner variant="error" description={error} /> : <SectionLoading text="Opening the report…" />}
+    <FormModal isOpen onClose={onClose} onConfirm={onClose} title={title} confirmText={tr("Close")} cancelText={tr("Close")} showCancel={false} size="2xl" className="backdrop-blur-none !max-w-[96vw]">
+      {error ? <WarningBanner variant="error" description={error} /> : <SectionLoading text={tr("Opening the report…")} />}
     </FormModal>
   );
 }

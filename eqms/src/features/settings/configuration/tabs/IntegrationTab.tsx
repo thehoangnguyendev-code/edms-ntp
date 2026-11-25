@@ -232,7 +232,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
         }
         check={checks.checks.STORAGE}
         currentSubject={storageSubject(storage)}
-        emptyText="No connection test has been run yet."
+        emptyText={tr("No connection test has been run yet.")}
       />
 
       <IntegrationSectionCard title={tr("Connection")} description={tr("Where the files are stored and how the system signs in.")}>

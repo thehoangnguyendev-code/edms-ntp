@@ -48,7 +48,7 @@ export const previewGate = (choices: TargetChoice[], manual: boolean = false): P
     { code: "COPIES", ok: copies >= 3, relaxed: false, pending: false, detail: `${copies} copies of the data (the live system plus ${picked.length} target(s)${manual ? " plus the manual copy" : ""}); at least 3 are required` },
     { code: "MEDIA", ok: media.size >= 2, relaxed: false, pending: false, detail: `${media.size} kind(s) of medium; at least 2 are required` },
     { code: "OFFSITE", ok: offsite.length > 0 || manual, relaxed: false, pending: false, detail: offsite.length > 0 || manual ? `Declared off-site: ${[...offsite, ...(manual ? ["the manual copy"] : [])].join(", ")}` : "No target is declared off-site; at least 1 is required" },
-    { code: "IMMUTABLE", ok: manual, relaxed: false, pending: false, detail: manual ? "Held out of the server's reach: the manual copy" : "No manual offline copy is declared; at least 1 copy out of the server's reach is required" },
+    { code: "IMMUTABLE", ok: manual, relaxed: false, pending: false, detail: manual ? "Held out of the server's reach: the manual copy" : tr("No manual offline copy is declared; at least 1 copy out of the server's reach is required") },
     { code: "TARGETS_WORK", ok: false, relaxed: false, pending: true, detail: "Every target is written and read back when the policy is activated" },
   ];
   return { passed: conditions.every((c) => c.ok || c.pending), enforced: true, conditions };
@@ -178,7 +178,7 @@ export const NewBackupPolicyView: React.FC = () => {
         {tr("Cancel")}
       </Button>
       <Button variant="outline-emerald" size="sm" disabled={saving || !choices || !reason.trim() || !timeOk || !manualOk} onClick={() => setConfirming(true)} className="whitespace-nowrap touch-manipulation">
-        {saving ? "Proposing…" : "Propose Version"}
+        {saving ? "Proposing…" : tr("Propose Version")}
       </Button>
     </>
   );
@@ -308,7 +308,7 @@ export const NewBackupPolicyView: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title="3-2-1-1 Rule"
+        title={tr("3-2-1-1 Rule")}
         icon={<Warehouse className="h-4 w-4" />}
         description={tr("What the choices above would give. The Backup Agent decides when the version is proposed and again when it is activated.")}
         headerRight={<Badge color={failing > 0 ? "red" : "emerald"} size="sm">{failing > 0 ? `${failing} not met` : "No condition failing"}</Badge>}
@@ -333,7 +333,7 @@ export const NewBackupPolicyView: React.FC = () => {
             {tr("The version is saved as a draft and waits to be activated with an electronic signature. The running policy does not change. This action will be recorded in the Audit Trail.")}
           </p>
         }
-        confirmText="Propose Version"
+        confirmText={tr("Propose Version")}
         cancelText="Cancel"
         isLoading={saving}
       />

@@ -330,10 +330,6 @@ export const TRANSACTIONAL_PREFIXES: readonly string[] = [
 
   // ── Settings – Roles ───────────────────────────────────────────────────────
 
-  // ── Settings – Email Templates ─────────────────────────────────────────────
-  '/settings/email-templates/new',
-  '/settings/email-templates/edit/',  // /email-templates/edit/:id
-
   // ── Settings – System Announcements ────────────────────────────────────────
   '/settings/announcements/new',
   '/settings/announcements/edit/',  // /announcements/edit/:id

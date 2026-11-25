@@ -121,8 +121,8 @@ export const StorageLocationsTab = React.forwardRef<{ openAddModal: () => void }
     } catch (error) {
       openResultModal(
         "error",
-        showEditModal ? "Storage Location Update Failed" : "Storage Location Create Failed",
-        extractApiMessage(error, showEditModal ? "Unable to update storage location." : "Unable to create storage location.")
+        showEditModal ? tr("Storage Location Update Failed") : tr("Storage Location Create Failed"),
+        extractApiMessage(error, showEditModal ? tr("Unable to update storage location.") : tr("Unable to create storage location."))
       );
       throw error;
     }

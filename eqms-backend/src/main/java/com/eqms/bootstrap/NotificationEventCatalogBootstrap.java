@@ -136,6 +136,20 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                     email.setActionLabel("Open in EQMS");
                     templateVersionRepository.save(email);
                 }
+            } else {
+                // NOTIFICATION-REVIEW-2026-11-25: an event that can be sent by e-mail always has e-mail wording, also when it is sent in-app only by default; otherwise the administrator who
+                // turns the e-mail on in the Notification Administration finds nothing to edit. An existing e-mail wording (edited or not) is never touched.
+                NotificationPolicy policy = policyRepository.findByEventCode(seed.code()).orElse(null);
+                if (policy != null && supportedChannels(seed).contains(NotificationTemplateVersion.CHANNEL_EMAIL)
+                        && templateVersionRepository.countByPolicy_IdAndChannel(policy.getId(), NotificationTemplateVersion.CHANNEL_EMAIL) == 0) {
+                    String[] content = java.util.Objects.requireNonNullElseGet(emailContent(seed), () -> new String[]{"[EQMS] " + seed.inAppTitle(), "<p>" + seed.inAppSummary() + "</p>"});
+                    NotificationTemplateVersion email = buildVersion(policy, NotificationTemplateVersion.CHANNEL_EMAIL, seed.inAppTitle(), seed.inAppSummary(), seed.variables());
+                    email.setSubject(content[0]);
+                    email.setBody(content[1]);
+                    email.setActionLabel("Open in EQMS");
+                    email.setChangeSummary("Seeded default e-mail content (the event is sent in-app by default)");
+                    templateVersionRepository.save(email);
+                }
             }
         }
         seedLegacyMessageEvents();
@@ -153,11 +167,45 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         return IN_APP_ONLY.contains(seed.code()) ? "IN_APP" : "IN_APP,EMAIL";
     }
 
+    /** NOTIFICATION-REVIEW-2026-11-25: the e-mail wording of events that were in-app only by default; the administrator edits it in the Notification Administration. */
+    private static final java.util.Map<String, String[]> FULL_EMAIL_CONTENT = java.util.Map.ofEntries(
+            java.util.Map.entry("access_review.campaign_completed", new String[]{"[EQMS] Access review completed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The access review campaign you created was <b>completed and signed</b>. The result is kept as evidence of the periodic review of access.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("audit.review_campaign_changed", new String[]{"[EQMS] Audit trail review campaign cancelled: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An audit trail review campaign was <b>cancelled</b>. The records it was to cover are not reviewed by this campaign.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("audit_trail.export_completed", new String[]{"[EQMS] Audit trail export ready: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The audit trail export you asked for is <b>ready</b>. Open it from the Audit Trail screen; the file is available only to you.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("backup.inspection_decided", new String[]{"[EQMS] Backup inspection: {{actionName}}", "<p>Dear {{recipientName}},</p><p>A backup inspection was <b>requested or approved</b> ({{actionName}}). An inspection gives a controlled, read-only look at a backup set and needs the approval of a second person.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("backup.rehearsal_requested", new String[]{"[EQMS] Restore rehearsal requested: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>restore rehearsal</b> was requested. A rehearsal restores a backup into a scratch environment to prove that it can be restored; it does not change the live system.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("backup.store_scrub_started", new String[]{"[EQMS] Backup store scrub started: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>scrub of the backup store</b> started. The scrub checks every stored backup file against its recorded checksum.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("controlled_copy.recall_evidence_uploaded", new String[]{"[EQMS] Controlled copy evidence uploaded: {{entityName}}", "<p>Dear {{recipientName}},</p><p>Evidence of the <b>recall or destruction</b> of a controlled copy was uploaded. Document Control can now check it and close the recall.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("controlled_copy.request_decided", new String[]{"[EQMS] Controlled copy request approved: {{entityName}}", "<p>Dear {{recipientName}},</p><p>Your request for a controlled copy was <b>approved</b>. The copy will be issued to you by Document Control; you will be told when it is available.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("document.editing_lock_changed", new String[]{"[EQMS] Editing lock changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The editing of a revision was <b>locked</b>, or its edit-online link was <b>revoked or restored</b> ({{actionName}}).</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("document.legacy_import_finished", new String[]{"[EQMS] Legacy document imported: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A document imported from paper is now <b>effective</b>. Check that its number, revision and valid-until date are the ones of the paper original.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("document.number_changed", new String[]{"[EQMS] Document number changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The <b>number of a document was changed</b>. Printed controlled copies still carry the old number: Document Control must check them and, if needed, issue them again.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("knowledge.sharing_changed", new String[]{"[EQMS] Knowledge Base sharing changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>share link or a share delegate</b> of the Knowledge Base was created, revoked or removed ({{actionName}}). Check that nothing was shared outside the company by mistake.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("report.template_decided", new String[]{"[EQMS] Report template decided: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A report template was <b>approved, enabled or disabled</b> ({{actionName}}). Reports made from it follow the new state from now on.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("report.type_or_property_changed", new String[]{"[EQMS] Report setting changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>report type</b> was enabled or disabled, or the <b>report properties or appearance</b> were changed ({{actionName}}). Reports made from now on use the new setting.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("security.access_profile_changed_audit", new String[]{"[EQMS] Access profile changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An <b>access profile</b>, its permissions or its members were changed ({{actionName}}). The people in the profile may now do more or less than before.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("security.object_access_rule_changed", new String[]{"[EQMS] Object access rule changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An <b>object access rule</b> was created, changed or deleted ({{actionName}}). It decides which records a person can see.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("security.permission_set_changed", new String[]{"[EQMS] Permission set changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>permission set</b> was created, changed or deleted ({{actionName}}). Every profile that holds the set is affected.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("system.configuration_changed", new String[]{"[EQMS] System configuration changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The <b>system configuration</b> was changed ({{actionName}}).</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("system.retention_blocked_deletion", new String[]{"[EQMS] Retention blocked a deletion: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>deletion was refused</b> because the retention period of the file has not ended. The file is unchanged.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("uncontrolled_copy.request_decided", new String[]{"[EQMS] Uncontrolled copy request cancelled: {{entityName}}", "<p>Dear {{recipientName}},</p><p>Your request for an uncontrolled copy was <b>cancelled</b>. No copy was issued.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("controlled_copy.destroyed", new String[]{"[EQMS] Controlled copy destroyed: {{controlledCopyNumber}}", "<p>Dear {{recipientName}},</p><p>The controlled copy <b>{{controlledCopyNumber}}</b> of <b>{{documentNumber}} - {{documentTitle}}</b> (revision {{revisionNumber}}) has been <b>destroyed</b> and its destruction recorded.</p><p>Do not use any printed or electronic copy that carries this number. The record of the destruction is kept in the Audit Trail.</p>"}),
+            java.util.Map.entry("controlled_copy.distributed", new String[]{"[EQMS] Controlled copy available: {{documentNumber}}", "<p>Dear {{recipientName}},</p><p>A new controlled copy is available for you: <b>{{documentNumber}} - {{documentTitle}}</b> (revision {{revisionNumber}}), copy number <b>{{controlledCopyNumber}}</b>.</p><p>It is valid until <b>{{expiryDateDisplay}}</b>. Use only this copy for work; it is void when the document is replaced or expires.</p>"}),
+            java.util.Map.entry("document.published", new String[]{"[EQMS] Document is now effective: {{documentNumber}}", "<p>Dear {{recipientName}},</p><p>The document <b>{{documentNumber}} - {{documentTitle}}</b>, revision <b>{{revisionNumber}}</b>, has been published and is now <b>Effective</b>.</p><p>From now on this is the version to use. Printed copies of the previous revision must not be used.</p>"}),
+            java.util.Map.entry("document.review_completed", new String[]{"[EQMS] Review completed: {{documentNumber}}", "<p>Dear {{recipientName}},</p><p>All reviewers have <b>completed their review</b> of <b>{{documentNumber}} - {{documentTitle}}</b> (revision {{revisionNumber}}).</p><p>The revision is ready for the next step (approval).</p>"}),
+            java.util.Map.entry("knowledge.document_published", new String[]{"[EQMS] New in {{knowledgeBase}}: {{documentNumber}}", "<p>Dear {{recipientName}},</p><p>A new document was published in the Knowledge Base <b>{{knowledgeBase}}</b> that you follow: <b>{{documentNumber}} - {{documentTitle}}</b> (revision {{revisionNumber}}), now <b>Effective</b>.</p>"}),
+            java.util.Map.entry("system.maintenance_scheduled", new String[]{"[EQMS] {{title}}", "<p>Dear {{recipientName}},</p><p>{{message}}</p><p>Finish and save your work before the maintenance window starts. During the window the system is not available.</p>"}),
+            java.util.Map.entry("training.content_rejected", new String[]{"[EQMS] {{title}}", "<p>Dear {{recipientName}},</p><p>{{message}}</p><p>The training returns to <b>Planned</b>: change the content and send it for approval again.</p>"}),
+            java.util.Map.entry("training.session_changed", new String[]{"[EQMS] {{title}}", "<p>Dear {{recipientName}},</p><p>{{message}}</p><p>The people concerned were told by e-mail about the change.</p>"})
+    );
+
     /** The e-mail of an event: its own wording, or for a Training notice the title and text the module composes. */
     private static String[] emailContent(EventSeed seed) {
+        if (FULL_EMAIL_CONTENT.containsKey(seed.code())) return FULL_EMAIL_CONTENT.get(seed.code());
         if (ACCOUNT_EMAIL_CONTENT.containsKey(seed.code())) return ACCOUNT_EMAIL_CONTENT.get(seed.code());
         if (REPORT_TEMPLATE_REJECTED.equals(seed.code())) return new String[]{"[EQMS] Report Template Rejected: {{entityName}}",
                 "<p>The report template <b>{{entityName}}</b> was rejected by {{actorName}}.</p><p><b>Reason:</b> {{actionComment}}</p><p>Change the template and submit it again: {{actionUrl}}</p>"};
+        if (TRAINING_SESSION_EMAIL.containsKey(seed.code())) return TRAINING_SESSION_EMAIL.get(seed.code());
         if (EMAIL_CONTENT.containsKey(seed.code())) return EMAIL_CONTENT.get(seed.code());
         if (seed.variables().startsWith(AUDIT_VARS)) return new String[]{"[EQMS] " + seed.name(), "<p>" + AUDIT_SUMMARY + "</p>"};
         return seed.variables().startsWith(PASS_THROUGH_VARS) ? new String[]{"[EQMS] {{title}}", "<p>{{message}}</p>"} : null;
@@ -324,6 +372,36 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
     private static final String STD_VARS = "recipientName,documentNumber,documentTitle,revisionNumber,actionUrl,systemName";
 
     /** The events whose module composes the title and the text and hands them over as they are. */
+    /** The placeholders of the notices about a session of a training (owner decision 2026-11-24): the wording an administrator edits can use them. */
+    private static final String TRAINING_SESSION_VARS = ",sessionNo,sessionTopic,sessionDate,oldDate,newDate,venue,trainerName,previousTrainerName,newTrainerName,reason,changedBy";
+
+    /** The e-mail of the notices about a session: the whole information, for a person who is not in the system at that time. The in-app notice of these events is off by default. */
+    private static final java.util.Map<String, String[]> TRAINING_SESSION_EMAIL = java.util.Map.of(
+            "training.postponed", new String[]{
+                    "[EQMS] Training session postponed: {{trainingNumber}}, Session {{sessionNo}}",
+                    "<p>Dear {{recipientName}},</p>"
+                    + "<p>Session {{sessionNo}} of the training <b>{{trainingNumber}}</b> ({{sessionTopic}}) has been <b>postponed</b>.</p>"
+                    + "<p><b>Previous day:</b> {{oldDate}}<br/><b>New day:</b> {{newDate}}<br/><b>Place:</b> {{venue}}<br/><b>Trainer:</b> {{trainerName}}</p>"
+                    + "<p><b>Reason:</b> {{reason}}</p><p>Please note the new day. This message replaces the day you were told before. Changed by {{changedBy}}.</p><p>Details: {{actionUrl}}</p>"},
+            "training.session_cancelled", new String[]{
+                    "[EQMS] Training session cancelled: {{trainingNumber}}, Session {{sessionNo}}",
+                    "<p>Dear {{recipientName}},</p>"
+                    + "<p>Session {{sessionNo}} of the training <b>{{trainingNumber}}</b> ({{sessionTopic}}) has been <b>cancelled</b>. You do not need to attend or conduct it.</p>"
+                    + "<p><b>Day it was planned for:</b> {{sessionDate}}<br/><b>Place:</b> {{venue}}</p>"
+                    + "<p><b>Reason:</b> {{reason}}</p><p>Cancelled by {{changedBy}}.</p><p>Details: {{actionUrl}}</p>"},
+            "training.trainer_assigned", new String[]{
+                    "[EQMS] You are the trainer: {{trainingNumber}}, Session {{sessionNo}}",
+                    "<p>Dear {{recipientName}},</p>"
+                    + "<p>You are the <b>trainer</b> of Session {{sessionNo}} of the training <b>{{trainingNumber}}</b> ({{sessionTopic}}).</p>"
+                    + "<p><b>Day:</b> {{sessionDate}}<br/><b>Place:</b> {{venue}}<br/><b>In place of:</b> {{previousTrainerName}}</p>"
+                    + "<p>You are asked to conduct the session on that day and in that place. Assigned by {{changedBy}}.</p><p>Details: {{actionUrl}}</p>"},
+            "training.trainer_removed", new String[]{
+                    "[EQMS] You are no longer the trainer: {{trainingNumber}}, Session {{sessionNo}}",
+                    "<p>Dear {{recipientName}},</p>"
+                    + "<p>You are <b>no longer the trainer</b> of Session {{sessionNo}} of the training <b>{{trainingNumber}}</b> ({{sessionTopic}}). Nothing is asked of you for this session.</p>"
+                    + "<p><b>Day:</b> {{sessionDate}}<br/><b>Place:</b> {{venue}}<br/><b>New trainer:</b> {{newTrainerName}}</p>"
+                    + "<p>Changed by {{changedBy}}.</p><p>Details: {{actionUrl}}</p>"});
+
     private static final String PASS_THROUGH_VARS = "recipientName,title,message,actionUrl,systemName";
     /** What the Audit Trail raises says, in its own words: what was done, to which record, by whom, with which comment (the wording an administrator edits). */
     static final String AUDIT_SUMMARY = "{{actionName}}: {{entityName}} by {{actorName}}. {{actionComment}}";
@@ -342,7 +420,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         List<EventSeed> all = new java.util.ArrayList<>(coreCatalog());
         for (com.eqms.service.training.TrainingNotificationEvents.Event event : com.eqms.service.training.TrainingNotificationEvents.all()) {
             all.add(new EventSeed(event.registryCode(), event.name(), event.description(), "TRAINING", event.priority(),
-                    "NOTIFY", "TRAINING", event.channels(), PASS_THROUGH_VARS + ",actorName,trainingNumber,documentNumber,trainingDueDate,requestNumber",
+                    "NOTIFY", "TRAINING", event.channels(), PASS_THROUGH_VARS + ",actorName,trainingNumber,documentNumber,trainingDueDate,requestNumber" + (TRAINING_SESSION_EMAIL.containsKey(event.registryCode()) ? TRAINING_SESSION_VARS : ""),
                     new String[]{"RECIPIENT"}, "{{title}}", "{{message}}"));
         }
         for (com.eqms.service.OperationalNotificationEvents.Event event : com.eqms.service.OperationalNotificationEvents.all()) {
@@ -433,10 +511,10 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "document.participant_unavailable", "Workflow Assignee Unavailable",
                         "A Reviewer or Approver with a pending action was suspended or terminated; the assignment must be replaced.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
-                        "REPLACE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName",
+                        "REPLACE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,fullName",
                         new String[]{"RECIPIENT"},
                         "Workflow assignee unavailable",
-                        "{{documentNumber}} — {{documentTitle}}: the pending {{participantType}} {{userName}} is no longer available. Replace the assignment so the revision can continue."
+                        "{{documentNumber}} — {{documentTitle}}: the pending {{participantType}} {{fullName}} is no longer available. Replace the assignment so the revision can continue."
                 ),
                 new EventSeed(
                         "document.action_reminder", "Pending Review/Approval Reminder",
@@ -451,10 +529,10 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "document.action_escalated", "Pending Review/Approval Escalation",
                         "A revision has been waiting on a Reviewer or Approver for longer than the configured escalation period.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
-                        "ESCALATE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,userName,daysPending",
+                        "ESCALATE_PARTICIPANT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",participantType,fullName,daysPending",
                         new String[]{"RECIPIENT"},
                         "Revision stuck in workflow",
-                        "{{documentNumber}} — {{documentTitle}} has been waiting for {{participantType}} {{userName}} for {{daysPending}} day(s)."
+                        "{{documentNumber}} — {{documentTitle}} has been waiting for {{participantType}} {{fullName}} for {{daysPending}} day(s)."
                 ),
                 new EventSeed(
                         "document.published", "Document Published (Effective)",

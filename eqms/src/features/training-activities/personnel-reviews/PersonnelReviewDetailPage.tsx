@@ -143,7 +143,7 @@ export function PersonnelReviewDetailPage() {
         tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
         {review.readyToClose && (
           <p role="status" className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            {tr("Every item is settled.")} {review.closerName ? `${review.closerName} must check the review and sign to close it.` : "A person who may close the review must check it and sign."}
+            {tr("Every item is settled.")} {review.closerName ? `${review.closerName} must check the review and sign to close it.` : tr("A person who may close the review must check it and sign.")}
           </p>
         )}
         {tab === "overview" && (
@@ -155,7 +155,7 @@ export function PersonnelReviewDetailPage() {
             <ReadonlyField label={tr("Event")} value={REVIEW_KIND_LABEL[review.kind]} />
             <ReadonlyField label={tr("Status")} value={REVIEW_STATUS_LABEL[review.status]} />
             <ReadonlyField label={EVENT_DATE_LABEL[review.kind] ?? "Event Date"} value={day(review.eventDate)} />
-            <ReadonlyField label={tr("Person Who Closes The Review")} value={review.closerName ?? review.closedByName ?? (review.status === "OPEN" ? "Anyone who may (no person was chosen)" : "")} />
+            <ReadonlyField label={tr("Person Who Closes The Review")} value={review.closerName ?? review.closedByName ?? (review.status === "OPEN" ? tr("Anyone who may (no person was chosen)") : "")} />
             {review.kind === "ABSENCE_RETURN" && (
               <>
                 <ReadonlyField label={tr("Absent from")} value={day(review.absenceFrom)} />
@@ -164,8 +164,8 @@ export function PersonnelReviewDetailPage() {
             )}
             {(review.kind === "DEPT_TRANSFER" || review.kind === "LOCATION_TRANSFER") && (
               <>
-                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? "Previous site / department" : "Previous department"} value={review.departmentFrom} />
-                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? "New site / department" : "New department"} value={review.departmentTo} />
+                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? tr("Previous site / department") : tr("Previous department")} value={review.departmentFrom} />
+                <ReadonlyField label={review.kind === "LOCATION_TRANSFER" ? tr("New site / department") : tr("New department")} value={review.departmentTo} />
               </>
             )}
             <ReadonlyField label={tr("Description")} wide>
@@ -234,7 +234,7 @@ export function PersonnelReviewDetailPage() {
         </div>
       </FormModal>
       <FormModal isOpen={cancelling} onClose={() => setCancelling(false)} onConfirm={async () => { if (await run(() => trainingReviewsApi.cancel(review.id, reason.trim()), "Review cancelled")) setCancelling(false); }}
-        title={tr("Cancel the Review")} description={tr("The review stays on record with your reason.")} confirmText="Cancel review" confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
+        title={tr("Cancel the Review")} description={tr("The review stays on record with your reason.")} confirmText={tr("Cancel review")} confirmVariant="destructive" isLoading={busy} confirmDisabled={!reason.trim()} size="md">
         <FormField label={tr("Reason")} required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
       </FormModal>
       <ESignatureModal isOpen={signing} onClose={() => setSigning(false)} onConfirm={async (d: { signatureToken: string }) => { if (await run(() => trainingReviewsApi.close(review.id, d.signatureToken), "Review closed")) setSigning(false); }}
@@ -261,7 +261,7 @@ function ItemDialog({ item, personName, busy, onClose, onSave }: { item: Trainin
       <div className="grid gap-4">
         <FormField label={tr("State")} required><Select value={status} enableSearch={false} onChange={setStatus} options={Object.entries(ITEM_STATUS).map(([value, label]) => ({ value, label }))} /></FormField>
         {item.canLink && <FormField label={tr("Training organised for it (the employee must be on its list)")}><Select value={activityId} onChange={setActivityId} options={options} onSearch={search} placeholder={tr("Search a training by number or title")} /></FormField>}
-        <FormField label={status === "NOT_NEEDED" ? "Reason it is not needed" : "Description"} required={status === "NOT_NEEDED"}><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
+        <FormField label={status === "NOT_NEEDED" ? tr("Reason it is not needed") : "Description"} required={status === "NOT_NEEDED"}><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
       </div>
     </FormModal>
   );

@@ -94,7 +94,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
     { id: "document", header: "Document", sort: sorted("documentNumber"), cell: (r) => (r.documentLabel ?? "—") },
     { id: "completed", header: tr("Completed On"), sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
     ...(mine ? [] : [{ id: "recordedOn", header: tr("Recorded On"), sort: sorted("recordedAt"), cell: (r: TrainingRecord) => day(r.recordedAt) }]),
-    { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? "Read and understood" : r.result === "ATTENDED" ? "Attended" : r.result === "TRAINER" ? "Trainer" : "Passed") },
+    { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.result === "READ" ? tr("Read and understood") : r.result === "ATTENDED" ? "Attended" : r.result === "TRAINER" ? "Trainer" : "Passed") },
     {
       id: "state",
       header: "Record",
@@ -201,7 +201,7 @@ export function TrainingRecordsTable({ mine }: { mine: boolean }) {
         onConfirm={() => voiding && setVoiding({ ...voiding, step: "sign" })}
         title={tr("Void Training Record")}
         description={tr("The record is not deleted or changed: it stays in the list as voided with your reason and signature.")}
-        confirmText="Continue to Signature"
+        confirmText={tr("Continue to Signature")}
         confirmVariant="destructive"
         confirmDisabled={!voiding?.reason.trim()}
         size="md"
