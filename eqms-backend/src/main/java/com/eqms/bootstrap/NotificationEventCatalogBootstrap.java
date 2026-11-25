@@ -211,6 +211,24 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
         return seed.variables().startsWith(PASS_THROUGH_VARS) ? new String[]{"[EQMS] {{title}}", "<p>{{message}}</p>"} : null;
     }
 
+    /** The in-app wording of an event that started from an e-mail message: one short sentence. The long text stays in the e-mail; a notice of 400 characters is not an in-app notice. */
+    private static final java.util.Map<String, String> SHORT_IN_APP = java.util.Map.ofEntries(
+            java.util.Map.entry("controlled_copy.cancel_notice", "Controlled copy {{controlledCopyNumber}} ({{documentTitle}}, revision {{revisionNumber}}) was cancelled and must no longer be used."),
+            java.util.Map.entry("controlled_copy.notice", "Controlled copy {{controlledCopyNumber}}: {{workflowAction}}."),
+            java.util.Map.entry("controlled_copy.distribution_notice", "A new controlled copy is available: {{controlledCopyNumber}} ({{documentTitle}}, revision {{revisionNumber}})."),
+            java.util.Map.entry("controlled_copy.expiry_notice", "Controlled copy {{controlledCopyNumber}} ({{documentTitle}}) expires on {{expiryDate}}."),
+            java.util.Map.entry("controlled_copy.obsoleted_notice", "Controlled copy {{controlledCopyNumber}} is obsolete: its document was replaced. Stop using it."),
+            java.util.Map.entry("controlled_copy.recall_notice", "Controlled copy {{controlledCopyNumber}} ({{documentTitle}}) was recalled. Return it as instructed."),
+            java.util.Map.entry("document.approval_request", "{{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}}) is ready for your approval."),
+            java.util.Map.entry("document.review_request", "{{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}}) is waiting for your review."),
+            java.util.Map.entry("document.edit_online", "You can edit {{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}}) online."),
+            java.util.Map.entry("document.publish_notice", "{{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}}) was published."),
+            java.util.Map.entry("document.ready_for_publishing", "{{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}}) is ready for publishing."),
+            java.util.Map.entry("document.ready_for_submission", "{{documentNumber}} - {{documentTitle}}: the author finished editing; it is ready for your review."),
+            java.util.Map.entry("document.training_required", "Training has been assigned for {{documentNumber}} - {{documentTitle}} (revision {{revisionNumber}})."),
+            java.util.Map.entry("knowledge.share_notice", "{{actorName}}: {{actionTitle}} - {{itemLabel}}.")
+    );
+
     /**
      * The registry event of each notice that is still raised as an e-mail message type is created from the active message of the type (its title as the
      * in-app title, the start of its text as the in-app message, its subject and text as the e-mail), once. An event that exists is not touched: the
@@ -256,7 +274,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             // the e-mail messages of the older senders were rendered with {name} as well as {{name}}; the registry writes {{name}}
             String title = doubleBraces(template.getSubject() == null ? legacy.name() : template.getSubject());
             String content = doubleBraces(template.getContent());
-            NotificationTemplateVersion inApp = buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP, clip(title, 255), clip(plainText(content), 480), variables);
+            NotificationTemplateVersion inApp = buildVersion(policy, NotificationTemplateVersion.CHANNEL_IN_APP, clip(title, 255), SHORT_IN_APP.getOrDefault(legacy.code(), clip(plainText(content), 480)), variables);
             inApp.setChangeSummary("Created from the e-mail message " + template.getName());
             templateVersionRepository.save(inApp);
             NotificationTemplateVersion email = buildVersion(policy, NotificationTemplateVersion.CHANNEL_EMAIL, null, null, variables);
@@ -490,6 +508,14 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "APPROVE_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
                         new String[]{"AUTHOR", "OWNER"},
                         "Document approved", "{{documentNumber}} — {{documentTitle}} has been approved."
+                ),
+                new EventSeed(
+                        "document.training_completed", "Revision Training Completed",
+                        "The training of a revision was confirmed as completed; the revision is Ready for Publishing. Told in-app to Document Control (the e-mail is Document Ready for Publishing).",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
+                        "TRAINING_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
+                        new String[]{"RECIPIENT"},
+                        "Training completed", "{{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}): the training is completed. The revision is ready for publishing."
                 ),
                 new EventSeed(
                         "knowledge.document_published", "Knowledge Document Published",

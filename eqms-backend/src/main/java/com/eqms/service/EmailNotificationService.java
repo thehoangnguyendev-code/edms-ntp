@@ -250,7 +250,7 @@ public class EmailNotificationService {
             merged.put("documentTitle", value(document.getDocumentName()));
             merged.put("documentNumber", value(document.getDocumentNumber()));
             merged.put("documentVersion", value(document.getVersion()));
-            merged.put("documentStatus", value(document.getStatus() == null ? null : document.getStatus().getCode()));
+            merged.put("documentStatus", document.getStatus() == null ? "" : statusWords(document.getStatus().getLabel(), document.getStatus().getCode()));
             merged.put("documentReviewDate", formatDate(document.getReviewDate()));
             merged.put("documentEffectiveDate", formatDate(document.getEffectiveDate()));
             merged.put("documentValidUntil", formatDate(document.getValidUntil()));
@@ -265,7 +265,7 @@ public class EmailNotificationService {
             merged.put("revisionTitle", value(revision.getRevisionName()));
             merged.put("revisionName", value(revision.getRevisionName()));
             merged.put("revisionNumber", value(revision.getRevisionNumber()));
-            merged.put("revisionStatus", value(revision.getStatus() == null ? null : revision.getStatus().getCode()));
+            merged.put("revisionStatus", revision.getStatus() == null ? "" : statusWords(revision.getStatus().getLabel(), revision.getStatus().getCode()));
             merged.put("revisionUrl", buildRevisionUrl(revision));
             merged.put("officeEditUrl", value(revision.getStorageEditUrl()));
             merged.put("officeViewUrl", value(revision.getStorageViewUrl()));
@@ -276,10 +276,10 @@ public class EmailNotificationService {
             merged.put("trainingPlannedDate", formatDate(revision.getTrainingPlannedDate()));
             merged.put("trainingPeriodEndDate", formatDate(revision.getTrainingPeriodEndDate()));
             merged.put("trainingCompletionDate", formatDate(revision.getTrainingCompletionDate()));
-            merged.put("workflowStage", value(revision.getStatus() == null ? null : revision.getStatus().getCode()));
-            merged.put("workflowAction", value(action));
-            merged.put("workflowReason", value(comment));
-            merged.put("workflowComment", value(comment));
+            merged.put("workflowStage", revision.getStatus() == null ? "" : statusWords(revision.getStatus().getLabel(), revision.getStatus().getCode()));
+            merged.put("workflowAction", humanizeWorkflowAction(action));
+            merged.put("workflowReason", value(com.eqms.util.DisplayLabels.prose(comment)));
+            merged.put("workflowComment", value(com.eqms.util.DisplayLabels.prose(comment)));
         }
         merged.put("systemName", merged.getOrDefault("systemName", "EQMS"));
         merged.put("companyName", merged.getOrDefault("companyName", "EQMS"));
@@ -309,7 +309,7 @@ public class EmailNotificationService {
             merged.put("documentUrl", copy.getDocument() == null || copy.getDocument().getId() == null ? "" : "/documents/" + copy.getDocument().getId());
             merged.put("revisionId", copy.getRevision() == null || copy.getRevision().getId() == null ? null : copy.getRevision().getId().toString());
             merged.put("revisionNumber", value(copy.getRevisionNumber()));
-            merged.put("controlledCopyStatus", value(copy.getStatus()));
+            merged.put("controlledCopyStatus", controlledCopyStatusWords(copy.getStatus()));
             merged.put("controlledCopyUrl", copy.getId() == null ? "" : "/documents/controlled-copies/" + copy.getId());
             merged.put("controlledCopyPreviewUrl", buildControlledCopyPreviewUrl(copy));
             merged.put("previewToken", value(copy.getAccessToken()));
@@ -324,9 +324,9 @@ public class EmailNotificationService {
             // the real batch number is still shown for reference.
             merged.put("workflowScope", "Individual Copy");
             merged.put("batchNumber", safeBatchNumber(copy));
-            merged.put("workflowStage", value(copy.getCurrentStage()));
+            merged.put("workflowStage", controlledCopyStatusWords(copy.getCurrentStage()));
             merged.put("workflowAction", humanizeControlledCopyAction(action));
-            merged.put("workflowComment", value(comment));
+            merged.put("workflowComment", value(com.eqms.util.DisplayLabels.prose(comment)));
             merged.put("distributionList", value(copy.getDistributionList()));
             merged.put("distributionScope", value(copy.getDistributionScope()));
             merged.put("distributionLocation", value(copy.getLocation()));
@@ -336,13 +336,13 @@ public class EmailNotificationService {
             merged.put("recipientName", value(copy.getRecipientName()));
             merged.put("recipientSignature", value(copy.getRecipientSignature()));
             merged.put("recipientDate", formatDate(copy.getRecipientDate()));
-            merged.put("destroyReason", value(copy.getDestroyReason()));
+            merged.put("destroyReason", value(com.eqms.util.DisplayLabels.prose(copy.getDestroyReason())));
             merged.put("destructionType", value(copy.getDestructionType()));
             merged.put("destructionMethod", value(copy.getDestructionMethod()));
             merged.put("destroyedAt", formatDateTime(copy.getDestroyedAt()));
             merged.put("destroyedBy", copy.getDestroyedBy() == null ? nullSafe(actor) : value(copy.getDestroyedBy().getFullName()));
             merged.put("witnessName", value(copy.getWitnessedBy()));
-            merged.put("recallReason", value(copy.getRecallReason()));
+            merged.put("recallReason", value(com.eqms.util.DisplayLabels.prose(copy.getRecallReason())));
             merged.put("validUntil", formatDate(copy.getValidUntil()));
             merged.put("effectiveDate", formatDate(copy.getEffectiveDate()));
             merged.put("hasExpiryDate", Boolean.TRUE.equals(copy.getHasExpiryDate()) ? "true" : "false");
@@ -380,13 +380,13 @@ public class EmailNotificationService {
             merged.put("documentUrl", batch.getDocument() == null || batch.getDocument().getId() == null ? "" : "/documents/" + batch.getDocument().getId());
             merged.put("revisionId", batch.getRevision() == null || batch.getRevision().getId() == null ? null : batch.getRevision().getId().toString());
             merged.put("revisionNumber", value(batch.getRevisionNumber()));
-            merged.put("controlledCopyStatus", value(batch.getStatus()));
+            merged.put("controlledCopyStatus", controlledCopyStatusWords(batch.getStatus()));
             merged.put("controlledCopyUrl", batch.getId() == null ? "" : "/documents/controlled-copies/" + batch.getId());
             merged.put("controlledCopyPreviewUrl", batch.getId() == null ? "" : "/documents/controlled-copies/" + batch.getId());
             merged.put("previewToken", "");
-            merged.put("workflowStage", value(batch.getStatus()));
+            merged.put("workflowStage", controlledCopyStatusWords(batch.getStatus()));
             merged.put("workflowAction", humanizeControlledCopyAction(action));
-            merged.put("workflowComment", value(comment));
+            merged.put("workflowComment", value(com.eqms.util.DisplayLabels.prose(comment)));
             merged.put("distributionList", value(batch.getDistributionList()));
             merged.put("distributionScope", value(batch.getDistributionScope()));
             merged.put("distributionLocation", value(batch.getLocation()));
@@ -1278,6 +1278,63 @@ public class EmailNotificationService {
                     .map(word -> word.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + word.substring(1).toLowerCase(java.util.Locale.ROOT))
                     .collect(java.util.stream.Collectors.joining(" "));
         };
+    }
+
+    /** A status as a person reads it (Ready for Publishing), never the code (READY_FOR_PUBLISHING); the label comes from the status table, the code is the last resort. */
+    private static String statusWords(String label, String code) {
+        if (label != null && !label.isBlank()) {
+            return label.trim();
+        }
+        return humanizeCode(code);
+    }
+
+    /** The stored status of a controlled copy or of a batch is a label for most rows but a code for some older rows; the e-mail always shows the label. */
+    private static String controlledCopyStatusWords(String stored) {
+        if (stored == null || stored.isBlank()) {
+            return "";
+        }
+        return switch (stored.trim().toUpperCase(java.util.Locale.ROOT).replaceAll("[^A-Z0-9]+", "_")) {
+            case "READY_FOR_DISTRIBUTION" -> "Ready for Distribution";
+            case "DISTRIBUTED" -> "Distributed";
+            case "OBSOLETED" -> "Obsoleted";
+            case "CLOSED_CANCELLED" -> "Closed - Cancelled";
+            default -> humanizeCode(stored);
+        };
+    }
+
+    /** The action of a document workflow as words (Review Completed), not the code (REVIEW_COMPLETE). */
+    private static String humanizeWorkflowAction(String action) {
+        if (action == null || action.isBlank()) {
+            return "";
+        }
+        return switch (action.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "SUBMIT_FOR_REVIEW" -> "Submitted for Review";
+            case "RESUBMIT_FOR_REVIEW" -> "Resubmitted for Review";
+            case "REVIEW_COMPLETE" -> "Review Completed";
+            case "REVIEW_REJECT" -> "Review Rejected";
+            case "APPROVE_COMPLETE" -> "Approval Completed";
+            case "APPROVE_REJECT" -> "Approval Rejected";
+            case "TRAINING_COMPLETE" -> "Training Completed";
+            case "REVIEWER_REPLACED" -> "Reviewer Replaced";
+            case "APPROVER_REPLACED" -> "Approver Replaced";
+            case "PUBLISH" -> "Published";
+            default -> humanizeCode(action);
+        };
+    }
+
+    /** A value that is a code (UPPER_CASE_WITH_UNDERSCORES) becomes words with a capital for each; a value that is already words is returned as it is. */
+    private static String humanizeCode(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String text = value.trim();
+        if (!text.matches("[A-Z0-9]+(_[A-Z0-9]+)*")) {
+            return text;
+        }
+        return java.util.Arrays.stream(text.split("_"))
+                .filter(word -> !word.isBlank())
+                .map(word -> word.substring(0, 1) + word.substring(1).toLowerCase(java.util.Locale.ROOT))
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 
     private String nullSafe(UserAccount user) {

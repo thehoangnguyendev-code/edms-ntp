@@ -64,6 +64,7 @@ public class TrainingNotifier {
     public static String path(String objectType, UUID id) {
         return switch (objectType == null ? "" : objectType) {
             case "TRAINING_ACTIVITY" -> "/training-management/activities/" + id;
+            case "DOCUMENT_REVISION_TRAINING" -> "/documents/revisions/training/" + id;
             case "TRAINING_MATRIX_VERSION" -> "/training-management/matrix/" + id;
             case "TRAINING_JOB_ASSIGNMENT" -> "/training-management/job-assignments/" + id;
             case "TRAINING_SPECIMEN_SIGNATURE" -> "/training-management/specimen-signatures";
@@ -123,6 +124,29 @@ public class TrainingNotifier {
             });
         } else {
             submit.run();
+        }
+    }
+
+    /**
+     * Runs slow work (a list made into a PDF by the document converter, to be attached to a notice) on the background thread of the notices, once the surrounding transaction has committed, so the
+     * person who signed does not wait for it and the request does not hold the lock of the record (the converter may be starting and take tens of seconds). At once, on the caller's thread, when
+     * there is no transaction. Never throws.
+     */
+    public void afterCommitInBackground(Runnable work) {
+        Runnable guarded = () -> {
+            try {
+                work.run();
+            } catch (Exception failure) {
+                log.warn("Background training notice work failed: {}", failure.getMessage(), failure);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { BATCH.execute(guarded); }
+            });
+        } else {
+            guarded.run();
         }
     }
 

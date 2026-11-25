@@ -3066,11 +3066,11 @@ public class RevisionService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private KnowledgePortalService knowledgePortalService;
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private NotificationDispatcher knowledgeNotificationDispatcher;
+    private NotificationDispatcher notificationDispatcher;
 
     /** Tells the people subscribed to the document's Knowledge Base that a new Effective version exists. */
     private void notifyKnowledgeSubscribers(DocumentRevisionRecord revision) {
-        if (knowledgePortalService == null || knowledgeNotificationDispatcher == null
+        if (knowledgePortalService == null || notificationDispatcher == null
                 || revision == null || revision.getDocument() == null) {
             return;
         }
@@ -3090,7 +3090,7 @@ public class RevisionService {
             variables.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
             variables.put("knowledgeBase", Objects.toString(document.getKnowledgeBase(), ""));
             variables.put("actionUrl", "/documents/knowledge/explorer");
-            knowledgeNotificationDispatcher.dispatch("knowledge.document_published", recipients, variables);
+            notificationDispatcher.dispatch("knowledge.document_published", recipients, variables);
         } catch (Exception ex) {
             log.warn("Knowledge subscriber notification failed for revision {}", revision.getId(), ex);
         }
@@ -3152,12 +3152,12 @@ public class RevisionService {
                 recipients.addAll(getRevisionStakeholders(revision));
             } else if ("READY_FOR_PUBLISHING".equalsIgnoreCase(targetStatus)) {
                 templateType = EmailTemplateTypeUtils.DOCUMENT_READY_FOR_PUBLISHING_NOTIFICATION;
-                recipients.addAll(getWorkflowCoordinatorRecipients(revision));
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             }
         } else if ("TRAINING_COMPLETE".equalsIgnoreCase(actionType)) {
             if ("READY_FOR_PUBLISHING".equalsIgnoreCase(targetStatus)) {
                 templateType = EmailTemplateTypeUtils.DOCUMENT_READY_FOR_PUBLISHING_NOTIFICATION;
-                recipients.addAll(getWorkflowCoordinatorRecipients(revision));
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             }
         } else if ("PUBLISH".equalsIgnoreCase(actionType)) {
             templateType = "document-publish";
@@ -3177,6 +3177,40 @@ public class RevisionService {
         for (UserAccount recipient : recipients) {
             sendRevisionNotification(revision, document, recipient, templateType, actionType, targetStatus, actor, comment);
         }
+        if ("TRAINING_COMPLETE".equalsIgnoreCase(actionType) && "READY_FOR_PUBLISHING".equalsIgnoreCase(targetStatus)) {
+            dispatchTrainingCompletedInApp(revision, document, recipients, actor);
+        }
+    }
+
+    /** The in-app notice of the end of the training goes to Document Control only (the e-mail of the same moment is Ready for Publishing). It never blocks the workflow. */
+    private void dispatchTrainingCompletedInApp(DocumentRevisionRecord revision, DocumentRecord document, List<UserAccount> recipients, UserAccount actor) {
+        if (notificationDispatcher == null) {
+            return;
+        }
+        try {
+            for (UserAccount recipient : recipients) {
+                Map<String, String> overrides = new HashMap<>();
+                overrides.put("documentTitle", Objects.toString(document.getDocumentName(), ""));
+                overrides.put("documentNumber", Objects.toString(document.getDocumentNumber(), ""));
+                overrides.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
+                overrides.put("relatedEntityType", "revision");
+                overrides.put("relatedEntityId", revision.getId() == null ? "" : revision.getId().toString());
+                overrides.put("relatedEntityTitle", firstNonBlank(revision.getRevisionName(), revision.getDocumentName(), document.getDocumentName(), ""));
+                overrides.put("actionUrl", "/documents/revisions/" + revision.getId());
+                Map<String, String> variables = emailNotificationService.buildDocumentVariables(document, revision, actor, recipient, "TRAINING_COMPLETE", null, overrides);
+                notificationDispatcher.dispatch("document.training_completed", List.of(recipient), variables);
+            }
+        } catch (Exception ex) {
+            log.warn("Training-completed notice failed for revision {}", revision.getId(), ex);
+        }
+    }
+
+    /** The person who did the action already sees its result on screen, so a notice of it is not sent to that person. */
+    private static List<UserAccount> withoutActor(List<UserAccount> users, UserAccount actor) {
+        if (actor == null || actor.getId() == null) {
+            return users;
+        }
+        return users.stream().filter(user -> user == null || !actor.getId().equals(user.getId())).toList();
     }
 
     private void sendRevisionNotification(
@@ -3870,7 +3904,7 @@ public class RevisionService {
         boolean canOpenPublishingWorkspace = documentAuthorizationService.canOpenPublishingWorkspace(currentUser, revision);
         boolean canReviewRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW);
         boolean canApproveRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL);
-        boolean canCompleteTraining = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_TRAINING);
+        boolean canCompleteTraining = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_TRAINING) && trainingAllowsCompletion(revision);
         boolean canPublishRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.PUBLISH);
 
         boolean hasLegacyImportInfo = sourceDocument != null && sourceDocument.isLegacyImport()
@@ -4125,6 +4159,18 @@ public class RevisionService {
         }
     }
 
+    /**
+     * "Complete Training" is offered, and accepted, for a revision of Training Management only once QA has confirmed the training (owner decision 2026-11-26), so that Document Control never
+     * completes a revision whose training QA has not confirmed. A revision outside Training Management has no such condition.
+     */
+    public boolean trainingAllowsCompletion(DocumentRevisionRecord revision) {
+        if (trainingHooks == null) {
+            return true;
+        }
+        TrainingRevisionHooks.CompletionGate gate = trainingHooks.completionGate(revision);
+        return gate == null || gate.completed();
+    }
+
     private RevisionListItemResponse toListItem(DocumentRevisionRecord revision) {
           String trainingStatus = trainingHooks == null ? null : trainingHooks.activityStatus(revision);
           DocumentRecord sourceDocument = revision.getDocument();
@@ -4134,7 +4180,7 @@ public class RevisionService {
           UserAccount currentUser = currentUserService.requireCurrentUser();
           boolean canReviewRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_REVIEW);
           boolean canApproveRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_APPROVAL);
-          boolean canCompleteTraining = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_TRAINING);
+          boolean canCompleteTraining = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.COMPLETE_TRAINING) && trainingAllowsCompletion(revision);
           boolean canPublishRevision = canCurrentUserPerformWorkflowAction(currentUser, revision, RevisionWorkflowAction.PUBLISH);
           // Mirrors the FE's canSubmitForReview gate exactly (RevisionCreateView: editingCompleted
           // && resolveRevisionCapability("submitForReview")) -- without editingStatus == COMPLETED

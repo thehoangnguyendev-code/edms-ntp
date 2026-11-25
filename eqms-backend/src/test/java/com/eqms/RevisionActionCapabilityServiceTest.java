@@ -169,6 +169,22 @@ class RevisionActionCapabilityServiceTest {
     }
 
     @Test
+    void getCapabilities_doesNotOfferCompleteTrainingUntilQaConfirmedTheTraining() {
+        when(documentRevisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
+
+        when(revisionService.trainingAllowsCompletion(revision)).thenReturn(true);
+        var offered = service.getCapabilities(revisionId).actions().get("completeTraining");
+
+        when(revisionService.trainingAllowsCompletion(revision)).thenReturn(false);
+        var held = service.getCapabilities(revisionId).actions().get("completeTraining");
+
+        assertThat(offered.allowed()).as("offered once QA confirmed (or when the revision is not in Training Management)").isTrue();
+        assertThat(held.allowed()).isFalse();
+        assertThat(held.reasonCode()).isEqualTo("TRAINING_ACTIVITY_NOT_CONFIRMED");
+        assertThat(held.requiredPermissionCode()).isEqualTo(offered.requiredPermissionCode());
+    }
+
+    @Test
     void getCapabilities_allowsSourceUploadOnlyForAssignedRevisionAuthor() {
         when(documentRevisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
         when(documentAuthorizationService.canUploadRevisionSource(user, revision)).thenReturn(true);

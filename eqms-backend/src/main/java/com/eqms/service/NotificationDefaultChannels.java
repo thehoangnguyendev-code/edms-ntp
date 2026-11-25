@@ -11,6 +11,11 @@ import java.util.Set;
 public final class NotificationDefaultChannels {
 
     private static final Set<String> ALSO_BY_EMAIL = Set.of(
+            "controlled_copy.cancel_notice",
+            "controlled_copy.notice",
+            "document.edit_online",
+            "document.publish_notice",
+            "knowledge.share_notice",
             "access_review.campaign_completed",
             "audit.review_campaign_changed",
             "audit_trail.export_completed",
@@ -47,7 +52,6 @@ public final class NotificationDefaultChannels {
             "document.participant_unavailable",
             "document.periodic_review_due",
             "document.publishing_failed",
-            "document.ready_for_publishing",
             "document.ready_for_submission",
             "document.review_rejected",
             "document.review_request",
@@ -97,6 +101,7 @@ public final class NotificationDefaultChannels {
             "user.time_limited_access_expired",
             "system.storage_usage_warning",
             "training.attendance_sent",
+            "training.revision_ready",
             "training.cancelled",
             "training.due_soon",
             "training.impact_waiting",
@@ -136,7 +141,9 @@ public final class NotificationDefaultChannels {
             "training.postponed",
             "training.session_cancelled",
             "training.trainer_assigned",
-            "training.trainer_removed"
+            "training.trainer_removed",
+            // owner decision 2026-11-26: Document Control gets the e-mail; the in-app notice is document.training_completed (at the end of the training) and document.published
+            "document.ready_for_publishing"
     );
 
     private NotificationDefaultChannels() {

@@ -22,7 +22,8 @@ class TrainingWorkflowsTest {
     @Test
     void runningActivityShowsItsOwnStep() {
         WorkflowProgressResponse p = TrainingWorkflows.activity("IN_PROGRESS", null);
-        assertThat(labels(p)).containsExactly("Pending Document Approval", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
+        // "Closed - Cancelled" is always the last step, as for a Document and a Revision; the activity is on it only once it is cancelled
+        assertThat(labels(p)).containsExactly("Pending Document Approval", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed", "Closed - Cancelled");
         assertThat(p.currentStepIndex()).isEqualTo(4);
         assertThat(ended(p)).isFalse();
         assertThat(p.terminalProgressStep()).isEmpty();
@@ -37,14 +38,25 @@ class TrainingWorkflowsTest {
         assertThat(labels(p).get(7)).isEqualTo("Closed - Cancelled");
         assertThat(p.currentStepIndex()).isEqualTo(7);
         assertThat(ended(p)).isTrue();
+        // the steps up to the one it was cancelled from were gone through; those between it and the ending were not (the stepper stripes them)
         assertThat(p.terminalProgressStep()).isEqualTo("Notified");
-        assertThat(TrainingWorkflows.activity("CANCELLED", null).terminalProgressStep()).isEqualTo("Pending Document Approval");
+        assertThat(p.skippedSteps()).isEmpty();
+    }
+
+    @Test
+    void anActivityCancelledWhereTheOriginIsNotKnownTicksNothingBeyondTheFirstStep() {
+        assertThat(TrainingWorkflows.activity("CANCELLED", null).terminalProgressStep()).isEmpty();
+        assertThat(TrainingWorkflows.activity("CANCELLED", "SOMETHING_ELSE").terminalProgressStep()).isEmpty();
+        // an activity cancelled while it was still Planned has not reached Pending Approval, Notified... : those are between the origin and the ending
+        WorkflowProgressResponse planned = TrainingWorkflows.activity("CANCELLED", "PLANNED");
+        assertThat(planned.terminalProgressStep()).isEqualTo("Planned");
+        assertThat(planned.currentStepIndex()).isEqualTo(7);
     }
 
     @Test
     void newActivityStartsAtNew() {
         WorkflowProgressResponse p = TrainingWorkflows.newActivity();
-        assertThat(labels(p)).containsExactly("New", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed");
+        assertThat(labels(p)).containsExactly("New", "Planned", "Pending Approval", "Notified", "In Progress", "Pending QA Confirmation", "Completed", "Closed - Cancelled");
         assertThat(p.currentStepIndex()).isZero();
         assertThat(ended(p)).isFalse();
     }

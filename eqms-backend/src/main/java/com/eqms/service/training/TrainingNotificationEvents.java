@@ -57,6 +57,7 @@ public final class TrainingNotificationEvents {
             new Event("TRAINING_RESULTS_LATE", "Results Late", "The results of a training are late.", "HIGH"),
             new Event("TRAINING_CANCELLED", "Training Cancelled", "A training was cancelled.", "HIGH"),
             new Event("TRAINING_COMPLETED", "Training Completed", "A training was confirmed as completed.", "LOW"),
+            new Event("TRAINING_REVISION_READY", "Revision Training Ready to Complete", "QA confirmed the training of a document revision: the people of Document Control who may complete the training of the revision are told, in the application and by e-mail, with a link to the revision.", "MEDIUM"),
             new Event("TRAINING_CONTENT_APPROVED", "Training Content Approved", "The content of a training was approved.", "MEDIUM"),
             new Event("TRAINING_CONTENT_REJECTED", "Training Content Rejected", "An approver rejected the content of a training; it returns to Planned.", "HIGH"),
             new Event("TRAINING_SESSION_CANCELLED", "Training Session Cancelled", "A session that people or its trainer had already been told about was cancelled before the training. E-mail only, to the people on the list of the session who had been told and to the trainer who had been told (not to the person who cancelled it).", "MEDIUM"),

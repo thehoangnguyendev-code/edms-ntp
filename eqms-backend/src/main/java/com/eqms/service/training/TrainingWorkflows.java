@@ -44,14 +44,19 @@ public final class TrainingWorkflows {
             step("NOTIFIED", "Notified"),
             step("IN_PROGRESS", "In Progress"),
             step("PENDING_QA_CONFIRMATION", "Pending QA Confirmation"),
-            step("COMPLETED", "Completed"));
+            step("COMPLETED", "Completed"),
+            end("CANCELLED", "Closed - Cancelled"));
 
-    /** A cancelled activity gets a trailing "Closed - Cancelled" step and reports the step it was cancelled from. */
+    /**
+     * "Closed - Cancelled" is always the last step, as for a Document and a Revision, and the stepper moves to it only when the activity is cancelled. It reports the step the activity was
+     * cancelled from: the steps up to it were gone through, the steps between it and the ending were not (the stepper stripes them), and when the step is not known nothing is ticked beyond the first.
+     */
     public static WorkflowProgressResponse activity(String status, String cancelledFromStatus) {
         if (!"CANCELLED".equals(status)) return running(ACTIVITY, indexOf(ACTIVITY, status));
-        List<WorkflowStepResponse> steps = new ArrayList<>(ACTIVITY);
-        steps.add(end("CANCELLED", "Closed - Cancelled"));
-        return new WorkflowProgressResponse(steps, steps.size() - 1, List.of(), ACTIVITY.get(indexOf(ACTIVITY, cancelledFromStatus)).label());
+        int last = ACTIVITY.size() - 1;
+        int from = cancelledFromStatus == null ? -1 : indexOf(ACTIVITY, cancelledFromStatus);
+        boolean known = cancelledFromStatus != null && from < last && ACTIVITY.get(from).code().equals(cancelledFromStatus);
+        return new WorkflowProgressResponse(ACTIVITY, last, List.of(), known ? ACTIVITY.get(from).label() : "");
     }
 
     /** An activity that is being created and has no record yet: it starts at "New" and is Planned once it is saved. */

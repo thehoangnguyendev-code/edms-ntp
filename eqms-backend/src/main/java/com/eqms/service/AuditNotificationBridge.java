@@ -76,7 +76,8 @@ public class AuditNotificationBridge {
         String actor = action.actor() == null ? "The system" : StringUtils.hasText(action.actor().getFullName()) ? action.actor().getFullName() : String.valueOf(action.actor().getUsername());
         String what = StringUtils.hasText(action.entityName()) ? action.entityName() : "";
         // the Audit Trail keeps the number of the signature at the end of the comment as evidence; the person told needs the reason only
-        String comment = StringUtils.hasText(action.comment()) ? action.comment().replaceAll("\\s*\\[signature [^\\]]*\\]\\s*$", "").trim() : "";
+        // an audit comment may name a status or a reason by its code (READY_FOR_PUBLISHING, DOCUMENT_OBSOLETED): the Audit Trail keeps it as written, the notice says it in words
+        String comment = StringUtils.hasText(action.comment()) ? com.eqms.util.DisplayLabels.prose(action.comment().replaceAll("\\s*\\[signature [^\\]]*\\]\\s*$", "").trim()) : "";
         String message = actor + (what.isEmpty() ? "" : " - " + what) + (comment.isEmpty() ? "" : ": " + comment);
         String actionName = titleOf(action.actionType(), event.name());
         Map<String, String> variables = NotificationDispatcher.noticeVariables(actionName, message.length() > 480 ? message.substring(0, 477) + "..." : message, event.actionUrl());

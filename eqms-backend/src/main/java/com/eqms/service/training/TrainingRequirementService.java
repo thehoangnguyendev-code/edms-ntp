@@ -376,8 +376,10 @@ public class TrainingRequirementService {
             String activityStatus = jdbc.queryForObject("select status from training_activities where id=?", String.class, line.get("activity_id"));
             if (!"CANCELLED".equals(activityStatus)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REQUIREMENT_LINE_HAS_ACTIVITY");
         }
+        // SOP.0003 5.3.6: a topic is moved to the month immediately following the registered one, not further and not twice.
+        if (line.get("postponed_from") != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_REQUIREMENT_LINE_ALREADY_POSTPONED");
         LocalDate current = ((java.sql.Date) line.get("planned_month")).toLocalDate();
-        LocalDate original = line.get("postponed_from") == null ? current : ((java.sql.Date) line.get("postponed_from")).toLocalDate();
+        LocalDate original = current;
         jdbc.update("update training_requirement_lines set planned_month=?, postponed_from=?, postpone_reason=? where id=?", current.plusMonths(1), original, request.reason().trim(), lineId);
         audit.logAs(actor, TYPE, String.valueOf(r.get("request_no")), (UUID) r.get("id"), "TRAINING_REQUIREMENT_LINE_POSTPONED", current.toString(), current.plusMonths(1).toString(), request.reason().trim(),
                 java.util.List.of(TrainingStore.change("Reason for Postponing", null, request.reason().trim())));

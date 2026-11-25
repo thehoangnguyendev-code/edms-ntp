@@ -72,7 +72,7 @@ public class BackupAlertDeliveryScheduler {
             String detail = alert.path("detail").asText("");
             String ref = alert.path("ref").asText("");
             String number = numbers == null ? null : numbers.backupAlertNumber(alert.path("id").asText(), ObjectNumberService.currentYear());
-            String title = "Backup alert" + (number == null ? "" : " " + number) + ": " + code;
+            String title = "Backup alert" + (number == null ? "" : " " + number) + ": " + com.eqms.util.DisplayLabels.value(code);
             boolean failed = false;
             for (UserAccount person : recipients) {
                 try {
@@ -81,7 +81,7 @@ public class BackupAlertDeliveryScheduler {
                     if (alert.path("inApp").asBoolean(true)) channels.add("IN_APP");
                     if (alert.path("email").asBoolean(false)) channels.add("EMAIL");
                     if (!channels.isEmpty()) {
-                        String text = detail + " (Severity: " + severity + (ref.isEmpty() ? "" : ", reference: " + ref) + ")";
+                        String text = com.eqms.util.DisplayLabels.prose(detail) + " (Severity: " + com.eqms.util.DisplayLabels.value(severity) + (ref.isEmpty() ? "" : ", reference: " + ref) + ")";
                         dispatcher.dispatchIndependently(OperationalNotificationEvents.BACKUP_ALERT, List.of(person),
                                 NotificationDispatcher.noticeVariables(title, text, ACTION_URL), channels);
                     }

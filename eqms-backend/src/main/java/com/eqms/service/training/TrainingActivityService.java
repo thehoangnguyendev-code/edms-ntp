@@ -198,8 +198,7 @@ public class TrainingActivityService {
                    t.organizer_department_id, t.revision_id, t.parent_activity_id,
                    case when exists (select 1 from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING') then 'PENDING_TRAINING'
                         else (select r.status_code from document_revisions r where r.id = t.revision_id) end as revision_status,
-                   (select r.id from document_revisions r where r.training_activity_id = t.id and r.status_code = 'PENDING_TRAINING' order by r.created_at limit 1) as pending_revision_id,
-                   t.attendance_sent_at, t.results_finished_at,
+                   t.attendance_sent_at, t.results_finished_at, t.list_prepared_by,
                    d.name as department_name, (select count(*) from training_sessions s where s.activity_id = t.id and s.status <> 'CANCELLED') as session_count, (select count(*) from training_participants p where p.activity_id = t.id) as participant_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.state in ('ATTENDED','ONLINE','READ_CONFIRMED')) as attended_count,
                    (select count(*) from training_participants p where p.activity_id = t.id and p.result = 'PASSED') as passed_count,
@@ -261,18 +260,17 @@ public class TrainingActivityService {
             actions.put("prepare", conductor && inScope && notified && !readingOnly);
             actions.put("conduct", conductor && inScope && ("IN_PROGRESS".equals(status) || readingOnly));
             actions.put("approve", open && (steps.contains("CONTENT_APPROVE_FIRST") || steps.contains("CONTENT_APPROVE") || steps.contains("TRAINER_EXCEPTION")));
-            actions.put("confirm", closer && inScope && "PENDING_QA_CONFIRMATION".equals(status));
+            // The person who prepared the list cannot confirm the completion while that separation rule is on: the menu says what the screen of the confirmation will allow, not more
+            boolean preparedTheList = actor.getId().equals(row.get("listPreparedBy")) && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_ACTIVITY", "CONFIRM_COMPLETION", "LIST_PREPARER");
+            actions.put("confirm", closer && inScope && "PENDING_QA_CONFIRMATION".equals(status) && !preparedTheList);
             // Same rule as the capability of the activity: Completed, of the original training (a supplementary is not supplemented again) and someone still needs one.
             actions.put("supplementary", organizer && inScope && "COMPLETED".equals(status) && row.get("parentActivityId") == null && needsSupplementary((UUID) row.get("id")));
-            // The revision is completed in Document Control only once the trainer has finished the training (Finish Training: every result in).
-            actions.put("completeTraining", ("COMPLETED".equals(status) || row.get("resultsFinishedAt") != null) && row.get("pendingRevisionId") != null);
-            // The link of the action goes to a revision of the group that waits for "Complete Training".
-            if (row.get("pendingRevisionId") != null) row.put("revisionId", row.get("pendingRevisionId"));
+            // "Complete Training" of a revision is a step of Document Control (the screen of the revision), offered there once QA has confirmed this training; it is not an action of this list.
             row.put("actions", actions);
             row.remove("organizerDepartmentId");
             row.remove("parentActivityId");
             row.remove("revisionStatus");
-            row.remove("pendingRevisionId");
+            row.remove("listPreparedBy");
             row.remove("attendanceSentAt");
             row.remove("resultsFinishedAt");
         }
@@ -693,9 +691,6 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         boolean readingOnly = selfReadingOnly((UUID) activity.get("id"));
         caps.put("sendAttendanceList", sender && !listSent && !readingOnly);
         caps.put("finishTraining", sender && (listSent || (readingOnly && readersSettled((UUID) activity.get("id")))) && allResultsIn((UUID) activity.get("id")) && allScansIn((UUID) activity.get("id")));
-        // The revision is completed in Document Control once the trainer has finished the training (Finish Training), not before: the attendance list sent to QA is not enough.
-        caps.put("completeTraining", ("COMPLETED".equals(status) || activity.get("results_finished_at") != null)
-                && !jdbc.queryForList("select 1 from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' limit 1", Integer.class, activity.get("id")).isEmpty());
         caps.put("setContentExemptions", organize && "PLANNED".equals(status) && !contentLocked((UUID) activity.get("id")));
         // The assessment of the library is chosen, like a file is uploaded, until the content is approved.
         caps.put("chooseAssessment", organize && "PLANNED".equals(status) && !"EXTERNAL".equals(activity.get("kind")) && !contentLocked((UUID) activity.get("id")));
@@ -1714,15 +1709,21 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         java.util.Map<UUID, UserAccount> toTell = new java.util.LinkedHashMap<>();
         for (UserAccount receiver : attendanceReceivers(activity)) toTell.put(receiver.getId(), receiver);
         for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) activity.get("organizer_department_id"), keptApart(activity, "ACTIVITY_COMPLETE"))) toTell.putIfAbsent(confirmer.getId(), confirmer);
-        byte[] pdf = toTell.isEmpty() ? null : attendanceListPdf(actor, id);
-        String fileName = String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
-        for (UserAccount receiver : toTell.values()) {
-            if (receiver.getId().equals(actor.getId())) continue;
-            notifier.send("TRAINING_ATTENDANCE_SENT", receiver, actor, "Training: attendance list received",
-                    actor.getFullName() + " sent the attendance list of " + label(activity) + " to QA. "
-                            + (pdf != null ? "The list (APD.0117) is attached to the e-mail as a PDF. " : "")
-                            + "The revision of the document can now be completed in Document Control (Complete Training).",
-                    "TRAINING_ACTIVITY", id, "attendance-sent:" + id + ":" + receiver.getId(), pdf == null ? null : fileName, pdf);
+        if (!toTell.isEmpty()) {
+            String trainingLabel = label(activity);
+            String fileName = String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+            // the PDF is made after the commit, on the background thread (see sendResultsToQa): the converter can be slower than the screen waits
+            notifier.afterCommitInBackground(() -> {
+                byte[] pdf = attendanceListPdf(actor, id);
+                for (UserAccount receiver : toTell.values()) {
+                    if (receiver.getId().equals(actor.getId())) continue;
+                    notifier.send("TRAINING_ATTENDANCE_SENT", receiver, actor, "Training: attendance list received",
+                            actor.getFullName() + " sent the attendance list of " + trainingLabel + " to QA. "
+                                    + (pdf != null ? "The list (APD.0117) is attached to the e-mail as a PDF. " : "")
+                                    + "QA confirms the training next; Document Control completes the training of the revision after that.",
+                            "TRAINING_ACTIVITY", id, "attendance-sent:" + id + ":" + receiver.getId(), pdf == null ? null : fileName, pdf);
+                }
+            });
         }
         return get(actor, id);
     }
@@ -2153,21 +2154,26 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         java.util.Map<UUID, UserAccount> toTell = new java.util.LinkedHashMap<>();
         for (UserAccount confirmer : approvals.eligibleUsers("ACTIVITY_COMPLETE", (UUID) activity.get("organizer_department_id"), keptApart(activity, "ACTIVITY_COMPLETE"))) toTell.put(confirmer.getId(), confirmer);
         for (UserAccount receiver : attendanceReceivers(activity)) toTell.putIfAbsent(receiver.getId(), receiver);
+        if (toTell.isEmpty()) return;
         // The list APD.0117 with the results written in it goes with the e-mail.
         // A self-reading has no APD.0117: QA gets the lists APD.0108 signed in the system (owner decision 2026-10-31)
         boolean reading = selfReadingOnly(id);
-        Map<String, Object> readingLists = reading && !toTell.isEmpty() ? selfReadingLists(actor, id) : null;
-        byte[] pdf = reading ? (readingLists == null ? null : (byte[]) readingLists.get("bytes")) : (toTell.isEmpty() ? null : attendanceListPdf(actor, id));
-        String fileName = reading ? (readingLists == null ? null : String.valueOf(readingLists.get("name"))) : String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
-        String formCode = reading ? "APD.0108" : "APD.0117";
-        for (UserAccount confirmer : toTell.values()) {
-            if (confirmer.getId().equals(actor.getId())) continue;
-            notifier.send("TRAINING_SUBMITTED_TO_QA", confirmer, actor, "Training: results are waiting for QA",
-                    (reading ? "The self-reading of " : "The attendance list and the results of ") + activity.get("training_number") + " (" + activity.get("training_topics") + ") " + (reading ? "is finished: the people signed in the system and the heads of the departments confirmed it. It was sent to QA by " : "were sent to QA by ") + actor.getFullName()
-                            + ". " + (pdf != null ? "The list (" + formCode + ")" + (reading ? "" : " with the results") + " is attached to the e-mail" + (pdf.length > 4 && pdf[0] == 'P' && pdf[1] == 'K' ? " (a ZIP with one list for each department). " : " as a PDF. ") : "")
-                            + "Please check them and confirm that the training is completed, with your signature.", "TRAINING_ACTIVITY", id, "qa-submitted:" + id + ":" + confirmer.getId() + ":" + stamp,
-                    pdf == null ? null : fileName, pdf);
-        }
+        // The list is made into a PDF after the commit, on the background thread: the converter can take tens of seconds (it may be starting), which is longer than the screen waits for the
+        // signature, and the status of the activity must not stay locked for it. The list is made from the committed data; if it cannot be made the notice goes without it.
+        notifier.afterCommitInBackground(() -> {
+            Map<String, Object> readingLists = reading ? selfReadingLists(actor, id) : null;
+            byte[] pdf = reading ? (readingLists == null ? null : (byte[]) readingLists.get("bytes")) : attendanceListPdf(actor, id);
+            String fileName = reading ? (readingLists == null ? null : String.valueOf(readingLists.get("name"))) : String.valueOf(activity.get("training_number")).replace('/', '-') + "-APD.0117.pdf";
+            String formCode = reading ? "APD.0108" : "APD.0117";
+            for (UserAccount confirmer : toTell.values()) {
+                if (confirmer.getId().equals(actor.getId())) continue;
+                notifier.send("TRAINING_SUBMITTED_TO_QA", confirmer, actor, "Training: results are waiting for QA",
+                        (reading ? "The self-reading of " : "The attendance list and the results of ") + activity.get("training_number") + " (" + activity.get("training_topics") + ") " + (reading ? "is finished: the people signed in the system and the heads of the departments confirmed it. It was sent to QA by " : "were sent to QA by ") + actor.getFullName()
+                                + ". " + (pdf != null ? "The list (" + formCode + ")" + (reading ? "" : " with the results") + " is attached to the e-mail" + (pdf.length > 4 && pdf[0] == 'P' && pdf[1] == 'K' ? " (a ZIP with one list for each department). " : " as a PDF. ") : "")
+                                + "Please check them and confirm that the training is completed, with your signature.", "TRAINING_ACTIVITY", id, "qa-submitted:" + id + ":" + confirmer.getId() + ":" + stamp,
+                        pdf == null ? null : fileName, pdf);
+            }
+        });
     }
 
     /** QA confirms the activity is complete (APD.0117 section 6): a person who holds the permission, not the one who prepared the list, with a signature. */
@@ -2201,7 +2207,31 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         tell("TRAINING_COMPLETED", actor, organizersOf(activity), "Training: completed", actor.getFullName() + " confirmed that the training " + label(activity) + " is completed on " + on + ".", id);
         tell("TRAINING_RECORDED", actor, jdbc.queryForList("select distinct person_user_id from training_records where activity_id = ? and person_user_id is not null", UUID.class, id),
                 "Training: recorded in your training record", "The training " + label(activity) + " is confirmed as completed on " + on + " and is written in your personal training record.", id);
+        tellDocumentControl(actor, activity, id, on);
         return get(actor, id);
+    }
+
+    /**
+     * QA confirmed the training: the people of Document Control who may complete the training of a revision (the permissions of that action) are told, in the application and by e-mail, for each
+     * revision of this training that waits for "Complete Training". The notice opens the screen of that revision. Nobody is told before QA confirms, because before that the action is not offered.
+     */
+    private void tellDocumentControl(UserAccount actor, Map<String, Object> activity, UUID id, String on) {
+        List<Map<String, Object>> waiting = jdbc.queryForList("select id, document_number, revision_number from document_revisions where training_activity_id = ? and status_code = 'PENDING_TRAINING' order by document_number", id);
+        if (waiting.isEmpty()) return;
+        List<UserAccount> completers = new ArrayList<>();
+        for (UserAccount candidate : users.findAll()) {
+            if (candidate.getStatus() == UserStatus.Active && !candidate.getId().equals(actor.getId())
+                    && access.has(candidate, "documents.training.complete", "documents.training.manage", "training.material.manage")) completers.add(candidate);
+        }
+        for (Map<String, Object> revision : waiting) {
+            UUID revisionId = (UUID) revision.get("id");
+            for (UserAccount completer : completers) {
+                notifier.send("TRAINING_REVISION_READY", completer, actor, "Training confirmed: complete the training of the revision",
+                        "QA confirmed that the training " + label(activity) + " is completed on " + on + ". Revision " + revision.get("document_number") + " " + revision.get("revision_number")
+                                + " is waiting in Document Control: open it and complete its training.",
+                        "DOCUMENT_REVISION_TRAINING", revisionId, "revision-ready:" + revisionId + ":" + completer.getId());
+            }
+        }
     }
 
     /** One record per passed or verified person and topic. The server writes them; no screen or API can add, change or delete one. */

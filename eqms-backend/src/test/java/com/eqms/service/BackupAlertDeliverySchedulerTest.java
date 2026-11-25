@@ -57,8 +57,8 @@ class BackupAlertDeliverySchedulerTest {
         assertThat(scheduler.run()).isEqualTo(1);
         ArgumentCaptor<Map<String, String>> variables = ArgumentCaptor.forClass(Map.class);
         verify(dispatcher).dispatchIndependently(eq("backup.alert"), eq(List.of(alice)), variables.capture(), eq(Set.of("IN_APP", "EMAIL")));
-        assertThat(variables.getValue()).containsEntry("title", "Backup alert: BACKUP_DUMP_FAILED").containsEntry("actionUrl", "/settings/administration/backup/alerts");
-        assertThat(variables.getValue().get("message")).contains("pg_dump failed").contains("HIGH").contains("BK-1");
+        assertThat(variables.getValue()).containsEntry("title", "Backup alert: Backup Dump Failed").containsEntry("actionUrl", "/settings/administration/backup/alerts");
+        assertThat(variables.getValue().get("message")).contains("pg_dump failed").contains("Severity: High").contains("BK-1").doesNotContain("HIGH");
         verify(agent).exchange(HttpMethod.POST, "/internal/alerts/delivered", Map.of("ids", List.of("a1")));
     }
 

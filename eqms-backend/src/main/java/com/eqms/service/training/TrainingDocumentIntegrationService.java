@@ -265,8 +265,8 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         Optional<Map<String, Object>> existing = store.byRevision(revision.getId());
         if (existing.isEmpty()) return null;
         Map<String, Object> a = existing.get();
-        // The revision can be completed once the trainer has finished the training (Finish Training, every result in); the day is the day of the training.
-        boolean completed = "COMPLETED".equals(String.valueOf(a.get("status"))) || a.get("results_finished_at") != null;
+        // The revision is completed in Document Control only after QA has confirmed the training (owner decision 2026-11-26): a trainer who finished and sent the results is not enough.
+        boolean completed = "COMPLETED".equals(String.valueOf(a.get("status")));
         LocalDate completedOn = toDate(a.get("completed_on"));
         if (completedOn == null && completed) {
             java.sql.Date held = jdbc.queryForObject("select max(held_on) from training_sessions where activity_id = ? and status = 'PLANNED'", java.sql.Date.class, a.get("id"));

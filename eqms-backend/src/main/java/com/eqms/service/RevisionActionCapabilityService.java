@@ -78,7 +78,15 @@ public class RevisionActionCapabilityService {
         actions.put("rejectReview", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.REJECT_REVIEW));
         actions.put("completeApproval", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_APPROVAL));
         actions.put("rejectApproval", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.REJECT_APPROVAL));
-        actions.put("completeTraining", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_TRAINING));
+        RevisionActionCapabilityDecisionResponse completeTraining = evaluateWorkflowAction(user, revision, RevisionWorkflowAction.COMPLETE_TRAINING);
+        // A revision of Training Management is completed only after QA confirmed its training: until then the action is not offered (the server refuses it too)
+        if (completeTraining.allowed() && !revisionService.trainingAllowsCompletion(revision)) {
+            completeTraining = RevisionActionCapabilityDecisionResponse.deny(
+                    "TRAINING_ACTIVITY_NOT_CONFIRMED",
+                    "QA has not confirmed the training yet. Training can be completed here after QA confirms it.",
+                    completeTraining.permissionCode());
+        }
+        actions.put("completeTraining", completeTraining);
         actions.put("publish", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.PUBLISH));
         actions.put("cancel", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.CANCEL));
         actions.put("upgradeRevision", evaluateWorkflowAction(user, revision, RevisionWorkflowAction.UPGRADE_REVISION));

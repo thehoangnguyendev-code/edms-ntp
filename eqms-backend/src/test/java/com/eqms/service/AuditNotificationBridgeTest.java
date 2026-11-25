@@ -122,6 +122,17 @@ class AuditNotificationBridgeTest {
     }
 
     @Test
+    void aStatusOrReasonNamedByItsCodeInTheAuditCommentIsToldInWordsBeforeTheCommentIsCut() {
+        var dispatcher = mock(NotificationDispatcher.class);
+        new AuditNotificationBridge(dispatcher, null, null).onAuditedAction(new AuditNotificationBridge.AuditedAction(person("A"), "BACKUP_RESTORE", "RS-1", null, "RESTORE_REQUESTED",
+                "Not published: the revision is READY_FOR_PUBLISHING; Reason: DOCUMENT_OBSOLETED"));
+        ArgumentCaptor<Map<String, String>> variables = ArgumentCaptor.forClass(Map.class);
+        verify(dispatcher).dispatchIndependently(anyString(), any(), variables.capture());
+        assertThat(variables.getValue().get("actionComment")).isEqualTo("Not published: the revision is Ready for Publishing; Reason: Document Obsoleted");
+        assertThat(variables.getValue().get("message")).doesNotContain("READY_FOR_PUBLISHING").doesNotContain("DOCUMENT_OBSOLETED");
+    }
+
+    @Test
     void aLongCommentIsCutSoThatTheStoredWordingFitsTheNotification() {
         var dispatcher = mock(NotificationDispatcher.class);
         new AuditNotificationBridge(dispatcher, null, null).onAuditedAction(new AuditNotificationBridge.AuditedAction(person("A"), "BACKUP_RESTORE", "RS-1", null, "RESTORE_REQUESTED", "x".repeat(2000)));
