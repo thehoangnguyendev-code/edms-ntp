@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { trainingExamApi, type TrainingExamDefinition } from "@/services/api/trainingActivities";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 const KIND_LABEL = {
   SINGLE: "One right answer",
@@ -49,7 +49,7 @@ export function TrainingExamBlock({
       <div className="space-y-2">
         <LedgerNote>
           {tr("Trainees answer in the system and it is graded automatically.")}
-          <span className="block">{`${exam.questions.length} question${exam.questions.length === 1 ? "" : "s"} · ${total} point${total === 1 ? "" : "s"}${exam.minutes ? ` · ${exam.minutes} minutes` : " · no time limit"}`}</span>
+          <span className="block">{[trPlural(exam.questions.length, "{count} question", "{count} questions"), trPlural(total, "{count} point", "{count} points"), exam.minutes ? trPlural(exam.minutes, "{count} minute", "{count} minutes") : tr("no time limit")].join(" · ")}</span>
         </LedgerNote>
         <LedgerList>
           {exam.questions.map((q) => (
@@ -66,7 +66,7 @@ export function TrainingExamBlock({
   return (
     <TabBlock title={tr("Test in the system")} count={exam.questions.length} hint={tr("Trainees answer in the system and it is graded automatically. A test is no longer written in the system: it cannot be changed.")}>
       <p className="px-4 pt-3 text-xs text-slate-500">
-        {`${total} point${total === 1 ? "" : "s"}${exam.minutes ? ` · ${exam.minutes} minutes` : " · no time limit"}`}
+        {[trPlural(total, "{count} point", "{count} points"), exam.minutes ? trPlural(exam.minutes, "{count} minute", "{count} minutes") : tr("no time limit")].join(" · ")}
       </p>
       {hideKey ? (
         <ol className="divide-y divide-slate-100 pt-2">

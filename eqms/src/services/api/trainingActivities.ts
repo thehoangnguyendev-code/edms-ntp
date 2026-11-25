@@ -43,7 +43,7 @@ export interface TrainingActivitySummary {
   createdByName?: string | null;
   revisionId?: string | null;
   /** What the person may do with the row, worked out by the server (one menu entry each). */
-  actions?: { edit: boolean; prepare?: boolean; conduct: boolean; approve: boolean; confirm: boolean; supplementary?: boolean; completeTraining: boolean };
+  actions?: { edit: boolean; prepare?: boolean; conduct: boolean; approve: boolean; confirm: boolean; supplementary?: boolean };
 }
 
 /** A session has no "held" state: it has started when it has the day it was conducted (its first action in the workspace). */
@@ -141,7 +141,6 @@ export interface TrainingCapabilities {
   /** Submit for Approval is offered once the two approvers are saved. */
   submitForApproval?: boolean;
   setContentExemptions?: boolean;
-  completeTraining?: boolean;
   /** The attendance list can be sent to QA: everyone is recorded and it was not sent yet. */
   sendAttendanceList?: boolean;
   /** Every result is in and the training is not finished: the trainer finishes it with a signature (the results go into the list APD.0117). */
@@ -1357,6 +1356,7 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_REQUIREMENT_LINE_DUPLICATE: "The same topic or document appears twice in the same month.",
   TRAINING_REQUIREMENT_LINE_HAS_ACTIVITY: "This line already has an activity that is not cancelled.",
   TRAINING_REQUIREMENT_LINE_ALREADY_SIGNED: "This line was already signed by QA.",
+  TRAINING_REQUIREMENT_LINE_ALREADY_POSTPONED: "This line was already moved to the month after the registered one. SOP.0003 allows only that one move.",
   TRAINING_ACTIVITY_NOT_COMPLETED: "The training of this line is not completed yet.",
   TRAINING_YEAR_INVALID: "Enter a year between 2000 and 2100.",
   TRAINING_CONTENT_ALREADY_REVIEWED: "The content was already reviewed, so files can no longer be added or removed.",

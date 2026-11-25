@@ -14,7 +14,7 @@ import { authTokenStore } from "@/services/authTokenStore";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
-import { tr } from "@/i18n";
+import { tr, trPlural } from "@/i18n";
 
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
 const SESSION_UNLOCKED_EVENT = "eqms:session-unlocked";
@@ -58,7 +58,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const [emailSent, setEmailSent] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  const timeoutLabel = useMemo(() => `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`, [timeoutMinutes]);
+  const timeoutLabel = useMemo(() => trPlural(timeoutMinutes, "{count} minute", "{count} minutes"), [timeoutMinutes]);
 
   const loadSecurityConfig = async () => {
     try {
@@ -353,7 +353,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                       <p className="text-sm font-medium text-slate-700">{tr("Choose how to receive your verification code")}</p>
                       {challenge.availableMethods.map((option) => (
                         <Button key={option} type="button" variant="outline" className="w-full justify-start" onClick={() => chooseMethod(option, challenge.mfaToken)}>
-                          {option === "app" ? "Authenticator app" : `Email code${challenge.maskedEmail ? ` to ${challenge.maskedEmail}` : ""}`}
+                          {option === "app" ? tr("Authenticator app") : `Email code${challenge.maskedEmail ? ` to ${challenge.maskedEmail}` : ""}`}
                         </Button>
                       ))}
                     </div>
@@ -381,12 +381,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                           ? tr("Enter the 6-digit code from your authenticator app.")
                           : emailSent
                             ? `A code was sent${challenge.maskedEmail ? ` to ${challenge.maskedEmail}` : ""}. It is valid for a few minutes.`
-                            : "Sending the code…"}
+                            : tr("Sending the code…")}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                         {method === "email" && (
                           <button type="button" className="font-medium text-emerald-700 disabled:text-slate-400" disabled={resendIn > 0} onClick={() => void sendEmailCode(challenge.mfaToken)}>
-                            {resendIn > 0 ? `Send again in ${resendIn}s` : "Send the code again"}
+                            {resendIn > 0 ? `Send again in ${resendIn}s` : tr("Send the code again")}
                           </button>
                         )}
                         {challenge.availableMethods.length > 1 && (

@@ -36,6 +36,11 @@ export interface DateTimePickerProps {
   showTime?: boolean;
   /** Validation error message shown below the picker */
   error?: string;
+  /** Pick a month only: opens on the 12 months, shows MM/yyyy, and gives the first day of the month (01/MM/yyyy). */
+  monthOnly?: boolean;
+  /** monthOnly: first and last month that can be chosen, as yyyy-MM. */
+  minMonth?: string;
+  maxMonth?: string;
 }
 
 // Pure helper — no component dependencies, stable across renders
@@ -74,6 +79,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   disabled = false,
   showTime = false,
   error,
+  monthOnly = false,
+  minMonth,
+  maxMonth,
 }) => {
   const pickerIdRef = useRef(`date-time-picker-${Math.random().toString(36).slice(2, 11)}`);
   const pickerId = pickerIdRef.current;
@@ -231,7 +239,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   // ── Reset state on open ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
-      setViewMode('calendar');
+      setViewMode(monthOnly ? 'month' : 'calendar');
       const sd = selectedDateRef.current;
       const vd = viewDateRef.current;
       const sameMY = sd &&
@@ -244,7 +252,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   // ── Screen reader: announce month/year on calendar navigation ────────────────
   useEffect(() => {
     if (isOpen && viewMode === 'calendar') {
-      setLiveAnnouncement(`${MONTH_NAMES[viewDate.getMonth()]} ${viewDate.getFullYear()}`);
+      setLiveAnnouncement(`${tr(MONTH_NAMES[viewDate.getMonth()])} ${viewDate.getFullYear()}`);
     }
   }, [viewDate, isOpen, viewMode]);
 
@@ -281,7 +289,30 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   const handleYearSelect = (year: number) => {
     setViewDate(d => { const nd = new Date(d); nd.setFullYear(year); return nd; });
-    setViewMode('calendar');
+    setViewMode(monthOnly ? 'month' : 'calendar');
+  };
+
+  const navigateYear = (dir: 'prev' | 'next') => {
+    setViewDate(d => { const nd = new Date(d); nd.setDate(1); nd.setFullYear(nd.getFullYear() + (dir === 'next' ? 1 : -1)); return nd; });
+  };
+
+  const monthKey = (year: number, idx: number) => year * 12 + idx;
+  const keyOf = (ym?: string) => {
+    const m = ym?.match(/^(\d{4})-(\d{2})/);
+    return m ? monthKey(parseInt(m[1]), parseInt(m[2]) - 1) : null;
+  };
+  const isMonthDisabled = (idx: number) => {
+    const k = monthKey(viewDate.getFullYear(), idx);
+    const lo = keyOf(minMonth);
+    const hi = keyOf(maxMonth);
+    return (lo !== null && k < lo) || (hi !== null && k > hi);
+  };
+
+  const handleMonthOnlySelect = (idx: number) => {
+    const year = viewDate.getFullYear();
+    setSelectedDate(new Date(year, idx, 1));
+    onChange(`01/${String(idx + 1).padStart(2, '0')}/${year}`);
+    closeAndReturn();
   };
 
   const handleApply = () => {
@@ -371,36 +402,75 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const renderMonthView = () => (
     <div className="p-3">
       <div className="flex items-center justify-between mb-2 px-1">
-        <button
-          type="button"
-          onClick={() => setViewMode('calendar')}
-          aria-label={tr("Back to calendar")}
-          className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
-        >
-          <ChevronLeft className="h-4 w-4 block shrink-0" />
-        </button>
-        <span className="font-semibold text-slate-900 text-sm" id={`${pickerId}-month-heading`}>
-          {tr("Select Month")}
-        </span>
-        <div className="w-9" />
+        {monthOnly ? (
+          <>
+            <button
+              type="button"
+              onClick={() => navigateYear('prev')}
+              aria-label={tr("Previous year")}
+              className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
+            >
+              <ChevronLeft className="h-4 w-4 block shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('year')}
+              aria-label={`Select year, currently ${viewDate.getFullYear()}`}
+              className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
+              id={`${pickerId}-month-heading`}
+            >
+              {viewDate.getFullYear()}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateYear('next')}
+              aria-label={tr("Next year")}
+              className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
+            >
+              <ChevronRight className="h-4 w-4 block shrink-0" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              aria-label={tr("Back to calendar")}
+              className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
+            >
+              <ChevronLeft className="h-4 w-4 block shrink-0" />
+            </button>
+            <span className="font-semibold text-slate-900 text-sm" id={`${pickerId}-month-heading`}>
+              {tr("Select Month")}
+            </span>
+            <div className="w-9" />
+          </>
+        )}
       </div>
       <div className="grid grid-cols-3 gap-1.5" role="group" aria-labelledby={`${pickerId}-month-heading`}>
-        {MONTH_ABBR.map((m, idx) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => handleMonthSelect(idx)}
-            aria-label={MONTH_NAMES[idx]}
-            aria-pressed={viewDate.getMonth() === idx}
-            className={cn(
-              "h-10 rounded-lg text-xs font-medium hover:bg-slate-100 transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-              viewDate.getMonth() === idx ? "bg-emerald-50 text-emerald-600" : "text-slate-700"
-            )}
-          >
-            {m}
-          </button>
-        ))}
+        {MONTH_NAMES.map((m, idx) => {
+          const chosen = monthOnly
+            ? !!selectedDate && selectedDate.getMonth() === idx && selectedDate.getFullYear() === viewDate.getFullYear()
+            : viewDate.getMonth() === idx;
+          return (
+            <button
+              key={m}
+              type="button"
+              disabled={monthOnly && isMonthDisabled(idx)}
+              onClick={() => (monthOnly ? handleMonthOnlySelect(idx) : handleMonthSelect(idx))}
+              aria-label={tr(MONTH_NAMES[idx])}
+              aria-pressed={chosen}
+              className={cn(
+                "h-10 rounded-lg text-xs font-medium hover:bg-slate-100 transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                "disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent",
+                chosen ? (monthOnly ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-emerald-50 text-emerald-600") : "text-slate-700"
+              )}
+            >
+              {tr(m)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -522,10 +592,10 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('month')}
-              aria-label={`Select month, currently ${MONTH_NAMES[month]}`}
+              aria-label={`Select month, currently ${tr(MONTH_NAMES[month])}`}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
             >
-              {MONTH_NAMES[month]}
+              {tr(MONTH_NAMES[month])}
             </button>
             <button
               type="button"
@@ -553,10 +623,10 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <div
               key={i}
               role="columnheader"
-              aria-label={DAY_FULL[i]}
+              aria-label={tr(DAY_FULL[i])}
               className="h-6 flex items-center justify-center text-xs font-medium text-slate-400"
             >
-              {d}
+              {tr(d)}
             </div>
           ))}
         </div>
@@ -565,7 +635,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         <div
           ref={gridRef}
           role="grid"
-          aria-label={`${MONTH_NAMES[month]} ${year}`}
+          aria-label={`${tr(MONTH_NAMES[month])} ${year}`}
           aria-multiselectable="false"
           className="grid grid-cols-7 gap-y-0.5"
           onKeyDown={handleGridKeyDown}
@@ -643,6 +713,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     const d = parseDate(value);
     if (!d) return placeholder;
 
+    if (monthOnly) return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     let formatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     if (showTime) {
       formatted += ` ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -721,7 +792,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               ref={popoverRef}
               role="dialog"
               aria-modal="true"
-              aria-label={tr("Choose date")}
+              aria-label={monthOnly ? tr("Choose month") : tr("Choose date")}
               tabIndex={-1}
               initial={{ opacity: 0, y: popoverStyle.top === 'auto' ? 10 : -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -751,14 +822,16 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
                     >
                       {tr("Cancel")}
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleApply}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      disabled={!selectedDate}
-                    >
-                      {tr("Apply")}
-                    </Button>
+                    {!monthOnly && (
+                      <Button
+                        size="sm"
+                        onClick={handleApply}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        disabled={!selectedDate}
+                      >
+                        {tr("Apply")}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -13,7 +13,7 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { getFileIconSrc } from "@/utils/fileIcons";
 import { Input } from "../../shared/TrainingFields";
 import { TrainingFileDropzone } from "../../shared/TrainingFileDropzone";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 export type TrainingMaterialsLayout = "TABLE" | "TILES";
 
@@ -233,7 +233,7 @@ export function TrainingMaterialsBoard(props: Props) {
   const empty = <div className="p-4 text-sm text-slate-500">{emptyText}</div>;
   const head = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-sm font-semibold text-slate-800">{items.length} {tr("material")}{items.length === 1 ? "" : "s"}</h3>
+      <h3 className="text-sm font-semibold text-slate-800">{items.length === 1 ? trFormat("{count} material", { count: items.length }) : trFormat("{count} materials", { count: items.length })}</h3>
       {layout === "TABLE" && canAdd && (
         <Button size="sm" variant="outline-emerald" onClick={() => setDialog(true)}>
           <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />{tr("Add material")}

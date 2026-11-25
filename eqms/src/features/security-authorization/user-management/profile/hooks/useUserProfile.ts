@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { trPlural } from "@/i18n";
 import { settingsApi } from "@/services/api/settings";
 import { dictionaryApi } from "@/services/api";
 import type { User, Certification, EducationItem } from "../../types";
@@ -273,10 +274,10 @@ export function useUserProfile(userId: string | undefined) {
           months += 12;
         }
         const parts: string[] = [];
-        if (years > 0) parts.push(`${years} yr${years > 1 ? "s" : ""}`);
-        if (months > 0) parts.push(`${months} mo${months > 1 ? "s" : ""}`);
+        if (years > 0) parts.push(trPlural(years, "{count} yr", "{count} yrs"));
+        if (months > 0) parts.push(trPlural(months, "{count} mo", "{count} mos"));
         if (days > 0 || parts.length === 0)
-          parts.push(`${days} day${days !== 1 ? "s" : ""}`);
+          parts.push(trPlural(days, "{count} day", "{count} days"));
         return parts.join(" ");
       })()
     : null;

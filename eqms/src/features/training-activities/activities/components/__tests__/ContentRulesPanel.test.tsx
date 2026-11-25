@@ -37,6 +37,13 @@ describe("ContentRulesPanel", () => {
     expect(contentRuleNote(a, "materials")).toMatch(/SOP\.0012_3: the approved document is the material/);
   });
 
+  it("does not advise adding material once material can no longer be added (the training is running)", () => {
+    const a = activity({}, { materialsSource: "DOCUMENT", materialsSatisfied: true });
+    expect(contentRuleNote(a, "materials")).toMatch(/Add slides or other material below if you want/);
+    expect(contentRuleNote(a, "materials", false)).toMatch(/SOP\.0012_3: the approved document is the material\.$/);
+    expect(contentRuleNote(a, "materials", false)).not.toMatch(/Add slides/);
+  });
+
   it("asks for the test of a session assessed by a test, and for no file when the sessions are observed or read", () => {
     show(activity({}, { testRequired: true, missing: ["TRAINING_TEST_REQUIRED"] }), "assessment");
     expect(screen.getByText(/choose an approved assessment of the library for the test \(APD\.0009\)/)).toBeTruthy();

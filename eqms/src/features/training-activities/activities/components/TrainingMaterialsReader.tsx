@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button/Button";
 import { Drawer } from "@/components/ui/drawer/Drawer";
 import { getFileIconSrc } from "@/utils/fileIcons";
 import type { MaterialItem } from "./TrainingMaterialsBoard";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const size = (bytes: number) => (bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 const host = (url: string) => {
@@ -113,7 +113,7 @@ export function TrainingMaterialsReader({ items, lockedNote, emptyText, onPrevie
   return (
     <section aria-label={tr("Materials")} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 md:px-5">
-        <h3 className="text-sm font-semibold text-slate-800">{items.length} {tr("material")}{items.length === 1 ? "" : "s"}</h3>
+        <h3 className="text-sm font-semibold text-slate-800">{items.length === 1 ? trFormat("{count} material", { count: items.length }) : trFormat("{count} materials", { count: items.length })}</h3>
       </div>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 lg:border-r lg:border-slate-200">

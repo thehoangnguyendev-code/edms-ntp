@@ -16,7 +16,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { formatBytes, formatDateTime } from "../format";
 import { groupAlerts, toAlerts, type Alert, type AlertGroup } from "./backupAlerts";
 import { refreshBackupStatus, useBackupStatus } from "./useBackupStatus";
-import { tr } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 const OK = "#10b981";
 const WARN = "#f59e0b";
@@ -118,10 +118,10 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
     <Card aria-label={tr("Needs attention")} role="region">
       <CardHeader
         title={tr("Needs attention")}
-        subtitle={alerts.length === 0 ? tr("Every backup control is within its target") : `${errors} need action · ${warnings} to review · ${groups.length} kind${groups.length === 1 ? "" : "s"} of problem`}
+        subtitle={alerts.length === 0 ? tr("Every backup control is within its target") : trPlural(groups.length, "{errors} need action · {warnings} to review · {count} kind of problem", "{errors} need action · {warnings} to review · {count} kinds of problem", { errors, warnings })}
         badge={
           <Badge color={errors > 0 ? "red" : alerts.length > 0 ? "amber" : "emerald"} size="sm">
-            {alerts.length === 0 ? "All clear" : `${alerts.length} open`}
+            {alerts.length === 0 ? tr("All clear") : trFormat("{count} open", { count: alerts.length })}
           </Badge>
         }
       />
@@ -141,7 +141,7 @@ const AttentionCard: React.FC<{ alerts: Alert[] }> = ({ alerts }) => {
             {(hidden > 0 || showAll) && groups.length > GROUPS_SHOWN && (
               <div className="mt-3">
                 <Button size="sm" variant="ghost" onClick={() => setShowAll((value) => !value)}>
-                  {showAll ? tr("Show fewer") : `Show ${hidden} more kind${hidden === 1 ? "" : "s"} of problem`}
+                  {showAll ? tr("Show fewer") : trPlural(hidden, "Show {count} more kind of problem", "Show {count} more kinds of problem")}
                 </Button>
               </div>
             )}

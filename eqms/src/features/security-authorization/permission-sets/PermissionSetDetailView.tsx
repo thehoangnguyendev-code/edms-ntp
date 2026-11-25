@@ -24,7 +24,7 @@ import type { PermissionGroup } from "@/features/security-authorization/shared/p
 import { formatDateUS } from "@/utils/format";
 import { IconChartColumn } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
-import { tr } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 type TabId = "general" | "permissions" | "access-profiles" | "audit";
 
@@ -327,14 +327,14 @@ export const PermissionSetDetailView: React.FC = () => {
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
-                      {assignedProfilesLoading ? "Loading…" : `${assignedProfiles.length} Assigned Access Profile${assignedProfiles.length === 1 ? "" : "s"}`}
+                      {assignedProfilesLoading ? tr("Loading…") : trPlural(assignedProfiles.length, "{count} Assigned Access Profile", "{count} Assigned Access Profiles")}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {assignedProfilesLoading
-                        ? "Fetching assignments…"
+                        ? tr("Fetching assignments…")
                         : assignedProfiles.length === 0
                           ? tr("This permission set is not linked to any Access Profile.")
-                          : `Linked to ${assignedUserCount} user${assignedUserCount === 1 ? "" : "s"} across ${assignedProfiles.length} profile${assignedProfiles.length === 1 ? "" : "s"}.`}
+                          : trFormat("Linked to {users} across {profiles}.", { users: trPlural(assignedUserCount, "{count} user", "{count} users"), profiles: trPlural(assignedProfiles.length, "{count} profile", "{count} profiles") })}
                     </p>
                   </div>
                   <Button

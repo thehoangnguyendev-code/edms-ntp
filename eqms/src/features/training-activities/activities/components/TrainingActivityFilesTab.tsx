@@ -93,6 +93,7 @@ export function TrainingActivityFilesTab({
   materialsNeeded = true,
   formNeeded = true,
   note = null,
+  readOnlyNote,
   materialsReadOnly = false,
   reader = false,
   visible,
@@ -113,6 +114,8 @@ export function TrainingActivityFilesTab({
   formNeeded?: boolean;
   /** Why the table has no line when nothing is needed (no test, no checklist, no material), with the reason of the organizer. */
   note?: string | null;
+  /** The same note without the advice to add material: used for the materials once they can no longer be added (the content is approved, the training is running). */
+  readOnlyNote?: string | null;
   /** True in the Session Workspace: the test and the answer key that the plan holds are shown, never added, changed or removed there. */
   materialsReadOnly?: boolean;
   /** True in the Session Workspace: the materials are drawn as a list with a detail panel, whatever layout the administrator chose for the planning screens. */
@@ -411,7 +414,7 @@ export function TrainingActivityFilesTab({
                 {tr("Scans and filled files")}
               </h3>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{files.evidence.length}</span>
-              <Popover title={tr("Scans and filled files")} content="A second person checks each scan against the paper." contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel="About Scans and filled files" />
+              <Popover title={tr("Scans and filled files")} content={tr("A second person checks each scan against the paper.")} contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel={tr("About Scans and filled files")} />
             </div>}
             {canAddEvidence && !external && <TrainingScanBatchUpload activityId={activityId} onDone={load} />}
             {canAddEvidence && external && (
@@ -568,7 +571,7 @@ export function TrainingActivityFilesTab({
         <TrainingMaterialsReader
           items={files.materials.filter((m) => m.purpose === "CONTENT" && inScope(m)).map(toItem)}
           lockedNote={materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT" && inScope(m)) ? tr("Materials can be added or removed in the planning step, until the content is approved. You can still open them here.") : undefined}
-          emptyText={note ?? (materialsNeeded ? tr("No material yet. A file (PDF, slides, video) or a link can be added in the planning step.") : tr("No material is needed for this training."))}
+          emptyText={(readOnlyNote !== undefined ? readOnlyNote : note) ?? (materialsNeeded ? tr("No material yet. A file (PDF, slides, video) or a link can be added in the planning step.") : tr("No material is needed for this training."))}
           onPreview={(m) => preview(m.id, m.fileName)}
           onDownload={(m) => void download(() => trainingFilesApi.downloadMaterial(m.id), m.fileName ?? "file")}
         />
@@ -583,9 +586,9 @@ export function TrainingActivityFilesTab({
             canRemove={canAddMaterial}
             lockedNote={!canAddMaterial && materialsNeeded && files.materials.some((m) => m.purpose === "CONTENT" && inScope(m)) ? tr("Materials can be added or removed in the planning step, until the content is approved. You can still open them here.") : undefined}
             emptyText={
-              note ??
+              (canAddMaterial || readOnlyNote === undefined ? note : readOnlyNote) ??
               (materialsNeeded
-                ? tr("No material yet. A file (PDF, slides, video) or a link can be added until the content is approved.")
+                ? (canAddMaterial ? tr("No material yet. A file (PDF, slides, video) or a link can be added until the content is approved.") : tr("No material was added."))
                 : tr("No material is needed for this training."))
             }
             busy={busy}

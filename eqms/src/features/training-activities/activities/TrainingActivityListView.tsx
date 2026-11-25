@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
-import { IconChalkboardTeacher, IconChecklist, IconClipboardCheck, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconUsersPlus } from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconClipboardCheck, IconChecks, IconInfoCircle, IconPencilMinus, IconPlus, IconUsersPlus } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -216,7 +216,6 @@ export function TrainingActivityListView() {
               { show: actionRow.actions?.approve, icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Training Content"), to: `/training-management/activities/${actionRow.id}/approve` },
               { show: actionRow.actions?.confirm, icon: <IconChecks className="h-4 w-4" />, label: tr("Confirm Training Completion"), to: `/training-management/activities/${actionRow.id}/confirm` },
               { show: actionRow.actions?.supplementary, icon: <IconUsersPlus className="h-4 w-4" />, label: tr("Supplementary Training"), to: `/training-management/activities/${actionRow.id}`, state: { openSupplementary: true } },
-              { show: actionRow.actions?.completeTraining && actionRow.revisionId, icon: <IconChecklist className="h-4 w-4" />, label: tr("Complete Training (Revision)"), to: `/documents/revisions/training/${actionRow.revisionId}` },
             ].filter((item) => item.show).map((item) => (
               <DropdownMenuItem key={item.label} icon={item.icon} onClick={() => { navigate(item.to, item.state ? { state: item.state } : undefined); menu.close(); }}>
                 {item.label}

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Check, Search, User } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button/Button";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { cn } from "@/components/ui/utils";
@@ -11,6 +12,27 @@ const ROLE_TEXT: Record<string, string> = {
   UNIT_HEAD: "Head of the unit concerned",
   QUALITY_MANAGER: "Quality Manager",
 };
+
+const initialsOf = (name: string) => {
+  const words = name.split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] ?? "") + (words.length > 1 ? words[words.length - 1][0] : "")).toUpperCase();
+};
+
+// The two people slide across each other with the timing of the columns of a table whose Custom Column layout is applied (useColumnReorderMotion): 600 ms, longer for a long way.
+const SLIDE_MIN_MS = 600;
+const SLIDE_MAX_MS = 1400;
+const SLIDE_BASE_MS = 450;
+const SLIDE_MS_PER_PIXEL = 0.8;
+const SLIDE_EASING = "cubic-bezier(0.45, 0, 0.2, 1)";
+
+function ApproverChip({ person, className }: { person: TrainingPerson; className: string }) {
+  return (
+    <div data-approver-chip={person.id} className={cn("flex min-w-0 items-center gap-2 rounded-full border border-emerald-200 bg-white py-1 pl-1 pr-3 shadow-sm", className)}>
+      <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-2xs font-semibold text-emerald-700">{initialsOf(person.fullName)}</span>
+      <span className="truncate text-sm font-medium text-slate-800">{person.fullName}</span>
+    </div>
+  );
+}
 
 /**
  * Selects the two people who approve the content and the test of an activity, one after the other (SOP.0003 5.3.5: the people who hold the permission to approve training content). It looks like the Setup Approver
@@ -36,6 +58,11 @@ export function TrainingApproverSelectModal({ activityId, initialFirstId, initia
   // the people ticked, in the order they approve: the first of the list approves first
   const [chosen, setChosen] = useState<TrainingPerson[]>([]);
   const [known, setKnown] = useState<Record<string, TrainingPerson>>({});
+  const [swapToken, setSwapToken] = useState(0);
+  const seenSwap = useRef(0);
+  const chipsBefore = useRef<Map<string, number>>(new Map());
+  const orderRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = !!useReducedMotion();
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(searchTerm.trim()), SEARCH_DEBOUNCE_MS);
@@ -74,10 +101,35 @@ export function TrainingApproverSelectModal({ activityId, initialFirstId, initia
       if (current.some((p) => p.id === person.id)) return current.filter((p) => p.id !== person.id);
       return current.length >= 2 ? current : [...current, person];
     });
-  const swap = () => setChosen((current) => (current.length === 2 ? [current[1], current[0]] : current));
+  const measureChips = () => {
+    const out = new Map<string, number>();
+    orderRef.current?.querySelectorAll<HTMLElement>("[data-approver-chip]").forEach((chip) => out.set(chip.getAttribute("data-approver-chip") ?? "", chip.getBoundingClientRect().left));
+    return out;
+  };
+  const swap = () => {
+    if (chosen.length !== 2) return;
+    chipsBefore.current = measureChips();
+    setChosen([chosen[1], chosen[0]]);
+    setSwapToken((value) => value + 1);
+  };
+  // Once the two people have changed place, each slides from where it was to where it is (a straight slide, like the columns of a table).
+  useLayoutEffect(() => {
+    if (swapToken === seenSwap.current) return;
+    seenSwap.current = swapToken;
+    if (reduceMotion || typeof Element === "undefined" || typeof Element.prototype.animate !== "function") return;
+    const after = measureChips();
+    const moves: { chip: HTMLElement; distance: number }[] = [];
+    orderRef.current?.querySelectorAll<HTMLElement>("[data-approver-chip]").forEach((chip) => {
+      const id = chip.getAttribute("data-approver-chip") ?? "";
+      const was = chipsBefore.current.get(id);
+      const now = after.get(id);
+      if (was !== undefined && now !== undefined && Math.abs(was - now) >= 1) moves.push({ chip, distance: was - now });
+    });
+    const farthest = moves.reduce((max, move) => Math.max(max, Math.abs(move.distance)), 0);
+    const duration = Math.min(SLIDE_MAX_MS, Math.max(SLIDE_MIN_MS, SLIDE_BASE_MS + farthest * SLIDE_MS_PER_PIXEL));
+    moves.forEach(({ chip, distance }) => chip.animate([{ transform: `translateX(${distance}px)` }, { transform: "translateX(0)" }], { duration, easing: SLIDE_EASING, fill: "backwards" }));
+  }, [swapToken, reduceMotion]);
   const complete = chosen.length === 2;
-  // SOP.0003 5.3.5: the head of the unit concerned and the Quality Manager; any other choice is allowed, with a notice
-  const asSop = complete && ((chosen[0].role === "UNIT_HEAD" && chosen[1].role === "QUALITY_MANAGER") || (chosen[0].role === "QUALITY_MANAGER" && chosen[1].role === "UNIT_HEAD"));
 
   return (
     <FormModal
@@ -92,11 +144,6 @@ export function TrainingApproverSelectModal({ activityId, initialFirstId, initia
       size="lg"
     >
       <div className="space-y-4">
-        {complete && !asSop && (
-          <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            {tr("Notice: SOP.0003 5.3.5 expects the head of the unit concerned and the Quality Manager to approve. You may save this choice; it is recorded in the Audit Trail.")}
-          </p>
-        )}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -174,15 +221,21 @@ export function TrainingApproverSelectModal({ activityId, initialFirstId, initia
         )}
 
         <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-          <p className="text-xs font-semibold text-slate-700">{tr("Order of the approval")}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-700">{tr("Order of the approval")}</p>
+            {complete && <Button size="sm" variant="default" onClick={swap}>{tr("Swap order")}</Button>}
+          </div>
           {complete ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-800">
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">{tr("Approves first")}</span>
-              <span className="font-medium">{chosen[0].fullName}</span>
-              <span className="text-slate-400">→</span>
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">{tr("Approves second")}</span>
-              <span className="font-medium">{chosen[1].fullName}</span>
-              <Button size="sm" variant="outline" className="ml-auto" onClick={swap}>{tr("Swap order")}</Button>
+            <div ref={orderRef} className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 gap-y-1.5">
+              <div className="contents">
+                <span className="col-start-1 row-start-1 w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">{tr("Approves first")}</span>
+                <ApproverChip person={chosen[0]} className="col-start-1 row-start-2" />
+              </div>
+              <span aria-hidden="true" className="col-start-2 row-start-2 text-slate-400">→</span>
+              <div className="contents">
+                <span className="col-start-3 row-start-1 w-fit rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">{tr("Approves second")}</span>
+                <ApproverChip person={chosen[1]} className="col-start-3 row-start-2" />
+              </div>
             </div>
           ) : (
             <p className="mt-1 text-xs text-slate-500">{tr("Tick two people. Then choose who approves first.")}</p>

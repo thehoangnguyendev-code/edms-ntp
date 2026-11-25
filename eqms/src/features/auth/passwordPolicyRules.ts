@@ -1,4 +1,5 @@
 import type { PasswordPolicy } from "@/services/api/auth";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 export interface PasswordCheck {
   key: string;
@@ -45,7 +46,7 @@ const hasSequentialRun = (password: string) => {
 export const passwordReuseNote = (policy: PasswordPolicy): string | null => {
   const count = policy.passwordHistoryCount ?? 0;
   if (!policy.preventPasswordReuse || count <= 0) return null;
-  return `Must be different from your last ${count} password${count === 1 ? "" : "s"}. This is checked when you save.`;
+  return trPlural(count, "Must be different from your last {count} password. This is checked when you save.", "Must be different from your last {count} passwords. This is checked when you save.");
 };
 
 /**
@@ -55,31 +56,31 @@ export const passwordReuseNote = (policy: PasswordPolicy): string | null => {
  */
 export const evaluatePasswordPolicy = (password: string, policy: PasswordPolicy, userTokens: string[] = []) => {
   const checks: PasswordCheck[] = [
-    { key: "minLength", label: `At least ${policy.passwordMinLength} characters`, met: password.length >= policy.passwordMinLength },
+    { key: "minLength", label: trFormat("At least {count} characters", { count: policy.passwordMinLength }), met: password.length >= policy.passwordMinLength },
   ];
-  if (policy.requireUppercase) checks.push({ key: "upper", label: "One uppercase letter", met: /[A-Z]/.test(password) });
-  if (policy.requireLowercase) checks.push({ key: "lower", label: "One lowercase letter", met: /[a-z]/.test(password) });
-  if (policy.requireNumbers) checks.push({ key: "number", label: "One number", met: /\d/.test(password) });
-  if (policy.requireSpecialChars) checks.push({ key: "special", label: "One special character", met: /[^a-zA-Z0-9]/.test(password) });
+  if (policy.requireUppercase) checks.push({ key: "upper", label: tr("One uppercase letter"), met: /[A-Z]/.test(password) });
+  if (policy.requireLowercase) checks.push({ key: "lower", label: tr("One lowercase letter"), met: /[a-z]/.test(password) });
+  if (policy.requireNumbers) checks.push({ key: "number", label: tr("One number"), met: /\d/.test(password) });
+  if (policy.requireSpecialChars) checks.push({ key: "special", label: tr("One special character"), met: /[^a-zA-Z0-9]/.test(password) });
   if (policy.minUniqueChars && policy.minUniqueChars > 0) {
-    checks.push({ key: "unique", label: `At least ${policy.minUniqueChars} different characters`, met: new Set(password).size >= policy.minUniqueChars });
+    checks.push({ key: "unique", label: trFormat("At least {count} different characters", { count: policy.minUniqueChars }), met: new Set(password).size >= policy.minUniqueChars });
   }
   if (policy.maxRepeatedChars && policy.maxRepeatedChars > 0) {
-    checks.push({ key: "repeat", label: `No more than ${policy.maxRepeatedChars} repeated characters in a row`, met: !hasRepeatedRun(password, policy.maxRepeatedChars) });
+    checks.push({ key: "repeat", label: trFormat("No more than {count} repeated characters in a row", { count: policy.maxRepeatedChars }), met: !hasRepeatedRun(password, policy.maxRepeatedChars) });
   }
   if (policy.disallowSequentialChars) {
-    checks.push({ key: "sequence", label: "No sequences (abc, 123)", met: !hasSequentialRun(password) });
+    checks.push({ key: "sequence", label: tr("No sequences (abc, 123)"), met: !hasSequentialRun(password) });
   }
   if (policy.disallowWhitespace) {
-    checks.push({ key: "space", label: "No spaces", met: !/\s/.test(password) });
+    checks.push({ key: "space", label: tr("No spaces"), met: !/\s/.test(password) });
   }
   if (policy.disallowCommonPasswords) {
-    checks.push({ key: "common", label: "Not a commonly used password", met: !COMMON_PASSWORDS.has(password.toLowerCase()) });
+    checks.push({ key: "common", label: tr("Not a commonly used password"), met: !COMMON_PASSWORDS.has(password.toLowerCase()) });
   }
   if (policy.disallowUserInfo) {
     const lower = password.toLowerCase();
     const usesInfo = userTokens.some((token) => token.trim().length >= 3 && lower.includes(token.trim().toLowerCase()));
-    checks.push({ key: "userInfo", label: "Does not contain your username, e-mail or name", met: !usesInfo });
+    checks.push({ key: "userInfo", label: tr("Does not contain your username, e-mail or name"), met: !usesInfo });
   }
   const score = checks.filter((check) => check.met).length;
   return { checks, score, maxScore: checks.length, isValid: score === checks.length };

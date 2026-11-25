@@ -327,7 +327,7 @@ export const SodViolationReviewView: React.FC = () => {
                   {run.violationCount === 0 ? (
                     <Badge semantic="success" size="sm">{tr("None")}</Badge>
                   ) : (
-                    <Badge semantic="danger" size="sm">{run.violationCount} {tr("violation")}{run.violationCount === 1 ? "" : "s"}</Badge>
+                    <Badge semantic="danger" size="sm">{run.violationCount === 1 ? trFormat("{count} violation", { count: run.violationCount }) : trFormat("{count} violations", { count: run.violationCount })}</Badge>
                   )}
                 </button>
               </li>

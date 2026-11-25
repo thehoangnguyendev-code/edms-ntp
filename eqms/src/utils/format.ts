@@ -1,4 +1,5 @@
 import { SITE_TIME_ZONE, readSystemLocalizationSettings } from '@/config/localization';
+import { tr, trPlural } from '@/i18n/catalog';
 
 /**
  * The display format of every date and time of the system, the same as the server writes (DateTimeFormatUtils): a date is dd/MM/yyyy and a date with a time is
@@ -147,12 +148,12 @@ export function formatRelativeTime(dateString: string | Date): string {
   const diffMonth = Math.floor(diffDay / 30);
   const diffYear = Math.floor(diffDay / 365);
   
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
-  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-  if (diffDay < 30) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  if (diffMonth < 12) return `${diffMonth} month${diffMonth > 1 ? 's' : ''} ago`;
-  return `${diffYear} year${diffYear > 1 ? 's' : ''} ago`;
+  if (diffSec < 60) return tr("just now");
+  if (diffMin < 60) return trPlural(diffMin, "{count} minute ago", "{count} minutes ago");
+  if (diffHour < 24) return trPlural(diffHour, "{count} hour ago", "{count} hours ago");
+  if (diffDay < 30) return trPlural(diffDay, "{count} day ago", "{count} days ago");
+  if (diffMonth < 12) return trPlural(diffMonth, "{count} month ago", "{count} months ago");
+  return trPlural(diffYear, "{count} year ago", "{count} years ago");
 }
 
 /**

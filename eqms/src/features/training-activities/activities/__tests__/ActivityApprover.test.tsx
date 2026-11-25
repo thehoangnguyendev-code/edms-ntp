@@ -96,19 +96,16 @@ describe("Select Approver and Submit for Approval in the row of command buttons 
     await waitFor(() => expect(api.saveApprovers).toHaveBeenCalledWith("a1", "u8", "u9"));
   });
 
-  it("shows a notice, and never blocks, when the two chosen are not the head of the unit and the Quality Manager", async () => {
+  it("never blocks the choice when the two chosen are not the head of the unit and the Quality Manager, and shows no extra warning", async () => {
     await open(base);
     fireEvent.click(await screen.findByRole("button", { name: "Select Approver" }));
-    const notice = () => screen.queryByText(/Notice: SOP.0003 5.3.5/);
 
-    // the head of the unit concerned and the Quality Manager: what the SOP expects, no notice
     fireEvent.click(await screen.findByRole("button", { name: /Approver Nine/ }));
     fireEvent.click(screen.getByRole("button", { name: /Head Eight/ }));
-    expect(notice()).toBeNull();
-    // any other pair: the notice is shown, and Save stays on
+    // any other pair: Save stays on and the dialog does not repeat the SOP in a warning
     fireEvent.click(screen.getByRole("button", { name: /Head Eight/ }));
     fireEvent.click(screen.getByRole("button", { name: /Head Seven/ }));
-    expect(notice()).toBeTruthy();
+    expect(screen.queryByText(/Notice: SOP.0003 5.3.5/)).toBeNull();
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
   });
 

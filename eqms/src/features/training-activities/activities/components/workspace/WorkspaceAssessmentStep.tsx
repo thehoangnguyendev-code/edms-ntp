@@ -8,7 +8,7 @@ import { TrainingActivityFilesTab } from "../TrainingActivityFilesTab";
 import { TrainingExamBlock } from "../TrainingExamBlock";
 import { TrainingPrintedPacks } from "../TrainingPaperBlock";
 import { TrainingTranscriptionBlock } from "../TrainingTranscriptionBlock";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 type Key = "test" | "materials" | "packs" | "typed" | "scans";
 const ORDER: Key[] = ["test", "materials", "packs", "typed", "scans"];
@@ -24,16 +24,14 @@ interface Summary {
   scans?: { total: number; unchecked: number };
 }
 
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-
 /** The number beside a tab, and the words about what waits in it (none when nothing does). */
 function tabOf(key: Key, s: Summary): { count: number; waits?: string } | undefined {
   switch (key) {
     case "test": return s.test ? { count: s.test.questions } : undefined;
     case "materials": return s.materials ? { count: s.materials.examUploaded ? 1 : 0 } : undefined;
-    case "packs": return s.packs ? { count: s.packs.total, waits: s.packs.issued > 0 ? `${s.packs.issued} still Issued` : undefined } : undefined;
-    case "typed": return s.typed ? { count: s.typed.total, waits: s.typed.waiting > 0 ? `${s.typed.waiting} waiting to be checked` : undefined } : undefined;
-    case "scans": return s.scans ? { count: s.scans.total, waits: s.scans.unchecked > 0 ? `${plural(s.scans.unchecked, "scan")} not yet checked` : undefined } : undefined;
+    case "packs": return s.packs ? { count: s.packs.total, waits: s.packs.issued > 0 ? trFormat("{count} still Issued", { count: s.packs.issued }) : undefined } : undefined;
+    case "typed": return s.typed ? { count: s.typed.total, waits: s.typed.waiting > 0 ? trFormat("{count} waiting to be checked", { count: s.typed.waiting }) : undefined } : undefined;
+    case "scans": return s.scans ? { count: s.scans.total, waits: s.scans.unchecked > 0 ? trPlural(s.scans.unchecked, "{count} scan not yet checked", "{count} scans not yet checked") : undefined } : undefined;
   }
 }
 

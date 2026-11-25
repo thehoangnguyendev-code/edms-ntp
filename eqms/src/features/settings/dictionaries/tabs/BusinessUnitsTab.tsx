@@ -31,7 +31,7 @@ import { folderColor } from "@/features/self-service/knowledge/explorer/explorer
 import { FolderColorField } from "../FolderColorField";
 import { userOptionLabel } from "../userOptionLabel";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
-import { tr } from "@/i18n";
+import { tr, trPlural } from "@/i18n";
 
 export const BusinessUnitsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -241,7 +241,7 @@ export const BusinessUnitsTab = React.forwardRef<
       cell: (item) => (
         <span className="inline-flex items-center gap-1.5 text-slate-600">
           <span className="font-semibold text-slate-900">{departmentCountByUnit[item.id] ?? 0}</span>
-          {" "}{tr("department")}{(departmentCountByUnit[item.id] ?? 0) !== 1 ? "s" : ""}
+          {" "}{trPlural(departmentCountByUnit[item.id] ?? 0, "department", "departments")}
         </span>
       ),
     },

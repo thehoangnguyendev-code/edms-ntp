@@ -41,7 +41,7 @@ import { formatDateTime } from "@/utils/format";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { IconForms, IconTrash, IconX } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 const QR_LABEL: Record<RecallQrStatus, string> = {
   DECODED: "Code read",
@@ -52,7 +52,6 @@ const QR_LABEL: Record<RecallQrStatus, string> = {
   NOT_ATTEMPTED: "Not read",
 };
 
-const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 /** The picker works in dd/MM/yyyy; the request and the state keep an ISO date (yyyy-MM-dd). */
 const isoToDisplay = (iso: string) => {
@@ -275,7 +274,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       showToast({
         type: "warning",
         title: tr("Only PDF scans are accepted"),
-        message: `${plural(all.length - pdfs.length, "file")} that ${all.length - pdfs.length === 1 ? "is" : "are"} not PDF left out.`,
+        message: trPlural(all.length - pdfs.length, "{count} file that is not PDF left out.", "{count} files that are not PDF left out."),
       });
     }
     const files = pdfs.filter((file) => file.size <= MAX_RECALL_FILE_BYTES);
@@ -283,7 +282,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       showToast({
         type: "warning",
         title: tr("File too large"),
-        message: `${plural(pdfs.length - files.length, "file")} over ${formatBytes(MAX_RECALL_FILE_BYTES)} left out. Split a large scan into smaller files.`,
+        message: trPlural(pdfs.length - files.length, "{count} file over {size} left out. Split a large scan into smaller files.", "{count} files over {size} left out. Split a large scan into smaller files.", { size: formatBytes(MAX_RECALL_FILE_BYTES) }),
       });
     }
     if (files.length === 0) return [];
@@ -381,7 +380,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
           fail(
             error,
             `"${file.name}" could not be uploaded.${
-              current ? ` ${plural(notSent, "file")} not sent: choose ${notSent === 1 ? "it" : "them"} again with "Add More Scans".` : ""
+              current ? ` ${trPlural(notSent, '{count} file not sent: choose it again with "Add More Scans".', '{count} files not sent: choose them again with "Add More Scans".')}` : ""
             }`,
           );
           return false;
@@ -397,7 +396,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         onFileDone?.(file);
       }
       if (stopped) {
-        showToast({ type: "info", title: tr("Upload stopped"), message: `${plural(files.length - sentFiles, "file")} not sent.` });
+        showToast({ type: "info", title: tr("Upload stopped"), message: trPlural(files.length - sentFiles, "{count} file not sent.", "{count} files not sent.") });
         return false;
       }
       setUploadProgress({ index: files.length, count: files.length, fileName: files[files.length - 1].name, percent: 100, filePercent: 100, processing: true, step: "Done.", finished: true });
@@ -767,7 +766,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                   <li key={draft.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <span className="min-w-0 text-slate-700">
                       <span className="mr-2 inline-block min-w-[1.5rem] text-slate-400 tabular-nums">{index + 1}.</span>
-                      <span className="font-medium">{draft.batchNumber}</span> · {plural(draft.totalItems, "scan")} · {tr("started")} {formatDateTime(draft.createdAt ?? "")}
+                      <span className="font-medium">{draft.batchNumber}</span> · {trPlural(draft.totalItems, "{count} scan", "{count} scans")} ·{tr("started")} {formatDateTime(draft.createdAt ?? "")}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Button
@@ -1152,7 +1151,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         onClose={() => setDiscardTarget(null)}
         onConfirm={discard}
         title={tr("Discard This Draft?")}
-        description={`${discardTarget?.number ?? "This draft"}: the uploaded scans are kept on record but no controlled copy is recalled.`}
+        description={`${discardTarget?.number ?? tr("This draft")}: ${tr("The uploaded scans are kept on record but no controlled copy is recalled.")}`}
         confirmText={tr("Discard draft")}
         confirmVariant="destructive"
         isLoading={busy === "Discarding..."}

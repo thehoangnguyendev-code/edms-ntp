@@ -23,7 +23,7 @@ import { useDebounce } from "@/hooks";
 import { ROUTES } from "@/app/routes.constants";
 import { navigateBack } from "@/app/navigation/backNavigation";
 import { IconInfoCircle, IconSettingsAutomation } from "@tabler/icons-react";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -364,7 +364,7 @@ export const SodConstraintFormView: React.FC = () => {
               {pairChosen && !checkingImpact && (profileCount > 0 || userCount > 0) && (
                 <span className="mt-1 block font-medium text-slate-700">
                   {s === "WARN"
-                    ? `${profileCount} profile${profileCount === 1 ? "" : "s"} and ${userCount} user${userCount === 1 ? "" : "s"} would be listed today.`
+                    ? trFormat("{profiles} and {users} would be listed today.", { profiles: trPlural(profileCount, "{count} profile", "{count} profiles"), users: trPlural(userCount, "{count} user", "{count} users") })
                     : tr("Those already holding both keep access; nobody new can be given both.")}
                 </span>
               )}

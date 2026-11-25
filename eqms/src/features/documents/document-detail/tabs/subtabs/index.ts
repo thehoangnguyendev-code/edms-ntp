@@ -3,6 +3,7 @@ export { DocumentRevisionsTab } from './DocumentRevisionsTab';
 export { ReviewersTab } from './ReviewersTab';
 export { ApproversTab } from './ApproversTab';
 export { ControlledCopiesTab } from './ControlledCopiesTab';
+export { UncontrolledCopiesTab } from './UncontrolledCopiesTab';
 export { RelatedDocumentsTab } from './RelatedDocumentsTab';
 export { CorrelatedDocumentsTab } from './CorrelatedDocumentsTab';
 

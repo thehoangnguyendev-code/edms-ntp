@@ -22,7 +22,7 @@ const INFO = `${NOTE} border-slate-200 bg-slate-50 text-slate-700`;
 const WARN = `${NOTE} border-amber-200 bg-amber-50 text-amber-900`;
 
 /** What the activity needs of this tab and why, as a sentence and its tone (the server decides the rules; this only tells them). */
-function describe(activity: TrainingActivityDetail, part: "materials" | "assessment", canExempt: boolean) {
+function describe(activity: TrainingActivityDetail, part: "materials" | "assessment", canExempt: boolean, canAdd = true) {
   const rules = activity.contentRules;
   const kind = assessmentFormKind(activity);
   const isMaterials = part === "materials";
@@ -39,10 +39,16 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
   let tone = INFO;
   if (!rules) return { text, tone, kind, isMaterials, exempt, exemptReason, freeByRule };
   if (isMaterials) {
-    if (external) text = tr("An external training needs no material of its own; add one if it helps.");
-    else if (visitor) text = tr("A visitor is instructed by the department: no material is needed; add one if it helps.");
+    // Material can be added only while the content is being prepared; after that the note says what is, not what could be done.
+    if (external) text = canAdd ? tr("An external training needs no material of its own; add one if it helps.") : tr("An external training needs no material of its own.");
+    else if (visitor) text = canAdd ? tr("A visitor is instructed by the department: no material is needed; add one if it helps.") : tr("A visitor is instructed by the department: no material is needed.");
     else if (exempt) text = tr("Training Materials are not required for this training.");
-    else if (rules.materialsSource === "DOCUMENT") text = trFormat("This training is on {document}: the approved document is the material. Add slides or other material below if you want.", { document: activity.documentLabel ?? tr("a document") });
+    else if (rules.materialsSource === "DOCUMENT") {
+      const document = activity.documentLabel ?? tr("a document");
+      text = canAdd
+        ? trFormat("This training is on {document}: the approved document is the material. Add slides or other material below if you want.", { document })
+        : trFormat("This training is on {document}: the approved document is the material.", { document });
+    }
     else if (missingHere && canExempt) { text = tr("Required before the content is approved: a file or a link."); tone = WARN; }
   } else if (external) text = tr("An external training has no test of its own; keep the certificate or the proof of attendance as evidence.");
   else if (visitor) text = tr("A visitor needs no test.");
@@ -53,8 +59,8 @@ function describe(activity: TrainingActivityDetail, part: "materials" | "assessm
 }
 
 /** The sentence that the table of the tab says when it has no line: why there is no test, checklist or material (and the reason of the organizer when it was exempted). */
-export function contentRuleNote(activity: TrainingActivityDetail, part: "materials" | "assessment"): string | null {
-  const d = describe(activity, part, false);
+export function contentRuleNote(activity: TrainingActivityDetail, part: "materials" | "assessment", canAdd = true): string | null {
+  const d = describe(activity, part, false, canAdd);
   if (!d.text) return null;
   return d.exempt && d.exemptReason ? `${d.text} Reason: ${d.exemptReason}` : d.text;
 }

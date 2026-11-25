@@ -6,7 +6,7 @@ import { FormSection } from "@/components/ui/form/FormSection";
 import { cn } from "@/components/ui/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { moduleDisplayName, sortModulesLikeMenu } from "@/utils/moduleDisplay";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 export interface ReviewPermissionSet { id: string; name: string; count: number }
 export interface ReviewVisibility { module: string; level: string }
@@ -128,7 +128,7 @@ export const WizardReviewStep: React.FC<{
       ? "the permissions ticked in this wizard (they become one new permission set of this profile)"
       : sets.length === 0
         ? "no permission set"
-        : `${sets.length} permission set${sets.length === 1 ? "" : "s"}: ${sets.map((set) => `${set.name} (${set.count})`).join(", ")}`;
+        : trFormat("{sets}: {list}", { sets: trPlural(sets.length, "{count} permission set", "{count} permission sets"), list: sets.map((set) => `${set.name} (${set.count})`).join(", ") });
 
   const nothing = rows.length === 0;
 

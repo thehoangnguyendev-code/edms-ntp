@@ -190,7 +190,7 @@ const limitCaps = (
   const allowed = new Set(MODE_CAPS[mode]);
   const out: Record<string, unknown> = { ...raw };
   for (const key of Object.keys(out))
-    if (key !== "notifyBlockers" && key !== "submitBlockers" && key !== "startBlockers" && key !== "completeTraining" && !allowed.has(key)) out[key] = false;
+    if (key !== "notifyBlockers" && key !== "submitBlockers" && key !== "startBlockers" && !allowed.has(key)) out[key] = false;
   return out as unknown as TrainingCapabilities;
 };
 
@@ -825,7 +825,7 @@ export function TrainingActivityDetailPage({
             ) : null}
             {p.addedReason ? (
               <div className="max-w-64 whitespace-normal text-xs text-amber-700">
-                {trFormat("Added by hand: {reason}", { reason: p.addedReason })}
+                {trFormat("Added by hand: {reason}", { reason: tr(p.addedReason) })}
               </div>
             ) : null}
           </div>
@@ -849,7 +849,7 @@ export function TrainingActivityDetailPage({
         <div className="max-w-64 whitespace-normal">
           <div>{PARTICIPATION_ROLE_LABEL[p.participationRole ?? "TRAINEE"]}</div>
           {p.participationReason ? (
-            <div className="text-xs text-slate-500">{p.participationReason}</div>
+                  <div className="text-xs text-slate-500">{tr(p.participationReason)}</div>
           ) : null}
         </div>
       ),
@@ -943,7 +943,7 @@ export function TrainingActivityDetailPage({
       ]
     : participantColumns;
   const groups = [
-    { id: "EMPLOYEES", title: "Employees" },
+    { id: "EMPLOYEES", title: tr("Employees") },
     { id: "ABSENT", title: tr("Absent (stay on the list)") },
     { id: "OUTSIDE", title: tr("Outside persons") },
   ];
@@ -971,7 +971,7 @@ export function TrainingActivityDetailPage({
     <>
       {mode === "prepare" && (activity.capabilities.startBlockers ?? []).length > 0 && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {`${tr("Before the training can start")}: ${(activity.capabilities.startBlockers ?? []).map(trainingCodeText).join(" ")}`}
+          {`${tr("Before the training can start")}: ${(activity.capabilities.startBlockers ?? []).map((b) => tr(trainingCodeText(b))).join(" ")}`}
         </p>
       )}
       <TrainingPrintedPacks
@@ -1016,7 +1016,7 @@ export function TrainingActivityDetailPage({
       className="whitespace-nowrap"
       loading={busy}
       disabled={startBlockers.length > 0}
-      title={startBlockers.map(trainingCodeText).join(" ")}
+        title={startBlockers.map((b) => tr(trainingCodeText(b))).join(" ")}
       onClick={() =>
         signAction(
           tr("Start Training"),
@@ -1049,7 +1049,7 @@ export function TrainingActivityDetailPage({
         notes={
           <>
             {!p.personUserId && p.externalOrg ? <div className="truncate text-xs text-slate-500">{p.externalOrg}</div> : null}
-            {p.addedReason ? <div className="text-xs text-amber-700">{trFormat("Added by hand: {reason}", { reason: p.addedReason })}</div> : null}
+              {p.addedReason ? <div className="text-xs text-amber-700">{trFormat("Added by hand: {reason}", { reason: tr(p.addedReason) })}</div> : null}
             {accountNote(p)}
           </>
         }
@@ -1170,21 +1170,23 @@ export function TrainingActivityDetailPage({
     <>
     {invitationsNotice}
     {open ? (
-    <div className="mb-4 space-y-2 empty:hidden">
+    <div className="space-y-2 empty:hidden">
       {qa && ["DUE", "DUE_TODAY", "OVERDUE", "WAITING"].includes(qa.state) && (
-        <p
-          role="status"
-          className={`rounded-lg border px-3 py-2 text-sm ${qa.state === "OVERDUE" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-        >
-          {qa.state === "WAITING" &&
-            "This training is on a new or revised document. On the day it is held, send the attendance list to QA (SOP.0003 5.3.6)."}
-          {qa.state === "DUE" &&
-            `Send the attendance list to QA on ${day(qa.dueOn)}, the day of the training (SOP.0003 5.3.6).`}
-          {qa.state === "DUE_TODAY" &&
-            "Today is the day of the training: send the attendance list to QA today (SOP.0003 5.3.6)."}
-          {qa.state === "OVERDUE" &&
-            `The attendance list was due to QA on ${day(qa.dueOn)} and has not been sent. Send it now; the delay is recorded.`}
-        </p>
+        <WarningBanner
+          variant={qa.state === "OVERDUE" ? "error" : "warning"}
+          description={
+            <>
+              {qa.state === "WAITING" &&
+                tr("This training is on a new or revised document. On the day it is held, send the attendance list to QA (SOP.0003 5.3.6).")}
+              {qa.state === "DUE" &&
+                trFormat("Send the attendance list to QA on {date}, the day of the training (SOP.0003 5.3.6).", { date: day(qa.dueOn) })}
+              {qa.state === "DUE_TODAY" &&
+                tr("Today is the day of the training: send the attendance list to QA today (SOP.0003 5.3.6).")}
+              {qa.state === "OVERDUE" &&
+                trFormat("The attendance list was due to QA on {date} and has not been sent. Send it now; the delay is recorded.", { date: day(qa.dueOn) })}
+            </>
+          }
+        />
       )}
       {external && activity.vendorWarning && (
         <p
@@ -1231,12 +1233,12 @@ export function TrainingActivityDetailPage({
     },
     {
       done: allParticipantStats.total > 0,
-      text: "Add the participants of each session (tab Participants)",
+      text: tr("Add the participants of each session (tab Participants)"),
       tab: "participants",
     },
     {
       done: stepDone("ATTENDEE_LIST_PREPARED"),
-      text: "Confirm the attendee list (button below)",
+      text: tr("Confirm the attendee list (button below)"),
       tab: "participants",
     },
     ...(external
@@ -1263,23 +1265,23 @@ export function TrainingActivityDetailPage({
             : []),
           {
             done: !!activity.approverPlan,
-            text: "Select the two approvers and save (button below)",
+            text: tr("Select the two approvers and save (button below)"),
             tab: "signatures",
           },
           {
             done: activity.status !== "PLANNED",
-            text: "Submit the content for approval (button below)",
+            text: tr("Submit the content for approval (button below)"),
             tab: "signatures",
           },
           {
             done: stepDone("CONTENT_APPROVED"),
-            text: "The first and the second approver sign the approval",
+            text: tr("The first and the second approver sign the approval"),
             tab: "signatures",
           },
         ]),
     {
       done: !["PLANNED", "PENDING_APPROVAL"].includes(activity.status),
-      text: "Notify the participants (button below)",
+      text: tr("Notify the participants (button below)"),
       tab: "overview",
     },
   ];
@@ -1311,7 +1313,7 @@ export function TrainingActivityDetailPage({
           <WarningBanner className="mt-3" description={tr("Cannot be submitted for approval yet:")}>
             <ul className="list-disc pl-4">
               {(caps?.submitBlockers ?? []).map((b) => (
-                <li key={b}>{trainingCodeText(b)}</li>
+                <li key={b}>{tr(trainingCodeText(b))}</li>
               ))}
             </ul>
           </WarningBanner>
@@ -1320,7 +1322,7 @@ export function TrainingActivityDetailPage({
           <WarningBanner className="mt-3" description={tr("Participants cannot be notified yet:")}>
             <ul className="list-disc pl-4">
               {blockers.map((b) => (
-                <li key={b}>{trainingCodeText(b)}</li>
+                <li key={b}>{tr(trainingCodeText(b))}</li>
               ))}
             </ul>
           </WarningBanner>
@@ -1398,8 +1400,8 @@ export function TrainingActivityDetailPage({
   const allWsSteps: WorkspaceStep[] = [
     {
       id: "ws-prepare",
-      label: "Prepare",
-      subtitle: wsHeld ? `Started ${day(wsSession?.heldOn)}` : tr("Not started"),
+      label: tr("Prepare"),
+      subtitle: wsHeld ? trFormat("Started {date}", { date: day(wsSession?.heldOn) }) : tr("Not started"),
       description:
         tr("Tick what is ready: the room, the equipment, the materials, the notice, the test and the paper. The training starts with the first attendance."),
       done: wsHeld,
@@ -1408,7 +1410,7 @@ export function TrainingActivityDetailPage({
     {
       id: "ws-attendance",
       label: tr("Attendance"),
-      subtitle: `${wsPresent} of ${wsStatsData.total} present`,
+      subtitle: trFormat("{present} of {total} present", { present: wsPresent, total: wsStatsData.total }),
       description:
         tr("Record who came: with the code or the QR, with the quick roll-call, or one by one; an absence needs its reason. When everyone is recorded, the trainer sends the attendance list to QA with an electronic signature. A mistake is corrected with a reason."),
       done: wsAttendanceDone,
@@ -1416,7 +1418,7 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "ws-training",
-      label: "Training",
+      label: tr("Training"),
       subtitle: tr("Approved content"),
       description:
         tr("Teach with the approved content only. Nothing is typed here: the session is held and the attendance recorded."),
@@ -1425,7 +1427,7 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "ws-assessment",
-      label: "Assessment",
+      label: tr("Assessment"),
       subtitle: wsSession?.assessmentMethod
         ? (ASSESSMENT_SHORT[wsSession.assessmentMethod] ?? "—")
         : "—",
@@ -1436,8 +1438,8 @@ export function TrainingActivityDetailPage({
     },
     {
       id: "ws-results",
-      label: "Results",
-      subtitle: `${wsPassed} passed · ${wsFailed} not passed`,
+      label: tr("Results"),
+      subtitle: trFormat("{passed} passed · {failed} not passed", { passed: wsPassed, failed: wsFailed }),
       description:
         tr("Type the score of each person in the row (the maximum score once, above the table) and save. When every result is in, the trainer finishes the training with a signature: the results are written in the list APD.0117. Then the trainer sends the results to QA."),
       done: !!activity.resultsFinishedAt,
@@ -1453,8 +1455,8 @@ export function TrainingActivityDetailPage({
           x.id === "ws-attendance"
             ? {
                 ...x,
-                label: "Reading",
-                subtitle: `${wsPresent} of ${wsStatsData.total} read`,
+                label: tr("Reading"),
+                subtitle: trFormat("{present} of {total} read", { present: wsPresent, total: wsStatsData.total }),
                 description:
                   tr("Every invited person reads the document and signs in the system (My Training). A person who has not signed is reminded before the due date (Training Properties), and you can remind one person with Send Reminder. The head of each department then confirms the people of the department."),
                 done: wsPending === 0 && wsStatsData.total > 0,
@@ -1462,7 +1464,7 @@ export function TrainingActivityDetailPage({
             : x.id === "ws-results"
               ? {
                   ...x,
-                  subtitle: `${wsPassed} confirmed by the head`,
+                  subtitle: trFormat("{confirmed} confirmed by the head", { confirmed: wsPassed }),
                   description:
                     tr("The result of each person comes from the confirmation of the head of the department. When nobody is waiting, the trainer finishes the training with a signature: QA is told and the self-reading lists APD.0108 go with the message."),
                 }
@@ -1501,41 +1503,41 @@ export function TrainingActivityDetailPage({
     ? [
         {
           icon: IconCalendar,
-          label: "Scheduled",
+          label: tr("Scheduled"),
           value: day(wsSession.scheduledOn),
         },
         {
           icon: IconCalendar,
           label: tr("Conducted on"),
-          value: wsSession.heldOn ? day(wsSession.heldOn) : "Not yet",
+          value: wsSession.heldOn ? day(wsSession.heldOn) : tr("Not yet"),
         },
-        { icon: IconUser, label: "Trainer", value: trainerOf(wsSession) },
+        { icon: IconUser, label: tr("Trainer"), value: trainerOf(wsSession) },
         ...(results && results.dueOn ? [{ icon: IconCalendar, label: tr("Results due to QA"), value: day(results.dueOn) }] : []),
         {
           icon: IconMapPin,
-          label: "Venue",
+          label: tr("Venue"),
           value:
             wsSession.locationType === "HYBRID"
-              ? `${wsSession.venue ?? ""} + ${wsSession.onlinePlatform ?? "Online"}`
+              ? `${wsSession.venue ?? ""} + ${wsSession.onlinePlatform ?? tr("Online")}`
               : wsSession.locationType === "ONLINE"
-                ? `${wsSession.onlinePlatform ?? "Online"}`
+                ? `${wsSession.onlinePlatform ?? tr("Online")}`
                 : (wsSession.venue ?? ""),
         },
         {
           icon: IconPresentation,
-          label: "Mode",
+          label: tr("Mode"),
           value: wsSession.method
             ? (METHOD_LABEL[wsSession.method] ?? wsSession.method)
             : "",
         },
         {
           icon: IconBook2,
-          label: "Delivery",
+          label: tr("Delivery"),
           value: DELIVERY_LABEL[wsSession.deliveryMode ?? "ELECTRONIC"],
         },
         {
           icon: IconChecklist,
-          label: "Assessment",
+          label: tr("Assessment"),
           value: wsSession.assessmentMethod
             ? (ASSESSMENT_SHORT[wsSession.assessmentMethod] ??
               wsSession.assessmentMethod)
@@ -1545,21 +1547,21 @@ export function TrainingActivityDetailPage({
     : [];
   const wsStats: WorkspaceStat[] = [
     { label: tr("on the list"), value: wsStatsData.total, icon: IconUsers, tone: "slate" },
-    { label: wsReading ? tr("not signed yet") : "absent", value: wsReading ? wsPending : wsAbsent, icon: IconUserX, tone: "amber" },
+    { label: wsReading ? tr("not signed yet") : tr("absent"), value: wsReading ? wsPending : wsAbsent, icon: IconUserX, tone: "amber" },
   ];
   const wsRates: WorkspaceRate[] = [
     {
-      label: wsReading ? "Read" : tr("Attendance"),
+      label: wsReading ? tr("Read") : tr("Attendance"),
       percent: wsStatsData.total
         ? Math.round((wsPresent / wsStatsData.total) * 100)
         : null,
-      detail: `${wsPresent} of ${wsStatsData.total} ${wsReading ? "read" : "present"}`,
+      detail: trFormat(wsReading ? "{present} of {total} read" : "{present} of {total} present", { present: wsPresent, total: wsStatsData.total }),
       tone: "emerald",
     },
     {
-      label: wsReading ? tr("Confirmed by the head") : "Pass rate",
+      label: wsReading ? tr("Confirmed by the head") : tr("Pass rate"),
       percent: wsPresent ? Math.round((wsPassed / wsPresent) * 100) : null,
-      detail: `${wsPassed} of ${wsPresent} ${wsReading ? "confirmed" : "passed"}`,
+      detail: trFormat(wsReading ? "{passed} of {present} confirmed" : "{passed} of {present} passed", { passed: wsPassed, present: wsPresent }),
       tone: "blue",
     },
   ];
@@ -1657,7 +1659,6 @@ export function TrainingActivityDetailPage({
   );
 
   // The revisions of the documents that go with this Training Number and wait for "Complete Training" in Document Control (one button for each).
-  const waitingRevisions = (activity.groupRevisions ?? []).filter((r) => r.revisionStatus === "PENDING_TRAINING");
   const cancelButton = caps?.cancel ? (
     <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "cancel" })}>
       {tr("Cancel")}
@@ -1718,16 +1719,6 @@ export function TrainingActivityDetailPage({
   ) : null;
   const footer = (
     <>
-      {caps?.completeTraining && waitingRevisions.map((r) => (
-        <Button
-          key={r.revisionId}
-          size="sm"
-          className="whitespace-nowrap"
-          onClick={() => navigate(`/documents/revisions/training/${r.revisionId}`)}
-        >
-          {waitingRevisions.length > 1 ? `Complete Training (${r.documentNumber})` : tr("Complete Training (Revision)")}
-        </Button>
-      ))}
       {cancelButton}
       {mode === "conduct" &&
         activity.status === "IN_PROGRESS" &&
@@ -1814,7 +1805,7 @@ export function TrainingActivityDetailPage({
           className="whitespace-nowrap"
           loading={busy}
           disabled={blockers.length > 0}
-          title={blockers.map(trainingCodeText).join(" ")}
+          title={blockers.map((b) => tr(trainingCodeText(b))).join(" ")}
           onClick={() =>
             signAction(
               tr("Send Notifications To Training Participants"),
@@ -1949,8 +1940,10 @@ export function TrainingActivityDetailPage({
           )}
           nextBlocked={tab === "ws-prepare" && prepPending > 0 ? `Tick all ${prepPending === 1 ? tr("the last line") : `${prepPending} lines`} first.` : undefined}
         >
-          {notices}
-          {wsContent}
+          <div className="flex flex-col gap-2">
+            {notices}
+            {wsContent}
+          </div>
         </TrainingSessionWorkspaceShell>
       ) : (
         <TrainingDetailLayout
@@ -1972,7 +1965,7 @@ export function TrainingActivityDetailPage({
           }
           repeatFooterInHeader={mode === "confirm" || mode === "conduct" || mode === "prepare" || mode === "approve"}
         >
-          {notices}
+          <div className="mb-4">{notices}</div>
           {tab === "overview" && (
             <div className="space-y-4">
               {mode === "edit" && nextSteps}
@@ -2098,10 +2091,10 @@ export function TrainingActivityDetailPage({
                   emptyNote={
                     <>
                       {activity.kind === "LEGACY"
-                        ? "This training was done on paper before the system and was imported with its document. It has no session; the scan of the paper record and the persons who were trained are in Legacy Training Evidence."
+                        ? tr("This training was done on paper before the system and was imported with its document. It has no session; the scan of the paper record and the persons who were trained are in Legacy Training Evidence.")
                         : tr("No session yet. Press Add session to add the first one.")}
                       {(activity.proposedParticipantCount ?? 0) > 0 &&
-                        ` ${activity.proposedParticipantCount} participant${activity.proposedParticipantCount === 1 ? " was" : "s were"} proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.`}
+                        trFormat(" {count} participant was proposed when the document was prepared; they are put on the list of the first session, and you confirm the list.", { count: activity.proposedParticipantCount ?? 0 })}
                     </>
                   }
                   onSave={(body, options) => run(() => trainingActivitiesApi.addSession(activity.id, { ...body, copyPeopleFrom: options.copyPeopleFrom }), "Session added")}
@@ -2232,6 +2225,7 @@ export function TrainingActivityDetailPage({
                 materialsNeeded={activity.contentRules?.materialsRequired ?? true}
                 formNeeded={activity.contentRules ? activity.contentRules.testRequired || activity.contentRules.checklistRequired : true}
                 note={external ? null : contentRuleNote(activity, tab)}
+                readOnlyNote={external ? null : contentRuleNote(activity, tab, false)}
                 mode={monitoring && tab === "assessment" ? "view" : mode}
                 external={external}
                 activityId={activity.id}

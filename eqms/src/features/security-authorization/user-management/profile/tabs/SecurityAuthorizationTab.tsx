@@ -31,7 +31,7 @@ import type { DataTableColumn } from "@/components/ui/table";
 import { FilterSearchInput } from "@/components/ui/filter/FilterSearchInput";
 import { IconTile } from "@/components/ui/icon-tile";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, trPlural } from "@/i18n";
 
 /** One normalized table row, shared by both modes so the Access Profiles table renders
  *  identically in the Add New User flow and the Detail/Edit screen -- only the Action column's
@@ -272,7 +272,7 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
       <AccessProfilesSection
         eyebrow="Access Profiles"
         tableKey="security.user-access-profiles.create"
-        statLine={`${selectedProfileIds.length} profile${selectedProfileIds.length === 1 ? "" : "s"} selected`}
+        statLine={trPlural(selectedProfileIds.length, "{count} profile selected", "{count} profiles selected")}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         headerAction={
@@ -384,7 +384,7 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
       <AccessProfilesSection
         eyebrow="Access Profiles"
         tableKey="security.user-access-profiles"
-        statLine={`${summary.effectivePermissionCount} effective permission${summary.effectivePermissionCount === 1 ? "" : "s"}`}
+        statLine={trPlural(summary.effectivePermissionCount, "{count} effective permission", "{count} effective permissions")}
         searchQuery={searchQuery}
         onSearchChange={(value) => { setSearchQuery(value); setPage(1); }}
         headerAction={

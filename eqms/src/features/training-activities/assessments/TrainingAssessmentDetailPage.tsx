@@ -50,7 +50,7 @@ import {
   ASSESSMENT_KIND_LABEL,
   ASSESSMENT_STATUS_LABEL,
 } from "./TrainingAssessmentListView";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const QUESTION_KIND_LABEL: Record<string, string> = {
@@ -1174,8 +1174,8 @@ export function TrainingAssessmentDetailPage({
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">
                   {checklist
-                    ? `Checklist lines (${items.length})`
-                    : `Questions (${items.length}, total ${Math.round(total * 100) / 100} point${total === 1 ? "" : "s"})`}
+                    ? trFormat("Checklist lines ({count})", { count: items.length })
+                    : trFormat("Questions ({count}, total {points})", { count: items.length, points: trPlural(Math.round(total * 100) / 100, "{count} point", "{count} points") })}
                 </h3>
                 {editable && firstIncomplete >= 0 && (
                   <button

@@ -12,7 +12,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { cn } from "@/components/ui/utils";
 import { trainingActivitiesApi, type TrainingGroup, type TrainingPerson, type TrainingSuggestedParticipant } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, trPlural } from "@/i18n";
 
 type Scope = "matrix" | "business_unit" | "department" | "individual" | "outside";
 export interface Outsider { name: string; org: string }
@@ -215,7 +215,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-slate-700 sm:text-sm">{tr("Selected Assignees")}</p>
-          {resolved.length > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{resolved.length} {scope === "outside" ? `person${resolved.length !== 1 ? "s" : ""}` : `employee${resolved.length !== 1 ? "s" : ""}`}</span>}
+          {resolved.length > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{scope === "outside" ? trPlural(resolved.length, "{count} person", "{count} people") : trPlural(resolved.length, "{count} employee", "{count} employees")}</span>}
         </div>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <DataTable

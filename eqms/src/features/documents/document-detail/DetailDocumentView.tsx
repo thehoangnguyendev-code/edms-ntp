@@ -51,6 +51,7 @@ import {
 import {
   DocumentRevisionsTab,
   ControlledCopiesTab,
+  UncontrolledCopiesTab,
   RelatedDocumentsTab,
   CorrelatedDocumentsTab,
 } from "./tabs/subtabs";
@@ -88,7 +89,24 @@ import type {
   WorkspaceNavigationMode,
 } from "@/features/documents/shared/navigationContext";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import { tr } from "@/i18n";
+import { getCatalogLanguage, tr } from "@/i18n";
+
+/** Server messages that carry a revision label must keep that label: translate the pattern, not the whole string. */
+const translatePreviewError = (message: string): string => {
+  const match = message.match(
+    /^Cannot (.+?): (.+?) has no Word \(\.docx\) file yet\. Upload the file to this revision first \(Edit Revision > Upload \/ Replace file\), then try again\.$/,
+  );
+  if (!match) return tr(message);
+  if (getCatalogLanguage() !== "vi") return message;
+  const actions: Record<string, string> = {
+    show: "hiển thị",
+    view: "xem",
+    preview: "xem trước",
+    download: "tải xuống",
+  };
+  const action = actions[match[1].toLowerCase()] ?? match[1];
+  return `Không thể ${action}: ${match[2]} chưa có tệp Word (.docx). Hãy tải tệp lên phiên bản này trước (Chỉnh sửa phiên bản > Tải lên / Thay thế tệp), rồi thử lại.`;
+};
 
 // --- Types ---
 type TabType = "general" | "training" | "document" | "signatures" | "records" | "audit";
@@ -97,6 +115,7 @@ type SubTabType =
   | "reviewers"
   | "approvers"
   | "controlledCopies"
+  | "uncontrolledCopies"
   | "relatedDocuments"
   | "correlatedDocuments";
 
@@ -733,8 +752,8 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         if (isMounted) {
           setDocumentFile(null);
           setDocumentPreviewError(
-            (error as any)?.response?.data?.message ||
-              "The published PDF could not be loaded from the server.",
+            translatePreviewError((error as any)?.response?.data?.message ||
+              "The published PDF could not be loaded from the server."),
           );
         }
       })
@@ -1455,7 +1474,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         .catch(() => {
           setDocumentFile(null);
           setDocumentPreviewError(
-            "The published PDF could not be loaded from the server.",
+            translatePreviewError("The published PDF could not be loaded from the server."),
           );
         })
         .finally(() => {
@@ -1748,6 +1767,11 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
       id: "controlledCopies" as SubTabType,
       label: tr("Controlled Copies"),
       count: controlledCopiesPagination.total,
+    },
+    {
+      id: "uncontrolledCopies" as SubTabType,
+      label: tr("Uncontrolled Copies"),
+      count: 0,
     },
     {
       id: "relatedDocuments" as SubTabType,
@@ -2134,6 +2158,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
                 documentId={document.id}
                 onRowClick={handleControlledCopyRowClick}
               />
+            )}
+            {activeSubTab === "uncontrolledCopies" && (
+              <UncontrolledCopiesTab documentId={document.id} />
             )}
             {activeSubTab === "relatedDocuments" && (
               <RelatedDocumentsTab

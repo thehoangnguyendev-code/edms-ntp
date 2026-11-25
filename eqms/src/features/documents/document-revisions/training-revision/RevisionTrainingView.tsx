@@ -46,7 +46,7 @@ import {
   resolveRevisionPreviewVersionToken,
 } from "@/features/documents/shared/previewHelpers";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 // --- Types ---
 type TabType = "document" | "general" | "workingNotes" | "documentInfo" | "infoFromDocument" | "training" | "reviewers" | "approvers" | "signatures" | "audit";
@@ -381,7 +381,7 @@ export const RevisionTrainingView: React.FC<RevisionTrainingViewProps> = ({
       showToast({
         type: "success",
         title: tr("Training Completed"),
-        message: `Revision ${refreshed.documentNumber} ${refreshed.revisionNumber} training has been completed successfully.`,
+        message: trFormat("Revision {document} {revision} training has been completed successfully. It is now Ready for Publishing; Document Control was told.", { document: refreshed.documentNumber, revision: refreshed.revisionNumber }),
         duration: 3000
       });
 

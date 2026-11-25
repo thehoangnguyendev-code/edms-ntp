@@ -21,7 +21,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks/useDictionaryServerTable";
 import { trainingError, trainingNotificationsApi, type TrainingNotificationLogRow, type TrainingNotificationLogPage } from "@/services/api/trainingActivities";
 import { formatDateTime } from "@/utils/format";
-import { tr } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 type StatusFilter = "All" | TrainingNotificationLogRow["status"];
 type ChannelFilter = "All" | TrainingNotificationLogRow["channel"];
@@ -136,7 +136,7 @@ export const TrainingNotificationsView: React.FC = () => {
         isOpen: true,
         type: "success",
         title: tr("Reminders Run"),
-        description: `${run.sent} notice${run.sent === 1 ? "" : "s"} sent, ${run.skipped} skipped (already sent for this day or week), ${run.failed} failed.`,
+        description: trFormat("{sent} sent, {skipped} skipped (already sent for this day or week), {failed} failed.", { sent: trPlural(run.sent, "{count} notice", "{count} notices"), skipped: run.skipped, failed: run.failed }),
       });
       reload();
     } catch (error) {

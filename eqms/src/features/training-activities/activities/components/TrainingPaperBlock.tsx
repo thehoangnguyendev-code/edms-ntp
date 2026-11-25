@@ -10,13 +10,13 @@ import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { trainingError, trainingPaperApi, type TrainingActivityDetail, type TrainingPaperPack, type TrainingSession } from "@/services/api/trainingActivities";
 import { Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
-import { saveBlob } from "../../shared/trainingLabels";
+import { localized, saveBlob } from "../../shared/trainingLabels";
 import { displayDateTime } from "@/utils/format";
 import { LedgerAction, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
 import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
-import { tr } from "@/i18n";
+import { tr, trPlural } from "@/i18n";
 
-export const DELIVERY_LABEL: Record<string, string> = { ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" };
+export const DELIVERY_LABEL: Record<string, string> = localized({ ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" });
 const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
 
 type Ask = { kind: "mode"; session: TrainingSession; mode: string } | { kind: "print"; session: TrainingSession } | { kind: "exam"; session: TrainingSession; format: "pdf" | "docx" };
@@ -149,7 +149,7 @@ export function TrainingPrintedPacks({ activity, onChanged, bare = false, onSumm
   useEffect(() => { onSummary?.(packs.length > 0 ? { total: packs.length, issued: open } : undefined); }, [packs.length, open, onSummary]);
   if (packs.length === 0) return null;
   if (bare) {
-    const scans = (p: TrainingPaperPack) => (p.scanCount > 0 ? `${p.scanCount} scan${p.scanCount === 1 ? "" : "s"}` : "no scan");
+    const scans = (p: TrainingPaperPack) => (p.scanCount > 0 ? trPlural(p.scanCount, "{count} scan", "{count} scans") : tr("no scan"));
     const stateLabel = (p: TrainingPaperPack) => (p.status === "ISSUED" ? "Issued" : p.status === "RETURNED" ? "Returned" : p.status === "LOST" ? "Lost" : "Voided");
     const closing = (p: TrainingPaperPack) => (p.status !== "ISSUED" && p.statusByName ? `${p.statusByName}, ${p.statusAt ? displayDateTime(p.statusAt) : ""}${p.statusReason && p.statusReason !== p.reason ? ` · ${p.statusReason}` : ""}` : undefined);
     const actionsOf = (p: TrainingPaperPack): RowAction[] => (p.status === "ISSUED"

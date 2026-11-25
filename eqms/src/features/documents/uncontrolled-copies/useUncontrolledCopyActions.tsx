@@ -115,7 +115,7 @@ export function useUncontrolledCopyActions(onChanged: () => void) {
   });
   const config = pending ? SIGNED_ACTIONS[pending.action] : null;
   const first = pending?.copies[0];
-  const previewModal = preview ? <PdfPreviewModal title={`Uncontrolled copy ${preview.title}`} fileUrl={preview.url} onClose={closePreview} /> : null;
+  const previewModal = preview ? <PdfPreviewModal title={`${tr("Uncontrolled copy")} ${preview.title}`} fileUrl={preview.url} onClose={closePreview} showCancel={false} /> : null;
   const signatureModal =
     pending && config && first ? (
       <ESignatureModal
