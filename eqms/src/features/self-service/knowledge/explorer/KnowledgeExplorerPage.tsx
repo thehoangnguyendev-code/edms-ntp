@@ -85,6 +85,8 @@ export const KnowledgeExplorerPage: React.FC = () => {
   const canFeature = hasPermissionAlias("documents.admin.knowledge_categories.manage");
 
   const isMedium = useMediaQuery("(min-width: 768px)");
+  // The side panel needs about 320px: below a laptop width it would take half of a tablet, so it becomes the drawer.
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const isWide = useMediaQuery("(min-width: 1280px)");
   const isCompact = useMediaQuery("(max-width: 767px)");
   const isTouch = useMediaQuery("(pointer: coarse)");
@@ -157,11 +159,11 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
   const { width: storedSidebarWidth } = useSidebarWidth();
   const explorerGridTemplateColumns = useMemo(() => {
-    if (!isMedium) return "minmax(0, 1fr)";
+    if (!isDesktop) return "minmax(0, 1fr)";
     const sidebarWidth = sidebarCollapsed ? `${APP_SIDEBAR_COLLAPSED_WIDTH}px` : `${storedSidebarWidth}px`;
     // A wide screen keeps the details of the selection beside the list, so browsing does not open and close a dialog.
     return isWide ? `${sidebarWidth} minmax(0, 1fr) 20rem` : `${sidebarWidth} minmax(0, 1fr)`;
-  }, [isMedium, isWide, sidebarCollapsed, storedSidebarWidth]);
+  }, [isDesktop, isWide, sidebarCollapsed, storedSidebarWidth]);
 
   // ---- data -------------------------------------------------------------------------------
   // the colour and the abbreviation of each Business Unit, Department and Document Type, as folders (Dictionaries); read once
@@ -626,7 +628,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
           contain: "layout paint",
         }}
       >
-        <aside className="hidden min-h-0 border-r border-slate-200 md:block">{renderSidebar(sidebarCollapsed)}</aside>
+        <aside className="hidden min-h-0 border-r border-slate-200 lg:block">{renderSidebar(sidebarCollapsed)}</aside>
 
         <section className="flex min-h-0 min-w-0 flex-col" aria-label={tr("Knowledge Base explorer")}>
           <ExplorerToolbar
@@ -760,7 +762,7 @@ export const KnowledgeExplorerPage: React.FC = () => {
 
       <AnimatePresence>
         {menuOpen && (
-          <div className="fixed inset-0 z-50 md:hidden">
+          <div className="fixed inset-0 z-50 lg:hidden">
             <motion.div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMenuOpen(false)} />
             <motion.aside
               className="absolute inset-y-0 left-0 max-w-[92vw] bg-white shadow-xl" style={{ width: MOBILE_SIDEBAR_WIDTH }}

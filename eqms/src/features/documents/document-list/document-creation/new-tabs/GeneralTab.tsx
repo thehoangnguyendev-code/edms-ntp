@@ -10,7 +10,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { cn } from "@/components/ui/utils";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { knowledgeApi } from "@/services/api/knowledge";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type SelectOption = { label: string; value: string };
 type DepartmentOption = SelectOption & { businessUnit?: string };
@@ -352,7 +352,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                     <Popover
                       title={tr("Co-Author(s)")}
                       placement="top"
-                      triggerAriaLabel={`View ${coAuthorDisplayNames.length - 2} more co-authors`}
+                      triggerAriaLabel={trFormat("View {count} more co-authors", { count: coAuthorDisplayNames.length - 2 })}
                       trigger={<span className="text-[10px] font-medium">+{coAuthorDisplayNames.length - 2}</span>}
                       triggerClassName="inline-flex items-center rounded-lg bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-slate-500 hover:bg-slate-300"
                       contentClassName="min-w-[180px] max-w-[280px]"

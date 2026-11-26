@@ -44,17 +44,17 @@ class TrainingAttendanceListColumnsTest {
 
     @Test
     void aPersonWhoFailedHasTheFailInTheResultColumnAndTheLatestTrainingAfterIt() {
-        assertArrayEquals(new String[] {"Không đạt / Failed", "Đạt / Passed"},
-                TrainingAttendanceListService.resultColumns(person("ATTENDED", "FAILED"), PERSON, Map.of(PERSON, List.of("Không đạt / Failed", "Đạt / Passed"))));
-        assertArrayEquals(new String[] {"Đạt / Passed", ""}, TrainingAttendanceListService.resultColumns(person("ATTENDED", "PASSED"), PERSON, Map.of()));
+        assertArrayEquals(new String[] {"Không đạt yêu cầu / Not qualified", "Đạt yêu cầu / Qualified"},
+                TrainingAttendanceListService.resultColumns(person("ATTENDED", "FAILED"), PERSON, Map.of(PERSON, List.of("Không đạt yêu cầu / Not qualified", "Đạt yêu cầu / Qualified"))));
+        assertArrayEquals(new String[] {"Đạt yêu cầu / Qualified", ""}, TrainingAttendanceListService.resultColumns(person("ATTENDED", "PASSED"), PERSON, Map.of()));
     }
 
     @Test
     void aPersonWhoWasAbsentHasTheOutcomeOfTheMakeUpInTheResultColumnAndOnlyAFurtherTrainingInTheNextOne() {
         assertArrayEquals(new String[] {"", ""}, TrainingAttendanceListService.resultColumns(person("ABSENT", ""), PERSON, Map.of()));
-        assertArrayEquals(new String[] {"Đạt / Passed", ""}, TrainingAttendanceListService.resultColumns(person("ABSENT", ""), PERSON, Map.of(PERSON, List.of("Đạt / Passed"))));
-        assertArrayEquals(new String[] {"Không đạt / Failed", "Đạt / Passed"},
-                TrainingAttendanceListService.resultColumns(person("ABSENT", ""), PERSON, Map.of(PERSON, List.of("Không đạt / Failed", "Đạt / Passed"))));
+        assertArrayEquals(new String[] {"Đạt yêu cầu / Qualified", ""}, TrainingAttendanceListService.resultColumns(person("ABSENT", ""), PERSON, Map.of(PERSON, List.of("Đạt yêu cầu / Qualified"))));
+        assertArrayEquals(new String[] {"Không đạt yêu cầu / Not qualified", "Đạt yêu cầu / Qualified"},
+                TrainingAttendanceListService.resultColumns(person("ABSENT", ""), PERSON, Map.of(PERSON, List.of("Không đạt yêu cầu / Not qualified", "Đạt yêu cầu / Qualified"))));
         assertTrue(TrainingAttendanceListService.resultColumns(person("ABSENT", ""), null, Map.of())[0].isEmpty());
     }
 }

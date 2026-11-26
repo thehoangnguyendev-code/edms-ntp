@@ -3,7 +3,7 @@ import { useFormDirty } from "@/hooks/useFormDirty";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, Briefcase, ClipboardCheck, Repeat, UserRound } from "lucide-react";
+import { Briefcase, Repeat, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
@@ -25,19 +25,19 @@ import {
   trainingActivitiesApi,
   trainingError,
   trainingJobsApi,
-  trainingMatrixApi,
   trainingWorkPositionApi,
 } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { tr, trFormat } from "@/i18n";
+import { IconChecklist, IconPencilMinus, IconSchool } from "@tabler/icons-react";
 
 const STEPS = [
   "Employee and Work Positions",
   "Other Trainings",
   "Review and Create",
 ];
-const STEP_ICONS = [UserRound, BookOpen, ClipboardCheck];
+const STEP_ICONS = [UserRound, IconSchool, IconChecklist ];
 const JOBS_ROUTE = "/training-management/job-assignments";
 
 // A card whose description is guidance that must be read whole: the text wraps beside the badge or button instead of being cut or pushing it down.
@@ -55,7 +55,8 @@ export function TrainingJobCreatePage() {
   const { showToast } = useToast();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [positions, setPositions] = useState<TrainingPosition[]>([]);
+  // The chosen Work Positions as the list gave them: the list is paged, so a chosen one may not be on the page that is shown.
+  const [picked, setPicked] = useState<Record<string, TrainingPosition>>({});
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [personId, setPersonId] = useState("");
   // The chosen person is kept apart from the search results: a later search must not lose what the summary shows.
@@ -73,12 +74,6 @@ export function TrainingJobCreatePage() {
   const [checkFailed, setCheckFailed] = useState(false);
   const [checkAttempt, setCheckAttempt] = useState(0);
 
-  useEffect(() => {
-    trainingMatrixApi
-      .positions()
-      .then(setPositions)
-      .catch(() => setPositions([]));
-  }, []);
   const searchPeople = useCallback(async (query: string) => {
     const list = await trainingActivitiesApi.people(query);
     const mapped = list.map((p) => ({
@@ -132,7 +127,7 @@ export function TrainingJobCreatePage() {
   const positionTitle = (p: TrainingPosition) =>
     `${p.name} (${p.departmentName})`;
   const positionLabel = (id: string) => {
-    const role = positions.find((p) => p.id === id);
+    const role = picked[id];
     return role ? positionTitle(role) : id;
   };
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after the job assignment is created is not a leave.
@@ -189,6 +184,10 @@ export function TrainingJobCreatePage() {
   const retryCheck = () => setCheckAttempt((a) => a + 1);
   const togglePosition = (id: string) =>
     setPositionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const pickPosition = (position: TrainingPosition) => {
+    setPicked((known) => ({ ...known, [position.id]: position }));
+    togglePosition(position.id);
+  };
   const positionChips = positionIds.map((id) => ({ id, label: positionLabel(id) }));
   const trainingChips = required.map((p) => ({ id: trainingKey(p), label: trainingLabel(p) }));
   const removeTraining = (key: string) => setRequired((list) => list.filter((p) => trainingKey(p) !== key));
@@ -198,16 +197,11 @@ export function TrainingJobCreatePage() {
       : mode === "CHANGE"
         ? tr("Change: replaces a Work Position held")
         : tr("Change: added to the Work Positions held");
-  const blockedBy =
-    step !== 0 && step !== STEPS.length - 1
-      ? ""
-      : !personId || positionIds.length === 0
-        ? tr("Choose an employee and a Work Position")
-        : !stepOneReady
-          ? tr("Enter the reason for the change")
-          : "";
   const editButton = (target: number) => (
-    <Button size="sm" variant="outline" onClick={() => setStep(target)}>{tr("Edit")}</Button>
+    <Button size="sm" variant="default" onClick={() => setStep(target)} className="gap-1.5">
+      <IconPencilMinus className="h-4 w-4" />
+      {tr("Edit")}
+    </Button>
   );
 
   return (
@@ -271,10 +265,9 @@ export function TrainingJobCreatePage() {
                   headerRight={<Badge color={positionIds.length ? "emerald" : "slate"}>{trFormat("{count} selected", { count: positionIds.length })}</Badge>}
                 >
                   <WorkPositionChecklist
-                    positions={positions}
                     selectedIds={positionIds}
                     excludedIds={held.map((h) => h.jobRoleId)}
-                    onToggle={togglePosition}
+                    onToggle={pickPosition}
                   />
                 </FormSection>
                 {held.length > 0 && (
@@ -316,7 +309,7 @@ export function TrainingJobCreatePage() {
             {step === 1 && (
               <FormSection
                 title={tr("Other Trainings")}
-                icon={<BookOpen className="h-4 w-4" />}
+                icon={<IconSchool className="h-4 w-4" />}
                 description={tr("Besides the matrix of the Work Positions: tick the SOPs, or type a Training Topic, that the person must have completed first. This step is optional.")}
                 className={LONG_HEADER}
                 headerRight={<Badge color={required.length ? "emerald" : "slate"}>{trFormat("{count} selected", { count: required.length })}</Badge>}
@@ -343,7 +336,7 @@ export function TrainingJobCreatePage() {
                 <FormSection title={tr("Work Positions")} icon={<Briefcase className="h-4 w-4" />} headerRight={editButton(0)}>
                   <Chips items={positionChips} empty={tr("No Work Position selected")} />
                 </FormSection>
-                <FormSection title={tr("Other Trainings Required")} icon={<BookOpen className="h-4 w-4" />} headerRight={editButton(1)}>
+                <FormSection title={tr("Other Trainings Required")} icon={<IconSchool className="h-4 w-4" />} headerRight={editButton(1)}>
                   <Chips items={trainingChips} empty={tr("None: only the training that the matrix requires is checked")} />
                 </FormSection>
               </>
@@ -352,7 +345,7 @@ export function TrainingJobCreatePage() {
 
           <aside className="min-w-0 space-y-4 xl:sticky xl:top-4" aria-label={tr("Summary")}>
             {step === 2 ? (
-              <FormSection title={tr("Training check")} icon={<ClipboardCheck className="h-4 w-4" />}>
+              <FormSection title={tr("Training check")} icon={<IconChecklist className="h-4 w-4" />}>
                 <TrainingCheck state={checkState} check={check} onRetry={retryCheck} />
               </FormSection>
             ) : (
@@ -383,8 +376,7 @@ export function TrainingJobCreatePage() {
             </Button>
           )}
         </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-          {blockedBy && <span className="text-xs text-slate-500">{blockedBy}</span>}
+        <div className="ml-auto">
           {step < STEPS.length - 1 ? (
             <Button onClick={next} size="sm" variant="default" disabled={step === 0 && !stepOneReady}>
               {tr("Next:")} {tr(STEPS[step + 1])}

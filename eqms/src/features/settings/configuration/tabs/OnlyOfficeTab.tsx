@@ -14,6 +14,7 @@ import type { IntegrationChecksController } from '../useIntegrationChecks';
 import { IntegrationSectionCard } from './IntegrationSectionCard';
 import { IntegrationStatusCard } from './IntegrationStatusCard';
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 interface OnlyOfficeTabProps {
   onlyOfficeConfig: OnlyOfficeStorageConfig;
@@ -152,7 +153,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
       icon={<IconStack2 className="h-5 w-5" />}
       title={tr("OnlyOffice Document Server")}
       subtitle={savedUrl || 'No Document Server URL saved yet'}
-      badge={<Badge semantic={saved.enabled ? 'success' : 'neutral'}>{saved.enabled ? 'Enabled' : 'Disabled'}</Badge>}
+      badge={<Badge color={statusColor(saved.enabled ? 'ENABLED' : 'DISABLED')} semantic={saved.enabled ? 'success' : 'neutral'}>{saved.enabled ? 'Enabled' : 'Disabled'}</Badge>}
       action={saved.enabled ? (
         <Button
           type="button"

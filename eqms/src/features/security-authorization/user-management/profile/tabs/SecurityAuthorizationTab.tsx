@@ -403,8 +403,8 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
           <TablePagination currentPage={page} totalPages={Math.max(1, summary.pagination.totalPages)} totalItems={summary.pagination.total}
             itemsPerPage={limit} onPageChange={setPage} onItemsPerPageChange={(value) => { setLimit(value); setPage(1); }} />
         ) : undefined}
-        emptyStateTitle="No Access Profile Assigned"
-        emptyStateDescription="This user has no application permissions assigned. Please contact a System Administrator to assign an active Access Profile."
+        emptyStateTitle={tr("No Access Profile Assigned")}
+        emptyStateDescription={tr("This user has no application permissions assigned. Please contact a System Administrator to assign an active Access Profile.")}
         noSearchMatchDescription={`No results for "${searchQuery}".`}
       />
 

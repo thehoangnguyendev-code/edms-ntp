@@ -1,6 +1,7 @@
 // Adapted from turbostarter/loading-ui (MIT); see LICENSE.md and README.md.
 import type * as React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 function ConcentricRing({ className, ...props }: React.ComponentProps<"span">) {
   return (
@@ -29,7 +30,7 @@ function ConcentricRing({ className, ...props }: React.ComponentProps<"span">) {
             transform: "translate(-50%, -50%)",
           }}
         />
-        <span className="sr-only">Loading</span>
+        <span className="sr-only">{tr("Loading")}</span>
       </span>
     </>
   );

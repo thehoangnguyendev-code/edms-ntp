@@ -41,7 +41,7 @@ import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { IconPencilMinus, IconReplaceUser } from "@tabler/icons-react";
 import { displayDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 /** A few recipients are named in the cell; when there are more, the count opens a popover with all the names. */
 const INLINE_RECIPIENTS = 2;
@@ -50,10 +50,10 @@ function RecipientNames({ names }: { names: string[] }) {
   if (names.length <= INLINE_RECIPIENTS) return <span className="whitespace-normal">{names.join(", ")}</span>;
   return (
     <Popover
-      title={`Recipients (${names.length})`}
-      triggerAriaLabel={`Show ${names.length} recipients`}
+      title={trFormat("Recipients ({count})", { count: names.length })}
+      triggerAriaLabel={trFormat("Show {count} recipients", { count: names.length })}
       triggerClassName="px-0 font-medium text-emerald-600 hover:underline"
-      trigger={`${names.length} recipients`}
+      trigger={trFormat("{count} recipients", { count: names.length })}
       contentClassName="max-w-xs"
       content={<ul className="max-h-60 space-y-1 overflow-y-auto">{names.map((n, i) => <li key={`${n}-${i}`}>{n}</li>)}</ul>}
     />

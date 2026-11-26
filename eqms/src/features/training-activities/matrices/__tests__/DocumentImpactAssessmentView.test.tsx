@@ -44,6 +44,35 @@ describe("DocumentImpactAssessmentView", () => {
     expect(api.documentImpactAssessments).toHaveBeenCalledWith(expect.objectContaining({ status: "OPEN" }));
   });
 
+  it("shows the department of each line, since the filter lets a person look at another department", async () => {
+    render(<MemoryRouter><DocumentImpactAssessmentView /></MemoryRouter>);
+
+    expect(await screen.findByText("SOP.10292")).toBeTruthy();
+    expect(screen.getAllByText("Department").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Quality Assurance").length).toBeGreaterThan(0);
+  });
+
+  it("offers 'Handle as a Deviation' only for a line implemented before its assessment, and records nothing", async () => {
+    api.documentImpactAssessments.mockResolvedValue(page([{ ...row, activityStatus: "COMPLETED", canAssess: false, deviation: true }]));
+    render(<MemoryRouter><DocumentImpactAssessmentView /></MemoryRouter>);
+    await screen.findByText("SOP.10292");
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+
+    expect(screen.queryByText("Assess Impact")).toBeNull();
+    fireEvent.click(await screen.findByText("Handle as a Deviation"));
+    expect(await screen.findByText(/This is a deviation from the SOP/)).toBeTruthy();
+    expect(api.assess).not.toHaveBeenCalled();
+  });
+
+  it("does not offer 'Handle as a Deviation' for a line that can still be assessed", async () => {
+    render(<MemoryRouter><DocumentImpactAssessmentView /></MemoryRouter>);
+    await screen.findByText("SOP.10292");
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+
+    expect(await screen.findByText("Assess Impact")).toBeTruthy();
+    expect(screen.queryByText("Handle as a Deviation")).toBeNull();
+  });
+
   it("tells what the effective matrix has and cannot go on until the result and the reason are given", async () => {
     await openDialog();
 

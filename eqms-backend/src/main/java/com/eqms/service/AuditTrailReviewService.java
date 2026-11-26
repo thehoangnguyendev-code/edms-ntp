@@ -114,9 +114,17 @@ public class AuditTrailReviewService {
     @Transactional(readOnly = true)
     public PageResponse<CampaignSummaryResponse> listCampaignsPaged(
             int page, int limit, String search, String status, String sortBy, String sortDirection) {
+        return listCampaignsPaged(page, limit, search, status, false, sortBy, sortDirection);
+    }
+
+    /** {@code waitingForMe}: only the campaigns still in progress whose reviewer is the person who asks. */
+    @Transactional(readOnly = true)
+    public PageResponse<CampaignSummaryResponse> listCampaignsPaged(
+            int page, int limit, String search, String status, boolean waitingForMe, String sortBy, String sortDirection) {
         requireView();
         Page<AuditTrailReviewCampaign> results = campaignRepo.search(
-                normalizeSearch(search), normalizeStatus(status),
+                normalizeSearch(search), normalizeStatus(status), waitingForMe,
+                waitingForMe ? currentUserService.requireCurrentUser().getId() : new UUID(0, 0),
                 PageRequest.of(normalizePage(page), normalizeLimit(limit), campaignSort(sortBy, sortDirection)));
         return page(results, this::toSummary);
     }

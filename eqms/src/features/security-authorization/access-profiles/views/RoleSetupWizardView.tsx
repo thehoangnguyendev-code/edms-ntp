@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GitBranch, Info, ListChecks, ListTodoIcon, Search, ShieldCheck, Users } from "lucide-react";
@@ -35,7 +36,7 @@ import { moduleDisplayName } from "@/utils/moduleDisplay";
 import { WizardUsersStep } from "./WizardUsersStep";
 import { WizardPickerTable, type PickerPage, type PickerQuery } from "./WizardPickerTable";
 import { WizardReviewStep } from "./WizardReviewStep";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 /** What the fields that the system fills in say until the profile is created (the last step). */
 const AFTER_CREATION = "Auto-filled after the profile is created";
@@ -351,7 +352,7 @@ export const RoleSetupWizardView: React.FC = () => {
       ...accessProfilesBreadcrumb(navigate).map((item) => ({ ...item, isActive: false })),
       { label: tr("New Access Profile"), isActive: true },
     ];
-  }, [navigate]);
+  }, [navigate, getCatalogLanguage()]);
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -465,7 +466,7 @@ export const RoleSetupWizardView: React.FC = () => {
             variant="pill"
             fullWidth
             className="mb-4 max-w-xl"
-            ariaLabel="Permission selection mode"
+            ariaLabel={__ariaTr("Permission selection mode")}
           />
 
           {permissionMode === "existing" ? (

@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -12,7 +13,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { MENU_MODULE_ORDER, moduleDisplayName, moduleOrderFromMenu, sortModulesLikeMenu } from "@/utils/moduleDisplay";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 // Includes the action -- two entries can share the same object type + status (e.g. distributing a
 // single Controlled Copy vs. a Controlled Copy Batch both apply "Ready for Distribution"), so the
@@ -81,7 +82,7 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
       { label: trFormat("All modules ({count})", { count: total }), value: ALL_MODULES },
       ...sortModulesLikeMenu([...byName.values()], (m) => m.name, menuOrder).map((m) => ({ label: `${m.name} (${m.count})`, value: m.key })),
     ];
-  }, [result, moduleFilter, menuOrder]);
+  }, [result, moduleFilter, menuOrder, getCatalogLanguage()]);
 
   if (!ps) return null;
 
@@ -140,7 +141,7 @@ export const AccessProfilePermissionSetModal: React.FC<PermissionSetModalProps> 
             <SearchInput
               value={search}
               onChange={(value) => { setSearch(value); setPage(1); }}
-              ariaLabel="Search permissions"
+              ariaLabel={__ariaTr("Search permissions")}
               placeholder={tr("Search by name, code or description…")}
               inputProps={{ id: "permission-set-search" }}
             />

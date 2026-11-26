@@ -17,6 +17,12 @@ public final class EmailFrameRenderer {
     public static final List<String> SAFE_FONTS = List.of(
             "Arial", "Helvetica", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Segoe UI");
 
+    /**
+     * Put into the content of a mail whose wording is Vietnamese. The frame is added when the mail is sent, possibly much later and from stored content, so the
+     * language travels with the content; a mail without it has the English frame.
+     */
+    public static final String VIETNAMESE_MARK = "<!--lang:vi-->";
+
     static final String DEFAULT_BODY = "#FFFFFF";
     static final String DEFAULT_FOOTER = "#F8FAFC";
 
@@ -43,12 +49,36 @@ public final class EmailFrameRenderer {
 
     /** The action button of an email. Empty when there is no web address. */
     public static String button(String label, String url, String brandColor) {
+        return button(label, url, brandColor, false);
+    }
+
+    /** The action button, with the words around it in the language of the mail. */
+    public static String button(String label, String url, String brandColor, boolean vietnamese) {
+        return button(label, url, brandColor, vietnamese, null);
+    }
+
+    /** The sizes an administrator can give the button: padding, text size and corner. Anything else is the medium one. */
+    private static String[] buttonSize(String size) {
+        return switch (size == null ? "" : size) {
+            case "SMALL" -> new String[] {"8px 18px", "13px", "8px"};
+            case "LARGE" -> new String[] {"16px 36px", "17px", "12px"};
+            default -> new String[] {"12px 26px", "15px", "10px"};
+        };
+    }
+
+    public static String button(String label, String url, String brandColor, boolean vietnamese, String size) {
+        return button(label, url, brandColor, vietnamese, size, true);
+    }
+
+    /** @param linkLine whether the address is also written under the button, for a mail program that does not show it */
+    public static String button(String label, String url, String brandColor, boolean vietnamese, String size, boolean linkLine) {
         if (url == null || url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) return "";
-        String text = label == null || label.isBlank() ? "Open in EQMS" : label.strip();
-        return "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:20px 0 8px;\"><tr><td style=\"border-radius:10px;background:"
-                + safeColor(brandColor) + ";\"><a href=\"" + escapeAttr(url) + "\" style=\"display:inline-block;padding:12px 26px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:10px;\">"
+        String text = label == null || label.isBlank() ? (vietnamese ? "Mở trong EQMS" : "Open in EQMS") : label.strip();
+        String[] measures = buttonSize(size);
+        return "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:20px 0 8px;\"><tr><td style=\"border-radius:" + measures[2] + ";background:"
+                + safeColor(brandColor) + ";\"><a href=\"" + escapeAttr(url) + "\" style=\"display:inline-block;padding:" + measures[0] + ";color:#ffffff;font-weight:700;font-size:" + measures[1] + ";text-decoration:none;border-radius:" + measures[2] + ";\">"
                 + escape(text) + "</a></td></tr></table>"
-                + "<p style=\"margin:10px 0 0;font-size:12.5px;color:#6b7280;\">If the button does not work, copy this link: <span style=\"word-break:break-all;\">" + escape(url) + "</span></p>";
+                + (linkLine ? "<p style=\"margin:10px 0 0;font-size:12.5px;color:#6b7280;\">" + (vietnamese ? "Nếu nút không hoạt động, hãy sao chép liên kết này: " : "If the button does not work, copy this link: ") + "<span style=\"word-break:break-all;\">" + escape(url) + "</span></p>" : "");
     }
 
     /** The frame with the default header text (EQMS) for a mail with no logo. */
@@ -82,14 +112,18 @@ public final class EmailFrameRenderer {
         String title = !own.isEmpty() ? own : headerTitle == null || headerTitle.isBlank() ? "EQMS" : headerTitle.strip();
         String font = font(design == null ? null : design.getFontFamily());
         String logo = design == null ? null : design.getLogoUrl();
+        boolean vietnamese = contentHtml != null && contentHtml.contains(VIETNAMESE_MARK);
         String footer = design == null || design.getFooterText() == null ? "" : design.getFooterText().strip();
+        if (vietnamese && design != null && design.getFooterTextVi() != null && !design.getFooterTextVi().isBlank()) {
+            footer = design.getFooterTextVi().strip();
+        }
         String support = design == null || design.getSupportEmail() == null ? "" : design.getSupportEmail().strip();
         String page = cardOnly ? "transparent" : "#f1f5f9";
         String padding = cardOnly ? "0" : "32px 16px";
 
         // the colours are the ones the design sets, in every mail app: no automatic dark scheme changes them
         StringBuilder sb = new StringBuilder(2048);
-        sb.append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\" />")
+        sb.append("<!DOCTYPE html><html lang=\"").append(vietnamese ? "vi" : "en").append("\"><head><meta charset=\"UTF-8\" />")
           .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />")
           .append("<meta name=\"color-scheme\" content=\"light\" /><meta name=\"supported-color-schemes\" content=\"light\" />")
           .append("<style>")
@@ -114,7 +148,7 @@ public final class EmailFrameRenderer {
           .append("<tr><td class=\"eq-foot\" style=\"background:").append(footBg).append(";padding:20px 40px;border-top:1px solid #e5e7eb;font-size:12px;line-height:1.8;text-align:")
           .append(footAlign).append(";color:").append(footText).append(";\">");
         if (footer.isEmpty()) {
-            sb.append("<div>&copy; ").append(Year.now().getValue()).append(" EQMS. This is an automatic message, please do not reply.</div>");
+            sb.append("<div>&copy; ").append(Year.now().getValue()).append(vietnamese ? " EQMS. Đây là thư tự động, vui lòng không trả lời.</div>" : " EQMS. This is an automatic message, please do not reply.</div>");
         } else {
             sb.append("<div>").append(escape(footer.replace("{year}", String.valueOf(Year.now().getValue())))).append("</div>");
         }

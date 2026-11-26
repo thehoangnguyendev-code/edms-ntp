@@ -22,6 +22,7 @@ import { useDictionaryServerTable } from "@/features/settings/dictionaries/hooks
 import { trainingError, trainingNotificationsApi, type TrainingNotificationLogRow, type TrainingNotificationLogPage } from "@/services/api/trainingActivities";
 import { formatDateTime } from "@/utils/format";
 import { tr, trFormat, trPlural } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 type StatusFilter = "All" | TrainingNotificationLogRow["status"];
 type ChannelFilter = "All" | TrainingNotificationLogRow["channel"];
@@ -38,7 +39,7 @@ const CHANNEL_OPTIONS = [
   { label: "In-app", value: "IN_APP" },
   { label: "E-mail", value: "EMAIL" },
 ];
-const STATUS_COLOR: Record<TrainingNotificationLogRow["status"], "emerald" | "red" | "slate"> = { SENT: "emerald", FAILED: "red", SKIPPED: "slate" };
+const STATUS_COLOR = statusColors("SENT", "FAILED", "SKIPPED");
 const STATUS_LABEL: Record<TrainingNotificationLogRow["status"], string> = { SENT: "Sent", FAILED: "Failed", SKIPPED: "Skipped" };
 
 /** A machine code written for people: TRAINING_DUE_SOON becomes "Due soon". The code itself is never shown as the value of anything. */

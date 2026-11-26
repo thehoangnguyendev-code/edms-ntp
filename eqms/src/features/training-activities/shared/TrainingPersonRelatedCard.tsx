@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
+import { Drawer } from "@/components/ui/drawer/Drawer";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -16,13 +17,13 @@ import {
 import { JOB_STATUS_COLOR, JOB_STATUS_LABEL } from "../jobs/TrainingJobListView";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_COLOR, REVIEW_STATUS_LABEL } from "../personnel-reviews/personnelReviewLabels";
 import { METHOD_LABEL, day, when } from "./trainingLabels";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type Kind = string;
 /** A tab of the screen itself (the copies sent to departments of a job assignment) that sits first in the same card. */
 export interface ExtraRelatedTab { id: string; label: string; node: ReactNode }
 const SPECIMEN_LABEL: Record<string, string> = { PENDING_CONFIRMATION: "Not confirmed (earlier workflow)", APPROVED: "Current", OBSOLETED: "Superseded" };
-const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
+const RESULT_LABEL: Record<string, string> = { PASSED: "Qualified", READ: "Read and understood", ATTENDED: "Attended" };
 
 type Sorted = (key: string) => { direction?: "asc" | "desc"; onSort: () => void };
 
@@ -68,6 +69,8 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
     ...(hasPermission("training.signature.view") || hasPermission("training.signature.manage") ? [{ id: "specimens" as const, label: tr("Specimen Signatures") }] : []),
   ];
   const [chosen, setChosen] = useState<Kind>();
+  // the job assignment whose whole list of Work Positions is open
+  const [positionsOf, setPositionsOf] = useState<{ issueNo: number | string; names: string[] }>();
   if (tabs.length === 0) return null;
   const active = tabs.some((t) => t.id === chosen) ? (chosen as Kind) : tabs[0].id;
   const extra = extraTabs.find((t) => t.id === active);
@@ -86,7 +89,7 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
               { id: "number", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (r) => link(r.trainingNumber, `/training-management/activities/${r.activityId}`) },
               { id: "topic", header: "Training", sort: sorted("topicText"), cell: (r) => <div className="min-w-64 whitespace-normal">{r.topicText}</div> },
               { id: "method", header: "Mode", sort: sorted("method"), cell: (r) => METHOD_LABEL[r.method] ?? r.method },
-              { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.voidedAt ? <Badge color="red">{tr("Voided")}</Badge> : (RESULT_LABEL[r.result] ?? r.result)) },
+              { id: "result", header: "Result", sort: sorted("result"), cell: (r) => (r.voidedAt ? <Badge color="red">{tr("Voided")}</Badge> : tr(RESULT_LABEL[r.result] ?? r.result)) },
               { id: "on", header: tr("Completed On"), sort: sorted("completedOn"), cell: (r) => day(r.completedOn) },
             ]} />
         )}
@@ -94,19 +97,28 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
           <RelatedTable<TrainingJobSummary> persistKey="training.related.jobs" personId={personId} fetcher={trainingJobsApi.list} defaultSortBy="createdAt" empty="No job assignment" searchPlaceholder={tr("Search work position or department…")}
             columns={(offset, sorted) => [
               no(offset),
-              { id: "issue", header: "Issue", sort: sorted("issue"), cell: (j) => link(`Issue ${j.issueNo}`, `/training-management/job-assignments/${j.id}`) },
+              { id: "issue", header: "Issue", sort: sorted("issue"), cell: (j) => link(trFormat("Issue {number}", { number: j.issueNo }), `/training-management/job-assignments/${j.id}`) },
               {
                 id: "position",
                 header: tr("Work Positions"),
                 sort: sorted("position"),
-                // an issuance lists the whole set of roles: the first ones are written, the rest are a number, and the full list is the tooltip
+                // an issuance lists the whole set of roles: the first ones are written, the rest are a number that opens the whole list
                 cell: (j) => {
                   const names = (j.positionName ?? "").split(", ").filter(Boolean);
                   const shown = names.slice(0, 3).join(", ");
-                  return <span title={names.join("\n")}>{shown}{names.length > 3 ? ` +${names.length - 3} more` : ""}</span>;
+                  return (
+                    <span>
+                      {shown}
+                      {names.length > 3 && (
+                        <button type="button" className="ml-1.5 whitespace-nowrap font-medium text-emerald-600 hover:underline" onClick={() => setPositionsOf({ issueNo: j.issueNo, names })}>
+                          {trFormat("+{count} more", { count: names.length - 3 })}
+                        </button>
+                      )}
+                    </span>
+                  );
                 },
               },
-              { id: "type", header: "Type", sort: sorted("type"), cell: (j) => (j.caseType === "INITIAL" ? "Initial" : "Change") },
+              { id: "type", header: tr("Type"), sort: sorted("type"), cell: (j) => (j.caseType === "INITIAL" ? tr("Initial") : tr("Change")) },
               { id: "status", header: "Status", sort: sorted("status"), cell: (j) => <Badge color={JOB_STATUS_COLOR[j.status]}>{JOB_STATUS_LABEL[j.status]}</Badge> },
               { id: "effective", header: "Effective", sort: sorted("effective"), cell: (j) => day(j.effectiveAt) },
             ]} />
@@ -115,7 +127,7 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
           <RelatedTable<TrainingPersonnelReviewSummary> persistKey="training.related.reviews" personId={personId} fetcher={trainingReviewsApi.list} defaultSortBy="createdAt" empty="No training review" searchPlaceholder={tr("Search note or opened by…")}
             columns={(offset, sorted) => [
               no(offset),
-              { id: "no", header: "Review", cell: (r) => link(`Review ${r.reviewNo}`, `/training-management/personnel-reviews/${r.id}`) },
+              { id: "no", header: "Review", cell: (r) => link(trFormat("Review {number}", { number: r.reviewNo }), `/training-management/personnel-reviews/${r.id}`) },
               { id: "kind", header: "Event", sort: sorted("kind"), cell: (r) => REVIEW_KIND_LABEL[r.kind] ?? r.kind },
               { id: "status", header: "Status", sort: sorted("status"), cell: (r) => <Badge color={REVIEW_STATUS_COLOR[r.status]}>{REVIEW_STATUS_LABEL[r.status]}</Badge> },
               { id: "open", header: tr("Open Items"), sort: sorted("openItems"), cell: (r) => r.openItems },
@@ -126,14 +138,26 @@ export function TrainingPersonRelatedCard({ personId, extraTabs = [] }: { person
           <RelatedTable<TrainingSpecimen> persistKey="training.related.specimens" personId={personId} fetcher={trainingSpecimenApi.list} defaultSortBy="createdAt" empty="No specimen signature" searchPlaceholder={tr("Search reason or uploaded by…")}
             columns={(offset, sorted) => [
               no(offset),
-              { id: "version", header: "Version", sort: sorted("version"), cell: (s) => link(`Version ${s.versionNo}`, `/training-management/specimen-signatures?search=${encodeURIComponent(s.employeeCode ?? s.fullName)}`) },
-              { id: "status", header: "Status", sort: sorted("status"), cell: (s) => SPECIMEN_LABEL[s.status] ?? s.status },
+              { id: "version", header: "Version", sort: sorted("version"), cell: (s) => link(trFormat("Version {number}", { number: s.versionNo }), `/training-management/specimen-signatures?search=${encodeURIComponent(s.employeeCode ?? s.fullName)}`) },
+              { id: "status", header: "Status", sort: sorted("status"), cell: (s) => tr(SPECIMEN_LABEL[s.status] ?? s.status) },
               { id: "effective", header: "Effective", sort: sorted("effective"), cell: (s) => day(s.effectiveDate) },
               { id: "uploaded", header: tr("Uploaded By"), sort: sorted("uploadedBy"), cell: (s) => s.uploadedByName },
               { id: "confirmed", header: tr("Confirmed By"), sort: sorted("confirmedBy"), cell: (s) => s.confirmedByName ?? "—" },
             ]} />
         )}
       </div>
+      {positionsOf && (
+        <Drawer title={tr("Work Positions")} subtitle={trFormat("Issue {number}", { number: positionsOf.issueNo })} onClose={() => setPositionsOf(undefined)}>
+          <ol className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+            {positionsOf.names.map((name, i) => (
+              <li key={`${i}-${name}`} className="flex gap-3 px-4 py-2.5 text-sm text-slate-900">
+                <span className="w-6 shrink-0 text-slate-400">{i + 1}</span>
+                <span className="min-w-0 break-words">{name}</span>
+              </li>
+            ))}
+          </ol>
+        </Drawer>
+      )}
     </div>
   );
 }

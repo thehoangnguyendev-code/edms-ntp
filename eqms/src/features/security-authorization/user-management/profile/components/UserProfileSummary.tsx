@@ -3,12 +3,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { USER_STATUS_DESCRIPTIONS } from "../../constants";
 import type { User } from "../../types";
 import { useLanguage, tr } from "@/i18n";
-
-const statusColor = (status: User["status"]) =>
-  status === "Active" ? "emerald" :
-    status === "Inactive" ? "slate" :
-      status === "Pending" ? "amber" :
-        status === "Suspended" ? "orange" : "red";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const Fact: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => {
   const { tLabel } = useLanguage();

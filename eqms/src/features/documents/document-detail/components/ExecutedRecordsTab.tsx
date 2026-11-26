@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Eye } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/table";
@@ -91,7 +92,7 @@ export const ExecutedRecordsTab: React.FC<{ formDocumentId?: string; controlledC
               setPreviewRecord(r);
             }}
             className="inline-flex max-w-[14rem] items-center gap-1.5 text-emerald-700 hover:text-emerald-800"
-            aria-label={`Preview scan of ${r.recordNumber}`}
+            aria-label={__ariaTrFormat("Preview scan of {v1}", { v1: r.recordNumber })}
           >
             <Eye className="h-4 w-4 shrink-0" />
             <span className="truncate text-xs underline-offset-2 hover:underline">{r.fileName ?? "View scan"}</span>

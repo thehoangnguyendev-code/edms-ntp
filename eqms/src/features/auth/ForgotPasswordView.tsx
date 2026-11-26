@@ -268,7 +268,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
                 disabled={isLoading}
                 aria-busy={isLoading}
               >
-                {isLoading ? <ButtonLoading text="Submitting Request..." light /> : "Send Reset Link"}
+                {isLoading ? <ButtonLoading text="Submitting Request..." light /> : tr("Send Reset Link")}
               </Button>
 
               <div className="hidden sm:block">

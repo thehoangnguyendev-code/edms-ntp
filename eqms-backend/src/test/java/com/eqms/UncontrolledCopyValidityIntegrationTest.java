@@ -12,6 +12,7 @@ import com.eqms.repository.UncontrolledCopyPolicySettingRepository;
 import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.UncontrolledCopyService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,12 +41,14 @@ class UncontrolledCopyValidityIntegrationTest {
     @Autowired private DocumentRecordRepository documentRepository;
     @Autowired private DocumentRevisionRepository revisionRepository;
     @Autowired private UserAccountRepository userAccountRepository;
+    @Autowired private org.springframework.cache.CacheManager cacheManager;
 
     private DocumentRecord document;
     private DocumentRevisionRecord revision;
 
     @BeforeEach
     void setUp() {
+        clearPolicyFixtureCache();
         UserAccount admin = userAccountRepository.findByUsername("admin").orElseThrow(() -> new AssertionError("Seeded admin user not found"));
         AuthenticatedUser principal = new AuthenticatedUser(admin.getId(), UUID.randomUUID(), admin.getUsername(),
                 admin.getRoleName() != null ? admin.getRoleName() : "USER", Collections.emptySet());
@@ -66,7 +69,20 @@ class UncontrolledCopyValidityIntegrationTest {
         UncontrolledCopyPolicySetting policy = policyRepository.findById(UncontrolledCopyPolicySetting.DEFAULT_ID).orElseGet(UncontrolledCopyPolicySetting::new);
         policy.setValidityBasis(basis);
         policy.setValidityHours(hours);
-        return policyRepository.saveAndFlush(policy);
+        UncontrolledCopyPolicySetting saved = policyRepository.saveAndFlush(policy);
+        clearPolicyFixtureCache();
+        return saved;
+    }
+
+    private void clearPolicyFixtureCache() {
+        var cache = cacheManager.getCache("uncontrolled-copy-policy");
+        if (cache != null) cache.evictIfPresent("current");
+    }
+
+    @AfterEach
+    void clearTestContext() {
+        clearPolicyFixtureCache();
+        SecurityContextHolder.clearContext();
     }
 
     private void validUntil(LocalDate date) {

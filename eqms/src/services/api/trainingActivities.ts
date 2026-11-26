@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { tr } from "@/i18n";
 import { getBrowserReachableApiBaseUrl } from "./documents";
 import type { TrainingActivityStatus } from "./trainingLinks";
 import type { WorkflowProgress } from "@/types/document";
@@ -147,7 +148,6 @@ export interface TrainingCapabilities {
   finishTraining?: boolean;
   /** The assessment of the library can be chosen or taken off (until the content is reviewed). */
   chooseAssessment?: boolean;
-  returnForCorrection?: boolean;
   removeParticipants?: boolean;
   printPaper?: boolean;
   /** The trainer may remind a person who has not signed a self-reading. */
@@ -279,7 +279,6 @@ export const trainingActivitiesApi = {
     (await apiClient.post<TrainingActivityDetail>(`/training/sessions/${sessionId}/cancel`, { reason, signatureToken })).data,
   setContentExemptions: (id: string, body: { materialsExempt?: boolean; assessmentExempt?: boolean; reason?: string }) => command(`/training/activities/${id}/content-exemptions`, body),
   reopenContent: (id: string, version: number, reason: string, signatureToken: string) => command(`/training/activities/${id}/reopen-content`, { version, reason, signatureToken }),
-  returnForCorrection: (id: string, version: number, reason: string, signatureToken: string) => command(`/training/activities/${id}/return-for-correction`, { version, reason, signatureToken }),
   supplementary: (id: string, participantIds: string[], reason: string) => command(`/training/activities/${id}/supplementary`, { participantIds, reason }),
   removeParticipant: async (participantId: string, reason: string) => (await apiClient.post<TrainingActivityDetail>(`/training/participants/${participantId}/remove`, { reason })).data,
   setPlannedAbsence: async (participantId: string, reason: string) => (await apiClient.post<TrainingActivityDetail>(`/training/participants/${participantId}/planned-absence`, { reason })).data,
@@ -463,6 +462,9 @@ export const trainingMatrixApi = {
     (await apiClient.get<{ from: number; to: number; added: TrainingMatrixRow[]; removed: TrainingMatrixRow[]; changed: (TrainingMatrixRow & { previousPositionIds: string[]; previousAnnualRequired: boolean })[]; positions: { id: string; name: string }[] }>(`/training/matrix-versions/${a}/compare/${b}`)).data,
   /** Paged, searchable, sortable topics for the Training Topics administration screen (same shape as the other paged lists). */
   positions: async () => (await apiClient.get<{ data: TrainingPosition[] }>("/training/positions")).data.data,
+  /** One page of the Work Positions that can be given; search, department filter and paging are done by the server. */
+  positionsPage: async (params: { search?: string; departmentId?: string; exclude?: string; page: number; limit: number }) =>
+    (await apiClient.get<TrainingPage<TrainingPosition> & { departments: { id: string; name: string }[] }>("/training/positions/page", { params })).data,
   personPositions: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingPersonPosition>>("/training/person-positions", { params })).data,
   personPositionDetails: async (personId: string, search?: string, page = 1, limit = 20) => (await apiClient.get<TrainingPage<{ id: string; name: string; department: string; carried: boolean; source: string }>>(`/training/person-positions/${personId}`, { params: { search: search || undefined, page, limit } })).data,
 };
@@ -597,7 +599,7 @@ export type AssessmentKind = "QUESTIONS" | "CHECKLIST";
 export type AssessmentItemKind = "SINGLE" | "MULTI" | "TRUE_FALSE" | "ESSAY" | "CHECK";
 export interface TrainingAssessmentSummary {
   id: string; /** The Assessment Number. */ code: string; versionNo: number; /** The Assessment Revision: 0.0.1 is a first draft, 1.0.0 the first effective one, 1.0.1 its next draft. */ revisionNumber: string; /** The Assessment Name. */ name: string; kind: AssessmentKind; status: "DRAFT" | "PENDING_APPROVAL" | "EFFECTIVE" | "OBSOLETED";
-  itemCount: number; /** What the menu of the row may offer, decided by the server. */ actions?: { view: boolean; continueDraft: boolean; review: boolean }; createdAt?: string; /** null for a checklist: it has no score. */ maxScore: number | null; updatedAt: string; updatedByName: string; approvedAt?: string | null; approvedByName?: string | null;
+  itemCount: number; /** What the menu of the row may offer, decided by the server. */ actions?: { view: boolean; continueDraft: boolean; review: boolean; delete?: boolean; submit?: boolean }; createdAt?: string; /** null for a checklist: it has no score. */ maxScore: number | null; updatedAt: string; updatedByName: string; approvedAt?: string | null; approvedByName?: string | null;
 }
 /** The numbering of the essay questions in the form (Part II): after the multiple-choice questions, or again from 1. */
 export type EssayNumbering = "CONTINUE" | "RESTART";
@@ -683,7 +685,8 @@ export interface TrainingReviewItem {
   itemCode: string; label: string; hint: string; canLink: boolean; status: "PENDING" | "DONE" | "NOT_NEEDED"; activityId?: string | null; trainingNumber?: string | null; trainingTopics?: string | null;
   note?: string | null; doneAt?: string | null; doneByName?: string | null;
   /** What the system already holds for the item (a specimen signature, a job assignment, an export of the record); it never marks the item done. */
-  systemCheck?: { found: boolean; text: string } | null;
+  /** Each part is an English sentence with `{name}` places: the screen translates the sentence and fills the values. */
+  systemCheck?: { found: boolean; parts: { template: string; values: Record<string, string | number> }[] } | null;
 }
 export interface TrainingPersonMatrixGaps { positionName?: string | null; required: number; missing: number; due: number; done: number; gaps: TrainingGap[] }
 export interface TrainingPersonnelReview extends TrainingPersonnelReviewSummary {
@@ -774,6 +777,8 @@ export interface TrainingImpactRow {
   id: string; trainingNumber: string; trainingTopics: string; activityStatus: TrainingActivityStatus; documentId: string; revisionId?: string | null; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
   departmentName: string; createdAt: string; outcome?: "MATRIX_UPDATE_NEEDED" | "MATRIX_ALREADY_COVERS" | "NO_TRAINING_IMPACT" | null; assessedAt?: string | null; assessedByName?: string | null;
   assessmentReason?: string | null; impactStatus: "PENDING" | "MATRIX_UPDATE_PENDING" | "DONE"; canAssess: boolean;
+  /** The training was implemented before the impact was assessed or the matrix updated (SOP.0003 5.3.1): a deviation, handled outside this screen. */
+  deviation?: boolean;
 }
 export interface TrainingImpactPosition { id: string; code?: string | null; name: string; inMatrix: boolean }
 export interface TrainingImpactContext {
@@ -1181,6 +1186,9 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_EXAM_EXPIRED: "The time for this attempt ran out.",
   TRAINING_EXAM_ANSWER_INVALID: "An answer does not match the question.",
   TRAINING_MATRIX_TOO_LARGE: "This matrix or position is too large to show at once. Narrow it with the search.",
+  TRAINING_IMPACT_NOT_ASSESSED: "Assess the impact of the document on the training matrix first (Document Impact Assessment, SOP.0003 5.3.1).",
+  TRAINING_MATRIX_NOT_UPDATED: "Update the training matrix for the document first: no effective matrix of the department has it yet (SOP.0003 5.3.1).",
+  TRAINING_IMPACT_AFTER_NOTICE: "The impact can no longer be assessed: the participants were already notified. SOP.0003 5.3.1 asks for it before the training is implemented.",
   TRAINING_LIST_NOT_CONFIRMED: "Confirm the attendee list first.",
   TRAINING_CONTENT_NOT_REVIEWED: "The content must be reviewed first.",
   TRAINING_CONTENT_NOT_APPROVED: "The content and the test must be reviewed and approved first.",
@@ -1384,4 +1392,4 @@ export function trainingError(error: unknown): string {
 }
 
 /** The sentence of a stable server code (for the list of what is still missing). */
-export const trainingCodeText = (code: string) => ERROR_TEXT[code] ?? code;
+export const trainingCodeText = (code: string) => tr(ERROR_TEXT[code] ?? code);

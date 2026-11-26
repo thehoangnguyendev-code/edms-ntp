@@ -91,6 +91,7 @@ public class TrainingJobAssignmentService {
         }
         TrainingListFilter extra = new TrainingListFilter().equal("j.person_user_id", uuid(more.get("personId"))).equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).raw(uuid(more.get("positionId")) == null ? "true" : "exists (select 1 from training_job_assignment_roles fr where fr.assignment_id = j.id and fr.job_role_id = ?)", uuid(more.get("positionId")) == null ? new Object[0] : new Object[]{uuid(more.get("positionId"))})
                 .timeRange("j.effective_at", more.get("effectiveFrom"), more.get("effectiveTo")).timeRange("j.created_at", more.get("createdFrom"), more.get("createdTo"));
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.jobAssignment(), actor.getId(), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         String from = " from training_job_assignments j join app_users u on u.id = j.person_user_id join training_job_roles p on p.id = j.position_id join departments d on d.id = j.department_id ";

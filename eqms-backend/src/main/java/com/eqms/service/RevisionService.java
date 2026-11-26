@@ -371,6 +371,13 @@ public class RevisionService {
         return new DocumentFiltersResponse(statuses, documentTypes, businessUnits, departments, authors);
     }
 
+    /**
+     * The revisions of the person (author or co-author) that were sent back: a Draft that carries a rejection, from the review or from the approval. This is what the menu counts.
+     */
+    private static Specification<DocumentRevisionRecord> returnedDraft() {
+        return (root, query, cb) -> cb.and(cb.equal(root.get("status").get("code"), "DRAFT"), cb.isNotNull(root.get("rejectedAt")));
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<RevisionListItemResponse> listRevisions(
             String search,
@@ -398,6 +405,38 @@ public class RevisionService {
             int page,
             int limit
     ) {
+        return listRevisions(search, ids, status, documentType, businessUnit, department, authorId, author, relatedDocument, correlatedDocument, isTemplate, trainingNumber, createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo, ownedByMe, pending, sortBy, sortDirection, page, limit, false);
+    }
+
+    /** {@code waitingForMe}: only the person's own revisions that were sent back to Draft. */
+    @Transactional(readOnly = true)
+    public PageResponse<RevisionListItemResponse> listRevisions(
+            String search,
+            String ids,
+            String status,
+            String documentType,
+            String businessUnit,
+            String department,
+            String authorId,
+            String author,
+            String relatedDocument,
+            String correlatedDocument,
+            String isTemplate,
+            String trainingNumber,
+            String createdFrom,
+            String createdTo,
+            String effectiveFrom,
+            String effectiveTo,
+            String validFrom,
+            String validTo,
+            boolean ownedByMe,
+            boolean pending,
+            String sortBy,
+            String sortDirection,
+            int page,
+            int limit,
+            boolean waitingForMe
+    ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         int safePage = Math.max(page, 1);
         int safeLimit = Math.min(Math.max(limit, 1), 50);
@@ -405,12 +444,13 @@ public class RevisionService {
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
         PageRequest pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by(direction, sortProperty));
-        Page<DocumentRevisionRecord> result = revisionRepository.findAll(buildSpecification(
+        Specification<DocumentRevisionRecord> filter = buildSpecification(
                 search, ids, status, documentType, businessUnit, department, authorId, author,
                 relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                ownedByMe, pending, currentUser
-        ), pageable);
+                ownedByMe || waitingForMe, pending, currentUser
+        );
+        Page<DocumentRevisionRecord> result = revisionRepository.findAll(waitingForMe ? filter.and(returnedDraft()) : filter, pageable);
 
         List<RevisionListItemResponse> items = result.getContent().stream()
                 .map(this::toListItem)

@@ -118,13 +118,13 @@ describe("Edit a notification", () => {
     expect(screen.queryByText("Notification Icon")).toBeNull();
     expect(screen.queryByText("In-App Wording")).toBeNull();
     expect(screen.getByRole("heading", { name: "Edit Email Notification" })).toBeTruthy();
-    // the Content tab has the wording, the preview and the placeholders; the delivery is on its own tab, and the timing and the quiet hours are under Advanced there
+    // the Content tab has the wording, the preview and the placeholders; the delivery is on its own tab, and the timing and the quiet hours are there
     expect(screen.getByRole("tab", { name: "Content" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByLabelText("Email timing")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Delivery" }));
     expect(screen.queryByRole("textbox", { name: "Email subject" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
     expect(await screen.findByLabelText("Email timing")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Advanced/ })).toBeNull();
     expect(screen.queryByRole("switch", { name: "Escalate when it is not acted on" })).toBeNull();
   });
 
@@ -168,7 +168,7 @@ describe("Edit a notification", () => {
     // what was typed on the first tab is kept while the other tab is open
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(screen.getByRole("switch", { name: "Send in-app notification" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updateTemplate).toHaveBeenCalled());
     // the delivery change goes first and carries the time; the wording after it is this person's own change
     expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", expect.objectContaining({ expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
@@ -179,7 +179,7 @@ describe("Edit a notification", () => {
     api.updateTemplate.mockRejectedValue({ response: { status: 409, data: { error: { message: "This was changed by someone else after you opened it. Reload it to see their change, then make yours again." } } } });
     await open();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "My change" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     expect(await screen.findByText("Someone else changed this after you opened it.")).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "In-app title" }) as HTMLInputElement).value).toBe("My change");
     expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", title: "Not saved: changed by someone else" }));
@@ -193,7 +193,7 @@ describe("Edit a notification", () => {
     api.updateTemplate.mockRejectedValue({ response: { status: 400, data: { error: { message: "An in-app notification needs a title." } } } });
     await open();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "My change" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", title: "Not saved" })));
     expect(screen.queryByText("Someone else changed this after you opened it.")).toBeNull();
   });
@@ -237,7 +237,8 @@ describe("Edit a notification", () => {
     expect((screen.getByRole("checkbox", { name: "People of a role QA Manager: Email" }) as HTMLInputElement).checked).toBe(false);
     expect((screen.getByRole("checkbox", { name: "People of a role QA Manager: In-app" }) as HTMLInputElement).checked).toBe(true);
     expect(await screen.findByText("3 people today: An, Binh, Chi")).toBeTruthy();
-    expect(screen.getByLabelText("Who it reaches today").textContent).toContain("3 people by in-app and 0 people by email, plus the people the module names");
+    await waitFor(() => expect(screen.getByLabelText("Who it reaches today").textContent).toBe("In-app: 3 peopleEmail: 0 people"));
+    expect(screen.getByText("The people the module names when it happens are reached too.")).toBeTruthy();
   });
 
   it("keeps the placeholders on the Content tab only, and the delivery on its own tab", async () => {
@@ -259,7 +260,7 @@ describe("Edit a notification", () => {
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove Holder of the copy" }));
     fireEvent.click(screen.getByRole("tab", { name: "Content" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Delivery" }).getAttribute("aria-selected")).toBe("true"));
     expect(api.updatePolicy).not.toHaveBeenCalled();
   });
@@ -301,7 +302,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("checkbox", { name: "People of a role QA Manager: Email" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { recipientRules: [{ type: "COPY_HOLDER" }, { type: "ROLE", value: "QA Manager", channels: ["IN_APP"] }], expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -310,7 +311,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("checkbox", { name: "People of a role QA Manager: Email" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { recipientRules: [{ type: "ROLE", value: "QA Manager" }], expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -320,7 +321,7 @@ describe("Edit a notification", () => {
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("checkbox", { name: "Holder of the copy: Email" }));
     expect(screen.getByText(/needs at least one channel/)).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", message: expect.stringContaining("at least one channel") })));
     expect(api.updatePolicy).not.toHaveBeenCalled();
   });
@@ -329,12 +330,13 @@ describe("Edit a notification", () => {
     api.getDetail.mockResolvedValue(detail({ recipientRules: [{ type: "COPY_HOLDER" }] }));
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
-    fireEvent.click((await screen.findAllByRole("combobox", { name: "Kind of recipient" }))[0]);
+    // the list of the recipients is the lower section; the escalation above it has a picker of its own
+    fireEvent.click((await screen.findAllByRole("combobox", { name: "Kind of recipient" })).at(-1)!);
     fireEvent.click(await screen.findByText("People of a role"));
-    fireEvent.click((await screen.findAllByRole("combobox", { name: "Role name" }))[0]);
+    fireEvent.click((await screen.findAllByRole("combobox", { name: "Role name" })).at(-1)!);
     fireEvent.click(await screen.findByText("QC Analyst"));
-    fireEvent.click(screen.getAllByRole("button", { name: "Add" })[0]);
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Add" }).at(-1)!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { recipientRules: [{ type: "COPY_HOLDER" }, { type: "ROLE", value: "QC Analyst" }], expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -345,7 +347,7 @@ describe("Edit a notification", () => {
     for (const name of ["Low", "Medium", "High"]) expect(await screen.findByRole("option", { name })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Critical" })).toBeNull();
     fireEvent.click(screen.getByRole("option", { name: "High" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { priority: "HIGH", expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
     expect(api.updateTemplate).not.toHaveBeenCalled();
   });
@@ -356,7 +358,7 @@ describe("Edit a notification", () => {
     expect(await screen.findByText(/The default is Medium; choose it to go back/)).toBeTruthy();
     fireEvent.click(await screen.findByRole("combobox", { name: "Priority" }));
     fireEvent.click(screen.getByRole("option", { name: "Medium" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { priority: "MEDIUM", expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -371,7 +373,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("switch", { name: "Send in-app notification" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalled());
     expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { enabledChannels: ["EMAIL"], expectedUpdatedAt: "2026-11-12T01:00:00Z" });
     expect(api.updateTemplate).not.toHaveBeenCalled();
@@ -382,7 +384,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("switch", { name: "Send in-app notification" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { status: "DISABLED", expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -390,7 +392,7 @@ describe("Edit a notification", () => {
     await open("EMAIL");
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("switch", { name: "Send email" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { enabledChannels: ["IN_APP"], expectedUpdatedAt: "2026-11-12T01:00:00Z" }));
   });
 
@@ -399,7 +401,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove People of a role QA Manager" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updatePolicy).toHaveBeenCalled());
     expect(api.updatePolicy).toHaveBeenCalledWith("controlled_copy.recalled", { recipientRules: [{ type: "COPY_HOLDER" }], expectedUpdatedAt: "2026-11-12T01:00:00Z" });
   });
@@ -409,7 +411,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.click(await screen.findByRole("tab", { name: "Delivery" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove Holder of the copy" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", message: expect.stringContaining("at least one recipient") })));
     expect(api.updatePolicy).not.toHaveBeenCalled();
   });
@@ -428,7 +430,7 @@ describe("Edit a notification", () => {
     expect(screen.queryByText("Opens (address)")).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Opens (address)" })).toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "Recalled" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updateTemplate).toHaveBeenCalled());
     expect(api.updateTemplate).toHaveBeenCalledWith("controlled_copy.recalled", "IN_APP", expect.objectContaining({ actionUrlTemplate: "/controlled-copies/1" }));
   });
@@ -490,7 +492,7 @@ describe("Edit a notification", () => {
     // the icon chosen is the one marked in the grid
     expect(screen.getByRole("option", { name: "IconBell" }).getAttribute("aria-selected")).toBe("true");
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", "tabler:IconBell", "2026-11-12T01:00:00Z"));
     expect(api.updateTemplate).not.toHaveBeenCalled();
   }, 30000);
@@ -528,7 +530,7 @@ describe("Edit a notification", () => {
     expect((screen.getByRole("button", { name: "Use default" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getAllByRole("button", { name: "Discard Changes" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Use default" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updateAppearance).toHaveBeenCalledWith("controlled_copy.recalled", null, "2026-11-12T01:00:00Z"));
   });
 
@@ -549,7 +551,7 @@ describe("Edit a notification", () => {
     expect(screen.queryByRole("button", { name: "Sign & Publish" })).toBeNull();
     expect(screen.queryByText(/mandatory/i)).toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "Recalled: {{controlledCopyNumber}}" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(api.updateTemplate).toHaveBeenCalledTimes(1));
     const sent = api.updateTemplate.mock.calls[0][2];
     expect(sent).toEqual(expect.objectContaining({ title: "Recalled: {{controlledCopyNumber}}" }));
@@ -562,7 +564,7 @@ describe("Edit a notification", () => {
     await open();
     fireEvent.change(screen.getByRole("textbox", { name: "In-app title" }), { target: { value: "Hello {{nonsense}}" } });
     expect(screen.getAllByRole("alert")[0].textContent).toContain("{{nonsense}}");
-    fireEvent.click(screen.getAllByRole("button", { name: "Publish" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
     await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: "error", title: "Cannot save" })));
     expect(api.updateTemplate).not.toHaveBeenCalled();
   });

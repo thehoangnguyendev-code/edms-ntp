@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { sessionStarted } from "@/services/api/trainingActivities";
 import { statusChange } from "../../shared/trainingLabels";
 import { useState } from "react";
@@ -63,8 +64,8 @@ export function TrainingRollCallBlock({ activity, onChanged, bare = false }: {
               return (
                 <div key={p.id} className="grid grid-cols-1 items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-12">
                   <div className="md:col-span-5"><span className="mr-2 text-xs text-slate-500">{i + 1}</span><span className="text-sm font-medium text-slate-900">{p.fullName}</span></div>
-                  <div className="md:col-span-3"><Select value={m.state} options={[{ value: "PRESENT", label: "Present" }, { value: "ABSENT", label: "Absent" }]} aria-label={`Attendance of ${p.fullName}`} onChange={(v) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], state: v as Mark["state"] } }))} /></div>
-                  {m.state === "ABSENT" && <div className="md:col-span-4"><Input placeholder={tr("Reason for the absence")} aria-label={`Reason of ${p.fullName}`} value={m.reason} onChange={(e) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], reason: e.target.value } }))} /></div>}
+                  <div className="md:col-span-3"><Select value={m.state} options={[{ value: "PRESENT", label: "Present" }, { value: "ABSENT", label: "Absent" }]} aria-label={__ariaTrFormat("Attendance of {v1}", { v1: p.fullName })} onChange={(v) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], state: v as Mark["state"] } }))} /></div>
+                  {m.state === "ABSENT" && <div className="md:col-span-4"><Input placeholder={tr("Reason for the absence")} aria-label={__ariaTrFormat("Reason of {v1}", { v1: p.fullName })} value={m.reason} onChange={(e) => setMarks((x) => ({ ...x, [p.id]: { ...x[p.id], reason: e.target.value } }))} /></div>}
                 </div>
               );
             })}

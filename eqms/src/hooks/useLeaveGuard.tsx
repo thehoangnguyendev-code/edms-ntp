@@ -1,6 +1,9 @@
 import React, { useCallback, useId, useState } from 'react';
 import { useNavigate, type NavigateOptions } from 'react-router-dom';
 import { NavigationGuardModal } from '@/components/ui/modal/NavigationGuardModal';
+import { NAV_CONFIG, findNodeByPath } from '@/app/navigation';
+import { previousRoute } from '@/app/navigation/routeTrail';
+import { tr } from '@/i18n';
 import { allowNextLeave, useReportUnsavedChanges } from './useReportUnsavedChanges';
 
 /**
@@ -14,27 +17,38 @@ import { allowNextLeave, useReportUnsavedChanges } from './useReportUnsavedChang
  *   {modal}
  * `confirmLeave(action)` asks the same question before any other way out that is not a path (a callback that closes a panel or goes back). `go(path, options?)` also fits the breadcrumb builders, which take (path) => void, and `navigateBack`, which may go back in the history (a number); the options (state, replace) are kept for the move after the confirmation. A move that follows a successful Save is not a leave: it uses the plain `navigate`.
  */
+/** The name of the screen a path leads to: its menu entry (a detail or edit address gives the menu entry of its list). Undefined when no menu entry covers it. */
+const nameOfPath = (path: string): string | undefined => {
+  const label = findNodeByPath(NAV_CONFIG, path.split(/[?#]/)[0])?.label;
+  return label ? tr(label) : undefined;
+};
+
 export const useLeaveGuard = (dirty: boolean, pageTitle: string, destinationLabel = 'the list') => {
   const navigate = useNavigate();
   const [pending, setPending] = useState<(() => void) | null>(null);
+  // Where the way out leads, as the person knows it: the name of that screen, never "the previous page". The label the screen gave is only the fallback.
+  const [target, setTarget] = useState<string | undefined>();
   const screenId = useId();
   useReportUnsavedChanges(`leave-guard-${screenId}`, dirty);
 
   /** Runs the way out at once when nothing was changed, and after the confirmation when something was. */
   const confirmLeave = useCallback(
-    (action: () => void) => {
-      if (dirty) setPending(() => action);
-      else action();
+    (action: () => void, destination?: string) => {
+      if (dirty) {
+        setTarget(destination);
+        setPending(() => action);
+      } else action();
     },
     [dirty],
   );
 
   const go = useCallback(
     (to: string | number, options?: NavigateOptions) => {
+      const destination = typeof to === 'string' ? nameOfPath(to) : to === -1 ? (previousRoute() ? nameOfPath(previousRoute()!) : undefined) : undefined;
       confirmLeave(() => {
         if (typeof to === 'number') navigate(to);
         else navigate(to, options);
-      });
+      }, destination);
     },
     [confirmLeave, navigate],
   );
@@ -50,7 +64,7 @@ export const useLeaveGuard = (dirty: boolean, pageTitle: string, destinationLabe
         action?.();
       }}
       currentPageTitle={pageTitle}
-      destinationLabel={destinationLabel}
+      destinationLabel={target ?? (destinationLabel === 'the previous page' && previousRoute() ? nameOfPath(previousRoute()!) : undefined) ?? tr(destinationLabel)}
     />
   );
   return { go, confirmLeave, modal };

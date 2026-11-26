@@ -59,6 +59,9 @@ public class EmailNotificationService {
     private ObjectProvider<NotificationDispatcher> notificationDispatcherProvider;
 
     @Autowired
+    private ObjectProvider<NotificationTranslationService> translationServiceProvider;
+
+    @Autowired
     private ObjectProvider<AuditTrailService> auditTrailServiceProvider;
 
     @Autowired
@@ -951,8 +954,9 @@ public class EmailNotificationService {
         var metadata=new LinkedHashMap<>(payload);
         metadata.put("outboxLegacyTemplateId",template.getId().toString());
         metadata.put("outboxLegacyCountUsage",Boolean.toString(countUsage));
+        Map<String, String> mail = com.eqms.util.EmailLinks.absolute(payload, resolvePublicAppBaseUrl());
         emailOutboxProvider.getObject().enqueue(recipient,renderer.renderTemplateText(template.getSubject(),payload),
-                renderer.renderTemplateContent(template,payload),template.getType(),domain,metadata);
+                com.eqms.util.EmailLinks.friendly(renderer.renderTemplateContent(template,mail),mail),template.getType(),domain,metadata);
         return true;
     }
 
@@ -1083,8 +1087,14 @@ public class EmailNotificationService {
             return repository.save(failure);
         }
         try {
-            String subject = dispatcher.render(version.getSubject(), payload);
-            String body = dispatcher.render(version.getBody(), payload);
+            // the wording of the language the person who has this address chose, as when it was first sent
+            NotificationTranslationService translations = translationServiceProvider == null ? null : translationServiceProvider.getIfAvailable();
+            NotificationTemplateVersion wording = translations == null ? version
+                    : userAccountRepository.findByEmailIgnoreCase(failure.getRecipient()).map(user -> translations.forRecipient(version, user.getId())).orElse(version);
+            Map<String, String> values = wording == version ? payload : NotificationValueWords.vietnamese(payload);
+            String subject = dispatcher.render(wording.getSubject(), values);
+            String body = dispatcher.render(wording.getBody(), values);
+            if (wording != version && StringUtils.hasText(body)) body = com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK + body;
             boolean sent = StringUtils.hasText(subject) && StringUtils.hasText(body)
                     && sendRenderedEmailWithRetry(emailService, failure.getRecipient(), subject, body);
             failure.setAttempts(failure.getAttempts() + 1);

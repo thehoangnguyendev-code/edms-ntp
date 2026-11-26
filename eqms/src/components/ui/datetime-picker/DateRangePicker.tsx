@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -636,11 +637,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   }, [startDate, endDate, displayPlaceholder, includeTime, t]);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    'July', 'August', 'September', 'October', 'November', 'December'].map(tLabel);
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(tLabel);
 
   const renderMonthView = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = monthNames;
     return (
       <div className="p-3">
         <div className={cn("flex items-center justify-between px-1", inline ? "mb-1" : "mb-2")}>
@@ -858,7 +859,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           type="text"
           value={time.h}
           onChange={(e) => handleTimeChange('h', e.target.value)}
-          aria-label={`${type === 'start' ? 'Start' : 'End'} hour`}
+          aria-label={__ariaTrFormat("{v1} hour", { v1: type === 'start' ? tr('Start') : tr('End') })}
           inputMode="numeric"
           className="w-10 h-9 text-center text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
           maxLength={2}
@@ -868,7 +869,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           type="text"
           value={time.m}
           onChange={(e) => handleTimeChange('m', e.target.value)}
-          aria-label={`${type === 'start' ? 'Start' : 'End'} minute`}
+          aria-label={__ariaTrFormat("{v1} minute", { v1: type === 'start' ? tr('Start') : tr('End') })}
           inputMode="numeric"
           className="w-10 h-9 text-center text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
           maxLength={2}
@@ -878,7 +879,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           type="text"
           value={time.s}
           onChange={(e) => handleTimeChange('s', e.target.value)}
-          aria-label={`${type === 'start' ? 'Start' : 'End'} second`}
+          aria-label={__ariaTrFormat("{v1} second", { v1: type === 'start' ? tr('Start') : tr('End') })}
           inputMode="numeric"
           className="w-10 h-9 text-center text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
           maxLength={2}

@@ -32,9 +32,10 @@ public class TrainingMatrixController {
 
     @GetMapping("/matrices")
     public ResponseEntity<?> list(@RequestParam(required = false) String search, @RequestParam(required = false) String state,
+                                  @RequestParam(defaultValue = "false") boolean waitingForMe,
                                   @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(matrices.matrices(users.requireCurrentUser(), search, state, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(matrices.matrices(users.requireCurrentUser(), search, state, waitingForMe, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/matrices/{id}/versions")
@@ -95,6 +96,13 @@ public class TrainingMatrixController {
 
     @GetMapping("/positions")
     public ResponseEntity<?> positions() { return ResponseEntity.ok(Map.of("data", matrices.allPositions(users.requireCurrentUser()))); }
+
+    @GetMapping("/positions/page")
+    public ResponseEntity<?> positionsPage(@RequestParam(required = false) String search, @RequestParam(required = false) UUID departmentId,
+                                           @RequestParam(required = false) java.util.List<UUID> exclude,
+                                           @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(matrices.positionsPage(users.requireCurrentUser(), search, departmentId, exclude, page, limit));
+    }
 
     @GetMapping("/person-positions")
     public ResponseEntity<?> personPositions(@RequestParam(required = false) String search, @RequestParam(defaultValue = "false") boolean unmatchedOnly,

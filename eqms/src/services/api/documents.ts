@@ -1009,6 +1009,7 @@ export const documentApi = {
 
   /** GET /revisions  danh sÃ¡ch táº¥t cáº£ revisions */
   getRevisions: async (params?: {
+    waitingForMe?: boolean;
     page?: number;
     limit?: number;
     ids?: string;

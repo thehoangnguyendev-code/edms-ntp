@@ -46,8 +46,10 @@ const guardedTrainingElement = (permission: string | string[], element: React.Re
   </ProtectedRoute>
 );
 
-/** The library of assessments is for the people who design or approve them (the same rights as the menu entry and the server). */
-const ASSESSMENT_PERMISSIONS = ["training.assessment.design", "training.assessment.approve"];
+/** The library of assessments is for the people who view, manage or approve them (the same rights as the menu entry and the server). */
+const ASSESSMENT_PERMISSIONS = ["training.assessment.view", "training.assessment.manage", "training.assessment.manage_all", "training.assessment.approve"];
+/** Creating and changing: a person who manages their own assessments, or all of them (the server decides which assessment each may change). */
+const ASSESSMENT_MANAGE_PERMISSIONS = ["training.assessment.manage", "training.assessment.manage_all"];
 
 // ==================== TRAINING ROUTES ====================
 export function trainingRoutes() {
@@ -76,8 +78,9 @@ export function trainingRoutes() {
       <Route path="participations/:participantId/test" element={guardedTrainingElement("training.self.view", <TrainingExamPage />)} />
       <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView section="tasks" openCheckIn />)} />
       <Route path="assessments" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentListView />)} />
-      <Route path="assessments/new" element={guardedTrainingElement("training.assessment.design", <TrainingAssessmentDetailPage isNew />)} />
+      <Route path="assessments/new" element={guardedTrainingElement(ASSESSMENT_MANAGE_PERMISSIONS, <TrainingAssessmentDetailPage isNew />)} />
       <Route path="assessments/:assessmentId" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentDetailPage />)} />
+      <Route path="assessments/:assessmentId/edit" element={guardedTrainingElement(ASSESSMENT_MANAGE_PERMISSIONS, <TrainingAssessmentDetailPage mode="edit" />)} />
       <Route path="matrix" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixLandingPage />)} />
       <Route path="matrix/:versionId" element={guardedTrainingElement("training.matrix.view", <TrainingMatrixVersionPage />)} />
       <Route path="document-impact-assessment" element={guardedTrainingElement("training.matrix.view", <DocumentImpactAssessmentView />)} />

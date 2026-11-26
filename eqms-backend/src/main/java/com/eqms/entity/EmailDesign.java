@@ -36,6 +36,17 @@ public class EmailDesign {
     @Column(name = "footer_text", columnDefinition = "text")
     private String footerText;
 
+    /** SMALL, MEDIUM or LARGE. */
+    @Column(name = "button_size", nullable = false, length = 10)
+    private String buttonSize = "MEDIUM";
+
+    @Column(name = "show_button_link", nullable = false)
+    private boolean showButtonLink = true;
+
+    /** The footer of a mail sent in Vietnamese; empty: the footer above. */
+    @Column(name = "footer_text_vi", columnDefinition = "text")
+    private String footerTextVi;
+
     @Column(name = "support_email", length = 255)
     private String supportEmail;
 
@@ -89,6 +100,12 @@ public class EmailDesign {
     public void setFontFamily(String fontFamily) { this.fontFamily = fontFamily; }
     public String getFooterText() { return footerText; }
     public void setFooterText(String footerText) { this.footerText = footerText; }
+    public String getButtonSize() { return buttonSize; }
+    public void setButtonSize(String buttonSize) { this.buttonSize = buttonSize; }
+    public boolean isShowButtonLink() { return showButtonLink; }
+    public void setShowButtonLink(boolean showButtonLink) { this.showButtonLink = showButtonLink; }
+    public String getFooterTextVi() { return footerTextVi; }
+    public void setFooterTextVi(String footerTextVi) { this.footerTextVi = footerTextVi; }
     public String getSupportEmail() { return supportEmail; }
     public void setSupportEmail(String supportEmail) { this.supportEmail = supportEmail; }
     public String getHeaderFontFamily() { return headerFontFamily; }

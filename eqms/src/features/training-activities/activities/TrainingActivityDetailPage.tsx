@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { sessionStarted, sessionNotStarted } from "@/services/api/trainingActivities";
 import { SessionEditDialog } from "./components/SessionEditDialog";
 import { LegacyPeopleTab } from "./components/LegacyPeopleTab";
@@ -110,7 +111,7 @@ import {
   trainingBreadcrumbs,
   fileSafe, when, statusChange } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 const EMPTY_PARTICIPANT_STATS = { total: 0, pending: 0, attendancePending: 0, eligible: 0, unscored: 0, present: 0, absent: 0, actualAbsent: 0, passed: 0, failed: 0, readPending: 0 };
 
@@ -180,7 +181,7 @@ const MODE_CAPS: Record<ActivityMode, string[]> = {
     "cancel",
   ],
   approve: [],
-  confirm: ["confirmCompletion", "returnForCorrection"],
+  confirm: ["confirmCompletion"],
   participate: [],
 };
 const limitCaps = (
@@ -199,7 +200,6 @@ type Dialog =
   | { type: "editSession"; session: TrainingSession }
   | { type: "cancelSession"; session: TrainingSession }
   | { type: "reopenContent" }
-  | { type: "returnForCorrection" }
   | { type: "releaseExam"; participant: TrainingParticipant }
   | { type: "postpone"; session: TrainingSession }
   | { type: "attendance"; participant: TrainingParticipant }
@@ -403,7 +403,7 @@ export function TrainingActivityDetailPage({
         { id: "signatures", label: tr("Signatures") },
         { id: "audit", label: tr("Audit Trail") },
       ],
-    [activity?.kind, activity?.participantSummary?.all?.total, activity?.participants.length],
+    [activity?.kind, activity?.participantSummary?.all?.total, activity?.participants.length, getCatalogLanguage()],
   );
   // The step is kept in the address and in this browser: a closed tab opens again on the step it was left on.
   useEffect(() => {
@@ -874,12 +874,16 @@ export function TrainingActivityDetailPage({
               ? "emerald"
               : p.result === "FAILED"
                 ? "red"
-                : "slate"
+                : "amber"
           }
         >
           {p.result === "PASSED" && (p.participationRole ?? "TRAINEE") !== "TRAINEE"
-            ? "attended"
-            : p.result.toLowerCase()}
+            ? tr("Attended")
+            : p.result === "PASSED"
+              ? tr("Qualified")
+              : p.result === "FAILED"
+                ? tr("Not qualified")
+                : tr("Pending")}
           {p.lastPercent != null ? ` (${p.lastPercent}%)` : ""}
         </Badge>
       ),
@@ -1055,7 +1059,7 @@ export function TrainingActivityDetailPage({
         }
         status={<Badge color={statusColor} className="max-w-full whitespace-normal">{labelOfState(p)}</Badge>}
         actions={renderActions(p, "attendance")}
-        quickAction={canMarkAttendance(p) ? <Button size="sm" variant="outline-emerald" aria-label={`Mark Attendance of ${p.fullName}`} onClick={() => setDialog({ type: "attendance", participant: p })}>{tr("Mark")}</Button> : undefined}
+        quickAction={canMarkAttendance(p) ? <Button size="sm" variant="outline-emerald" aria-label={__ariaTrFormat("Mark Attendance of {v1}", { v1: p.fullName })} onClick={() => setDialog({ type: "attendance", participant: p })}>{tr("Mark")}</Button> : undefined}
         moreActions={hasMore ? more : undefined}
       />
     );
@@ -1364,7 +1368,7 @@ export function TrainingActivityDetailPage({
     ]),
     ...activity.confirmations
       .filter((c) => c.kind === "HEAD_SELF_READING")
-      .map((c) => ({ key: `read-${c.id}`, label: `Self-reading Verified${c.departmentName ? ` (${c.departmentName})` : ""}`, by: c.confirmedByName, on: when(c.confirmedAt) })),
+      .map((c) => ({ key: `read-${c.id}`, label: `${tr("Self-reading Verified")}${c.departmentName ? ` (${c.departmentName})` : ""}`, by: c.confirmedByName, on: when(c.confirmedAt) })),
     ...(hasSelfReading && !activity.confirmations.some((c) => c.kind === "HEAD_SELF_READING") ? [{ key: "read", label: tr("Self-reading Verified"), by: null, on: null }] : []),
     ...(readingOnly ? [] : [{ key: "sent", label: tr("Attendance List Sent to QA"), by: activity.attendanceSentByName, on: activity.attendanceSentAt }]),
     { key: "finished", label: tr("Training Finished and Results Sent to QA"), by: activity.resultsFinishedByName, on: activity.resultsFinishedAt },
@@ -1439,7 +1443,7 @@ export function TrainingActivityDetailPage({
     {
       id: "ws-results",
       label: tr("Results"),
-      subtitle: trFormat("{passed} passed · {failed} not passed", { passed: wsPassed, failed: wsFailed }),
+      subtitle: trFormat("{passed} qualified · {failed} not qualified", { passed: wsPassed, failed: wsFailed }),
       description:
         tr("Type the score of each person in the row (the maximum score once, above the table) and save. When every result is in, the trainer finishes the training with a signature: the results are written in the list APD.0117. Then the trainer sends the results to QA."),
       done: !!activity.resultsFinishedAt,
@@ -1561,7 +1565,7 @@ export function TrainingActivityDetailPage({
     {
       label: wsReading ? tr("Confirmed by the head") : tr("Pass rate"),
       percent: wsPresent ? Math.round((wsPassed / wsPresent) * 100) : null,
-      detail: trFormat(wsReading ? "{passed} of {present} confirmed" : "{passed} of {present} passed", { passed: wsPassed, present: wsPresent }),
+      detail: trFormat(wsReading ? "{passed} of {present} confirmed" : "{passed} of {present} qualified", { passed: wsPassed, present: wsPresent }),
       tone: "blue",
     },
   ];
@@ -1770,11 +1774,6 @@ export function TrainingActivityDetailPage({
           {tr("Edit Content")}
         </Button>
       )}
-      {caps?.returnForCorrection && (
-        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog({ type: "returnForCorrection" })}>
-          {tr("Return for Correction")}
-        </Button>
-      )}
       {caps?.confirmList && (
         <Button
           size="sm"
@@ -1965,7 +1964,8 @@ export function TrainingActivityDetailPage({
           }
           repeatFooterInHeader={mode === "confirm" || mode === "conduct" || mode === "prepare" || mode === "approve"}
         >
-          <div className="mb-4">{notices}</div>
+          {/* The space below is only there when a notice is: an empty box still left a gap above the first field. */}
+          <div className="[&:has(*:not(:empty))]:mb-4">{notices}</div>
           {tab === "overview" && (
             <div className="space-y-4">
               {mode === "edit" && nextSteps}
@@ -2186,8 +2186,8 @@ export function TrainingActivityDetailPage({
             <ReadonlyGrid>
               {signatureSteps.map((x) => (
                 <Fragment key={x.key}>
-                  <ReadonlyField label={`${x.label} By`} value={x.by} />
-                  <ReadonlyField label={`${x.label} On (Date - Time)`} value={x.on} />
+                  <ReadonlyField label={trFormat("{label} By", { label: x.label })} value={x.by} />
+                  <ReadonlyField label={trFormat("{label} On (Date - Time)", { label: x.label })} value={x.on} />
                 </Fragment>
               ))}
             </ReadonlyGrid>
@@ -2307,25 +2307,6 @@ export function TrainingActivityDetailPage({
               "Training Content Rejected",
               (t) => trainingActivitiesApi.rejectContent(activity.id, activity.version, reason, t),
               statusChange("Pending Approval", "Planned", "Training content"),
-            );
-          }}
-        />
-      )}
-      {dialog?.type === "returnForCorrection" && (
-        <ReasonDialog
-          title={tr("Return the Results for Correction")}
-          help={tr("Nothing has been written to a personal record yet. The activity goes back to In Progress, the organizer corrects and sends it to QA again.")}
-          confirmText="Continue"
-          busy={busy}
-          onClose={() => setDialog(undefined)}
-          onSave={(reason) => {
-            setDialog(undefined);
-            signAction(
-              "Return the results for correction",
-              "TRAINING_RETURNED_FOR_CORRECTION",
-              "Training Returned for Correction",
-              (t) => trainingActivitiesApi.returnForCorrection(activity.id, activity.version, reason, t),
-              statusChange("Pending QA Confirmation", "In Progress"),
             );
           }}
         />
@@ -2947,7 +2928,7 @@ function SupplementaryDialog({
       isOpen
       onClose={onClose}
       title={tr("Supplementary Training")}
-      description={tr("A new activity is created under the same number with the next letter. People who were absent or failed are listed.")}
+      description={tr("A new activity is created under the same number with the next letter. People who were absent or not qualified are listed.")}
       confirmText={`Create (${selected.length})`}
       isLoading={busy}
       confirmDisabled={selected.length === 0 || !reason.trim()}
@@ -2955,7 +2936,7 @@ function SupplementaryDialog({
       onConfirm={() => onSave(selected, reason.trim())}
     >
       {participants.length === 0 ? (
-        <p className="text-sm text-slate-600">{tr("No one was absent or failed.")}</p>
+        <p className="text-sm text-slate-600">{tr("No one was absent or not qualified.")}</p>
       ) : (
         <div className="space-y-4">
           <div className="max-h-[350px] min-h-[100px] overflow-y-auto px-1 -mx-1 custom-scrollbar">
@@ -2991,7 +2972,7 @@ function SupplementaryDialog({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 truncate text-xs font-medium text-slate-900 md:text-sm">
                         {p.fullName}
-                        <Badge color={p.state === "ABSENT" ? "amber" : "red"} size="sm">{p.state === "ABSENT" ? "Absent" : "Failed"}</Badge>
+                        <Badge color={p.state === "ABSENT" ? "amber" : "red"} size="sm">{p.state === "ABSENT" ? tr("Absent") : tr("Not qualified")}</Badge>
                         {sessionLabel?.(p) && <Badge color="slate" size="sm">{sessionLabel(p)}</Badge>}
                         {p.hasSupplementary && <Badge color="slate" size="sm">{tr("Already in a supplementary training")}</Badge>}
                         {notActive && <Badge color="slate" size="sm">{`Account ${(p.accountStatus ?? "not active").toLowerCase()}`}</Badge>}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { Avatar } from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
   const groupsOf = (by: "BUSINESS_UNIT" | "DEPARTMENT") => (source ? source.groups(by) : trainingProposalApi.peopleGroups(by));
   const queryOf = (params: Parameters<PeopleSource["query"]>[0]) => (source ? source.query(params) : trainingProposalApi.queryPeople(params));
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
+  const fieldId = useId();
   const [units, setUnits] = useState<TrainingGroup[]>([]);
   const [departments, setDepartments] = useState<TrainingGroup[]>([]);
   const [unit, setUnit] = useState(ALL);
@@ -81,17 +82,21 @@ export function ProposedParticipantsPicker({ initialIds, initialPeople = [], onC
 
   return (
     <div className="space-y-3">
-      <div className="relative">
+      <div>
+        <label htmlFor={`${fieldId}-search`} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search people")}</label>
+        <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
+          id={`${fieldId}-search`}
           value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={tr("Search by name or employee ID…")} aria-label={tr("Search people")}
           className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         {search && <button type="button" onClick={() => { setSearch(""); setPage(1); }} aria-label={tr("Clear search")} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>}
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Select aria-label={tr("Business Unit")} value={unit} onChange={(value) => { setUnit(value); setPage(1); }} options={options(units, "All Business Units")} enableSearch />
-        <Select aria-label={tr("Department")} value={department} onChange={(value) => { setDepartment(value); setPage(1); }} options={options(departments, "All Departments")} enableSearch />
+        <Select label={tr("Business Unit")} value={unit} onChange={(value) => { setUnit(value); setPage(1); }} options={options(units, tr("All Business Units"))} enableSearch />
+        <Select label={tr("Department")} value={department} onChange={(value) => { setDepartment(value); setPage(1); }} options={options(departments, tr("All Departments"))} enableSearch />
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div ref={scrollerRef} {...dragEvents} className={`max-h-[340px] overflow-auto ${isDragging ? "cursor-grabbing select-none" : "cursor-grab"}`}>

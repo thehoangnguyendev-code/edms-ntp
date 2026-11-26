@@ -34,10 +34,11 @@ public class AccessReviewController {
             @RequestParam(required = false) String createdTo,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
+            @RequestParam(defaultValue = "false") boolean waitingForMe,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         return ResponseEntity.ok(service.listPaged(page, limit, search, status,
-                createdFrom, createdTo, updatedFrom, updatedTo, sortBy, sortDir));
+                createdFrom, createdTo, updatedFrom, updatedTo, waitingForMe, sortBy, sortDir));
     }
 
     @GetMapping("/reviewers")

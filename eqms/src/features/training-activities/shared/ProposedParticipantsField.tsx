@@ -221,12 +221,12 @@ export function ProposedParticipantsField({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            {labels?.title ?? "List of participants in the Training"}
+            {labels?.title ?? tr("List of participants in the Training")}
             {totalItems ? ` (${totalItems})` : ""}
           </h3>
           <p className="text-xs text-slate-500">
             {labels?.description ??
-              "A proposal. When the training opens and its first session is added, these people are put on the list; the organizer confirms the list with a signature."}
+              tr("A proposal. When the training opens and its first session is added, these people are put on the list; the organizer confirms the list with a signature.")}
           </p>
         </div>
         {editable && (
@@ -241,7 +241,7 @@ export function ProposedParticipantsField({
             }}
           >
             {hasPeople ? <IconUserEdit className="mr-1.5 h-4 w-4" /> : <IconUserPlus className="mr-1.5 h-4 w-4" />}
-            {hasPeople ? "Edit Participants" : "Add Participants"}
+            {hasPeople ? tr("Edit Participants") : tr("Add Participants")}
           </Button>
         )}
       </div>
@@ -253,7 +253,7 @@ export function ProposedParticipantsField({
       {local && (
         <WarningBanner
           variant="info"
-          description={labels?.localNotice ?? "The people chosen here are saved with the document. The Training Number is issued, and the list is sent to the training, when the document is saved with a training period."}
+          description={labels?.localNotice ?? tr("The people chosen here are saved with the document. The Training Number is issued, and the list is sent to the training, when the document is saved with a training period.")}
         />
       )}
       {!local && documentId && proposal && !proposal.available && (
@@ -284,7 +284,7 @@ export function ProposedParticipantsField({
           }
           emptyState={
             <TableEmptyState
-              title={labels?.emptyTitle ?? "No participant proposed"}
+              title={labels?.emptyTitle ?? tr("No participant proposed")}
               description={
                 labels?.emptyDescription ??
                 (editable
@@ -320,8 +320,8 @@ export function ProposedParticipantsField({
       <FormModal
         isOpen={adding}
         onClose={() => setAdding(false)}
-        title={labels?.modalTitle ?? "Participants in the Training"}
-        confirmText={`Save (${selection.length})`}
+        title={labels?.modalTitle ?? tr("Participants in the Training")}
+        confirmText={`${tr("Save")} (${selection.length})`}
         size="2xl"
         className="max-w-5xl"
         isLoading={busy}

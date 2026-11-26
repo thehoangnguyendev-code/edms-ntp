@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -31,7 +32,7 @@ export function TrainingRecordExportsView() {
       <PageHeader title={TRAINING_PAGES.exports.title} breadcrumbItems={trainingBreadcrumbs(navigate, "exports")}
         actions={<Button size="sm" className="whitespace-nowrap" onClick={() => setCreating(true)}><IconPlus className="mr-2 h-4 w-4" />{tab === "personal" ? "New Export" : "New Batch"}</Button>} />
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Record exports" tabIdPrefix="exports-tab" panelIdPrefix="exports-panel" />
+        <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel={__ariaTr("Record exports")} tabIdPrefix="exports-tab" panelIdPrefix="exports-panel" />
         <div className="p-4 md:p-5">
           <div id={`exports-panel-${tab}`} role="tabpanel" aria-labelledby={`exports-tab-${tab}`} className="min-w-0">
             {tab === "personal" && <ExportsPersonalTab creating={creating} setCreating={setCreating} />}

@@ -9,6 +9,7 @@ import { backupRestoreApi, type DrDeclarationRecord, type DrScenarioRecord } fro
 import { getApiErrorMessage } from "@/utils/apiError";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const ALL = "ALL";
 type Direction = "asc" | "desc";
@@ -117,7 +118,7 @@ export const DrDeclarationsList: React.FC<{ reloadKey: number; scenarios: DrScen
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: NO, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (list.page - 1) * list.pageSize + index + 1 },
     { id: "code", header: tr("Declaration"), label: tr("Declaration"), sort: list.sortFor("code"), cell: (row) => row.code },
     { id: "scenario", header: "Scenario", label: "Scenario", sort: list.sortFor("scenario"), cell: (row) => row.scenarioLabel },
-    { id: "status", header: "Status", label: "Status", sort: list.sortFor("status"), cell: (row) => <Badge color={row.status === "OPEN" ? "red" : "emerald"}>{row.status === "OPEN" ? "Open" : "Closed"}</Badge> },
+    { id: "status", header: "Status", label: "Status", sort: list.sortFor("status"), cell: (row) => <Badge color={statusColor(row.status)}>{row.status === "OPEN" ? "Open" : "Closed"}</Badge> },
     { id: "declared", header: "Declared", label: "Declared", sort: list.sortFor("declaredAt"), cell: (row) => `${row.declaredBy} · ${formatDateTime(row.declaredAt)}` },
     { id: "reason", header: "Reason", label: "Reason", cell: (row) => <span className="block max-w-xs whitespace-normal break-words text-xs">{row.reason}</span> },
     { id: "taken", header: tr("Time taken"), label: tr("Time taken"), sort: list.sortFor("timeTaken"), cell: (row) => (row.hoursTaken === null ? "—" : `${row.hoursTaken} h (target ${row.rtoTargetHours} h)`) },

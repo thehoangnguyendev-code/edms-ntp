@@ -5,12 +5,14 @@ import {
   type NotificationSummaryApiResponse,
   type NotificationSummaryCounts,
 } from '@/features/notifications/types';
+import { subscribeNotificationsChanged } from '@/features/notifications/events';
 
 const ENDPOINT = '/notifications';
 const SUMMARY_CACHE_TTL_MS = 5000;
 let summaryCache: { expiresAt: number; value: NotificationSummaryCounts } | null = null;
 let summaryRequest: Promise<NotificationSummaryCounts> | null = null;
-const invalidateSummary = () => { summaryCache = null; };
+// also forgets a read that is on its way: it may have started before the change
+const invalidateSummary = () => { summaryCache = null; summaryRequest = null; };
 
 export interface NotificationUser {
   id: string;
@@ -101,6 +103,9 @@ const buildQueryString = (params?: GetNotificationsParams) => {
   return query.toString();
 };
 
+// registered when this module loads, so it runs before the screens read the summary again
+subscribeNotificationsChanged(invalidateSummary);
+
 export const notificationApi = {
   getNotifications: async (params?: GetNotificationsParams) => {
     const query = buildQueryString(params);
@@ -113,14 +118,15 @@ export const notificationApi = {
   getSummary: async (): Promise<NotificationSummaryCounts> => {
     if (summaryCache && summaryCache.expiresAt > Date.now()) return summaryCache.value;
     if (summaryRequest) return summaryRequest;
-    summaryRequest = api.get<NotificationSummaryApiResponse>(`${ENDPOINT}/summary`)
+    const request: Promise<NotificationSummaryCounts> = api.get<NotificationSummaryApiResponse>(`${ENDPOINT}/summary`, { signal: new AbortController().signal })
       .then((response) => normalizeNotificationSummaryCounts(response.data))
       .then((value) => {
-        summaryCache = { expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS, value };
+        if (summaryRequest === request) summaryCache = { expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS, value };
         return value;
       })
-      .finally(() => { summaryRequest = null; });
-    return summaryRequest;
+      .finally(() => { if (summaryRequest === request) summaryRequest = null; });
+    summaryRequest = request;
+    return request;
   },
 
   /** Failed deliveries, searched, filtered, sorted and paged by the server. */

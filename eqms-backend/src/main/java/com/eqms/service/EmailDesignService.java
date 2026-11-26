@@ -61,10 +61,18 @@ public class EmailDesignService {
     static final String DEFAULT_HEADER_TITLE = "EQMS";
 
     public static final List<String> ALIGNMENTS = List.of("LEFT", "CENTER", "RIGHT");
+    public static final List<String> BUTTON_SIZES = List.of("SMALL", "MEDIUM", "LARGE");
 
     public record Change(String logoUrl, String logoText, String brandColor, String buttonColor, String bodyColor, String footerColor, String logoAlign, String footerAlign,
                          String headerTextColor, String headerFontFamily, String bodyTextColor, String footerTextColor,
-                         String fontFamily, String footerText, String supportEmail) {
+                         String fontFamily, String footerText, String supportEmail, String footerTextVi, String buttonSize, boolean showButtonLink) {
+
+        /** Without a Vietnamese footer; the button has the medium size. */
+        public Change(String logoUrl, String logoText, String brandColor, String buttonColor, String bodyColor, String footerColor, String logoAlign, String footerAlign,
+                      String headerTextColor, String headerFontFamily, String bodyTextColor, String footerTextColor,
+                      String fontFamily, String footerText, String supportEmail) {
+            this(logoUrl, logoText, brandColor, buttonColor, bodyColor, footerColor, logoAlign, footerAlign, headerTextColor, headerFontFamily, bodyTextColor, footerTextColor, fontFamily, footerText, supportEmail, null, "MEDIUM", true);
+        }
 
         /** Without a button colour: the button has the colour of the header. */
         public Change(String logoUrl, String logoText, String brandColor, String bodyColor, String footerColor, String logoAlign, String footerAlign,
@@ -154,6 +162,9 @@ public class EmailDesignService {
         diff(changes, "Footer alignment", design.getFooterAlign(), change.footerAlign(), !Objects.equals(design.getFooterAlign(), change.footerAlign()));
         diff(changes, "Font", design.getFontFamily(), change.fontFamily(), !Objects.equals(design.getFontFamily(), change.fontFamily()));
         diff(changes, "Footer", nz(design.getFooterText()), nz(change.footerText()), !Objects.equals(nz(design.getFooterText()), nz(change.footerText())));
+        diff(changes, "Button size", design.getButtonSize(), change.buttonSize(), !Objects.equals(design.getButtonSize(), change.buttonSize()));
+        diff(changes, "Address under the button", design.isShowButtonLink() ? "Shown" : "Hidden", change.showButtonLink() ? "Shown" : "Hidden", design.isShowButtonLink() != change.showButtonLink());
+        diff(changes, "Footer (Vietnamese)", nz(design.getFooterTextVi()), nz(change.footerTextVi()), !Objects.equals(nz(design.getFooterTextVi()), nz(change.footerTextVi())));
         diff(changes, "Support e-mail", nz(design.getSupportEmail()), nz(change.supportEmail()), !Objects.equals(nz(design.getSupportEmail()), nz(change.supportEmail())));
         if (changes.isEmpty()) {
             return design;
@@ -172,6 +183,9 @@ public class EmailDesignService {
         design.setFooterAlign(change.footerAlign());
         design.setFontFamily(change.fontFamily());
         design.setFooterText(blankToNull(change.footerText()));
+        design.setFooterTextVi(blankToNull(change.footerTextVi()));
+        design.setButtonSize(change.buttonSize());
+        design.setShowButtonLink(change.showButtonLink());
         design.setSupportEmail(blankToNull(change.supportEmail()));
         design.setVersion(design.getVersion() + 1);
         design.setUpdatedBy(actor.getUsername());
@@ -223,6 +237,12 @@ public class EmailDesignService {
         }
         if (StringUtils.hasText(change.supportEmail()) && !change.supportEmail().matches("[^@\\s<>\"]+@[^@\\s<>\"]+\\.[^@\\s<>\"]+")) {
             throw new IllegalArgumentException("The support e-mail is not a valid address");
+        }
+        if (change.buttonSize() == null || !BUTTON_SIZES.contains(change.buttonSize())) {
+            throw new IllegalArgumentException("The button size must be one of: " + String.join(", ", BUTTON_SIZES));
+        }
+        if (change.footerTextVi() != null && change.footerTextVi().length() > 500) {
+            throw new IllegalArgumentException("The Vietnamese footer must be 500 characters or fewer");
         }
         if (change.footerText() != null && change.footerText().length() > 500) {
             throw new IllegalArgumentException("The footer must be 500 characters or fewer");

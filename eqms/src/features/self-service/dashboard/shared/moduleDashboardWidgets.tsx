@@ -16,7 +16,7 @@ import { PanelError, RowsSkeleton } from './dashboardParts';
 import { Card, CardHeader, KpiStrip, type KpiCellData } from './dashboardUi';
 import { useDashboardResource, type DashboardResource } from './useDashboardResource';
 import type { DashboardWidget } from './DashboardWidgets';
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 const dash = '—';
 const LIST_ROWS = 5;
@@ -89,7 +89,7 @@ const NotificationsRecent = () => {
     id: n.id, title: n.title, detail: n.description, at: n.createdAt, unread: !n.readAt,
     onOpen: () => navigate(n.actionUrl || ROUTES.NOTIFICATIONS),
   })) ?? null;
-  return <RecentCard title={tr("Recent notifications")} subtitle={tr("Your newest notifications")} rows={rows} loading={list.loading} error={list.error} onRetry={list.reload} empty="You have no notifications." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.NOTIFICATIONS) }} />;
+  return <RecentCard title={tr("Recent notifications")} subtitle={tr("Your newest notifications")} rows={rows} loading={list.loading} error={list.error} onRetry={list.reload} empty={tr("You have no notifications.")} openAll={{ label: tr("Open all"), onClick: () => navigate(ROUTES.NOTIFICATIONS) }} />;
 };
 
 const TrainingCount = ({ field, label, accent, foot }: { field: 'tasks' | 'signatures'; label: string; accent: string; foot: { field: 'tasks' | 'signatures'; label: string } }) => {
@@ -108,7 +108,7 @@ const NotificationsByType = () => {
     ? Object.entries(summary.data.byType).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1]).slice(0, LIST_ROWS)
         .map<Row>(([type, count]) => ({ id: type, title: humanize(type), badge: <Badge color="slate" size="sm">{count.toLocaleString()}</Badge> }))
     : null;
-  return <RecentCard title={tr("Notifications by type")} subtitle={tr("Which kinds you have, most frequent first")} rows={rows} loading={summary.loading} error={summary.error} onRetry={summary.reload} empty="You have no notifications." />;
+  return <RecentCard title={tr("Notifications by type")} subtitle={tr("Which kinds you have, most frequent first")} rows={rows} loading={summary.loading} error={summary.error} onRetry={summary.reload} empty={tr("You have no notifications.")} />;
 };
 
 const NotificationsDeliveryFailures = () => {
@@ -125,7 +125,7 @@ const TrainingTaskList = () => {
     badge: <Badge color="slate" size="sm">{humanize(task.state)}</Badge>,
     onOpen: () => navigate(ROUTES.TRAINING.MY_TASKS),
   })) ?? null;
-  return <RecentCard title={tr("My trainings to do")} subtitle={tr("Your waiting trainings and their due days")} rows={rows} loading={tasks.loading} error={tasks.error} onRetry={tasks.reload} empty="No training is waiting for you." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
+  return <RecentCard title={tr("My trainings to do")} subtitle={tr("Your waiting trainings and their due days")} rows={rows} loading={tasks.loading} error={tasks.error} onRetry={tasks.reload} empty={tr("No training is waiting for you.")} openAll={{ label: tr("Open all"), onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
 };
 
 const TrainingApprovalList = () => {
@@ -135,7 +135,7 @@ const TrainingApprovalList = () => {
     id: item.id, title: item.trainingNumber || item.subject, detail: item.subject, at: item.assignedAt,
     onOpen: () => navigate(ROUTES.TRAINING.MY_TASKS),
   })) ?? null;
-  return <RecentCard title={tr("Training signatures asked of me")} subtitle={tr("What you are asked to sign, newest first")} rows={rows} loading={approvals.loading} error={approvals.error} onRetry={approvals.reload} empty="Nothing is waiting for your signature." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
+  return <RecentCard title={tr("Training signatures asked of me")} subtitle={tr("What you are asked to sign, newest first")} rows={rows} loading={approvals.loading} error={approvals.error} onRetry={approvals.reload} empty={tr("Nothing is waiting for your signature.")} openAll={{ label: tr("Open all"), onClick: () => navigate(ROUTES.TRAINING.MY_TASKS) }} />;
 };
 
 const TrainingMyRecords = () => {
@@ -146,7 +146,7 @@ const TrainingMyRecords = () => {
     badge: <Badge color={record.voidedAt ? 'red' : 'emerald'} size="sm">{record.voidedAt ? 'Voided' : humanize(record.result)}</Badge>,
     onOpen: () => navigate(ROUTES.TRAINING.MY_RECORDS),
   })) ?? null;
-  return <RecentCard title={tr("My recent training records")} subtitle={tr("The trainings you completed most recently")} rows={rows} loading={records.loading} error={records.error} onRetry={records.reload} empty="You have no training record yet." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.TRAINING.MY_RECORDS) }} />;
+  return <RecentCard title={tr("My recent training records")} subtitle={tr("The trainings you completed most recently")} rows={rows} loading={records.loading} error={records.error} onRetry={records.reload} empty={tr("You have no training record yet.")} openAll={{ label: tr("Open all"), onClick: () => navigate(ROUTES.TRAINING.MY_RECORDS) }} />;
 };
 
 /** How many training activities the server finds for a filter; the figure is the server's own total, not a count of rows loaded. */
@@ -163,7 +163,7 @@ const ReportsRecentRuns = () => {
     badge: <Badge color={runStatusColor(run.status)} size="sm">{runStatusLabel(run.status)}</Badge>,
     onOpen: () => navigate(`/report/runs/${run.id}`),
   })) ?? null;
-  return <RecentCard title={tr("Recent report runs")} subtitle={tr("The newest runs and how each ended")} rows={rows} loading={runs.loading} error={runs.error} onRetry={runs.reload} empty="No report has been run." openAll={{ label: 'Open all', onClick: () => navigate(ROUTES.REPORT.HISTORY) }} />;
+  return <RecentCard title={tr("Recent report runs")} subtitle={tr("The newest runs and how each ended")} rows={rows} loading={runs.loading} error={runs.error} onRetry={runs.reload} empty={tr("No report has been run.")} openAll={{ label: tr("Open all"), onClick: () => navigate(ROUTES.REPORT.HISTORY) }} />;
 };
 
 /** A run that ended badly is Failed, or Dead-lettered once its retries are used up; both count. */
@@ -183,7 +183,7 @@ const AuditRecentEvents = () => {
     detail: `${event.action}${event.fromStatus || event.toStatus ? ` (${event.fromStatus ?? dash} → ${event.toStatus ?? dash})` : ''} · ${event.userFullName || 'System'}`,
     at: event.eventTime,
   })) ?? null;
-  return <RecentCard title={tr("Recent audit events")} subtitle={tr("The newest events written to the audit trail")} rows={rows} loading={recent.loading} error={recent.error} onRetry={recent.reload} empty="No audit events." />;
+  return <RecentCard title={tr("Recent audit events")} subtitle={tr("The newest events written to the audit trail")} rows={rows} loading={recent.loading} error={recent.error} onRetry={recent.reload} empty={tr("No audit events.")} />;
 };
 
 /**
@@ -223,5 +223,5 @@ export function useModuleDashboardWidgets(): DashboardWidget[] {
       ] : []),
       ...(admin ? [{ id: 'audit-recent-events', label: tr('Recent audit events'), width: 'full' as const, ...off, content: <AuditRecentEvents /> }] : []),
     ];
-  }, [training, reports, admin, activities, notificationPolicy]);
+  }, [training, reports, admin, activities, notificationPolicy, getCatalogLanguage()]);
 }

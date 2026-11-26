@@ -37,6 +37,7 @@ import type { DocumentComponentItem, DocumentNameFormatItem } from "./documentNa
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 /**
  * List/filter table for Document Name Formats. New/Edit navigate to the dedicated
@@ -147,7 +148,7 @@ export const DocumentNameFormatsTab: React.FC = () => {
     { id: "name", header: "Name", label: "Name", cell: (item) => (<div className="flex flex-col gap-0.5"><span className="font-medium text-emerald-700 hover:underline">{item.name}</span>{item.previewExample && (<span className="text-2xs sm:text-xs text-slate-500">{tr("e.g.")} {item.previewExample}</span>)}</div>) },
     { id: "separator", header: "Separator", label: "Separator", cell: (item) => <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{item.separator || "(none)"}</code> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>) },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const nameFormatsAction: DataTableAction<Row> = {

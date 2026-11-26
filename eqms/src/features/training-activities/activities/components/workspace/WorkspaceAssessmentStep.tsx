@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useCallback, useState } from "react";
 import { ChevronsUpDown } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer/Drawer";
@@ -77,7 +78,7 @@ export function WorkspaceAssessmentStep({ activityId, scoped, people, caps, mode
         <>
           <TabNav
             className="hidden md:block"
-            ariaLabel="Assessment blocks"
+            ariaLabel={__ariaTr("Assessment blocks")}
             tabs={tabs.map((t) => ({ id: t.key, label: LABEL[t.key], count: t.count, dot: Boolean(t.waits), dotLabel: t.waits }))}
             activeTab={active ?? ""}
             onChange={(id) => setPicked(id as Key)}

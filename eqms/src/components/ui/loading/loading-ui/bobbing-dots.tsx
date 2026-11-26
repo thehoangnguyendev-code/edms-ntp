@@ -4,6 +4,7 @@ import type * as React from "react";
 
 import { motion } from "motion/react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 function BobbingDots({
   className,
@@ -35,7 +36,7 @@ function BobbingDots({
           className="inline-block aspect-square grow rounded-full bg-current shadow-sm"
         />
       ))}
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{tr("Loading")}</span>
     </span>
   );
 }

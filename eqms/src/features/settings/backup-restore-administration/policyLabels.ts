@@ -1,13 +1,9 @@
 import { getApiErrorMessage } from "@/utils/apiError";
 import type { PolicyBody, PolicyMedium, PolicyStatus } from "@/services/api/backupRestore";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 /** Display text for machine values. The values themselves are never translated or sent back as text. */
-export const POLICY_STATUS_COLOR: Record<PolicyStatus, "emerald" | "amber" | "slate" | "red"> = {
-  ACTIVE: "emerald",
-  DRAFT: "amber",
-  SUPERSEDED: "slate",
-  DISCARDED: "red",
-};
+export const POLICY_STATUS_COLOR = statusColors("ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED");
 
 export const MEDIUM_LABEL: Record<PolicyMedium, string> = {
   SERVER_FOLDER: "Folder on the server",

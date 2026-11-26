@@ -259,17 +259,14 @@ export function ReportTemplateRun({
   const actionButtons = (
     <>
       <Button variant="outline-emerald" size="sm" disabled={busy} onClick={onBack}>
-        Back
-      </Button>
+        {tr("Back")}</Button>
       {stage > 0 && (
         <Button variant="outline-emerald" size="sm" disabled={busy} onClick={() => setStage(stage - 1)}>
-          Previous
-        </Button>
+          {tr("Previous")}</Button>
       )}
       {stage === 0 ? (
         <Button size="sm" variant="outline-emerald" loading={busy} disabled={!canPreview} onClick={() => void loadPreview()}>
-          Preview Report
-        </Button>
+          {tr("Preview Report")}</Button>
       ) : stage === 1 ? (
         <Button
           size="sm"
@@ -343,8 +340,7 @@ export function ReportTemplateRun({
                     {tr("Filters and sort")}
                   </h3>
                   <Button variant="outline" size="sm" disabled={busy || !narrowed} onClick={() => changeCriteria({ ...criteria, filters: {} })}>
-                    Clear Filters
-                  </Button>
+                    {tr("Clear Filters")}</Button>
                 </div>
                 <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {filterItems.map((item) =>
@@ -477,7 +473,7 @@ export function ReportTemplateRun({
                             })
                           }
                         />
-                        {field.sensitive && <Badge color="amber">Sensitive</Badge>}
+                        {field.sensitive && <Badge color="amber">{tr("Sensitive")}</Badge>}
                       </div>
                     ))}
                   </div>

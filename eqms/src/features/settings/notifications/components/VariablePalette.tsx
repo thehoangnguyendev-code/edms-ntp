@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useMemo } from 'react';
 import { Braces, Copy, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/Badge';
@@ -57,7 +58,7 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
 
   const copy = async (token: string) => {
     const ok = await copyText(token);
-    showToast({ type: ok ? 'success' : 'error', title: ok ? 'Copied' : tr('Not copied'), message: ok ? `${token} is on the clipboard.` : tr('Select the placeholder and copy it by hand.') });
+    showToast({ type: ok ? 'success' : 'error', title: ok ? tr('Copied') : tr('Not copied'), message: ok ? trFormat('{token} is on the clipboard.', { token }) : tr('Select the placeholder and copy it by hand.') });
   };
 
   const columns: LocalColumn<Row>[] = [
@@ -67,10 +68,10 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
       sortValue: (r) => r.variable.name,
       cell: (r) => <code className={`rounded px-1.5 py-0.5 font-mono text-xs ${r.offered ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{r.variable.token}</code>,
     },
-    { id: 'label', header: 'Meaning', sortValue: (r) => r.variable.label, cell: (r) => r.variable.label },
+    { id: 'label', header: tr('Meaning'), sortValue: (r) => r.variable.label, cell: (r) => tr(r.variable.label) },
     {
       id: 'sample',
-      header: 'Example',
+      header: tr('Example'),
       sortValue: (r) => r.variable.sample,
       cell: (r) => (
         <span className="block max-w-56 truncate" title={r.variable.sample}>
@@ -78,28 +79,28 @@ export const VariablePalette: React.FC<VariablePaletteProps> = ({ variables, onI
         </span>
       ),
     },
-    { id: 'module', header: 'Module', sortValue: (r) => r.variable.module || 'Other', cell: (r) => (r.variable.module ? moduleDisplayName(r.variable.module) : 'Other') },
+    { id: 'module', header: tr('Module'), sortValue: (r) => r.variable.module || 'Other', cell: (r) => (r.variable.module ? tr(moduleDisplayName(r.variable.module)) : tr('Other')) },
     {
       id: 'offered',
       header: tr('This Notification'),
       sortValue: (r) => (r.offered ? 0 : 1),
       cell: (r) => (
         <Badge semantic={r.offered ? 'success' : undefined} color={r.offered ? undefined : 'slate'}>
-          {r.offered ? 'Offered' : tr('Not offered')}
+          {r.offered ? tr('Offered') : tr('Not offered')}
         </Badge>
       ),
     },
     {
       id: 'actions',
-      header: 'Action',
+      header: tr('Action'),
       cell: (r) => (
         <div className="flex items-center gap-1">
           {r.offered ? (
-            <button type="button" aria-label={`Insert ${r.variable.token}`} title={tr("Insert")} onMouseDown={(e) => e.preventDefault()} onClick={() => onInsert(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700">
+            <button type="button" aria-label={__ariaTrFormat("Insert {v1}", { v1: r.variable.token })} title={tr("Insert")} onMouseDown={(e) => e.preventDefault()} onClick={() => onInsert(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700">
               <Plus className="h-4 w-4" />
             </button>
           ) : null}
-          <button type="button" aria-label={`Copy ${r.variable.token}`} title={tr("Copy")} onClick={() => void copy(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+          <button type="button" aria-label={__ariaTrFormat("Copy {v1}", { v1: r.variable.token })} title={tr("Copy")} onClick={() => void copy(r.variable.token)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700">
             <Copy className="h-4 w-4" />
           </button>
         </div>

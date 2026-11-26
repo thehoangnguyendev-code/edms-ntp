@@ -141,8 +141,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
                 </span>
                 {editable && (
                   <button type="button" className="text-xs font-medium text-red-700 underline" onClick={() => onChange(assignments.filter((grant) => grant.roleId !== role.id))}>
-                    Remove
-                  </button>
+                    {tr("Remove")}</button>
                 )}
               </li>
             ))}

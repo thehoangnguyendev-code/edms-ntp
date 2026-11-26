@@ -14,7 +14,7 @@ import { authTokenStore } from "@/services/authTokenStore";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { SECURITY_CONFIG_STORAGE_KEY } from "@/config/security";
-import { tr, trPlural } from "@/i18n";
+import { tr, trPlural, getCatalogLanguage } from "@/i18n";
 
 const SESSION_LOCKED_EVENT = "eqms:session-locked";
 const SESSION_UNLOCKED_EVENT = "eqms:session-unlocked";
@@ -58,7 +58,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const [emailSent, setEmailSent] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  const timeoutLabel = useMemo(() => trPlural(timeoutMinutes, "{count} minute", "{count} minutes"), [timeoutMinutes]);
+  const timeoutLabel = useMemo(() => trPlural(timeoutMinutes, "{count} minute", "{count} minutes"), [timeoutMinutes, getCatalogLanguage()]);
 
   const loadSecurityConfig = async () => {
     try {

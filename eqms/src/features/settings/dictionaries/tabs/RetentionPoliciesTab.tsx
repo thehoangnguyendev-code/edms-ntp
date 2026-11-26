@@ -27,6 +27,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -226,7 +227,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cell: (item, index) => (currentPage - 1) * itemsPerPage + index + 1 },
     { id: "name", header: tr("Retention Policy Name"), label: tr("Retention Policy Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>) },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const retentionAction: DataTableAction<Row> = {

@@ -153,7 +153,7 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
                     ease: [0.16, 1, 0.3, 1],
                   }}
                   data-eqms-menu="true"
-                  className="max-w-[90vw] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl cursor-default text-slate-500"
+                  className="w-max max-w-[calc(100vw-16px)] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl cursor-default text-slate-500"
                   style={{
                     minWidth: typeof minWidth === 'number' ? `${minWidth}px` : minWidth,
                     transformOrigin: isShowAbove
@@ -202,7 +202,7 @@ export const PortalDropdownMenu: React.FC<PortalDropdownMenuProps> = ({
                   ease: [0.16, 1, 0.3, 1],
                 }}
                 data-eqms-menu="true"
-                className="max-w-[90vw] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl text-slate-500"
+                className="w-max max-w-[calc(100vw-16px)] max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl text-slate-500"
                 style={{
                   minWidth: typeof minWidth === 'number' ? `${minWidth}px` : minWidth,
                   transform: transform,

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useRef, useState } from "react";
 import { FileUp, ScanLine, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export const RecallUploadArea: React.FC<{
                   <span className="truncate text-slate-800">{file.name}</span>
                   <span className="flex shrink-0 items-center gap-2 text-slate-500">
                     {formatBytes(file.size)}
-                    <button type="button" aria-label={`Remove ${file.name}`} className="text-slate-400 hover:text-red-600 disabled:opacity-40" disabled={busy} onClick={() => onRemove(index)}>
+                    <button type="button" aria-label={__ariaTrFormat("Remove {v1}", { v1: file.name })} className="text-slate-400 hover:text-red-600 disabled:opacity-40" disabled={busy} onClick={() => onRemove(index)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </span>

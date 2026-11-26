@@ -35,6 +35,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { readableCode } from "@/utils/machineText";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 export const DocumentComponentsTab: React.FC = () => {
   const navigate = useNavigate();
@@ -118,7 +119,7 @@ export const DocumentComponentsTab: React.FC = () => {
     { id: "value", header: tr("Value (Token)"), label: tr("Value (Token)"), cell: (item) => <code className="text-2xs sm:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{"{{" + item.value + "}}"}</code> },
     { id: "shortDescription", header: tr("Short Description"), label: tr("Short Description"), cellClassName: "text-slate-600 max-w-xs truncate", cell: (item) => item.shortDescription || "-" },
     { id: "sourceTable", header: "Source", label: "Source", cell: (item) => (<Badge color={item.sourceTable === "FREE_TEXT" ? "sky" : "emerald"} size="sm">{item.sourceTable === "FREE_TEXT" ? "Free Text" : readableCode(item.sourceTable)}</Badge>) },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>) },
     { id: "displayOrder", header: "Order", label: "Order", cellClassName: "text-slate-600", cell: (item) => item.displayOrder },
   ];
   const docComponentsAction: DataTableAction<Row> = {

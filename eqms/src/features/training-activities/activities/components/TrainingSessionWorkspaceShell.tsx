@@ -294,7 +294,7 @@ export function TrainingSessionWorkspaceShell({
         </motion.div>
       )}
       <FormSection
-        title={`Step ${index + 1}: ${active.label}`}
+        title={trFormat("Step {number}: {label}", { number: index + 1, label: active.label })}
         icon={<ActiveIcon className="h-4 w-4" />}
         description={active.description}
         contentClassName="p-0"

@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { HardDrive, KeyRound } from "lucide-react";
@@ -178,7 +179,7 @@ export const BackupStorageView: React.FC = () => {
   return (
     <BackupAdminLivePage title={tr("Backup Storage & Encryption")}>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-storage-tab" ariaLabel="Backup storage" />
+        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-storage-tab" ariaLabel={__ariaTr("Backup storage")} />
         <div className="p-4 md:p-5 space-y-6">{content}</div>
       </div>
     </BackupAdminLivePage>

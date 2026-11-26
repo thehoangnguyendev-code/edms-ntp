@@ -405,7 +405,7 @@ public class NotificationPolicyService {
         // the email message is HTML written in the editor: keep only what a mail may hold, so nothing that runs reaches a reader
         if (email) {
             request = new UpdateNotificationTemplateRequest(request.title(), request.summary(), request.subject(),
-                    EmailTemplateService.sanitizeRenderedHtml(request.body()), request.actionUrlTemplate(), request.changeSummary(), request.actionLabel());
+                    EmailTemplateService.sanitizeWording(request.body()), request.actionUrlTemplate(), request.changeSummary(), request.actionLabel());
         }
         Set<String> allowedVariables = parseCsv(event.getAvailableVariables());
         validateVariables(allowedVariables, request.title());
@@ -501,12 +501,18 @@ public class NotificationPolicyService {
 
     @Transactional(readOnly = true)
     public NotificationPreviewResponse preview(String eventCode, NotificationPreviewRequest request) {
+        return preview(eventCode, request, null);
+    }
+
+    /** @param language "vi" shows the example values as a Vietnamese reader receives them (fixed words in Vietnamese); anything else leaves them in English. */
+    public NotificationPreviewResponse preview(String eventCode, NotificationPreviewRequest request, String language) {
         NotificationEventDefinition event = requireEvent(eventCode);
         java.util.Map<String, String> sample = buildSampleData(event);
+        if (NotificationTranslationService.VIETNAMESE.equals(language)) sample = NotificationValueWords.vietnamese(sample);
         String html = null;
         if (NotificationTemplateVersion.CHANNEL_EMAIL.equalsIgnoreCase(request.channel())) {
             // the mail as the reader gets it: the message as paragraphs, the button, all in the shared frame
-            html = framedSample(request.body(), request.actionUrlTemplate(), request.actionLabel(), sample, true);
+            html = framedSample(request.body(), request.actionUrlTemplate(), request.actionLabel(), sample, true, NotificationTranslationService.VIETNAMESE.equals(language));
         }
         return new NotificationPreviewResponse(
                 request.channel(),
@@ -552,13 +558,16 @@ public class NotificationPolicyService {
     }
 
     /** The mail as the reader gets it, with example values: the message as paragraphs, the button, all in the shared frame. */
-    private String framedSample(String body, String actionUrlTemplate, String actionLabel, java.util.Map<String, String> sample, boolean preview) {
+    private String framedSample(String body, String actionUrlTemplate, String actionLabel, java.util.Map<String, String> sample, boolean preview, boolean vietnamese) {
         String message = EmailTemplateService.sanitizeRenderedHtml(render(body, sample));
         String url = render(actionUrlTemplate, sample);
         String absolute = !StringUtils.hasText(url) ? null
                 : url.startsWith("http://") || url.startsWith("https://") ? url : "https://eqms.example.com" + (url.startsWith("/") ? url : "/" + url);
         String brand = emailDesignService == null ? null : emailDesignService.current().getButtonColor();
-        String content = com.eqms.util.EmailFrameRenderer.paragraphs(message) + com.eqms.util.EmailFrameRenderer.button(actionLabel, absolute, brand);
+        String content = com.eqms.util.EmailFrameRenderer.paragraphs(message) + com.eqms.util.EmailFrameRenderer.button(actionLabel, absolute, brand, vietnamese,
+                emailDesignService == null ? null : emailDesignService.current().getButtonSize(),
+                emailDesignService == null || emailDesignService.current().isShowButtonLink());
+        if (vietnamese) content = com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK + content;
         return emailDesignService == null ? com.eqms.util.EmailFrameRenderer.render(null, content, null, preview)
                 : preview ? emailDesignService.framePreview(content) : emailDesignService.frame(content);
     }
@@ -583,7 +592,7 @@ public class NotificationPolicyService {
                 .orElse(null);
         java.util.Map<String, String> sample = buildSampleData(event);
         String urlTemplate = StringUtils.hasText(email.getActionUrlTemplate()) ? email.getActionUrlTemplate() : inApp == null ? null : inApp.getActionUrlTemplate();
-        String html = framedSample(email.getBody(), urlTemplate, email.getActionLabel(), sample, false);
+        String html = framedSample(email.getBody(), urlTemplate, email.getActionLabel(), sample, false, false);
         if (emailService == null) {
             throw new IllegalStateException("The email service is not available.");
         }

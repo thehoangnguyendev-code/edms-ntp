@@ -29,6 +29,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const BASE_PATH = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}/state-policies`;
 
@@ -217,7 +218,7 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
       cell: (p) => (
         <>
           <span className="font-medium text-slate-800">{p.capabilityCode.replace(/_/g, " ")}</span>
-          {!p.active && <Badge color="slate" size="xs" className="ml-2">{tr("Inactive")}</Badge>}
+          {!p.active && <Badge color={statusColor("INACTIVE")} size="xs" className="ml-2">{tr("Inactive")}</Badge>}
         </>
       ),
     },

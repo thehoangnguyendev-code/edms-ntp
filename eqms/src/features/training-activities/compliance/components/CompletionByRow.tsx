@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
 import { Fragment, useRef, useState } from "react";
 import { useBarWipe } from "@/hooks/useBarFill";
@@ -119,7 +120,7 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
                           </TableMarkup.Cell>
                           <TableMarkup.Cell className="border-b border-slate-100 pr-2 text-slate-400">
                             {canOpen && (
-                              <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Hide" : "Show"} the people still to be trained on ${f.column.title}`} onClick={(e) => { e.stopPropagation(); setOpenRow(expanded ? undefined : id); }} className="rounded p-1 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                              <button type="button" aria-expanded={expanded} aria-label={__ariaTrFormat("{v1} the people still to be trained on {v2}", { v1: expanded ? tr("Hide") : tr("Show"), v2: f.column.title })} onClick={(e) => { e.stopPropagation(); setOpenRow(expanded ? undefined : id); }} className="rounded p-1 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                                 {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               </button>
                             )}

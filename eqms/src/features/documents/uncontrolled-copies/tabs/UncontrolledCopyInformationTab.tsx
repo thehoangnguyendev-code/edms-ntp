@@ -29,8 +29,8 @@ export const UncontrolledCopyInformationTab: React.FC<{
         label={tr("Document Number")}
         value={copy.uncontrolledCopyNumber}
       />
-      <ReadOnlyField label={tr("Status")} value={copy.status} />
-      {copy.closeReason && <ReadOnlyField label={tr("Closed Because")} value={closeReasonLabel(copy.closeReason)} />}
+      <ReadOnlyField label={tr("Status")} value={tr(copy.status)} />
+      {copy.closeReason && <ReadOnlyField label={tr("Closed Because")} value={tr(closeReasonLabel(copy.closeReason))} />}
       <ReadOnlyField
         label={tr("Document")}
         value={`${copy.documentNumber}${copy.documentTitle ? ` - ${copy.documentTitle}` : ""}`}
@@ -46,11 +46,11 @@ export const UncontrolledCopyInformationTab: React.FC<{
       <ReadOnlyField label={tr("Reason / Purpose")} value={copy.reason} />
       <ReadOnlyField
         label={tr("Watermark applied")}
-        value={copy.markingApplied ? "Yes" : "Not yet generated"}
+        value={copy.markingApplied ? tr("Yes") : tr("Not yet generated")}
       />
       <ReadOnlyField
         label={tr("File available")}
-        value={copy.fileAvailable ? "Yes" : "Not yet generated"}
+        value={copy.fileAvailable ? tr("Yes") : tr("Not yet generated")}
       />
       <ReadOnlyField label={tr("Downloads")} value={copy.downloadCount ?? 0} />
       <ReadOnlyField

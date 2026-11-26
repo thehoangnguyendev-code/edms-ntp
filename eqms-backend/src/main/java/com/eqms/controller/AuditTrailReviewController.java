@@ -39,9 +39,10 @@ public class AuditTrailReviewController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "false") boolean waitingForMe,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
-        return ResponseEntity.ok(service.listCampaignsPaged(page, limit, search, status, sortBy, sortDirection));
+        return ResponseEntity.ok(service.listCampaignsPaged(page, limit, search, status, waitingForMe, sortBy, sortDirection));
     }
 
     @GetMapping("/{id}/summary")

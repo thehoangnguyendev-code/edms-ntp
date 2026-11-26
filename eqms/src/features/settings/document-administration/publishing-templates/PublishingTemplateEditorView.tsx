@@ -2337,8 +2337,8 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                       <span className="min-w-0 break-all text-xs font-medium">{value}</span>
                                       <span className="flex shrink-0 items-center gap-1.5">
                                         <Popover
-                                          content={description}
-                                          triggerAriaLabel={description}
+                                          content={tr(description)}
+                                          triggerAriaLabel={tr(description)}
                                           trigger={<Info className="h-3.5 w-3.5 text-slate-400" />}
                                           triggerClassName="text-slate-400 hover:text-emerald-700"
                                         />

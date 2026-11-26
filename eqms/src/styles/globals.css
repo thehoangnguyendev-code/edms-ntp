@@ -867,8 +867,18 @@ input.auth-input:-webkit-autofill {
    does not zoom back. The global rule above forces every input to 14px, so the auth
    screens opt out on narrow screens and on every touch device (phone landscape, iPad); a
    mouse-driven desktop >= 768px keeps 14px, same as before. */
+/* A saved login (autofill) must not take the size of the surrounding page text: the rule for filled fields above says "inherit", which made the filled sign-in fields larger than the typed ones. */
+input.auth-input:-webkit-autofill,
+input.auth-input:-webkit-autofill:hover,
+input.auth-input:-webkit-autofill:focus {
+  font-size: 0.875rem !important;
+}
+
 @media (max-width: 767px), (pointer: coarse) {
-  input.auth-input {
+  input.auth-input,
+  input.auth-input:-webkit-autofill,
+  input.auth-input:-webkit-autofill:hover,
+  input.auth-input:-webkit-autofill:focus {
     font-size: 1rem !important;
   }
 }

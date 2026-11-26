@@ -13,6 +13,7 @@ import { reportError } from "@/services/api/reportTemplates";
 import { reportTypesApi, type ReportTypeDetail } from "@/services/api/reportTypes";
 import { reportBreadcrumbs } from "../shared/reportBreadcrumbs";
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type Column = ReportTypeDetail["columns"][number];
 type Filter = ReportTypeDetail["filters"][number];
@@ -88,7 +89,7 @@ export const ReportTypeDetailView: React.FC = () => {
           <FormSection
             title={tr("General Information")}
             icon={<IconInfoCircle className="h-4 w-4" />}
-            headerRight={detail.enabled ? <Badge color="emerald">{tr("Enabled")}</Badge> : <Badge color="slate">{tr("Disabled")}</Badge>}
+            headerRight={detail.enabled ? <Badge color="emerald">{tr("Enabled")}</Badge> : <Badge color={statusColor("DISABLED")}>{tr("Disabled")}</Badge>}
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <FormField label={tr("Report Type Name")}>

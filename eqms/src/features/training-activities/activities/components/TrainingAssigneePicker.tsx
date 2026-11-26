@@ -12,7 +12,7 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { cn } from "@/components/ui/utils";
 import { trainingActivitiesApi, type TrainingGroup, type TrainingPerson, type TrainingSuggestedParticipant } from "@/services/api/trainingActivities";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr, trPlural } from "@/i18n";
+import { tr, trFormat, trPlural } from "@/i18n";
 
 type Scope = "matrix" | "business_unit" | "department" | "individual" | "outside";
 export interface Outsider { name: string; org: string }
@@ -99,7 +99,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
   }, [scope, key]);
 
   const tabs = [
-    ...(hasMatrix ? [{ id: "matrix", label: `Required by matrix${matrixPeople.length ? ` (${matrixPeople.length})` : ""}`, icon: IconListCheck }] : []),
+    ...(hasMatrix ? [{ id: "matrix", label: trFormat("Required by matrix ({count})", { count: matrixPeople.length }), icon: IconListCheck }] : []),
     { id: "business_unit", label: tr("Business Unit"), icon: IconBuilding },
     { id: "department", label: "Department", icon: Building2 },
     { id: "individual", label: tr("Individual"), icon: IconUser },

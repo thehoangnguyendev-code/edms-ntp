@@ -187,7 +187,7 @@ public class TrainingAttendanceListService {
 
     /** What the column "Training result" says; a person who takes no assessment is written with how they took part (the trainer is not on the list: the name is in the content of the training). */
     private static String result(String result, String state, String role) {
-        if ("READ_CONFIRMED".equals(state)) return "Đã đọc / Read";
+        if ("READ_CONFIRMED".equals(state)) return "Đã đọc hiểu / Read and understood";
         if ("PASSED".equals(result)) {
             switch (role) {
                 case "ATTENDEE": return "Tham dự, không làm bài / Attended, no assessment";
@@ -196,8 +196,8 @@ public class TrainingAttendanceListService {
             }
         }
         return switch (result) {
-            case "PASSED" -> "Đạt / Passed";
-            case "FAILED" -> "Không đạt / Failed";
+            case "PASSED" -> "Đạt yêu cầu / Qualified";
+            case "FAILED" -> "Không đạt yêu cầu / Not qualified";
             default -> "";
         };
     }

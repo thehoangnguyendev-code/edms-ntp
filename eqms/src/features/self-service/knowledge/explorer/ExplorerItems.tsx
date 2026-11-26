@@ -160,6 +160,8 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
   const compact = useMediaQuery("(max-width: 767px)");
   // The desktop list view is a plain table, not a card with a header above it.
   const tableMode = !compact && view === "list";
+  // The Type column says Folder on every row unless Knowledge Bases and folders are listed together.
+  const mixedFolderKinds = new Set(folders.map((folder) => !!folder.isKnowledgeBase)).size > 1;
   const isFolderSelected = (key: string) => selection?.type === "folder" && selection.key === key;
   const isDocSelected = (id: string) => selection?.type === "doc" && selection.id === id;
   const tone = (selected: boolean) => (selected ? "border-emerald-200 bg-emerald-50" : "border-transparent hover:border-emerald-100 hover:bg-white hover:shadow-md");
@@ -267,7 +269,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
               <TableMarkup.Root className="w-full border-collapse">
                 <TableMarkup.Head><TableMarkup.Row className="bg-slate-50 text-left">
                   <TableMarkup.HeaderCell className={cn(TH, "bg-slate-50")}>{t("knowledge.name", "Name")}</TableMarkup.HeaderCell>
-                  <TableMarkup.HeaderCell className={cn(TH, "hidden bg-slate-50 sm:table-cell")}>{t("knowledge.type", "Type")}</TableMarkup.HeaderCell>
+                  {mixedFolderKinds && <TableMarkup.HeaderCell className={cn(TH, "hidden bg-slate-50 sm:table-cell")}>{t("knowledge.type", "Type")}</TableMarkup.HeaderCell>}
                   <TableMarkup.HeaderCell className={cn(TH_RIGHT, "bg-slate-50")}>{t("knowledge.documents", "Documents")}</TableMarkup.HeaderCell>
                 </TableMarkup.Row></TableMarkup.Head>
                 <TableMarkup.Body className="divide-y divide-slate-100">
@@ -279,7 +281,7 @@ export const ExplorerItems: React.FC<ExplorerItemsProps> = ({
                       onClick={() => (singleTapOpen ? onOpen(sel) : onSelect(sel))} onDoubleClick={() => onOpen(sel)} onContextMenu={(e) => onContextMenu(e, sel)} onKeyDown={itemKeys(() => onOpen(sel), () => onSelect(sel))}
                       className={cn("group cursor-default select-none bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500", selected ? "bg-emerald-50" : "hover:bg-slate-50")}>
                       <TableMarkup.Cell className="px-2.5 py-2"><span className="flex min-w-0 items-center gap-2.5"><FolderIcon color={colorOf(folder.key, folder.label)} className="h-7 w-8 shrink-0" /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium text-slate-900 md:text-sm" title={folder.label}><Highlight text={labelOf(folder.key, folder.label)} term={highlight} /></span><span className="block text-xs text-slate-600 sm:hidden">{documentCountLabel(folder.documentCount)}</span></span><OverflowButton label={`${t("knowledge.actionsFor", "Actions for")} ${folder.label}`} onClick={(e) => { e.stopPropagation(); onActions(e, sel); }} className="ml-auto" /></span></TableMarkup.Cell>
-                      <TableMarkup.Cell className="hidden px-2.5 py-2 text-xs text-slate-600 sm:table-cell md:text-sm">{folder.isKnowledgeBase ? t("knowledge.knowledgeBase", "Knowledge Base") : t("knowledge.folder", "Folder")}</TableMarkup.Cell>
+                      {mixedFolderKinds && <TableMarkup.Cell className="hidden px-2.5 py-2 text-xs text-slate-600 sm:table-cell md:text-sm">{folder.isKnowledgeBase ? t("knowledge.knowledgeBase", "Knowledge Base") : t("knowledge.folder", "Folder")}</TableMarkup.Cell>}
                       <TableMarkup.Cell className="px-2.5 py-2 text-right text-xs tabular-nums text-slate-600 md:text-sm">{folder.documentCount}</TableMarkup.Cell>
                     </motion.tr>;
                   })}

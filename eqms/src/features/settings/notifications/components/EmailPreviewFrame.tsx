@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { TabNav, type TabItem } from '@/components/ui/tabs/TabNav';
@@ -14,7 +15,7 @@ const DEVICES: TabItem[] = [
 
 /** The Desktop / Mobile switch every preview of an email has, built from the shared tabs. */
 export const DeviceSwitch: React.FC<{ mobile: boolean; onChange: (mobile: boolean) => void }> = ({ mobile, onChange }) => (
-  <TabNav tabs={DEVICES} activeTab={mobile ? 'mobile' : 'desktop'} onChange={(id) => onChange(id === 'mobile')} variant="pill" ariaLabel="Preview size" layoutId="email-preview-device" />
+  <TabNav tabs={DEVICES} activeTab={mobile ? 'mobile' : 'desktop'} onChange={(id) => onChange(id === 'mobile')} variant="pill" ariaLabel={__ariaTr("Preview size")} layoutId="email-preview-device" />
 );
 
 /** A preview is a picture of the mail: its links and its button open nothing, so a click cannot leave the screen or load another page. */

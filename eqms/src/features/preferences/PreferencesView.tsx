@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from 'react';
 import { Globe, BellRing, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -132,7 +133,7 @@ export const PreferencesView: React.FC = () => {
                         setActiveTab(nextTab);
                         setSearchParams(nextTab === 'localization' ? {} : { tab: nextTab }, { replace: true });
                     })}
-                    ariaLabel="Preference sections"
+                    ariaLabel={__ariaTr("Preference sections")}
                 />
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div

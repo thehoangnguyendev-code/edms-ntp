@@ -18,12 +18,15 @@ import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/sh
 import { dictionaryApi } from "@/services/api/dictionary";
 import { trainingBatchExportsApi, trainingError, type TrainingExportBatch, type TrainingPerson } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../../shared/TrainingFields";
-import { day, saveBlob, when, statusChange } from "../../shared/trainingLabels";
+import { day, localized, saveBlob, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange } from "../../shared/useListFilters";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" };
-const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
+const STATUS_LABEL: Record<string, string> = localized({ PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" });
+const STATUS_COLOR = statusColors("PENDING_APPROVAL", "APPROVED", "REJECTED") as Record<string, BadgeColor>;
 
 /**
  * The personal training records of a whole department up to the end of a year (SOP.0003 5.3.10). One person prepares it with a signature, a different person approves it with a
@@ -51,12 +54,13 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
   const [rejecting, setRejecting] = useState<{ id: string; reason: string }>();
 
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingBatchExportsApi.list(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
+  const waiting = useWaitingForMe("training-record-exports", () => table.setCurrentPage(1), false);
   const extra = useMemo(() => ({
     status: status || undefined, departmentId: departmentFilter || undefined, year: yearFilter || undefined,
     ...requestedRange.params("requestedFrom", "requestedTo"), ...generatedRange.params("generatedFrom", "generatedTo"),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [status, departmentFilter, yearFilter, requestedRange.from, requestedRange.to, generatedRange.from, generatedRange.to]);
-  const table = useServerTable<TrainingExportBatch>({ persistKey: "training.exports.batches", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+  const table = useServerTable<TrainingExportBatch>({ persistKey: "training.exports.batches", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: { ...extra, ...waiting.params }, initialItemsPerPage: 10, syncToUrl: false });
 
   useEffect(() => {
     if (creating) dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([]));
@@ -154,6 +158,7 @@ export function ExportsBatchesTab({ creating, setCreating }: { creating: boolean
   return (
     <div className="space-y-4">
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {waiting.node}
       <ReportListToolbar searchPlaceholder={tr("Search department or reason…")} search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([requestedRange.filter, generatedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || yearFilter || requestedRange.isSet || generatedRange.isSet || table.searchQuery)}

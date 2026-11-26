@@ -35,6 +35,7 @@ import { typeColor } from "@/features/self-service/knowledge/explorer/explorerMo
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -223,7 +224,7 @@ export const DocumentTypesView: React.FC = () => {
     { id: "icon", header: "Icon", label: "Icon", cell: (item) => <FileIcon type={item.name} label={item.iconLabel || item.shortCode} color={item.iconColor || undefined} className="h-7 w-7" /> },
     { id: "currentSequence", header: tr("Document Number Sequence"), label: tr("Document Number Sequence"), cell: (item) => (<div className="flex flex-col gap-0.5 sm:gap-1"><span className="font-medium text-slate-900">{item.lastIssuedDocumentNumber ?? tr("No number issued")}</span><span className="text-2xs sm:text-xs text-slate-500">{trFormat("Next: {number}", { number: item.nextDocumentNumber ?? "-" })}</span></div>) },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>) },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const docTypesAction: DataTableAction<Row> = {

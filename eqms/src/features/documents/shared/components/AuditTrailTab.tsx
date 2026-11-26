@@ -136,7 +136,7 @@ const DEFAULT_ACTION_OPTIONS = [
   { label: "Login", value: "Login" },
   { label: "Logout", value: "Logout" },
   { label: tr("Failed Login"), value: "Failed Login" },
-  { label: "Export", value: "Export" },
+  { label: tr("Export"), value: "Export" },
   { label: "Download", value: "Download" },
   { label: "View", value: "View" },
   { label: "Open", value: "Open" },

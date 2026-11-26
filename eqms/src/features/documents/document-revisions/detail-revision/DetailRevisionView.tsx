@@ -66,7 +66,7 @@ import { formatDateTime } from "@/utils";
 import { Shield } from "lucide-react";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 // --- Types ---
 type TabType =
@@ -503,7 +503,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
       ipAddress: "—",
       device: "—",
     }));
-  }, [currentRevision?.department, currentRevision?.history]);
+  }, [currentRevision?.department, currentRevision?.history, getCatalogLanguage()]);
 
   const officeOnlineSessionEvents = useMemo(() => {
     const source = auditTrailRows.length > 0 ? auditTrailRows : auditEntries;
@@ -534,7 +534,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         timestamp: entry.timestamp || entry.created || "â€”",
         comment: entry.reason || entry.comment || "-",
       }));
-  }, [auditTrailRows, auditEntries]);
+  }, [auditTrailRows, auditEntries, getCatalogLanguage()]);
 
   useEffect(() => {
     let mounted = true;

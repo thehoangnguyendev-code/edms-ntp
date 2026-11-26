@@ -4,6 +4,7 @@ import { documentApi } from '@/services/api/documents';
 import { navigationApi } from '@/services/api/navigation';
 import { notificationApi } from '@/services/api/notifications';
 import type { NavItem } from '@/types';
+import { tr } from '@/i18n';
 
 export interface QuickPlace {
   id: string;
@@ -46,17 +47,17 @@ export function useQuickPlaces(enabled: boolean): QuickPlaces {
       if (cancelled) return;
       const attention: QuickPlace[] = [];
       if (pending.status === 'fulfilled') {
-        if (pending.value.pendingReview > 0) attention.push({ id: 'pending-review', title: 'Pending my review', path: ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW, count: pending.value.pendingReview });
-        if (pending.value.pendingApproval > 0) attention.push({ id: 'pending-approval', title: 'Pending my approval', path: ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL, count: pending.value.pendingApproval });
+        if (pending.value.pendingReview > 0) attention.push({ id: 'pending-review', title: tr('Pending my review'), path: ROUTES.DOCUMENTS.REVISIONS.PENDING_REVIEW, count: pending.value.pendingReview });
+        if (pending.value.pendingApproval > 0) attention.push({ id: 'pending-approval', title: tr('Pending my approval'), path: ROUTES.DOCUMENTS.REVISIONS.PENDING_APPROVAL, count: pending.value.pendingApproval });
       }
       if (summary.status === 'fulfilled' && summary.value.unread > 0) {
-        attention.push({ id: 'unread-notifications', title: 'Unread notifications', path: `${ROUTES.NOTIFICATIONS}?status=unread`, count: summary.value.unread });
+        attention.push({ id: 'unread-notifications', title: tr('Unread notifications'), path: `${ROUTES.NOTIFICATIONS}?status=unread`, count: summary.value.unread });
       }
       const pages = new Map<string, NavItem>();
       if (menu.status === 'fulfilled') leaves(menu.value, pages);
       const goTo = PREFERRED_PAGES.flatMap((id) => {
         const item = pages.get(id);
-        return item?.path ? [{ id, title: item.label, path: item.path }] : [];
+        return item?.path ? [{ id, title: tr(item.label), path: item.path }] : [];
       }).slice(0, GO_TO_MAX);
       setPlaces({ attention, goTo });
     });

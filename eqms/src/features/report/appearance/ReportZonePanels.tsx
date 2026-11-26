@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import { useState } from "react";
 import { FormField, Input, Textarea } from "@/components/ui/form/ResponsiveForm";
 import { IconAlignCenter, IconAlignLeft, IconAlignRight, IconDroplet, IconLayoutBottombar, IconLayoutNavbar, IconListDetails, IconNote, IconPhoto, IconRubberStamp, IconUserCheck } from "@tabler/icons-react";
@@ -209,7 +210,7 @@ function LogoZone({ value, onChange, disabled, onError }: PanelProps) {
         <span className="block text-sm font-medium text-slate-700">{tr("Place in the header")}</span>
         <TabNav
           variant="pill"
-          ariaLabel="Logo place"
+          ariaLabel={__ariaTr("Logo place")}
           tabs={places.map((place) => ({ id: place.value, label: place.label }))}
           activeTab={logoPlace(logo)}
           onChange={(place) => !disabled && set({ slot: place as ReportPlace })}
@@ -235,7 +236,7 @@ function InfoZone({ value, onChange, disabled }: PanelProps) {
       toggle={
         <TabNav
           variant="pill"
-          ariaLabel="Columns"
+          ariaLabel={__ariaTr("Columns")}
           tabs={[{ id: "1", label: "1 column" }, { id: "2", label: "2 columns" }]}
           activeTab={String(frame.infoColumns)}
           onChange={(n) => !disabled && set({ infoColumns: n === "1" ? 1 : 2 })}
@@ -247,11 +248,11 @@ function InfoZone({ value, onChange, disabled }: PanelProps) {
         {frame.info.map((item, index) => (
           <div key={index} className="space-y-1.5 rounded-lg border border-slate-200 p-2.5">
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              <Input aria-label={`Information label ${index + 1}`} placeholder={tr("Label")} maxLength={60} value={item.label} disabled={disabled} onChange={(e) => edit(index, { label: e.target.value })} />
-              <Input aria-label={`Information value ${index + 1}`} placeholder={tr("Value")} maxLength={200} value={item.value} disabled={disabled} onChange={(e) => edit(index, { value: e.target.value })} />
+              <Input aria-label={__ariaTrFormat("Information label {v1}", { v1: index + 1 })} placeholder={tr("Label")} maxLength={60} value={item.label} disabled={disabled} onChange={(e) => edit(index, { label: e.target.value })} />
+              <Input aria-label={__ariaTrFormat("Information value {v1}", { v1: index + 1 })} placeholder={tr("Value")} maxLength={200} value={item.value} disabled={disabled} onChange={(e) => edit(index, { value: e.target.value })} />
             </div>
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" disabled={disabled} aria-label={`Remove information line ${index + 1}`} onClick={() => set({ info: frame.info.filter((_, i) => i !== index) })}>
+              <Button size="sm" variant="outline" disabled={disabled} aria-label={__ariaTrFormat("Remove information line {v1}", { v1: index + 1 })} onClick={() => set({ info: frame.info.filter((_, i) => i !== index) })}>
                 {tr("Remove")}
               </Button>
             </div>
@@ -288,8 +289,8 @@ function ApprovalZone({ value, onChange, disabled }: PanelProps) {
         </div>
         {roles.map((role, index) => (
           <div key={index} className="grid grid-cols-[1fr_auto] items-center gap-2">
-            <Input aria-label={`Approval line ${index + 1}`} maxLength={40} value={role} onChange={(e) => set({ approvalRoles: roles.map((x, i) => (i === index ? e.target.value : x)) })} />
-            <Button size="sm" variant="outline" aria-label={`Remove approval line ${index + 1}`} disabled={roles.length <= 1} onClick={() => set({ approvalRoles: roles.filter((_, i) => i !== index) })}>
+            <Input aria-label={__ariaTrFormat("Approval line {v1}", { v1: index + 1 })} maxLength={40} value={role} onChange={(e) => set({ approvalRoles: roles.map((x, i) => (i === index ? e.target.value : x)) })} />
+            <Button size="sm" variant="outline" aria-label={__ariaTrFormat("Remove approval line {v1}", { v1: index + 1 })} disabled={roles.length <= 1} onClick={() => set({ approvalRoles: roles.filter((_, i) => i !== index) })}>
               {tr("Remove")}
             </Button>
           </div>
@@ -302,9 +303,9 @@ function ApprovalZone({ value, onChange, disabled }: PanelProps) {
         <SectionLabel>{tr("Columns")}</SectionLabel>
         {columns.map((column, index) => (
           <div key={index} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-            <Input aria-label={`Approval column ${index + 1}`} maxLength={30} value={column.label} onChange={(e) => setColumn(index, { label: e.target.value })} />
+            <Input aria-label={__ariaTrFormat("Approval column {v1}", { v1: index + 1 })} maxLength={30} value={column.label} onChange={(e) => setColumn(index, { label: e.target.value })} />
             <AlignGroup label={`Column ${index + 1}`} value={column.align} onChange={(align) => setColumn(index, { align })} disabled={disabled || !frame.approval} />
-            <Switch checked={column.enabled !== false} onChange={(enabled) => setColumn(index, { enabled })} size="sm" disabled={disabled || !frame.approval} aria-label={`Show approval column ${index + 1}`} />
+            <Switch checked={column.enabled !== false} onChange={(enabled) => setColumn(index, { enabled })} size="sm" disabled={disabled || !frame.approval} aria-label={__ariaTrFormat("Show approval column {v1}", { v1: index + 1 })} />
           </div>
         ))}
       </fieldset>

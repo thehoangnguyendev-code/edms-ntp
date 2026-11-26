@@ -47,7 +47,7 @@ export function SpecimenSignaturePanel({ personId, personName, stacked = false }
           {state.urls.map((url, i) => (
             <figure key={url} className="rounded-lg border border-slate-200 bg-white p-2">
               <img src={url} alt={`${i === 0 ? "First" : "Second"} signature of ${personName}`} className="mx-auto max-h-40 object-contain" />
-              <figcaption className="mt-1 text-center text-xs text-slate-500">{i === 0 ? "1st signature" : "2nd signature"}</figcaption>
+              <figcaption className="mt-1 text-center text-xs text-slate-500">{tr(i === 0 ? "1st signature" : "2nd signature")}</figcaption>
             </figure>
           ))}
         </div>

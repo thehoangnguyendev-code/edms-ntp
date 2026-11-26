@@ -11,6 +11,7 @@ import com.eqms.repository.UserAccountRepository;
 import com.eqms.service.ControlledCopyService;
 import com.eqms.service.DocumentAuthorizationService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,6 +51,14 @@ public class ControlledCopyListAuthorizationIntegrationTest {
 
     @Autowired
     private DocumentAuthorizationService documentAuthorizationService;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
 
     private void authenticateAs(UserAccount user) {
         AuthenticatedUser principal = new AuthenticatedUser(
@@ -194,15 +203,31 @@ public class ControlledCopyListAuthorizationIntegrationTest {
     /** A copy someone else holds is not visible to the person who merely requested it, nor to document participants. */
     @Test
     void list_hidesACopyFromItsRequesterWhenTheyAreNotTheRecipient() {
-        List<ControlledCopyRecord> all = controlledCopyRepository.findAll();
-        ControlledCopyRecord target = all.stream()
-                .filter(copy -> copy.getRequestedBy() != null && copy.getRecipientUser() != null)
-                .filter(copy -> !copy.getRequestedBy().getId().equals(copy.getRecipientUser().getId()))
-                .filter(copy -> !documentAuthorizationService.canViewAllControlledCopies(copy.getRequestedBy()))
-                .findFirst()
-                .orElse(null);
-        org.junit.jupiter.api.Assumptions.assumeTrue(target != null,
-                "No seeded copy was requested by a non-privileged user for someone else; cannot exercise this case with current seed data");
+        // Do not silently skip when the demo contains only privileged requesters.
+        // Both inserted fixture rows are rolled back with this test transaction.
+        UserAccount requester = new UserAccount();
+        requester.setUsername("copy.requester." + UUID.randomUUID());
+        requester.setEmail(UUID.randomUUID() + "@example.test");
+        requester.setFullName("Copy requester-only fixture");
+        requester.setRoleName("USER");
+        requester.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .encode(UUID.randomUUID().toString()));
+        userAccountRepository.saveAndFlush(requester);
+        UserAccount recipient = userAccountRepository.findByUsername("admin").orElseThrow();
+        UUID template = jdbc.queryForObject("select id from controlled_copies order by created_at limit 1", UUID.class);
+        UUID copyId = UUID.randomUUID();
+        jdbc.update("""
+                insert into controlled_copies
+                select r.* from controlled_copies t, lateral jsonb_populate_record(null::controlled_copies, to_jsonb(t) || jsonb_build_object(
+                    'id', ?::text, 'controlled_copy_number', ?::text, 'access_token', ?::text,
+                    'requested_by_user_id', ?::text, 'recipient_user_id', ?::text, 'recipient_name', ?::text,
+                    'distribution_batch_id', null, 'replaces_controlled_copy_id', null, 'replaced_controlled_copy_id', null, 'scan_token', null)) r
+                where t.id = ?
+                """, copyId.toString(), "CC-SCOPE-" + copyId, UUID.randomUUID().toString(),
+                requester.getId().toString(), recipient.getId().toString(), recipient.getFullName(), template);
+        ControlledCopyRecord target = controlledCopyRepository.findById(copyId).orElseThrow();
+        assertFalse(documentAuthorizationService.canViewAllControlledCopies(requester));
+        assertFalse(requester.getId().equals(target.getRecipientUser().getId()));
 
         authenticateAs(target.getRequestedBy());
 

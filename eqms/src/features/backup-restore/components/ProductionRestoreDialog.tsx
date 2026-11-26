@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -148,7 +149,7 @@ export const ProductionRestoreDialog: React.FC<{
           <WarningBanner variant="info" description={tr("This backup also holds a separate settings part, made before it was removed. It is not restored on its own: the settings are inside the database.")} />
         )}
         <FormField label={tr("Backup")} required hint={tr("Only completed backups whose integrity check passed are listed, newest first. Tick the one to restore.")}>
-          {!onlyBackup && <SearchInput value={search} onChange={setSearch} ariaLabel="Search backups" placeholder={tr("Backup number…")} className="mb-3" />}
+          {!onlyBackup && <SearchInput value={search} onChange={setSearch} ariaLabel={__ariaTr("Search backups")} placeholder={tr("Backup number…")} className="mb-3" />}
           <PagedTable
             rows={rows}
             getRowKey={(row) => row.id}
@@ -158,7 +159,7 @@ export const ProductionRestoreDialog: React.FC<{
               visible: true,
               header: "",
               cellClassName: "w-10 py-1.5 md:py-3",
-              cell: (row) => <Checkbox checked={backup === row.id} onChange={(on) => setChosen(on ? row : undefined)} aria-label={`Choose ${row.id}`} />,
+              cell: (row) => <Checkbox checked={backup === row.id} onChange={(on) => setChosen(on ? row : undefined)} aria-label={__ariaTrFormat("Choose {v1}", { v1: row.id })} />,
             }}
             onRowClick={(row) => setChosen(backup === row.id ? undefined : row)}
             rowClassName={(row) => (backup === row.id ? "bg-emerald-50/60 cursor-pointer" : "cursor-pointer")}

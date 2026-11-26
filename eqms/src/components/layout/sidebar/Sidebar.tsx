@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, {
   useState,
   useEffect,
@@ -16,7 +17,7 @@ import { isTransactionalRoute, ROUTES } from "@/app/routes.constants";
 import { hasUnsavedScreen } from "@/hooks/useReportUnsavedChanges";
 import { NavCountBadge } from "./NavCountBadge";
 import { FavouriteStar } from "./FavouriteStar";
-import { documentApi, navigationApi } from "@/services/api";
+import { navigationApi } from "@/services/api";
 import { invalidateNavigationCache } from "@/services/api/navigation";
 import { cn } from "@/components/ui/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,9 +40,9 @@ import { SidebarResizeHandle } from "./SidebarResizeHandle";
 import "./Sidebar.module.css";
 import { resolvePermissionAliasCodes } from "@/features/settings/permissionCatalog";
 import { notificationApi } from "@/services/api/notifications";
-import { myTrainingApi } from "@/services/api/myTraining";
 import { subscribeNotificationsChanged } from "@/features/notifications/events";
 import { IconLogout, IconPointFilled, IconUser } from "@tabler/icons-react";
+import { navBadge, useNavTaskCounts, useNavTaskCountsSync } from "@/features/navigation/navTaskCounts";
 
 // Constants
 const BASE_PADDING = 12;
@@ -55,17 +56,18 @@ const NESTED_PADDING = 6;
  * A menu name that does not fit is cut with "…", and the full name appears as a tooltip only then
  * (a name that fits needs no tooltip).
  */
-const TruncatedLabel: React.FC<{ label: string }> = ({ label }) => {
+const TruncatedLabel: React.FC<{ label: string; wrap?: boolean; children?: React.ReactNode }> = ({ label, wrap, children }) => {
   const [cut, setCut] = useState(false);
-  const check = (element: HTMLSpanElement) => setCut(element.scrollWidth > element.clientWidth + 1);
+  const check = (element: HTMLSpanElement) => setCut(element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1);
   return (
     <span
-      className="truncate"
+      className={wrap ? "min-w-0 line-clamp-2 break-words" : "truncate"}
       title={cut ? label : undefined}
       onMouseEnter={(event) => check(event.currentTarget)}
       onFocus={(event) => check(event.currentTarget)}
     >
       {label}
+      {children}
     </span>
   );
 };
@@ -163,8 +165,11 @@ const applyNavigationLabels = (items: NavItem[], labels: Map<string, string>): N
   }));
 
 
-// Helper function to find parent IDs of active item
-const findParentIds = (
+/**
+ * The ids of every entry above the active one, from the top of the menu down to its direct parent: all of them are opened, so a screen three levels deep shows where it is after a reload.
+ * (An earlier version returned only the top-level parent, so a group inside a module stayed folded.)
+ */
+export const findParentIds = (
   items: NavItem[],
   targetId: string,
   path: string[] = [],
@@ -173,16 +178,14 @@ const findParentIds = (
     if (item.id === targetId) return path;
     if (item.children) {
       const result = findParentIds(item.children, targetId, [...path, item.id]);
-      if (
-        result.length > 0 ||
-        (result.length === 0 && item.children.some((c) => c.id === targetId))
-      ) {
-        return [...path, item.id];
-      }
+      if (result.length > 0) return result;
     }
   }
   return [];
 };
+
+/** The count of an entry: plain text like the name it follows. `inline-block` so that the bump of a rising count can scale it. */
+const COUNT_TEXT = "ml-1 inline-block whitespace-nowrap";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -300,49 +303,18 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
       };
     }, [user?.id]);
 
-    useEffect(() => {
-      let isMounted = true;
-      const fetchCounts = async () => {
-        try {
-          const counts = await documentApi.getPendingCounts();
-          if (isMounted) {
-            setNavCounts((prev) => ({
-              ...prev,
-              'pending-review': counts.pendingReview,
-              'pending-approval': counts.pendingApproval,
-            }));
-          }
-        } catch (error) {
-          console.error("Failed to fetch pending counts:", error);
-        }
-      };
-
-      fetchCounts();
-      return () => {
-        isMounted = false;
-      };
-    }, [location.pathname]);
-
-    // My Tasks of Training Management: the trainings to do plus the signatures asked of the person. Read only when the menu has the item, so a person without the training module makes no call.
-    const hasMyTasks = authorizedNavigationIds === null || authorizedNavigationIds.has('my-tasks');
-    useEffect(() => {
-      if (!hasMyTasks) return;
-      let cancelled = false;
-      const loadMyTasks = () => {
-        void myTrainingApi.counts().then((c) => {
-          if (!cancelled) setNavCounts((prev) => (prev['my-tasks'] === c.total && prev['my-training'] === c.total ? prev : { ...prev, 'my-tasks': c.total, 'my-training': c.total }));
-        }).catch(() => undefined);
-      };
-      loadMyTasks();
-      const interval = window.setInterval(() => { if (!document.hidden) loadMyTasks(); }, 60000);
-      const handleVisibility = () => { if (!document.hidden) loadMyTasks(); };
-      document.addEventListener('visibilitychange', handleVisibility);
-      return () => {
-        cancelled = true;
-        window.clearInterval(interval);
-        document.removeEventListener('visibilitychange', handleVisibility);
-      };
-    }, [hasMyTasks, location.pathname]);
+    // What waits for the person, per menu entry; the numbers of the notifications stay with their own source below.
+    useNavTaskCountsSync(user?.id, location.pathname);
+    const taskCounts = useNavTaskCounts();
+    const badgeOf = useCallback(
+      (item: NavItem, isOpen: boolean) => {
+        const own = item.count ?? navCounts[item.id];
+        if (own !== undefined) return own;
+        // an open group leaves the numbers to the entries under it
+        return item.children && isOpen ? undefined : navBadge(item, taskCounts);
+      },
+      [navCounts, taskCounts],
+    );
 
     useEffect(() => {
       let cancelled = false;
@@ -796,7 +768,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 aria-haspopup={isCollapsed && hasChildren ? "menu" : undefined}
                 className={cn(
                   "w-full flex items-center group relative overflow-visible z-10 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/20",
-                  level === 0 ? "h-11 md:h-11" : "h-10 mr-1.5",
+                  isCollapsed ? (level === 0 ? "h-11 md:h-11" : "h-10") : level === 0 ? "min-h-11 py-1" : "min-h-10 py-1 mr-2",
                   // Right padding: touch screens keep a 40px slot for the always-visible star; with a
                   // mouse the star only appears on hover (over the end of the name), so the name gets the room.
                   isCollapsed ? "justify-center px-0" : "justify-start pr-10 [@media(hover:hover)]:pr-3.5",
@@ -807,7 +779,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 )}
                 style={{
                   paddingLeft: isCollapsed ? 0 : `${paddingLeft}px`,
-                  ...(!isCollapsed && level > 0 ? { marginLeft: `${nestedMarginLeft}px`, width: `calc(100% - ${nestedMarginLeft + 6}px)` } : null),
+                  ...(!isCollapsed && level > 0 ? { marginLeft: `${nestedMarginLeft}px`, width: `calc(100% - ${nestedMarginLeft + 8}px)` } : null),
                 }}
               >
                 {/* Sliding active background indicator */}
@@ -850,6 +822,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                     isCollapsed ? "w-full" : "w-5",
                   )}
                 >
+                  {isCollapsed && level === 0 && (badgeOf(item, false) ?? 0) > 0 && (
+                    <span data-testid={`waiting-dot-${item.id}`} className="pointer-events-none absolute left-1/2 top-0 z-10 ml-1.5 -mt-1 flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75 motion-reduce:hidden" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white" />
+                      <span className="sr-only">{tr("Work is waiting")}</span>
+                    </span>
+                  )}
                   {Icon && (
                     <motion.div
                       animate={isActive ? { scale: [1, 1.12, 1] } : {}}
@@ -893,7 +872,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 >
                   <span
                     className={cn(
-                      "flex items-center w-full text-left whitespace-nowrap leading-tight",
+                      "flex items-center w-full text-left leading-tight",
+                      isCollapsed && "whitespace-nowrap",
+                      !isCollapsed && (badgeOf(item, isExpanded) ?? 0) > 0 && (level === 0 ? (hasChildren ? "pr-12" : "pr-8") : hasChildren ? "pr-8" : "pr-4"),
                       "overflow-hidden",
                       "text-sm",
                       isActive
@@ -903,20 +884,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                           : "font-medium",
                     )}
                   >
-                    <TruncatedLabel label={item.label} />
-
-                    {/* Pending/unread count, same pill styling the collapsed flyout uses for the same data.
-                        With a mouse it steps aside while the row is hovered, where the favourite star appears. */}
-                    <NavCountBadge
-                      value={item.count ?? navCounts[item.id]}
-                      className={cn(
-                        "ml-auto mr-1.5 text-2xs px-1.5 py-0.5 rounded-full font-semibold min-w-[20px] text-center shrink-0 transition-opacity",
-                        "[@media(hover:hover)]:group-hover/row:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-0",
-                        isActive
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-slate-100 text-slate-600 group-hover/navitem:bg-slate-200",
-                      )}
-                    />
+                    <TruncatedLabel label={item.label} wrap={!isCollapsed}>
+                      {/* It stays while the row is hovered: the favourite star has its own place beside it. */}
+                      <NavCountBadge value={badgeOf(item, isExpanded)} className={COUNT_TEXT} />
+                    </TruncatedLabel>
                   </span>
                 </div>
 
@@ -1008,7 +979,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         setHoverMenu,
         onNavigate,
         onClose,
-        navCounts,
+        badgeOf,
         favorites,
         location.pathname,
       ],
@@ -1129,16 +1100,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                   level >= 2 ? "ml-0" : "ml-3",
                 )}
               >
-                <span className="truncate">{item.label}</span>
-                <NavCountBadge
-                  value={item.count ?? navCounts[item.id]}
-                  className={cn(
-                    "ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold mr-1.5 min-w-[20px] text-center",
-                    isActive
-                      ? "bg-emerald-200 text-emerald-900"
-                      : "bg-slate-100 text-slate-600 group-hover:bg-slate-200"
-                  )}
-                />
+                <span className="min-w-0 break-words">
+                  {item.label}
+                  <NavCountBadge value={badgeOf(item, isExpanded)} className={COUNT_TEXT} />
+                </span>
               </span>
               {hasChildren && (
                 <div className="rounded-lg flex items-center justify-center h-6 w-6 shrink-0">
@@ -1191,7 +1156,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
           </div>
         );
       },
-      [hoverMenu.expandedSubItems, activeId, handleSubItemClick, navCounts, shouldReduceMotion, sidebarExpandTransition, favorites, springConfig],
+      [hoverMenu.expandedSubItems, activeId, handleSubItemClick, badgeOf, shouldReduceMotion, sidebarExpandTransition, favorites, springConfig],
     );
 
     // Hover menu portal component
@@ -1256,8 +1221,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                         {hoverMenu.item.label}
                       </span>
                       <NavCountBadge
-                        value={hoverMenu.item.count ?? navCounts[hoverMenu.item.id]}
-                        className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600"
+                        value={badgeOf(hoverMenu.item, false)}
+                        className="shrink-0 text-sm font-semibold text-slate-900"
                       />
                     </div>
                   </div>
@@ -1478,7 +1443,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
                 onChange={(tab) => setSidebarTab(tab === "favorites" ? "favorites" : "all")}
                 variant="pill"
                 fullWidth
-                ariaLabel="Sidebar menu"
+                ariaLabel={__ariaTr("Sidebar menu")}
                 tabIdPrefix="sidebar-tab"
                 panelIdPrefix="sidebar-panel"
               />

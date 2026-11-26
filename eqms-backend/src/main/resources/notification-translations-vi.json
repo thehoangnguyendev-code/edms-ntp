@@ -1,0 +1,2097 @@
+[
+ {
+  "eventCode": "access_review.campaign_assigned",
+  "channel": "EMAIL",
+  "english": "9d9ba7ecd674d2851a877592e88c52f6f69c1e693b8a0e894d851e8807739976",
+  "subject": "[EQMS] Đã giao đợt rà soát quyền truy cập",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "access_review.campaign_assigned",
+  "channel": "IN_APP",
+  "english": "042dee1d4e7cfc2917d4e27f393f750d116e5c45f4ce64c33412e6b659e149a7",
+  "title": "Đã giao đợt rà soát quyền truy cập",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "access_review.campaign_changed",
+  "channel": "EMAIL",
+  "english": "9207e388a93f95ecb8677035515f3fad4f604a51bb68176a89cb968e00be9dd8",
+  "subject": "[EQMS] Đợt rà soát quyền truy cập được tạo hoặc huỷ",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "access_review.campaign_changed",
+  "channel": "IN_APP",
+  "english": "18bee5e97c95ebeabddba3aa985712d9b1ca2465b1dc074c51a6437aab896d0e",
+  "title": "Đợt rà soát quyền truy cập được tạo hoặc huỷ",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "access_review.campaign_completed",
+  "channel": "EMAIL",
+  "english": "4dfc8d533abb77e1a3cb0db0d8a4bd4e82c3900abbacacfeaf5171975d95b200",
+  "subject": "[EQMS] Đã hoàn tất rà soát quyền truy cập: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Đợt rà soát quyền truy cập do bạn tạo đã được <b>hoàn tất và ký</b>. Kết quả được lưu làm bằng chứng của việc rà soát quyền truy cập định kỳ.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "access_review.campaign_completed",
+  "channel": "IN_APP",
+  "english": "3b1b70fadb1ae1254c0b1ffb851911d4ce8c57234324ef17b1a6ae64dae0e8a5",
+  "title": "Đã hoàn tất rà soát quyền truy cập",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "access_review.campaign_due",
+  "channel": "EMAIL",
+  "english": "58a8af2e63a64be0733013b2f84ac66290b78642b8c187c077547b1a3ad4a376",
+  "subject": "[EQMS] Đợt rà soát quyền truy cập sắp đến hạn",
+  "body": "<p>Đợt rà soát quyền truy cập \"{{campaignName}}\" đến hạn ngày {{dueDate}}.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "access_review.campaign_due",
+  "channel": "IN_APP",
+  "english": "f44d8345db481ab9ed791ed611b238f1b6f86061d2a3484aedd7db2f1d65c440",
+  "title": "Đợt rà soát quyền truy cập sắp đến hạn",
+  "summary": "Đợt rà soát quyền truy cập \"{{campaignName}}\" đến hạn ngày {{dueDate}}."
+ },
+ {
+  "eventCode": "audit.review_campaign_changed",
+  "channel": "EMAIL",
+  "english": "9a3e8a28cab076751baf773f97e9eb4b53966c0af3e9e4e4c149d21bc04adc44",
+  "subject": "[EQMS] Đã huỷ đợt rà soát nhật ký kiểm toán: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một đợt rà soát nhật ký kiểm toán đã bị <b>huỷ</b>. Các bản ghi thuộc phạm vi của đợt này không được đợt này rà soát.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "audit.review_campaign_changed",
+  "channel": "IN_APP",
+  "english": "f26e4a25df35ec95ee6bed553f6e8022e361ffb9adfd526f2a3b12f729782145",
+  "title": "Đã huỷ đợt rà soát nhật ký kiểm toán",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "audit_trail.export_completed",
+  "channel": "EMAIL",
+  "english": "b9ae66bca0c4f3f596d9730401c55039a95df0c55d11b266075e7751ad2c3766",
+  "subject": "[EQMS] Bản xuất nhật ký kiểm toán đã sẵn sàng: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bản xuất nhật ký kiểm toán bạn yêu cầu đã <b>sẵn sàng</b>. Hãy mở từ màn hình Nhật ký kiểm toán; chỉ bạn dùng được tệp này.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "audit_trail.export_completed",
+  "channel": "IN_APP",
+  "english": "c583a0c7f8f64e78ca9b6c7747872bb4cf3409fddefdeb9a51a19ae6c019510e",
+  "title": "Bản xuất đã sẵn sàng",
+  "summary": "Bản xuất nhật ký kiểm toán của bạn đã sẵn sàng để tải về."
+ },
+ {
+  "eventCode": "audit_trail.review_campaign_assigned",
+  "channel": "EMAIL",
+  "english": "b465aab481981cd8428ada56c260a40e7ac77d00053188724622b0f228592afb",
+  "subject": "[EQMS] Bạn được giao rà soát nhật ký kiểm toán",
+  "body": "<p>Bạn được giao đợt rà soát nhật ký kiểm toán {{campaignName}}.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "audit_trail.review_campaign_assigned",
+  "channel": "IN_APP",
+  "english": "4c7a43368b447ab2f6bb55424c32f38b833957ddc0d0c825527ba63eb8c210f9",
+  "title": "Bạn được giao rà soát nhật ký kiểm toán",
+  "summary": "Bạn được giao đợt rà soát nhật ký kiểm toán {{campaignName}}."
+ },
+ {
+  "eventCode": "backup.alert",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.alert",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "backup.export_decided",
+  "channel": "EMAIL",
+  "english": "5efc72fa9279614d8b69314c7024ba264ca7892f4cb71f76aac9b3b71a4674a3",
+  "subject": "[EQMS] Yêu cầu hoặc quyết định xuất bản sao lưu",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.export_decided",
+  "channel": "IN_APP",
+  "english": "a2479c5389d769d45f02ac1142e1b66cd82251ec59198a76a318ed14aaa02533",
+  "title": "Yêu cầu hoặc quyết định xuất bản sao lưu",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.inspection_decided",
+  "channel": "EMAIL",
+  "english": "a2cb5758866e8232b725a4f318d72f00b0a2800ac88b8fcb8bb6f3c1919a2b7d",
+  "subject": "[EQMS] Kiểm tra bản sao lưu: {{actionName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một lượt kiểm tra bản sao lưu đã được <b>yêu cầu hoặc phê duyệt</b> ({{actionName}}). Lượt kiểm tra cho phép xem bộ sao lưu ở chế độ chỉ đọc, có kiểm soát, và cần người thứ hai phê duyệt.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.inspection_decided",
+  "channel": "IN_APP",
+  "english": "1fac60d3ef80edee5ac949f34e045b7f22164747f5ffa29fa7c960a86df1de96",
+  "title": "Yêu cầu hoặc phê duyệt kiểm tra bản sao lưu",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.maintenance_drained",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "backup.policy_decided",
+  "channel": "EMAIL",
+  "english": "b4994ca459bdb995d7241fcaee395db2067c844e9bd1ec2820a3c33d6cdf67e0",
+  "subject": "[EQMS] Đề xuất hoặc quyết định chính sách sao lưu",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.policy_decided",
+  "channel": "IN_APP",
+  "english": "8b3a8496c231cf8f4e1a9d2c1c1aedc5919e4c574ad7207bc0ed25a5c9b30299",
+  "title": "Đề xuất hoặc quyết định chính sách sao lưu",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.rehearsal_requested",
+  "channel": "EMAIL",
+  "english": "4d7d36c2a2780885bb7f6c60f08f59134284979aaf0033c4e60fc482a55f2dd8",
+  "subject": "[EQMS] Đã yêu cầu diễn tập phục hồi: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một lượt <b>diễn tập phục hồi</b> đã được yêu cầu. Diễn tập phục hồi bản sao lưu vào môi trường nháp để chứng minh bản sao lưu phục hồi được; hệ thống đang chạy không bị thay đổi.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.rehearsal_requested",
+  "channel": "IN_APP",
+  "english": "e7b817b439e4ef185f49ba22bb53f30f5a9eeefc04db94dcb1a5418c44109589",
+  "title": "Đã yêu cầu diễn tập phục hồi",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.restore_decided",
+  "channel": "EMAIL",
+  "english": "5b36dd76ef981960bfafff4e3bcb1e8c1fc61455c482f746ec27b6b9455cdb85",
+  "subject": "[EQMS] Đã quyết định yêu cầu phục hồi",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.restore_decided",
+  "channel": "IN_APP",
+  "english": "5d97f2797d0b0e8fe3d3eaa79e9cd1e3ef85fe3a42d69144ced6abe930d17382",
+  "title": "Đã quyết định yêu cầu phục hồi",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.restore_requested",
+  "channel": "EMAIL",
+  "english": "617a37513e395e8dded2dbf93cf090410b5dc6e32220c6c683ff0192d34e7f1b",
+  "subject": "[EQMS] Có yêu cầu phục hồi",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.restore_requested",
+  "channel": "IN_APP",
+  "english": "f6d72a1b5975a737935ec2762f8376545e6ca46d2223bf3fc70472dbf157dd4f",
+  "title": "Có yêu cầu phục hồi",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "backup.store_scrub_started",
+  "channel": "EMAIL",
+  "english": "6f2e01d40c4889cf4fe8911d3aa74f3750616338743d6d609cfdc7fe2d45a0c7",
+  "subject": "[EQMS] Đã bắt đầu kiểm tra toàn vẹn kho sao lưu: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một lượt <b>kiểm tra toàn vẹn kho sao lưu</b> đã bắt đầu. Lượt kiểm tra đối chiếu mọi tệp sao lưu với mã kiểm đã ghi nhận.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "backup.store_scrub_started",
+  "channel": "IN_APP",
+  "english": "bb70f71fb9a6c2fb9ab1b20c142cf9a00d660a04444258c7cf66cfb9795fdffb",
+  "title": "Đã bắt đầu kiểm tra toàn vẹn kho sao lưu",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "controlled_copy.cancel_notice",
+  "channel": "EMAIL",
+  "english": "5a60388324272c852a80b0805130b3e29d3da7c30c47700670a7e23718a6d939",
+  "subject": "{{controlledCopyNumber}} - Bản sao kiểm soát đã huỷ",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Một bản sao kiểm soát đã bị huỷ và không còn được sử dụng.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Phạm vi:</strong> {{workflowScope}}</p>\n    <p><strong>Số lô:</strong> {{batchNumber}}</p>\n    <p><strong>Bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p>\n    <p><strong>Tài liệu:</strong> {{documentTitle}}</p>\n    <p><strong>Số bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Trạng thái:</strong> {{controlledCopyStatus}}</p>\n    <p><strong>Lý do:</strong> {{workflowComment}}</p>\n    <p><strong>Chi tiết:</strong> <a href=\"{{controlledCopyUrl}}\">{{controlledCopyUrl}}</a></p>\n  </div>\n  <p style=\"margin-top: 16px;\">Lưu ý: không sử dụng bản sao kiểm soát này nữa.</p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.cancel_notice",
+  "channel": "IN_APP",
+  "english": "d5fbf082dc52085806c13534f35db2ed12564d33ab770ecd3aa5d0c8c06f76f4",
+  "title": "{{controlledCopyNumber}} - Bản sao kiểm soát đã huỷ",
+  "summary": "Bản sao kiểm soát {{controlledCopyNumber}} ({{documentTitle}}, bản sửa đổi {{revisionNumber}}) đã bị huỷ và không được sử dụng nữa."
+ },
+ {
+  "eventCode": "controlled_copy.destroyed",
+  "channel": "EMAIL",
+  "english": "99185d1faaccb9f5a3c344aafc5a6bc443aa55711ec4de7d3e8e2089c01b4990",
+  "subject": "[EQMS] Bản sao kiểm soát đã tiêu huỷ: {{controlledCopyNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bản sao kiểm soát <b>{{controlledCopyNumber}}</b> của <b>{{documentNumber}} - {{documentTitle}}</b> (bản sửa đổi {{revisionNumber}}) đã được <b>tiêu huỷ</b> và ghi nhận việc tiêu huỷ.</p><p>Không sử dụng bất kỳ bản in hoặc bản điện tử nào mang số này. Hồ sơ tiêu huỷ được lưu trong Nhật ký kiểm toán.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.destroyed",
+  "channel": "IN_APP",
+  "english": "94c3d76677161928f13e37372ea25d511d4943b1397d744fee429a67681d8c4f",
+  "title": "Bản sao kiểm soát đã tiêu huỷ",
+  "summary": "{{controlledCopyNumber}} đã được tiêu huỷ."
+ },
+ {
+  "eventCode": "controlled_copy.distributed",
+  "channel": "EMAIL",
+  "english": "8f3d60abbf74b53ee3c2c9434564c4245cee7fca86b7962f57be10f867450a0e",
+  "subject": "[EQMS] Có bản sao kiểm soát: {{documentNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một bản sao kiểm soát mới dành cho bạn: <b>{{documentNumber}} - {{documentTitle}}</b> (bản sửa đổi {{revisionNumber}}), số bản sao <b>{{controlledCopyNumber}}</b>.</p><p>Bản sao có hiệu lực đến <b>{{expiryDateDisplay}}</b>. Chỉ dùng bản sao này cho công việc; bản sao hết giá trị khi tài liệu được thay thế hoặc hết hạn.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.distributed",
+  "channel": "IN_APP",
+  "english": "0a3c3b68f290a6beaf43565b796592db8af7d18e3a959f3b85c559a7054263f9",
+  "title": "Có bản sao kiểm soát",
+  "summary": "Có bản sao kiểm soát mới: {{documentTitle}}."
+ },
+ {
+  "eventCode": "controlled_copy.distribution_failed",
+  "channel": "EMAIL",
+  "english": "342de26896063b02ceb19457603d7005581d5684aecee898d496809f49b6ff90",
+  "subject": "[EQMS] Phân phối bản sao kiểm soát thất bại",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.distribution_failed",
+  "channel": "IN_APP",
+  "english": "e878555693dff651855eba5e9579359eb8d0569f87548b75ce127c586876499e",
+  "title": "Phân phối bản sao kiểm soát thất bại",
+  "summary": "Phân phối {{entityName}} thất bại."
+ },
+ {
+  "eventCode": "controlled_copy.distribution_notice",
+  "channel": "EMAIL",
+  "english": "430f73b65a0717d88c53c7b480719f6233e0ce0fcaacd25b559391487a69fd26",
+  "subject": "{{controlledCopyNumber}} - Có bản sao kiểm soát",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\"><p>Xin chào {{recipientName}},</p><p>Đã có bản sao kiểm soát mới.</p><div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\"><p><strong>Tài liệu:</strong> {{documentTitle}}</p><p><strong>Số bản sửa đổi:</strong> {{revisionNumber}}</p><p><strong>Số bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p><p><strong>Ngày hết hạn:</strong> {{expiryDateDisplay}}</p><p><strong>Liên kết xem trước:</strong> <a href=\"{{controlledCopyPreviewUrl}}\">{{controlledCopyPreviewUrl}}</a></p><p><strong>Mật khẩu xem trước:</strong> {{previewPassword}}</p></div><p style=\"margin-top: 16px;\">Vui lòng xem tài liệu qua liên kết xem trước ở trên. Bạn sẽ được yêu cầu nhập mật khẩu ghi tại đây trước khi bản xem trước mở ra.</p><p style=\"margin-top: 8px; color: #6b7280; font-size: 12px;\">Liên kết này mở bản xem trước PDF chỉ đọc của bản sao kiểm soát, không cần tài khoản hay đăng nhập EQMS. Mật khẩu có hiệu lực đến ngày hết hạn ở trên; việc truy cập qua liên kết bị giới hạn thời gian và được ghi nhật ký kiểm toán.</p><p>Trân trọng,<br/>{{systemName}}</p></div>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.distribution_notice",
+  "channel": "IN_APP",
+  "english": "650053c6d5fe1b6d40914ebc2174e86d3a48ccfbaece8aee38e3dd865bb56852",
+  "title": "{{controlledCopyNumber}} - Có bản sao kiểm soát",
+  "summary": "Có bản sao kiểm soát mới: {{controlledCopyNumber}} ({{documentTitle}}, bản sửa đổi {{revisionNumber}})."
+ },
+ {
+  "eventCode": "controlled_copy.expiry_notice",
+  "channel": "EMAIL",
+  "english": "061bc9e1c7be00bdee32617490a6c18cafd67d125ac170a2040483f281df9f5b",
+  "subject": "{{controlledCopyNumber}} - Nhắc bản sao kiểm soát sắp hết hạn",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Bản sao kiểm soát dưới đây sắp hết hạn.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}}</p>\n    <p><strong>Số bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Số bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p>\n    <p><strong>Ngày hết hạn:</strong> {{expiryDate}}</p>\n    <p><strong>Ngày thực hiện:</strong> {{executionDate}}</p>\n    <p><strong>Liên kết xem trước:</strong> <a href=\"{{controlledCopyPreviewUrl}}\">{{controlledCopyPreviewUrl}}</a></p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng xử lý trước ngày hết hạn.</p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.expiry_notice",
+  "channel": "IN_APP",
+  "english": "fb9e890e44c4ee1b4f65d49132ac6738d2b0a0d2f12e864d008cca5332d5fe39",
+  "title": "{{controlledCopyNumber}} - Nhắc bản sao kiểm soát sắp hết hạn",
+  "summary": "Bản sao kiểm soát {{controlledCopyNumber}} ({{documentTitle}}) hết hạn ngày {{expiryDate}}."
+ },
+ {
+  "eventCode": "controlled_copy.lost_or_damaged",
+  "channel": "EMAIL",
+  "english": "edc9900830b6fea1165aea09eea29f6ed2127c4211e6727528aa516b206bf6d7",
+  "subject": "[EQMS] Bản sao kiểm soát được báo mất hoặc hỏng",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.lost_or_damaged",
+  "channel": "IN_APP",
+  "english": "20a90b3ae8d1c1c69f0205291acfa89ad804700db10ae8c2a40b5800a337a4c3",
+  "title": "Bản sao kiểm soát được báo mất hoặc hỏng",
+  "summary": "{{actorName}} đã báo {{entityName}} bị mất hoặc hỏng."
+ },
+ {
+  "eventCode": "controlled_copy.notice",
+  "channel": "EMAIL",
+  "english": "819f0864d430bc07cbc86d939b4a5c228a276dbef46a55d0e101cab7e8eaa783",
+  "subject": "Bản sao kiểm soát {{controlledCopyNumber}} - {{workflowAction}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Một thao tác quy trình đã được thực hiện trên bản sao kiểm soát.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p>\n    <p><strong>Số bản sao:</strong> {{copyNumber}} / {{totalCopies}}</p>\n    <p><strong>Trạng thái:</strong> {{controlledCopyStatus}}</p>\n    <p><strong>Phạm vi phân phối:</strong> {{distributionScope}}</p>\n    <p><strong>Nơi phân phối:</strong> {{distributionLocation}}</p>\n    <p><strong>Ghi chú phân phối:</strong> {{distributionComment}}</p>\n    <p><strong>Chữ ký người nhận:</strong> {{recipientSignature}}</p>\n    <p><strong>Ngày nhận:</strong> {{recipientDate}}</p>\n    <p><strong>Lý do thu hồi:</strong> {{recallReason}}</p>\n    <p><strong>Lý do tiêu huỷ:</strong> {{destroyReason}}</p>\n    <p><strong>Thời điểm tiêu huỷ:</strong> {{destroyedAt}}</p>\n    <p><strong>Người chứng kiến:</strong> {{witnessName}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Mở hồ sơ bản sao kiểm soát: <a href=\"{{controlledCopyUrl}}\">{{controlledCopyUrl}}</a></p>\n  <p><strong>Thao tác:</strong> {{workflowAction}}</p>\n  <p><strong>Ghi chú:</strong> {{workflowComment}}</p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.notice",
+  "channel": "IN_APP",
+  "english": "ce1b9cca2026fe55d7a26ef8142958e18af3185ea115142db2c7e9346f331c35",
+  "title": "Bản sao kiểm soát {{controlledCopyNumber}} - {{workflowAction}}",
+  "summary": "Bản sao kiểm soát {{controlledCopyNumber}}: {{workflowAction}}."
+ },
+ {
+  "eventCode": "controlled_copy.obsoleted_notice",
+  "channel": "EMAIL",
+  "english": "fdfee4e1905a1f30a1c672deaf1fc737e9fa0e922bfe5ac7128b55e312c44106",
+  "subject": "{{controlledCopyNumber}} - Bản sao kiểm soát hết hiệu lực",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Tài liệu hoặc bản sửa đổi nguồn của bản sao kiểm soát này đã hết hiệu lực, nên bản sao không còn giá trị sử dụng.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p>\n    <p><strong>Tài liệu:</strong> {{documentTitle}}</p>\n    <p><strong>Số bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Trạng thái:</strong> {{controlledCopyStatus}}</p>\n    <p><strong>Lý do:</strong> {{workflowComment}}</p>\n    <p><strong>Chi tiết:</strong> <a href=\"{{controlledCopyUrl}}\">{{controlledCopyUrl}}</a></p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng ngừng sử dụng bản sao kiểm soát này ngay.</p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.obsoleted_notice",
+  "channel": "IN_APP",
+  "english": "9ecdcac0cbaca4a514560124ae479b461655f9179215d6bea41d8e57f4f8008d",
+  "title": "{{controlledCopyNumber}} - Bản sao kiểm soát hết hiệu lực",
+  "summary": "Bản sao kiểm soát {{controlledCopyNumber}} đã hết hiệu lực vì tài liệu đã được thay thế. Hãy ngừng sử dụng."
+ },
+ {
+  "eventCode": "controlled_copy.recall_evidence_uploaded",
+  "channel": "EMAIL",
+  "english": "613620aa09a74573fb234e56090fe647bb12fb7898687b098070c1fe77b25324",
+  "subject": "[EQMS] Đã tải bằng chứng cho bản sao kiểm soát: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bằng chứng <b>thu hồi hoặc tiêu huỷ</b> một bản sao kiểm soát đã được tải lên. Bộ phận Kiểm soát Tài liệu có thể kiểm tra và đóng việc thu hồi.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.recall_evidence_uploaded",
+  "channel": "IN_APP",
+  "english": "400e967103e2ed16b0a267c9cd453bc9166db5071a221d356a8b71888f86543e",
+  "title": "Đã tải bằng chứng cho bản sao kiểm soát",
+  "summary": "{{actorName}} đã tải bằng chứng cho {{entityName}}."
+ },
+ {
+  "eventCode": "controlled_copy.recall_notice",
+  "channel": "EMAIL",
+  "english": "ba470408684d94473b449e3af0e702019741fc2769f62690011e32b08113000a",
+  "subject": "{{controlledCopyNumber}} - Bản sao kiểm soát bị thu hồi",
+  "body": "<p>Xin chào {{recipientName}},</p>\n<p>Một bản sao kiểm soát đã bị thu hồi và không còn giá trị sử dụng.</p>\n<p><strong>Phạm vi:</strong> {{workflowScope}}</p>\n<p><strong>Số lô:</strong> {{batchNumber}}</p>\n<p><strong>Bản sao kiểm soát:</strong> {{controlledCopyNumber}}</p>\n<p><strong>Tài liệu:</strong> {{documentTitle}}</p>\n<p><strong>Số bản sửa đổi:</strong> {{revisionNumber}}</p>\n<p><strong>Trạng thái:</strong> {{controlledCopyStatus}}</p>\n<p><strong>Lý do:</strong> {{workflowComment}}</p>\n<p><strong>Chi tiết:</strong> <a target=\"_blank\" rel=\"noopener noreferrer\">{{controlledCopyUrl}}</a></p>\n<p>Vui lòng ngừng sử dụng bản sao kiểm soát này ngay.</p>\n<p>Trân trọng,  <br>  {{systemName}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.recall_notice",
+  "channel": "IN_APP",
+  "english": "0e7ebfd51a7f5b0f4ed4bd0f16e491c0922969a8c3175e31e3b8e2237e821bdb",
+  "title": "{{controlledCopyNumber}} - Bản sao kiểm soát bị thu hồi",
+  "summary": "Bản sao kiểm soát {{controlledCopyNumber}} ({{documentTitle}}) đã bị thu hồi. Hãy nộp lại theo hướng dẫn."
+ },
+ {
+  "eventCode": "controlled_copy.recall_overdue",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.recall_overdue",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "controlled_copy.recalled",
+  "channel": "EMAIL",
+  "english": "8489846f02f5617407c15185a983fdaf23a55852d286e8ad62e28fcf63ff3c39",
+  "subject": "[EQMS] Bản sao kiểm soát bị thu hồi",
+  "body": "<p>{{controlledCopyNumber}} đã bị thu hồi. Lý do: {{recallReason}}.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.recalled",
+  "channel": "IN_APP",
+  "english": "9ea6ead4538bf4a5e9e8ed7981300b4c25004d6f8f69b2fc8c725f13de03ca2e",
+  "title": "Bản sao kiểm soát bị thu hồi",
+  "summary": "{{controlledCopyNumber}} đã bị thu hồi. Lý do: {{recallReason}}."
+ },
+ {
+  "eventCode": "controlled_copy.reissue_requested",
+  "channel": "EMAIL",
+  "english": "8d8759a5ffdd713d216c6539276fccf7bb674ea8f1da969c61024ed774210ebb",
+  "subject": "[EQMS] Có yêu cầu cấp lại bản sao kiểm soát",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.reissue_requested",
+  "channel": "IN_APP",
+  "english": "dedcae715c8326fdc47a305eb141fbd4a728cf299a29bfa30a791f87688639a7",
+  "title": "Có yêu cầu cấp lại bản sao kiểm soát",
+  "summary": "{{actorName}} đã yêu cầu cấp lại {{entityName}}."
+ },
+ {
+  "eventCode": "controlled_copy.request_decided",
+  "channel": "EMAIL",
+  "english": "237fe470fbf50476618cad2dc7330b81b178fb3a274ae02d30dcc5b17d38cfd6",
+  "subject": "[EQMS] Yêu cầu bản sao kiểm soát đã được duyệt: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Yêu cầu bản sao kiểm soát của bạn đã được <b>phê duyệt</b>. Bộ phận Kiểm soát Tài liệu sẽ cấp bản sao cho bạn; bạn sẽ được báo khi bản sao sẵn sàng.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.request_decided",
+  "channel": "IN_APP",
+  "english": "6a3e153eeb6768ff6ebec8e06de137ac6d9bd615b2a0affe83bd8350038234eb",
+  "title": "Yêu cầu bản sao kiểm soát đã được duyệt",
+  "summary": "Yêu cầu {{entityName}} đã được {{actorName}} quyết định."
+ },
+ {
+  "eventCode": "controlled_copy.requested",
+  "channel": "EMAIL",
+  "english": "b44aad069f65ce1195c09b17afaf3721fce073ed56791ae5379fb62eeb548c47",
+  "subject": "[EQMS] Có yêu cầu bản sao kiểm soát",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "controlled_copy.requested",
+  "channel": "IN_APP",
+  "english": "11f46da08d32e10ad50dd2d76e677dbd54315bf14daa4db5bec0bb782dc87815",
+  "title": "Có yêu cầu bản sao kiểm soát",
+  "summary": "{{actorName}} đã yêu cầu {{entityName}}."
+ },
+ {
+  "eventCode": "document.action_escalated",
+  "channel": "EMAIL",
+  "english": "13c67ad1ccdb9ae3fd2c5cd4c243d21009407cf86b8014a14ef59207723da69b",
+  "subject": "[EQMS] Bản sửa đổi bị tắc trong quy trình",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đã chờ {{participantType}} {{fullName}} {{daysPending}} ngày.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.action_escalated",
+  "channel": "IN_APP",
+  "english": "99dee2bb135ac26e2e577cb9be5362f5bd4d8c672001e495dbe4ad1b547546ab",
+  "title": "Bản sửa đổi bị tắc trong quy trình",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã chờ {{participantType}} {{fullName}} {{daysPending}} ngày."
+ },
+ {
+  "eventCode": "document.action_reminder",
+  "channel": "EMAIL",
+  "english": "9aab3664afd7d5f27bfe029caa38af4cb06d990c52f8cccba4b2fec6a9614d7d",
+  "subject": "[EQMS] Có việc đang chờ bạn",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đã chờ bạn xử lý (vai trò {{participantType}}) {{daysPending}} ngày.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.action_reminder",
+  "channel": "IN_APP",
+  "english": "7b7b3ae001005ed18a83244055109f64a3582faef95609dcf9c0098449a38168",
+  "title": "Có việc đang chờ bạn",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã chờ bạn xử lý (vai trò {{participantType}}) {{daysPending}} ngày."
+ },
+ {
+  "eventCode": "document.approval_rejected",
+  "channel": "EMAIL",
+  "english": "3cd90665e881e3da54211a9b39200595cf7957f8b994f4479af0a2eba15ee0a3",
+  "subject": "[EQMS] Bị từ chối khi phê duyệt",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} bị {{actorName}} từ chối khi phê duyệt: {{workflowComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.approval_rejected",
+  "channel": "IN_APP",
+  "english": "a734ffb92284c2cace26084f931a9641871af2a3daec4f9a5b8eb8ebb2fe5694",
+  "title": "Bị từ chối khi phê duyệt",
+  "summary": "{{documentNumber}} — {{documentTitle}} bị {{actorName}} từ chối khi phê duyệt: {{workflowComment}}"
+ },
+ {
+  "eventCode": "document.approval_request",
+  "channel": "EMAIL",
+  "english": "1586687c96aa80630b1b5790c7d6422a6154e0c4c90a9b8bd1f8a1486584bb0b",
+  "subject": "{{documentNumber}} - Cần phê duyệt: {{documentTitle}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Một tài liệu đã rà soát xong đang chờ bạn phê duyệt.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Giai đoạn hiện tại:</strong> {{workflowStage}}</p>\n    <p><strong>Ngày hiệu lực:</strong> {{revisionEffectiveDate}}</p>\n    <p><strong>Hiệu lực đến:</strong> {{revisionValidUntil}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng xem bản PDF và thực hiện phê duyệt.</p>\n  <p><strong>Thao tác:</strong> {{workflowAction}}</p>\n  <p><strong>Ghi chú:</strong> {{workflowComment}}</p>\n  <p>Mở tài liệu: <a href=\"{{documentUrl}}\">{{documentUrl}}</a></p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.approval_request",
+  "channel": "IN_APP",
+  "english": "5cd5db17f3805c5829c3649e24b3cc73795e564a25d810cce1b8059a807aee3e",
+  "title": "{{documentNumber}} - Cần phê duyệt: {{documentTitle}}",
+  "summary": "{{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đã sẵn sàng để bạn phê duyệt."
+ },
+ {
+  "eventCode": "document.approved",
+  "channel": "EMAIL",
+  "english": "1c886d5a52e16a79313c5f5313bb43365ce0ba5f28dd6fc8d071df1bebb6dbc8",
+  "subject": "[EQMS] Tài liệu đã được phê duyệt",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đã được phê duyệt.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.approved",
+  "channel": "IN_APP",
+  "english": "353d3610e4a1651c6d71ac6c2c5375d38ffb8ad42887c36c6e2191f6b266636c",
+  "title": "Tài liệu đã được phê duyệt",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã được phê duyệt."
+ },
+ {
+  "eventCode": "document.edit_online",
+  "channel": "EMAIL",
+  "english": "5d95f0431464a828d167c6166769b3feac9183dba5daf31d4b27c7a696f5c42a",
+  "subject": "{{documentNumber}} - Sẵn sàng sửa trực tuyến: {{documentTitle}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Bạn được giao sửa bản sửa đổi dưới đây trong Office Online.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionName}} - {{revisionNumber}}</p>\n    <p><strong>Trạng thái:</strong> {{revisionStatus}}</p>\n    <p><strong>Tác giả:</strong> {{documentAuthorName}}</p>\n    <p><strong>Thao tác:</strong> {{workflowAction}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Mở không gian làm việc của bản sửa đổi: <a href=\"{{revisionUrl}}\">{{revisionUrl}}</a></p>\n  <p>Sửa tệp trực tuyến: <a href=\"{{officeEditUrl}}\">{{officeEditUrl}}</a></p>\n  <p><strong>Ghi chú:</strong> {{workflowComment}}</p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.edit_online",
+  "channel": "IN_APP",
+  "english": "a9f0288f34c8c8a710c8bedb1c7be87a87c3800f38692342eb77e85bbaeb79c2",
+  "title": "{{documentNumber}} - Sẵn sàng sửa trực tuyến: {{documentTitle}}",
+  "summary": "Bạn có thể sửa trực tuyến {{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}})."
+ },
+ {
+  "eventCode": "document.editing_lock_changed",
+  "channel": "EMAIL",
+  "english": "a588f66af2243a5036c7c886c8c844c8fe6dbf72a77a50420baf2963649b26c9",
+  "subject": "[EQMS] Thay đổi khoá chỉnh sửa: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Việc chỉnh sửa một bản sửa đổi đã bị <b>khoá</b>, hoặc liên kết sửa trực tuyến đã bị <b>thu hồi hay khôi phục</b> ({{actionName}}).</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.editing_lock_changed",
+  "channel": "IN_APP",
+  "english": "d689ed93bbb808c0fa77505dbd712b9974d52c837929215c3149d451561ed29c",
+  "title": "Thay đổi khoá chỉnh sửa hoặc liên kết sửa trực tuyến",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "document.expired",
+  "channel": "EMAIL",
+  "english": "954f81bc2ed508967f9f2ead2e954bc332aaf01c9bf04d831e5c753192f29450",
+  "subject": "[EQMS] Tài liệu đã hết hạn: {{documentNumber}}",
+  "body": "<p><b>Tài liệu {{documentNumber}} — {{documentTitle}} đã quá ngày Hiệu lực đến và không còn giá trị.</b></p>\n<p>Các bản sao điện tử đã bị vô hiệu. Không sử dụng tài liệu này, kể cả bản in, và không yêu cầu bản sao mới cho đến khi tài liệu được rà soát và gia hạn hoặc được thay bằng phiên bản mới hơn.</p>\n<p>Liên kết: {{actionUrl}}</p>",
+  "actionLabel": null
+ },
+ {
+  "eventCode": "document.expired",
+  "channel": "IN_APP",
+  "english": "3ac6919ea07276816ba738e11075c91a7d22c13fb22b276166c385a3048f88ce",
+  "title": "Tài liệu đã hết hạn",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã quá ngày Hiệu lực đến. Không sử dụng."
+ },
+ {
+  "eventCode": "document.expired_copy_holder",
+  "channel": "EMAIL",
+  "english": "768c8fd7c7ba4a5b04b1e55821190d62ac120ca65feb757fd2231851cb552730",
+  "subject": "[EQMS] Bản sao của bạn bị vô hiệu: {{documentNumber}}",
+  "body": "<p><b>Bản sao kiểm soát bạn đang giữ của {{documentNumber}} — {{documentTitle}} đã bị vô hiệu vì tài liệu hết hạn.</b></p><p>Không sử dụng bản điện tử hoặc bản in đã cấp cho bạn. Bộ phận Kiểm soát Tài liệu (DCO) sẽ thu hồi bản in.</p><p>Liên kết: {{actionUrl}}</p>",
+  "actionLabel": null
+ },
+ {
+  "eventCode": "document.expired_copy_holder",
+  "channel": "IN_APP",
+  "english": "e0a8365454266919330911c05ba2bc06d67f18b14cae0b1d8d3ef000061bf359",
+  "title": "Bản sao của bạn bị vô hiệu",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã hết hạn. Bản sao của bạn bị vô hiệu. Không sử dụng; DCO sẽ thu hồi bản giấy."
+ },
+ {
+  "eventCode": "document.legacy_import_finished",
+  "channel": "EMAIL",
+  "english": "e7cd89ad06d3a7b6f9154fc1b042e0f06b57a634fc42177240132377980fd879",
+  "subject": "[EQMS] Đã nhập tài liệu cũ: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một tài liệu nhập từ bản giấy nay đã <b>có hiệu lực</b>. Hãy kiểm tra số tài liệu, số bản sửa đổi và ngày hiệu lực đến có đúng với bản giấy gốc.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.legacy_import_finished",
+  "channel": "IN_APP",
+  "english": "57185af69dc2b5675f775b118ac4bd7b23122d2e9934fdd41f728f481b122a7a",
+  "title": "Đã nhập xong tài liệu cũ",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "document.number_changed",
+  "channel": "EMAIL",
+  "english": "bd3bc411b2810e21f858678537f7a3304a33ac7340f6aa13a70113eedd689100",
+  "subject": "[EQMS] Đã đổi số tài liệu: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p><b>Số của một tài liệu đã được đổi</b>. Bản sao kiểm soát đã in vẫn mang số cũ: bộ phận Kiểm soát Tài liệu phải kiểm tra và cấp lại nếu cần.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.number_changed",
+  "channel": "IN_APP",
+  "english": "8cbd1f042aef185f0b15d172f624f9acd847d57c12106247f3431cb0525ec0e1",
+  "title": "Đã đổi số tài liệu",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "document.obsoleted",
+  "channel": "EMAIL",
+  "english": "5aa9622e4f393bcf2e012de9b479bac8fcce64bef713b10359918fd9e9990b55",
+  "subject": "[EQMS] Tài liệu hết hiệu lực",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đã hết hiệu lực.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.obsoleted",
+  "channel": "IN_APP",
+  "english": "502f06f35cbd284e64995927d6ce3322808488cb1bcf08405c868a327c720647",
+  "title": "Tài liệu hết hiệu lực",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã hết hiệu lực."
+ },
+ {
+  "eventCode": "document.participant_unavailable",
+  "channel": "EMAIL",
+  "english": "86a75664108c161788f15aaae6a9282cedb06ca0b8330098adbd2f660b93780a",
+  "subject": "[EQMS] Người được giao trong quy trình không còn khả dụng",
+  "body": "<p>{{documentNumber}} — {{documentTitle}}: {{participantType}} đang chờ xử lý là {{fullName}} không còn khả dụng. Hãy thay người được giao để bản sửa đổi tiếp tục.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.participant_unavailable",
+  "channel": "IN_APP",
+  "english": "92b43c6fa966422d4a182ee627df52a326282a12c5f0107f9463063be36ef9cb",
+  "title": "Người được giao trong quy trình không còn khả dụng",
+  "summary": "{{documentNumber}} — {{documentTitle}}: {{participantType}} đang chờ xử lý là {{fullName}} không còn khả dụng. Hãy thay người được giao để bản sửa đổi tiếp tục."
+ },
+ {
+  "eventCode": "document.periodic_review_due",
+  "channel": "EMAIL",
+  "english": "3398bb5cfdb5829cd4814f280d97810c0715e62b589dab0e45e3345a25eaea71",
+  "subject": "[EQMS] Đến hạn rà soát định kỳ",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đến hạn rà soát định kỳ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.periodic_review_due",
+  "channel": "IN_APP",
+  "english": "510c507ff58ea18cc608e860dc72878587671b7601afa622e03afcd972fd1f7d",
+  "title": "Đến hạn rà soát định kỳ",
+  "summary": "{{documentNumber}} — {{documentTitle}} {{reviewStatus}} {{reviewDate}}."
+ },
+ {
+  "eventCode": "document.publish_notice",
+  "channel": "EMAIL",
+  "english": "63920780bd2f1dcbf7a81bbb0508872d651db31061129d2e395b49d2b0eae78c",
+  "subject": "{{documentNumber}} - Đã ban hành: {{documentTitle}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Bản sửa đổi dưới đây đã được ban hành và đang có hiệu lực.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Thời điểm ban hành:</strong> {{revisionPublishedAt}}</p>\n    <p><strong>Người ban hành:</strong> {{revisionPublishedBy}}</p>\n    <p><strong>Ngày hiệu lực:</strong> {{revisionEffectiveDate}}</p>\n    <p><strong>Hiệu lực đến:</strong> {{revisionValidUntil}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Mở phiên bản hiệu lực mới nhất tại đây: <a href=\"{{documentUrl}}\">{{documentUrl}}</a></p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.publish_notice",
+  "channel": "IN_APP",
+  "english": "55d670a7c109b10200ad232636b98585d9df05e80a86d767b6b985827b336dd9",
+  "title": "{{documentNumber}} - Đã ban hành: {{documentTitle}}",
+  "summary": "{{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đã được ban hành."
+ },
+ {
+  "eventCode": "document.published",
+  "channel": "EMAIL",
+  "english": "b91e87d676c7f1dbf2537f28c06afdf939772db9048810f0e5693c25221b3238",
+  "subject": "[EQMS] Tài liệu bắt đầu có hiệu lực: {{documentNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Tài liệu <b>{{documentNumber}} - {{documentTitle}}</b>, bản sửa đổi <b>{{revisionNumber}}</b>, đã được ban hành và <b>đang có hiệu lực</b>.</p><p>Từ nay đây là phiên bản phải sử dụng. Không được dùng bản in của bản sửa đổi trước.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.published",
+  "channel": "IN_APP",
+  "english": "ff6065414be0a3d32e598abe1a1c4a106f5e785d701313be880577945a52683c",
+  "title": "Tài liệu bắt đầu có hiệu lực",
+  "summary": "{{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đã có hiệu lực."
+ },
+ {
+  "eventCode": "document.publishing_failed",
+  "channel": "EMAIL",
+  "english": "b487cbcbd1d09a5f92f84364d01bdb3865d0d9c107672c11dcfdb433faaa673d",
+  "subject": "[EQMS] Đóng gói ban hành thất bại",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.publishing_failed",
+  "channel": "IN_APP",
+  "english": "bda9516ade42ece729db9c56968c9aa95bc5d83823036c0627ada8afddef951b",
+  "title": "Đóng gói ban hành thất bại",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "document.ready_for_publishing",
+  "channel": "EMAIL",
+  "english": "9ee809101036160e635f83f863a89c9b5f898081e36aca5d5f16b583dce116bb",
+  "subject": "{{documentNumber}} - Sẵn sàng ban hành: {{documentTitle}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Bản sửa đổi đã hoàn tất quy trình và sẵn sàng để DCO ban hành.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Trạng thái:</strong> {{revisionStatus}}</p>\n    <p><strong>Ngày hiệu lực:</strong> {{revisionEffectiveDate}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng kiểm tra gói ban hành và ban hành khi sẵn sàng. Bản sửa đổi này chưa có hiệu lực.</p>\n  <p>Mở bản sửa đổi: <a href=\"{{documentUrl}}\">{{documentUrl}}</a></p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.ready_for_publishing",
+  "channel": "IN_APP",
+  "english": "12be3f60980dccd144be18c6aecc67f937270bdcedacb0fdc13e94d05061d4f1",
+  "title": "{{documentNumber}} - Sẵn sàng ban hành: {{documentTitle}}",
+  "summary": "{{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đã sẵn sàng ban hành."
+ },
+ {
+  "eventCode": "document.ready_for_submission",
+  "channel": "EMAIL",
+  "english": "d1b1a4537da15f03714c8d687fef402a6bf95cdeb635e8dec4ed3c2cfc730413",
+  "subject": "Bản sửa đổi chờ bạn rà soát: {{documentNumber}}",
+  "body": "<p>Xin chào,</p><p>Tác giả đã sửa xong bản sửa đổi <strong>{{documentNumber}} - {{documentTitle}}</strong>; bạn có thể kiểm tra và gửi rà soát.</p><p>Vui lòng mở không gian làm việc của bản sửa đổi để kiểm tra nội dung trước khi gửi rà soát.</p><p>Trân trọng,<br/>Hệ thống EQMS</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.ready_for_submission",
+  "channel": "IN_APP",
+  "english": "68163b621a8cc8b33671c8b663a8660d47278b6ff7cc3af359d7258be9f5f77e",
+  "title": "Bản sửa đổi chờ bạn rà soát: {{documentNumber}}",
+  "summary": "{{documentNumber}} - {{documentTitle}}: tác giả đã sửa xong; bản sửa đổi chờ bạn rà soát."
+ },
+ {
+  "eventCode": "document.review_comment",
+  "channel": "EMAIL",
+  "english": "6de70a641b16979897a831ec50706840c4e5ec631ff6879369d4dd2d9f944f2b",
+  "subject": "[EQMS] Góp ý rà soát trên bản sửa đổi",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.review_comment",
+  "channel": "IN_APP",
+  "english": "0d7e684b35fb7e96862f8dc8edd0ec348c42d04c28e7d1973a6dd73a212943ce",
+  "title": "Góp ý rà soát trên bản sửa đổi",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "document.review_completed",
+  "channel": "EMAIL",
+  "english": "e8b07ae27da67f4fd505a70de24552dbf22cd3a69fee983449c9aa3baa465747",
+  "subject": "[EQMS] Đã rà soát xong: {{documentNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Mọi người rà soát đã <b>rà soát xong</b> <b>{{documentNumber}} - {{documentTitle}}</b> (bản sửa đổi {{revisionNumber}}).</p><p>Bản sửa đổi đã sẵn sàng cho bước tiếp theo (phê duyệt).</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.review_completed",
+  "channel": "IN_APP",
+  "english": "bca6f6a1f6ee0e1912785ef9bd0551ebe57344f3757a017b1b8a3fd989b9300f",
+  "title": "Đã rà soát xong",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã rà soát xong và sẵn sàng phê duyệt."
+ },
+ {
+  "eventCode": "document.review_rejected",
+  "channel": "EMAIL",
+  "english": "e1ad53cd1374f8fbee8393be1cb8426638748fffb2f97e0c3998f205947feba4",
+  "subject": "[EQMS] Bị từ chối khi rà soát",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} bị {{actorName}} từ chối khi rà soát: {{workflowComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.review_rejected",
+  "channel": "IN_APP",
+  "english": "a5ccc0ab08d8abdf3185db76c0d3c8c113e54354dbd808d67ec65450475f883a",
+  "title": "Bị từ chối khi rà soát",
+  "summary": "{{documentNumber}} — {{documentTitle}} bị {{actorName}} từ chối khi rà soát: {{workflowComment}}"
+ },
+ {
+  "eventCode": "document.review_request",
+  "channel": "EMAIL",
+  "english": "31d1db747a5132e8f6551212b5900ca88be6b813e593e54084b8805aabac138d",
+  "subject": "{{documentNumber}} - Cần rà soát: {{documentTitle}}",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Một bản sửa đổi đang chờ bạn rà soát.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Trạng thái:</strong> {{revisionStatus}}</p>\n    <p><strong>Tác giả:</strong> {{documentAuthorName}}</p>\n    <p><strong>Bộ phận:</strong> {{documentDepartment}}</p>\n    <p><strong>Hạn:</strong> {{documentReviewDate}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng mở việc rà soát tài liệu và thực hiện.</p>\n  <p><strong>Thao tác:</strong> {{workflowAction}}</p>\n  <p><strong>Ghi chú:</strong> {{workflowComment}}</p>\n  <p>Mở tài liệu: <a href=\"{{documentUrl}}\">{{documentUrl}}</a></p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.review_request",
+  "channel": "IN_APP",
+  "english": "673f7eb2a128f0b8a887c346b127b84157cf9bc9ecc187051f16dd172679485e",
+  "title": "{{documentNumber}} - Cần rà soát: {{documentTitle}}",
+  "summary": "{{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đang chờ bạn rà soát."
+ },
+ {
+  "eventCode": "document.revision_cancelled",
+  "channel": "EMAIL",
+  "english": "09a6b4680ee33656efa5577442c0360574d9b0b71cb20e7aca58be289363b2ac",
+  "subject": "Bản sửa đổi đã huỷ: {{documentNumber}}",
+  "body": "<p>Xin chào,</p><p>Bản sửa đổi <strong>{{documentNumber}} - {{documentTitle}}</strong> của bạn đã bị {{actorName}} huỷ.</p><p>Lý do: {{comment}}</p><p>Trân trọng,<br/>Hệ thống EQMS</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.revision_cancelled",
+  "channel": "IN_APP",
+  "english": "477a96ed68f3caeda987715323b71e6af56335ed02fbbb7cf2719327d8d04832",
+  "title": "Bản sửa đổi đã huỷ: {{documentNumber}}",
+  "summary": "Xin chào, Bản sửa đổi {{documentNumber}} - {{documentTitle}} của bạn đã bị {{actorName}} huỷ. Lý do: {{comment}} Trân trọng, Hệ thống EQMS"
+ },
+ {
+  "eventCode": "document.submitted_for_review",
+  "channel": "EMAIL",
+  "english": "e85a1af46b6e5422f9fa14a1dac5711856aa45851241421f51c4065898a1501d",
+  "subject": "[EQMS] Tài liệu chờ rà soát",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đang chờ bạn rà soát.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.submitted_for_review",
+  "channel": "IN_APP",
+  "english": "9950bd9866a449698d62ff1f4a82483b1b5d5458a18bea3cc3d3f5a2527be86d",
+  "title": "Tài liệu chờ rà soát",
+  "summary": "{{documentNumber}} — {{documentTitle}} đang chờ bạn rà soát."
+ },
+ {
+  "eventCode": "document.training_completed",
+  "channel": "EMAIL",
+  "english": "5faac586e34f2b21712eceabcce9496b51eec446df577be385f7a0f6b47f99fe",
+  "subject": "[EQMS] Đã hoàn thành đào tạo",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}}): đã hoàn thành đào tạo. Bản sửa đổi sẵn sàng ban hành.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.training_completed",
+  "channel": "IN_APP",
+  "english": "060f03270b12303054dd92c98386c49354c59432cec81d81b2ff7bf9da51cdac",
+  "title": "Đã hoàn thành đào tạo",
+  "summary": "{{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}}): đã hoàn thành đào tạo. Bản sửa đổi sẵn sàng ban hành."
+ },
+ {
+  "eventCode": "document.training_required",
+  "channel": "EMAIL",
+  "english": "2d489b33fc88024bd4a7f297d75eed9bb2fc39873597083e0c0650f5cc8cd229",
+  "subject": "Yêu cầu đào tạo: {{documentTitle}} (bản sửa đổi {{revisionNumber}})",
+  "body": "<div style=\"font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;\">\n  <p>Xin chào {{recipientName}},</p>\n  <p>Có yêu cầu đào tạo cho một bản sửa đổi tài liệu mà bạn phải hoàn thành.</p>\n  <div style=\"padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;\">\n    <p><strong>Tài liệu:</strong> {{documentTitle}} ({{documentNumber}})</p>\n    <p><strong>Bản sửa đổi:</strong> {{revisionNumber}}</p>\n    <p><strong>Ngày dự kiến:</strong> {{trainingPlannedDate}}</p>\n    <p><strong>Kết thúc thời gian đào tạo:</strong> {{trainingPeriodEndDate}}</p>\n    <p><strong>Ngày hoàn thành:</strong> {{trainingCompletionDate}}</p>\n  </div>\n  <p style=\"margin-top: 16px;\">Vui lòng hoàn thành đào tạo được giao trước hạn.</p>\n  <p><strong>Thao tác:</strong> {{workflowAction}}</p>\n  <p><strong>Ghi chú:</strong> {{workflowComment}}</p>\n  <p>Mở tài liệu: <a href=\"{{documentUrl}}\">{{documentUrl}}</a></p>\n  <p>Trân trọng,<br/>{{systemName}}</p>\n</div>\n",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.training_required",
+  "channel": "IN_APP",
+  "english": "84bff00110b21d75788a8a3534f3f7a37d7e01ac704f1c19cdbbf1757582f1cf",
+  "title": "Yêu cầu đào tạo: {{documentTitle}} (bản sửa đổi {{revisionNumber}})",
+  "summary": "Bạn được giao đào tạo cho {{documentNumber}} - {{documentTitle}} (bản sửa đổi {{revisionNumber}})."
+ },
+ {
+  "eventCode": "document.upgrade_ready",
+  "channel": "EMAIL",
+  "english": "5fe16b77a82b956735491f9bdf905f5457ed73262c29992f8651eb2a399e9c1c",
+  "subject": "[EQMS] Tài liệu sẵn sàng nâng phiên bản",
+  "body": "<p>{{documentNumber}} — {{documentTitle}} đã được cấu hình để nâng phiên bản. Bạn có thể tải bản sửa đổi mới lên.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "document.upgrade_ready",
+  "channel": "IN_APP",
+  "english": "bea94de6808ad0708d15cb00217fc469523768a8cdbd805b1009bd6fcde926e4",
+  "title": "Tài liệu sẵn sàng nâng phiên bản",
+  "summary": "{{documentNumber}} — {{documentTitle}} đã được cấu hình để nâng phiên bản. Bạn có thể tải bản sửa đổi mới lên."
+ },
+ {
+  "eventCode": "knowledge.document_published",
+  "channel": "EMAIL",
+  "english": "b004a579f18b0d977e8952ea97fbd4beb0a6dc55d70437ba3aaaf868125bc8df",
+  "subject": "[EQMS] Mới trong {{knowledgeBase}}: {{documentNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một tài liệu mới được ban hành trong Kho tri thức <b>{{knowledgeBase}}</b> mà bạn theo dõi: <b>{{documentNumber}} - {{documentTitle}}</b> (bản sửa đổi {{revisionNumber}}), nay <b>đang có hiệu lực</b>.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "knowledge.document_published",
+  "channel": "IN_APP",
+  "english": "0726c74108aa82019028d87f566fcb3b875fbf4d8cac71f4ee5ae02a404836c0",
+  "title": "Mới trong {{knowledgeBase}}",
+  "summary": "{{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}}) đã có hiệu lực."
+ },
+ {
+  "eventCode": "knowledge.share_notice",
+  "channel": "EMAIL",
+  "english": "2c37f493f9f5a5168975257045f9d816c2d487e6250a8a16ad8d5013a0f1e7dc",
+  "subject": "Chia sẻ Kho tri thức: {{actionTitle}}",
+  "body": "<p>Xin chào {{recipientName}},</p><p><strong>{{actorName}}</strong>, người được chia sẻ thay bạn, {{actionText}}.</p><p>Mục: <strong>{{itemLabel}}</strong><br/>Phạm vi: {{scopeName}}<br/>Chi tiết: {{detail}}</p><p>Việc này được ghi trong Nhật ký kiểm toán. Để xem và gỡ nội dung đã chia sẻ, bấm chuột phải vào mục trong trình duyệt Kho tri thức rồi chọn Chia sẻ.</p><p>Trân trọng,<br/>Hệ thống EQMS</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "knowledge.share_notice",
+  "channel": "IN_APP",
+  "english": "ecda29bf3a4425822db804f03949a86454d1f29115b6419b2f71ffd2a4738cdd",
+  "title": "Chia sẻ Kho tri thức: {{actionTitle}}",
+  "summary": "{{actorName}}: {{actionTitle}} - {{itemLabel}}."
+ },
+ {
+  "eventCode": "knowledge.sharing_changed",
+  "channel": "EMAIL",
+  "english": "6217ff2e05e590d25a2b7ed698b47e9044fa3e8f18e8c7a72754bfde5c5c8452",
+  "subject": "[EQMS] Thay đổi chia sẻ Kho tri thức: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một <b>liên kết chia sẻ hoặc người được uỷ quyền chia sẻ</b> của Kho tri thức đã được tạo, thu hồi hoặc gỡ ({{actionName}}). Hãy kiểm tra không có nội dung nào bị chia sẻ nhầm ra ngoài công ty.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "knowledge.sharing_changed",
+  "channel": "IN_APP",
+  "english": "de16e6a007783ac2f4447d0e89371e6b58c23b9df74b338909a9db21bf302623",
+  "title": "Thay đổi chia sẻ Kho tri thức",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "report.ready",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.ready",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "report.run_failed",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.run_failed",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "report.schedule_suspended",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.schedule_suspended",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "report.template_decided",
+  "channel": "EMAIL",
+  "english": "80528a9c13dbcb27b06e31677942a790b2140c8d8160910405c4bf1671e16806",
+  "subject": "[EQMS] Đã quyết định mẫu báo cáo: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một mẫu báo cáo đã được <b>phê duyệt, bật hoặc tắt</b> ({{actionName}}). Báo cáo lập từ mẫu này theo trạng thái mới kể từ bây giờ.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.template_decided",
+  "channel": "IN_APP",
+  "english": "188fb33b8eb571aa4a46d959a175d19f96fcd80333d4ee40b6d49419b61d7d2a",
+  "title": "Mẫu báo cáo được phê duyệt hoặc tắt",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "report.template_rejected",
+  "channel": "EMAIL",
+  "english": "fcd70d41e46f06d7156d3cdf4ddb0d469193307b7b963700f7dfaf2742b4d11f",
+  "subject": "[EQMS] Mẫu báo cáo bị từ chối: {{entityName}}",
+  "body": "<p>Mẫu báo cáo <b>{{entityName}}</b> đã bị {{actorName}} từ chối.</p><p><b>Lý do:</b> {{actionComment}}</p><p>Hãy sửa mẫu và trình lại: {{actionUrl}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.template_rejected",
+  "channel": "IN_APP",
+  "english": "b064c07cd20c29b39a70aaef66e067fa54d26ded800b4b9824fb45d513aa273e",
+  "title": "Mẫu báo cáo bị từ chối",
+  "summary": "{{entityName}} bị {{actorName}} từ chối. Lý do: {{actionComment}}"
+ },
+ {
+  "eventCode": "report.template_submitted",
+  "channel": "EMAIL",
+  "english": "97f64b432281bd57b9ca5edcd6209c3a9e757f6fcf154785f7839b409f00a642",
+  "subject": "[EQMS] Có mẫu báo cáo được trình",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.template_submitted",
+  "channel": "IN_APP",
+  "english": "d91099882084125c4d59dbf78ee2eb69881c1fa8c3396649bd55287de26c55eb",
+  "title": "Có mẫu báo cáo được trình",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "report.type_or_property_changed",
+  "channel": "EMAIL",
+  "english": "0ecb70cb3d8253a009f2562450d8ebde19b45e1bdd4c8cff5a4427dbfad9f8e6",
+  "subject": "[EQMS] Thay đổi cài đặt báo cáo: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một <b>loại báo cáo</b> đã được bật hoặc tắt, hoặc <b>thuộc tính hay giao diện báo cáo</b> đã thay đổi ({{actionName}}). Báo cáo lập từ bây giờ dùng cài đặt mới.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "report.type_or_property_changed",
+  "channel": "IN_APP",
+  "english": "2e60159c9cbb50491028858b628726383029c3bea464daf171f2674facb923ed",
+  "title": "Thay đổi loại hoặc thuộc tính báo cáo",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.access_profile_changed_audit",
+  "channel": "EMAIL",
+  "english": "4283e151da51e31bc65d6a410ebf96fbcc9fc2ad68d8eaf90502698e108c6d2d",
+  "subject": "[EQMS] Thay đổi hồ sơ phân quyền: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một <b>hồ sơ phân quyền</b>, quyền hoặc thành viên của hồ sơ đã thay đổi ({{actionName}}). Người trong hồ sơ có thể làm được nhiều hơn hoặc ít hơn trước.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.access_profile_changed_audit",
+  "channel": "IN_APP",
+  "english": "84379bd4a464eb54f3ca486e96416efe9e5af792b0e9e556adcefbf0c1c87cd9",
+  "title": "Thay đổi hồ sơ phân quyền",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.account_locked",
+  "channel": "EMAIL",
+  "english": "ace442379a46ee620bb59196eed16133aefacc14fea4b9939239fe741c797bbe",
+  "subject": "[EQMS] Tài khoản bị khoá",
+  "body": "<p>Tài khoản của bạn đã bị khoá do đăng nhập sai nhiều lần.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.account_locked",
+  "channel": "IN_APP",
+  "english": "a3adad0c905d9073b7c4961828e81a16886eb143bc403ec199d46fd6a076aad0",
+  "title": "Tài khoản bị khoá",
+  "summary": "Tài khoản của bạn đã bị khoá do đăng nhập sai nhiều lần."
+ },
+ {
+  "eventCode": "security.account_mfa_reset",
+  "channel": "EMAIL",
+  "english": "3842a6a2626ff300da09002f271e333c5baa5851e88bf59f9aa630c9146e1d29",
+  "subject": "Xác thực đa yếu tố EQMS của bạn đã được đặt lại",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Quản trị viên đã đặt lại xác thực đa yếu tố cho tài khoản EQMS của bạn để bạn thiết lập lại. Mọi phiên đăng nhập của bạn đã bị đăng xuất.</p><p>Lần đăng nhập tới, bạn sẽ được yêu cầu thiết lập lại xác thực đa yếu tố.</p><p>Nếu bạn không yêu cầu việc này, hãy liên hệ quản trị viên ngay.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.account_password_reset",
+  "channel": "EMAIL",
+  "english": "e69d45141506cabda4a03a79317a61a31b3b7118c19fbd2f7c2f60ca85db82d6",
+  "subject": "Mật khẩu EQMS của bạn đã được đặt lại",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Quản trị viên đã đặt lại mật khẩu EQMS của bạn và cấp mật khẩu tạm mới.</p><p><strong>Tên đăng nhập:</strong> {{username}}<br/><strong>Mật khẩu tạm:</strong> {{tempPassword}}</p><p><a href=\"{{loginLink}}\">Bấm vào đây để đăng nhập</a></p><p>Để bảo mật, bạn phải đặt mật khẩu mới ngay sau khi đăng nhập. Nếu bạn không chờ đợi việc này, hãy liên hệ quản trị hệ thống ngay.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.account_unlocked",
+  "channel": "EMAIL",
+  "english": "2c9e6fb8da08361d441f039f931d36ebb8f82cc2444cf303679c2bfabd8ff817",
+  "subject": "Tài khoản EQMS của bạn đã được mở khoá",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Tài khoản EQMS của bạn đã bị khoá do đăng nhập sai quá nhiều lần. Quản trị viên đã mở khoá và cấp mật khẩu tạm mới.</p><p><strong>Tên đăng nhập:</strong> {{username}}<br/><strong>Mật khẩu tạm:</strong> {{tempPassword}}</p><p><a href=\"{{loginLink}}\">Bấm vào đây để đăng nhập</a></p><p>Để bảo mật, bạn phải đặt mật khẩu mới ngay sau khi đăng nhập. Nếu bạn không chờ đợi việc này, hãy liên hệ quản trị hệ thống ngay.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.esignature_settings_changed",
+  "channel": "EMAIL",
+  "english": "2f2d4b670f54c1624eef117bc77ca4a9a1912a669c214cbe128fdff848395523",
+  "subject": "[EQMS] Thay đổi cấu hình chữ ký điện tử",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.esignature_settings_changed",
+  "channel": "IN_APP",
+  "english": "40d2af10a89f77931b4551716d2a32248ffd9f49b87dfa309e1148bada6d26b6",
+  "title": "Thay đổi cấu hình chữ ký điện tử",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.mfa_login_code",
+  "channel": "EMAIL",
+  "english": "4bb6e1d4ad1363c25b54f1a0a6319708e99cf0991543db653a7831e80eb142dd",
+  "subject": "Mã xác minh EQMS của bạn: {{otpCode}}",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Mã xác minh của bạn là: <strong>{{otpCode}}</strong></p><p>Mã này hết hạn sau {{expiresIn}} phút.</p><p>Nếu bạn không yêu cầu mã này, hãy bỏ qua e-mail.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.mfa_requirement_removed",
+  "channel": "EMAIL",
+  "english": "8e383d5664936d893df7c44260620a55fed2001fd426fe17cc3d925434bd33d2",
+  "subject": "Tài khoản EQMS của bạn không còn bắt buộc xác thực đa yếu tố",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Quản trị viên không còn bắt buộc xác thực đa yếu tố cho tài khoản EQMS của bạn. Bạn vẫn có thể tiếp tục dùng, hoặc tắt trong cài đặt hồ sơ cá nhân.</p><p>Nếu bạn không chờ đợi thay đổi này, hãy liên hệ quản trị hệ thống.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.mfa_updated",
+  "channel": "EMAIL",
+  "english": "af03dc40072953203be28b4342080e71857b67c19c9f77aaf63113bc7230930f",
+  "subject": "[EQMS] Đã cập nhật cài đặt xác thực đa yếu tố",
+  "body": "<p>Cài đặt xác thực đa yếu tố của bạn đã được cập nhật.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.mfa_updated",
+  "channel": "IN_APP",
+  "english": "6759b292571a256de99c7ebb97532e00f83e7346d62701313dca75f393abbfff",
+  "title": "Đã cập nhật cài đặt xác thực đa yếu tố",
+  "summary": "Cài đặt xác thực đa yếu tố của bạn đã được cập nhật."
+ },
+ {
+  "eventCode": "security.object_access_rule_changed",
+  "channel": "EMAIL",
+  "english": "bc77d95d302df41bc65aca6271e0b0f50bb12d81ea0c86ec0f89d3fc6f3c5673",
+  "subject": "[EQMS] Thay đổi quy tắc truy cập đối tượng: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một <b>quy tắc truy cập đối tượng</b> đã được tạo, sửa hoặc xoá ({{actionName}}). Quy tắc này quyết định người dùng thấy được hồ sơ nào.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.object_access_rule_changed",
+  "channel": "IN_APP",
+  "english": "1d2aece63813451f5efecbe1d1e3565610e5ceca78ed2c1280eefc89159a343b",
+  "title": "Thay đổi quy tắc truy cập đối tượng",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.password_changed",
+  "channel": "EMAIL",
+  "english": "efb259caad9f9831cca003a7b20f1bfd58efbce71dbfc0e931ad5fd500dd1c7f",
+  "subject": "[EQMS] Đã đổi mật khẩu",
+  "body": "<p>Mật khẩu của bạn vừa được thay đổi.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.password_changed",
+  "channel": "IN_APP",
+  "english": "8ad23becc01feb9e2fdb470377262b98eae10ef05d2f716e181396aecb77e5e6",
+  "title": "Đã đổi mật khẩu",
+  "summary": "Mật khẩu của bạn vừa được thay đổi."
+ },
+ {
+  "eventCode": "security.password_reset_link",
+  "channel": "EMAIL",
+  "english": "503c2f6e9a7ee6c23574b476d3a97ffa2738b8fd183b4f6226b1b20dcbbd9a93",
+  "subject": "Yêu cầu đặt lại mật khẩu EQMS",
+  "body": "<p>Xin chào {{recipientName}},</p><p>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng bấm vào liên kết dưới đây để đặt mật khẩu mới:</p><p><a href=\"{{resetLink}}\">{{resetLink}}</a></p><p>Liên kết có hiệu lực trong 24 giờ.</p><p>Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua e-mail này.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.permission_set_changed",
+  "channel": "EMAIL",
+  "english": "6c317e30d333ffe46dd84710685429d4530542d477152c6d568b2d161dbea748",
+  "subject": "[EQMS] Thay đổi bộ quyền: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một <b>bộ quyền</b> đã được tạo, sửa hoặc xoá ({{actionName}}). Mọi hồ sơ có bộ quyền này đều bị ảnh hưởng.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.permission_set_changed",
+  "channel": "IN_APP",
+  "english": "a15fcc451fa558a83a4b444307b5066932ebd3c5dd3aba7fa4910471c6cf19cb",
+  "title": "Thay đổi bộ quyền",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.refresh_token_reuse",
+  "channel": "EMAIL",
+  "english": "ac117fddfc3a5dfba8bba2d3c0d5c9aea23d5bf04a69963df258c8688cab4f9c",
+  "subject": "[EQMS] Phát hiện khả năng bị chiếm phiên đăng nhập",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.refresh_token_reuse",
+  "channel": "IN_APP",
+  "english": "f4299396991c37548f8d4e3acbe61b3dbfa82682500419befedaee096e7a1971",
+  "title": "Phát hiện khả năng bị chiếm phiên đăng nhập",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.sod_constraint_changed",
+  "channel": "EMAIL",
+  "english": "3bbb93579c6d9a55a9e44413e2f4161fd77165ccf681d9673041e2f35b0fb6e8",
+  "subject": "[EQMS] Thay đổi ràng buộc phân tách trách nhiệm",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.sod_constraint_changed",
+  "channel": "IN_APP",
+  "english": "d2d84df2a4b7c98882f3fabbfbb58238424641c2917a06cc3d307cb731c11c1d",
+  "title": "Thay đổi ràng buộc phân tách trách nhiệm",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "security.workflow_policy_changed",
+  "channel": "EMAIL",
+  "english": "7c85302c9c9170de3bc62ef9a344e69fd10966476591fdd171f347df5bcbebd6",
+  "subject": "[EQMS] Thay đổi chính sách phân quyền quy trình",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "security.workflow_policy_changed",
+  "channel": "IN_APP",
+  "english": "7126722a248ab5055b3c7b78112315f6e9ef13eb1c2220ff79f4d09167c8fcfa",
+  "title": "Thay đổi chính sách phân quyền quy trình",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "system.configuration_changed",
+  "channel": "EMAIL",
+  "english": "dd3b20bd7998d4a34357c05119e0506d5ca67828f47a93641bf656b14f447365",
+  "subject": "[EQMS] Thay đổi cấu hình hệ thống: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p><b>Cấu hình hệ thống</b> đã thay đổi ({{actionName}}).</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "system.configuration_changed",
+  "channel": "IN_APP",
+  "english": "6dcb6db92f3f2ae82464e63db2a491ea8afb0146ba64f2ac913aeebfefc2ec35",
+  "title": "Thay đổi cấu hình hệ thống",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "system.maintenance_scheduled",
+  "channel": "EMAIL",
+  "english": "08fd8226dfb0da1f846582ce649842a56c0a7f6e05773878b6f43b0ea48109f8",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>{{message}}</p><p>Hãy hoàn tất và lưu công việc trước khi đến giờ bảo trì. Trong thời gian bảo trì, hệ thống không sử dụng được.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "system.maintenance_scheduled",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "system.retention_blocked_deletion",
+  "channel": "EMAIL",
+  "english": "cb210f79a2a95fa69b9a358d20d3563dbbb0bb77a35e534c729cb97943b2ea0e",
+  "subject": "[EQMS] Thời hạn lưu giữ đã chặn việc xoá: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Một yêu cầu <b>xoá đã bị từ chối</b> vì tệp chưa hết thời hạn lưu giữ. Tệp không bị thay đổi.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "system.retention_blocked_deletion",
+  "channel": "IN_APP",
+  "english": "23af76cf7683cb6aebde2242b31b5c418f0aa80f4377bf7f43edfdd9f18af04e",
+  "title": "Thời hạn lưu giữ đã chặn việc xoá",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "system.storage_usage_warning",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "system.storage_usage_warning",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.attendance_sent",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.attendance_sent",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.cancelled",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.cancelled",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.completed",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.completed",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.content_approved",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.content_approved",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.content_rejected",
+  "channel": "EMAIL",
+  "english": "7467c9efaba50967dcb4354549c5b83226509826e2fc11a74a9ebd24b2c99aab",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>{{message}}</p><p>Khoá đào tạo trở về trạng thái <b>Đã lên kế hoạch</b>: hãy sửa nội dung và gửi phê duyệt lại.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.content_rejected",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.due_soon",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.due_soon",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.impact_waiting",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.impact_waiting",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.invited",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.invited",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.job_accepted",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.job_accepted",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.job_waiting",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.job_waiting",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.legacy_imported",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.legacy_imported",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.makeup_pending",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.makeup_pending",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.matrix_approved",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.matrix_approved",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.matrix_rejected",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.matrix_rejected",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.overdue",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.overdue",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.periodic_requirement_due",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.periodic_requirement_due",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.postponed",
+  "channel": "EMAIL",
+  "english": "9a7c60e88f4d556c163e3474ea5a8d2fe7bb42e93cc12f299596e915663a04f9",
+  "subject": "[EQMS] Hoãn buổi đào tạo: {{trainingNumber}}, Buổi {{sessionNo}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Buổi {{sessionNo}} của khoá đào tạo <b>{{trainingNumber}}</b> ({{sessionTopic}}) đã bị <b>hoãn</b>.</p><p><b>Ngày cũ:</b> {{oldDate}}<br/><b>Ngày mới:</b> {{newDate}}<br/><b>Địa điểm:</b> {{venue}}<br/><b>Người đào tạo:</b> {{trainerName}}</p><p><b>Lý do:</b> {{reason}}</p><p>Vui lòng ghi nhận ngày mới. Thông báo này thay cho ngày đã báo trước đó. Người thay đổi: {{changedBy}}.</p><p>Chi tiết: {{actionUrl}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.postponed",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.preparation_assigned",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.preparation_assigned",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.qa_confirm_waiting",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.qa_confirm_waiting",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.qa_list_late",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.qa_list_late",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.qa_list_today",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.qa_list_today",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.read_due_soon",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.read_due_soon",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.read_reminder",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.read_reminder",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.recorded",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.recorded",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.requirement_approved",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.requirement_approved",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.requirement_due",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.requirement_due",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.requirement_line_moved",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.requirement_line_moved",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.requirement_rejected",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.requirement_rejected",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.results_due_today",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.results_due_today",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.results_late",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.results_late",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.review_close_due",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.review_close_due",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.review_open_due",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.review_open_due",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.review_ready",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.review_ready",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.revision_ready",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.revision_ready",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.session_cancelled",
+  "channel": "EMAIL",
+  "english": "ea74f79eb46e26a9c4b39846f6ab05474eeb0f2c29463fe49f59a38a204a787e",
+  "subject": "[EQMS] Huỷ buổi đào tạo: {{trainingNumber}}, Buổi {{sessionNo}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Buổi {{sessionNo}} của khoá đào tạo <b>{{trainingNumber}}</b> ({{sessionTopic}}) đã bị <b>huỷ</b>. Bạn không cần tham dự hoặc thực hiện buổi này.</p><p><b>Ngày đã dự kiến:</b> {{sessionDate}}<br/><b>Địa điểm:</b> {{venue}}</p><p><b>Lý do:</b> {{reason}}</p><p>Người huỷ: {{changedBy}}.</p><p>Chi tiết: {{actionUrl}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.session_cancelled",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.session_changed",
+  "channel": "EMAIL",
+  "english": "60098bed623d849b35b4659bc4989cb863dc525dcd97da85a85ecb29780b43eb",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>{{message}}</p><p>Những người liên quan đã được báo về thay đổi qua e-mail.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.session_changed",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.step_assigned",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.step_assigned",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.step_reassigned",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.step_reassigned",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.step_waiting",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.step_waiting",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.submitted_to_qa",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.submitted_to_qa",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.trainer_assigned",
+  "channel": "EMAIL",
+  "english": "8b1ed31541f7977924d1baffb9e1bd507ae69b84ef0d0ed0e99205e72fc62f4a",
+  "subject": "[EQMS] Bạn là người đào tạo: {{trainingNumber}}, Buổi {{sessionNo}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bạn là <b>người đào tạo</b> của Buổi {{sessionNo}} thuộc khoá đào tạo <b>{{trainingNumber}}</b> ({{sessionTopic}}).</p><p><b>Ngày:</b> {{sessionDate}}<br/><b>Địa điểm:</b> {{venue}}<br/><b>Thay cho:</b> {{previousTrainerName}}</p><p>Bạn được đề nghị thực hiện buổi đào tạo vào ngày và tại địa điểm trên. Người phân công: {{changedBy}}.</p><p>Chi tiết: {{actionUrl}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.trainer_assigned",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.trainer_removed",
+  "channel": "EMAIL",
+  "english": "274840a6a41bb2204f90bf732e3eb1dd90686aceb6641679be8a0422d1b1b8e5",
+  "subject": "[EQMS] Bạn không còn là người đào tạo: {{trainingNumber}}, Buổi {{sessionNo}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bạn <b>không còn là người đào tạo</b> của Buổi {{sessionNo}} thuộc khoá đào tạo <b>{{trainingNumber}}</b> ({{sessionTopic}}). Bạn không phải làm gì cho buổi này.</p><p><b>Ngày:</b> {{sessionDate}}<br/><b>Địa điểm:</b> {{venue}}<br/><b>Người đào tạo mới:</b> {{newTrainerName}}</p><p>Người thay đổi: {{changedBy}}.</p><p>Chi tiết: {{actionUrl}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.trainer_removed",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "training.work_suspended",
+  "channel": "EMAIL",
+  "english": "2b4e99cefaf9f2e383960e8758d3794c3adec7e9b064b109dd8ceec5184772f7",
+  "subject": "[EQMS] {{title}}",
+  "body": "<p>{{message}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "training.work_suspended",
+  "channel": "IN_APP",
+  "english": "5da2bee1152623b8fa7bb7cf58ea311bc8ffcf85c21b9ca469732dc82f14a820",
+  "title": "{{title}}",
+  "summary": "{{message}}"
+ },
+ {
+  "eventCode": "uncontrolled_copy.expired",
+  "channel": "EMAIL",
+  "english": "b84590237388f806b055d60f108ee6ec2e9ea13035d78b5749358b3e856fdfe8",
+  "subject": "[EQMS] Bản sao không kiểm soát đã hết hạn",
+  "body": "<p>{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "uncontrolled_copy.expired",
+  "channel": "IN_APP",
+  "english": "45ef4d227ae2f28573b66e2b5fce3831c1575f72753ef34d691493015ec4376b",
+  "title": "Bản sao không kiểm soát đã hết hạn",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "uncontrolled_copy.request_decided",
+  "channel": "EMAIL",
+  "english": "c98b53e74ab6f6fdf1265f7330b2b413ebcb90cf1949f419d47637210c5640c8",
+  "subject": "[EQMS] Yêu cầu bản sao không kiểm soát đã huỷ: {{entityName}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Yêu cầu bản sao không kiểm soát của bạn đã bị <b>huỷ</b>. Không có bản sao nào được cấp.</p><p><b>Hồ sơ:</b> {{entityName}}<br/><b>Người thực hiện:</b> {{actorName}}</p><p>{{actionComment}}</p><p>Thông báo này được lưu trong Nhật ký kiểm toán của hồ sơ.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "uncontrolled_copy.request_decided",
+  "channel": "IN_APP",
+  "english": "e7bb133c3b3ee3b6491b96f69abc8a403385b2875d649a00c939d97f1200c00e",
+  "title": "Đã quyết định yêu cầu bản sao không kiểm soát",
+  "summary": "{{actionName}}: {{entityName}}, người thực hiện: {{actorName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "user.access_profile_changed",
+  "channel": "EMAIL",
+  "english": "694ddb8eace5026f2f92fbb864c23e865c43bb5e0bc4540818a89d30736b0622",
+  "subject": "[EQMS] Quyền truy cập của bạn đã thay đổi",
+  "body": "<p>Hồ sơ phân quyền <b>{{profileName}}</b> của bạn đã {{changeType}}.</p><p>Những việc bạn được làm trong {{systemName}} có thể đã thay đổi.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.access_profile_changed",
+  "channel": "IN_APP",
+  "english": "ca1dc244f14af8fd56d8944e7cc6393c1daa7a1e63b7a57d7f037f592fda9421",
+  "title": "Quyền truy cập của bạn đã thay đổi",
+  "summary": "Hồ sơ phân quyền {{profileName}} của bạn đã {{changeType}}."
+ },
+ {
+  "eventCode": "user.account_created",
+  "channel": "EMAIL",
+  "english": "6349503cebe48fcc36020ee3cf460bd18e78050869be261de1183b3139c19351",
+  "subject": "[EQMS] Tài khoản của bạn đã được tạo",
+  "body": "<p>Một tài khoản đã được tạo cho bạn trong {{systemName}}.</p><p>Hãy đăng nhập bằng thông tin quản trị viên đã cấp. Lần đầu đăng nhập, bạn sẽ được yêu cầu đặt mật khẩu mới.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.account_created",
+  "channel": "IN_APP",
+  "english": "5dc1f595eedab50e3fe21f5c99f2518a2a0b6fd3091979f5b06a1bef488ae978",
+  "title": "Tài khoản của bạn đã được tạo",
+  "summary": "Một tài khoản đã được tạo cho bạn trong {{systemName}}. Hãy đăng nhập bằng thông tin quản trị viên đã cấp."
+ },
+ {
+  "eventCode": "user.account_reinstated",
+  "channel": "EMAIL",
+  "english": "119d398856fa68e4d8b5bf254101ec74385a2a2565bf45ff1080552f45dcf057",
+  "subject": "[EQMS] Tài khoản của bạn đã được khôi phục",
+  "body": "<p>Tài khoản {{systemName}} của bạn đã được khôi phục. Bạn có thể đăng nhập lại.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.account_reinstated",
+  "channel": "IN_APP",
+  "english": "328d4f5a8b7ed336646d902aa81da6ab93adf8ab90dd0361146c1237c092d2ab",
+  "title": "Tài khoản của bạn đã được khôi phục",
+  "summary": "Tài khoản {{systemName}} của bạn đã được khôi phục. Bạn có thể đăng nhập lại."
+ },
+ {
+  "eventCode": "user.account_suspended",
+  "channel": "EMAIL",
+  "english": "842812371a5e3c8cde2deae063c732e53ac43d3396aaa6d55ea0684c77d71ba0",
+  "subject": "[EQMS] Tài khoản bị tạm ngưng",
+  "body": "<p>Tài khoản của bạn đã bị quản trị viên tạm ngưng.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.account_suspended",
+  "channel": "IN_APP",
+  "english": "1a307e93f22fd349e01b07cf900970699370640b3bf32ef75d2f2d4607bd3bb0",
+  "title": "Tài khoản bị tạm ngưng",
+  "summary": "Tài khoản của bạn đã bị quản trị viên tạm ngưng."
+ },
+ {
+  "eventCode": "user.account_terminated",
+  "channel": "EMAIL",
+  "english": "798f5f08d900497560209c31acf2a789bbda23da080d0151a83e58d913f0b0aa",
+  "subject": "[EQMS] Tài khoản bị chấm dứt",
+  "body": "<p>Tài khoản của bạn đã bị quản trị viên chấm dứt.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.account_terminated",
+  "channel": "IN_APP",
+  "english": "697ed909f630f2290e9eaa50a327d15bf3e80d9ac330789db5ab569962ea2367",
+  "title": "Tài khoản bị chấm dứt",
+  "summary": "Tài khoản của bạn đã bị quản trị viên chấm dứt."
+ },
+ {
+  "eventCode": "user.time_limited_access_changed",
+  "channel": "EMAIL",
+  "english": "0d9a8fe4a493f8d4d26131b851b24bfce728a1acb83884b434ce760c813790bc",
+  "subject": "[EQMS] Quyền truy cập có thời hạn của bạn đã thay đổi",
+  "body": "<p>{{actionName}}.</p><p>{{actionComment}}</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.time_limited_access_changed",
+  "channel": "IN_APP",
+  "english": "6366f7a7956b8712585ea75d730b176e023ecd796240054ddcfad66bbfcfadc3",
+  "title": "Quyền truy cập có thời hạn của bạn đã thay đổi",
+  "summary": "{{actionName}}. {{actionComment}}"
+ },
+ {
+  "eventCode": "user.time_limited_access_expired",
+  "channel": "EMAIL",
+  "english": "ad8c205f6f92f524936d55d73c8d028c573ee80081a14d77ff18b1994da8625c",
+  "subject": "[EQMS] Quyền truy cập của bạn đã hết hạn",
+  "body": "<p>Quyền truy cập có thời hạn của bạn đã kết thúc ngày {{endDate}} và tài khoản đã bị tạm ngưng.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.time_limited_access_expired",
+  "channel": "IN_APP",
+  "english": "37b044358a77f6a511da867f6f1d45771db2806152b033e7c2b26de5d458a2a4",
+  "title": "Quyền truy cập của bạn đã hết hạn",
+  "summary": "Quyền truy cập có thời hạn của bạn đã kết thúc ngày {{endDate}} và tài khoản đã bị tạm ngưng."
+ },
+ {
+  "eventCode": "user.time_limited_access_expiring",
+  "channel": "EMAIL",
+  "english": "a56d967957cc0868186b81fbb81fac0360777402bb517af30ea97c0d4b89f05b",
+  "subject": "[EQMS] Quyền truy cập của bạn sắp kết thúc",
+  "body": "<p>Quyền truy cập có thời hạn của bạn kết thúc ngày {{endDate}}; sau đó tài khoản sẽ bị tạm ngưng. Hãy đề nghị quản trị viên nếu bạn cần lâu hơn.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+ {
+  "eventCode": "user.time_limited_access_expiring",
+  "channel": "IN_APP",
+  "english": "ab31ba421aa061ea213198ec067fb47ac77e15719d3db4e08f7d05ade82f9bd1",
+  "title": "Quyền truy cập của bạn sắp kết thúc",
+  "summary": "Quyền truy cập có thời hạn của bạn kết thúc ngày {{endDate}}; sau đó tài khoản sẽ bị tạm ngưng."
+ }
+]

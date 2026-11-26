@@ -61,6 +61,27 @@ public class TrainingImpactService {
          where a.document_id is not null and a.parent_activity_id is null and a.status <> 'CANCELLED' and a.kind_reason in ('NEW_SOP','SOP_VERSION') and a.organizer_department_id = ?
         """.formatted(COVERED);
 
+    /** The statuses of the activity in which the impact can still be assessed: before the participants are notified (SOP.0003 5.3.1: before the training is developed and implemented). */
+    static final java.util.Set<String> ASSESSABLE = java.util.Set.of("RESERVED", "PLANNED", "PENDING_APPROVAL");
+
+    /**
+     * What stops the participants of a training from being notified: the document of the training is new or revised and its impact on the matrix is not assessed (TRAINING_IMPACT_NOT_ASSESSED),
+     * or the assessment says the matrix must be updated and no effective matrix of the department has the document yet (TRAINING_MATRIX_NOT_UPDATED). SOP.0003 5.3.1: the department assesses
+     * the impact, names the positions and updates the matrix before the training is developed and implemented. Null when nothing stops it, and for a training that is not subject to the assessment.
+     */
+    @Transactional(readOnly = true)
+    public String notifyBlocker(UUID activityId) {
+        List<UUID> departments = jdbc.queryForList("select organizer_department_id from training_activities where id = ?", UUID.class, activityId);
+        if (departments.isEmpty() || departments.getFirst() == null) return null;
+        List<String> rows = jdbc.queryForList("select x.impact_status from (" + BASE + ") x where x.id = ?", String.class, departments.getFirst(), activityId);
+        if (rows.isEmpty()) return null;
+        return switch (rows.getFirst()) {
+            case "PENDING" -> "TRAINING_IMPACT_NOT_ASSESSED";
+            case "MATRIX_UPDATE_PENDING" -> "TRAINING_MATRIX_NOT_UPDATED";
+            default -> null;
+        };
+    }
+
     private UUID department(UserAccount actor, UUID departmentId) {
         access.require(actor, "training.matrix.view", "training.matrix.manage");
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
@@ -77,10 +98,23 @@ public class TrainingImpactService {
     /** {@code activityStatus} is the Training Status: the status of the training activity of the line (a machine value of the activity lifecycle). An unknown value is refused. */
     @Transactional(readOnly = true)
     public Map<String, Object> list(UserAccount actor, UUID departmentId, String status, String activityStatus, String search, String sortBy, String sortDirection, int page, int limit) {
+        return list(actor, departmentId, status, activityStatus, search, false, sortBy, sortDirection, page, limit);
+    }
+
+    /** {@code waitingForMe}: the lines of the person's own department that are not done and can still be assessed; nothing for a person who may not assess. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> list(UserAccount actor, UUID departmentId, String status, String activityStatus, String search, boolean waitingForMe, String sortBy, String sortDirection, int page, int limit) {
         UUID department = department(actor, departmentId);
         List<Object> args = new ArrayList<>();
         args.add(department);
         StringBuilder where = new StringBuilder(" where 1=1");
+        if (waitingForMe) {
+            if (access.has(actor, "training.matrix.manage") && department.equals(access.departmentOf(actor))) {
+                where.append(" and x.impact_status <> 'DONE' and x.activity_status in ('RESERVED','PLANNED','PENDING_APPROVAL')");
+            } else {
+                where.append(" and false");
+            }
+        }
         if (status != null && !status.isBlank()) {
             if (!List.of("PENDING", "MATRIX_UPDATE_PENDING", "DONE", "OPEN").contains(status)) throw new IllegalArgumentException("TRAINING_STATUS_INVALID");
             if ("OPEN".equals(status)) where.append(" and x.impact_status <> 'DONE'");
@@ -101,11 +135,19 @@ public class TrainingImpactService {
         args.add(safeLimit);
         args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("select x.* from (" + BASE + ") x" + where
-                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("trainingNumber", "x.training_number", "documentNumber", "x.document_number", "documentName", "x.document_name", "revisionNumber", "x.revision_number", "activityStatus", "x.activity_status",
+                + TrainingRows.orderBy(sortBy, sortDirection, Map.of("trainingNumber", "x.training_number", "documentNumber", "x.document_number", "documentName", "x.document_name", "revisionNumber", "x.revision_number", "activityStatus", "x.activity_status", "departmentName", "x.department_name",
                         "impactStatus", "x.impact_status", "assessedAt", "x.assessed_at", "createdAt", "x.created_at"), "case x.impact_status when 'PENDING' then 0 when 'MATRIX_UPDATE_PENDING' then 1 else 2 end, x.created_at desc")
                 + " limit ? offset ?", args.toArray());
+        // SOP.0003 5.3.1: the department itself assesses the impact on its matrix; another department can be looked at (all-department scope) but not assessed
         boolean manage = access.has(actor, "training.matrix.manage");
-        for (Map<String, Object> row : rows) row.put("can_assess", manage);
+        UUID own = access.departmentOf(actor);
+        // and only until the participants are notified
+        for (Map<String, Object> row : rows) {
+            boolean assessable = ASSESSABLE.contains(String.valueOf(row.get("activity_status")));
+            row.put("can_assess", manage && own != null && own.equals(row.get("organizer_department_id")) && assessable);
+            // the training was implemented before the impact was assessed or the matrix updated: a deviation from SOP.0003 5.3.1, handled outside this screen (the Deviation module comes later)
+            row.put("deviation", !assessable && !"DONE".equals(row.get("impact_status")));
+        }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
         long count = total == null ? 0 : total;
@@ -215,7 +257,9 @@ public class TrainingImpactService {
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID department = (UUID) activity.get("organizer_department_id");
         access.require(actor, "training.matrix.manage");
-        access.requireScope(actor, department);
+        // only a person of the department assesses (SOP.0003 5.3.1); the permission to see every department lets a person look, not assess
+        if (!access.inOwnDepartment(actor, department)) throw new SecurityException(TrainingAccess.DENIED);
+        if (!ASSESSABLE.contains(String.valueOf(activity.get("status"))) && !"CANCELLED".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_IMPACT_AFTER_NOTICE");
         if (activity.get("document_id") == null || activity.get("parent_activity_id") != null || "CANCELLED".equals(activity.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_IMPACT_NOT_APPLICABLE");
         if (request == null || request.outcome() == null || !OUTCOMES.contains(request.outcome())) throw new IllegalArgumentException("TRAINING_IMPACT_OUTCOME_INVALID");
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");

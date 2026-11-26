@@ -30,7 +30,7 @@ public class TrainingParticipantReportMetadataProvider implements ReportMetadata
                 "NAME_ONLY", "Listed only, does not sign"));
         column("state", "State", ReportQueryKit.labelCase("p.state", "INVITED", "Invited", "ATTENDED", "Attended", "ONLINE", "Online", "ABSENT", "Absent",
                 "READ_CONFIRMED", "Read and confirmed"));
-        column("result", "Result", ReportQueryKit.labelCase("p.result", "PENDING", "Pending", "PASSED", "Passed", "FAILED", "Failed"));
+        column("result", "Result", ReportQueryKit.labelCase("p.result", "PENDING", "Pending", "PASSED", "Qualified", "FAILED", "Not qualified"));
         column("activityStatus", "Activity Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "PENDING_APPROVAL", "Pending Approval", "NOTIFIED", "Notified",
                 "IN_PROGRESS", "In Progress", "PENDING_QA_CONFIRMATION", "Pending QA Confirmation", "COMPLETED", "Completed", "CANCELLED", "Closed - Cancelled"));
         column("organizer", "Organizing Department", "dep.name");

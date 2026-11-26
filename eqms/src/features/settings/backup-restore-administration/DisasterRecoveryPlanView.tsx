@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CircleStar, Gauge, Package, Siren } from "lucide-react";
@@ -359,7 +360,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
       }
     >
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-dr-tab" ariaLabel="Disaster recovery plan" />
+        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-dr-tab" ariaLabel={__ariaTr("Disaster recovery plan")} />
         <div className="p-4 md:p-5">{active === "plan" ? plan : declarationsTab}</div>
       </div>
 

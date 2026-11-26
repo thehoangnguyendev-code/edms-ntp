@@ -9,6 +9,8 @@ export type AdministrationChannel = 'IN_APP' | 'EMAIL';
  * `module` and `priority` belong to events; `type` and `sent` to email messages.
  */
 export interface NotificationAdministrationRow {
+  /** TRANSLATED, OUTDATED or NOT_TRANSLATED; absent when the channel has no wording. */
+  translation?: string | null;
   id: string;
   channel: AdministrationChannel;
   name: string;

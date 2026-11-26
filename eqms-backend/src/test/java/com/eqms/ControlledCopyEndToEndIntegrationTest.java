@@ -41,6 +41,7 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -85,6 +86,7 @@ class ControlledCopyEndToEndIntegrationTest {
     @Autowired private ExecutedRecordService executedRecordService;
     @Autowired private ControlledCopyPolicyService policyService;
     @Autowired private ControlledCopyPolicySettingRepository policyRepository;
+    @Autowired private org.springframework.cache.CacheManager cacheManager;
     @Autowired private ControlledCopyRepository copyRepository;
     @Autowired private DocumentRecordRepository documentRepository;
     @Autowired private DocumentRevisionRepository revisionRepository;
@@ -107,6 +109,7 @@ class ControlledCopyEndToEndIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        clearPolicyFixtureCache();
         admin = userAccountRepository.findByUsername("admin").orElseThrow(() -> new AssertionError("Seeded 'admin' user not found"));
         AuthenticatedUser principal = new AuthenticatedUser(admin.getId(), UUID.randomUUID(), admin.getUsername(),
                 admin.getRoleName() != null ? admin.getRoleName() : "USER", Collections.emptySet());
@@ -202,7 +205,26 @@ class ControlledCopyEndToEndIntegrationTest {
         policy.setQrCodeY(0.45);
         policy.setStampEnabled(true);
         policy.setWatermarkEnabled(true);
-        return policyRepository.saveAndFlush(policy);
+        return savePolicyFixture(policy);
+    }
+
+    private ControlledCopyPolicySetting savePolicyFixture(ControlledCopyPolicySetting policy) {
+        ControlledCopyPolicySetting saved = policyRepository.saveAndFlush(policy);
+        // Fixture writes bypass the production service's @CacheEvict. Evict now,
+        // not after commit: this test transaction is deliberately rolled back.
+        clearPolicyFixtureCache();
+        return saved;
+    }
+
+    private void clearPolicyFixtureCache() {
+        var cache = cacheManager.getCache("controlled-copy-policy");
+        if (cache != null) cache.evictIfPresent("current");
+    }
+
+    @AfterEach
+    void clearTestContext() {
+        clearPolicyFixtureCache();
+        SecurityContextHolder.clearContext();
     }
 
     private ControlledCopyRecord requestAndDistribute(DocumentRecord document) {
@@ -290,6 +312,8 @@ class ControlledCopyEndToEndIntegrationTest {
         configurePolicy(false);
         ControlledCopyRecord copy = requestAndDistribute(document);
 
+        assertThat(policyService.loadOrDefault().isAllowDownload()).isFalse();
+
         assertThatThrownBy(() -> copyService.downloadControlledCopy(copy.getId(), grantService.issue(copy), null))
                 .isInstanceOf(AccessDeniedException.class).hasMessageContaining("Download is disabled");
         // The code is printed all the same: it does not depend on the download or print settings.
@@ -325,7 +349,8 @@ class ControlledCopyEndToEndIntegrationTest {
         ControlledCopyPolicySetting policy = configurePolicy(true);
         ControlledCopyRecord copy = requestAndDistribute(document);
         policy.setAllowPrint(false);
-        policyRepository.saveAndFlush(policy);
+        savePolicyFixture(policy);
+        assertThat(policyService.loadOrDefault().isAllowPrint()).isFalse();
         String grant = grantService.issue(copy);
         SecurityContextHolder.clearContext();
 
@@ -341,7 +366,7 @@ class ControlledCopyEndToEndIntegrationTest {
         policy.setWatermarkEnabled(false);
         policy.setQrCodeX(null);
         policy.setQrCodeY(null);
-        policyRepository.saveAndFlush(policy);
+        savePolicyFixture(policy);
 
         ControlledCopyRecord copy = requestAndDistribute(document);
 

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker";
@@ -53,6 +54,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const DECISION_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -72,11 +74,7 @@ const toServerDate = (value: string) =>
     ? `${value.slice(6, 10)}-${value.slice(3, 5)}-${value.slice(0, 2)}`
     : undefined;
 const statusBadge = (status: AuditTrailReviewCampaignSummary["status"]) =>
-  status === "COMPLETED"
-    ? "emerald"
-    : status === "CANCELLED"
-      ? "slate"
-      : "blue";
+  statusColor(status);
 const decisionBadge = (decision: AuditTrailReviewItem["decision"]) =>
   decision === "CONFIRMED"
     ? "emerald"
@@ -384,7 +382,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     if (!campaign) return;
     try {
       await auditTrailApi.cancelReviewCampaign(campaign.id);
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: tr("Campaign cancelled") });
       setCancelConfirmOpen(false);
       await loadCampaign();
     } catch (error: any) {
@@ -461,7 +459,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                       : undefined
                   }
                 >
-                  {completing ? "Completing..." : "Complete & Sign"}
+                  {completing ? "Completing..." : tr("Complete & Sign")}
                 </Button>
               </>
             )}
@@ -860,7 +858,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                                 toggleActionMenu(item.id, event)
                               }
                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100"
-                              aria-label={`Actions for ${item.action || "audit entry"}`}
+                              aria-label={__ariaTrFormat("Actions for {v1}", { v1: item.action || tr("audit entry") })}
                             >
                               <MoreVertical className="h-4 w-4 text-slate-600" />
                             </button>

@@ -100,6 +100,7 @@ public class TrainingSpecimenService {
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
         // The same person's own entries, for the "related" card of a detail screen.
         if (more.get("personId") != null && !more.get("personId").isBlank()) extra.raw("s.person_user_id = ?", java.util.UUID.fromString(more.get("personId")));
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.assigned(TYPE, "s.id"), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_specimen_signatures s join app_users u on u.id = s.person_user_id join app_users uu on uu.id = s.uploaded_by left join app_users cu on cu.id = s.confirmed_by" + where, Long.class, args.toArray());

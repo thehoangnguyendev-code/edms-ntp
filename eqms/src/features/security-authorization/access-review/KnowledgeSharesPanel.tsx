@@ -61,7 +61,9 @@ export const KnowledgeSharesPanel: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [version, setVersion] = useState(0);
-  const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([{ value: "", label: tr("All Departments") }]);
+  const [departments, setDepartments] = useState<SelectOption[]>([]);
+  // "All" is added while drawing, so it follows a language switch.
+  const departmentOptions: SelectOption[] = [{ value: "", label: tr("All Departments") }, ...departments];
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedFilterSections, setExpandedFilterSections] = useState<Set<string>>(() => new Set(["department"]));
@@ -78,7 +80,7 @@ export const KnowledgeSharesPanel: React.FC = () => {
 
   useEffect(() => {
     dictionaryApi.getDepartments()
-      .then((items) => setDepartmentOptions([{ value: "", label: tr("All Departments") }, ...items.map((d) => ({ value: d.id, label: d.name }))]))
+      .then((items) => setDepartments(items.map((d) => ({ value: d.id, label: d.name }))))
       .catch(() => undefined);
   }, []);
 

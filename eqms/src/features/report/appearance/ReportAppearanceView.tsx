@@ -40,7 +40,7 @@ export const ReportAppearanceView: React.FC = () => {
   const [value, setValue] = React.useState<ReportAppearance | null>(null);
   const [original, setOriginal] = React.useState<ReportAppearance | null>(null);
   const [startFrom, setStartFrom] = React.useState(copyFrom || STANDARD);
-  const [choices, setChoices] = React.useState<{ label: string; value: string }[]>([{ label: tr("Standard layout (blank)"), value: STANDARD }]);
+  const [choices, setChoices] = React.useState<{ label: string; value: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
   const [showSaveModal, setShowSaveModal] = React.useState(false);
@@ -71,7 +71,7 @@ export const ReportAppearanceView: React.FC = () => {
     let alive = true;
     reportAppearanceApi
       .list({ limit: 100, sort: "name", direction: "asc" })
-      .then((result) => alive && setChoices([{ label: tr("Standard layout (blank)"), value: STANDARD }, ...result.data.map((row) => ({ label: row.name, value: row.id }))]))
+      .then((result) => alive && setChoices(result.data.map((row) => ({ label: row.name, value: row.id }))))
       .catch(() => undefined);
     return () => {
       alive = false;
@@ -160,7 +160,7 @@ export const ReportAppearanceView: React.FC = () => {
               <FormField label={tr("Appearance Name")} required>
                 <Input maxLength={120} value={value.name} disabled={!canManage} onChange={(e) => setValue((previous) => (previous ? { ...previous, name: e.target.value } : previous))} />
               </FormField>
-              {isNew && <Select label={tr("Start from")} value={startFrom} enableSearch={false} options={choices} onChange={changeStart} />}
+              {isNew && <Select label={tr("Start from")} value={startFrom} enableSearch={false} options={[{ label: tr("Standard layout (blank)"), value: STANDARD }, ...choices]} onChange={changeStart} />}
             </div>
           </FormSection>
           <ReportAppearanceEditor

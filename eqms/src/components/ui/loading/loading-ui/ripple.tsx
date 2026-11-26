@@ -1,6 +1,7 @@
 // Adapted from turbostarter/loading-ui (MIT); see LICENSE.md and README.md.
 import type * as React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 function Ripple({ className, ...props }: React.ComponentProps<"svg">) {
   return (
@@ -12,7 +13,7 @@ function Ripple({ className, ...props }: React.ComponentProps<"svg">) {
       className={cn(className)}
       {...props}
     >
-      <title>Loading...</title>
+      <title>{tr("Loading...")}</title>
       <g fill="none" fillRule="evenodd" strokeWidth="2">
         <circle cx="22" cy="22" r="1">
           <animate

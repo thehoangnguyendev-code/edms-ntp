@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getApiErrorMessage } from "@/utils/apiError";
@@ -810,7 +811,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
         <Button
           size="sm"
           variant="outline-emerald"
-          aria-label={`Reset ${kind === "stamp" ? "Stamp" : "Watermark"} Position`}
+          aria-label={__ariaTrFormat("Reset {v1} Position", { v1: kind === "stamp" ? tr("Stamp") : tr("Watermark") })}
           onClick={() => resetPosition(kind)}
           disabled={saving}
         >
@@ -930,7 +931,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
           tabs={POLICY_TABS}
           activeTab={activeTab}
           onChange={(id) => selectTab(id as PolicyTabKey)}
-          ariaLabel="Controlled copies policy sections"
+          ariaLabel={__ariaTr("Controlled copies policy sections")}
         />
 
         <div className="p-4 md:p-5">

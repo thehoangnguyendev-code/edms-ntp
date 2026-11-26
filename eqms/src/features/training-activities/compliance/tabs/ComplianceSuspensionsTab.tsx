@@ -9,13 +9,15 @@ import { useServerTable } from "@/features/settings/shared/hooks/useServerTable"
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingFollowUpApi, type TrainingSuspension } from "@/services/api/trainingActivities";
 import { TrainingPersonName } from "../../shared/TrainingPersonName";
-import { when } from "../../shared/trainingLabels";
+import { localized, when } from "../../shared/trainingLabels";
 import { tr } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_LABEL: Record<string, string> = { OPEN: "Work suspended", CLEARED: "Cleared" };
-const STATUS_COLOR: Record<string, "red" | "emerald"> = { OPEN: "red", CLEARED: "emerald" };
+const STATUS_LABEL: Record<string, string> = localized({ OPEN: "Work suspended", CLEARED: "Cleared" });
+const STATUS_COLOR = statusColors("OPEN", "CLEARED") as Record<string, BadgeColor>;
 // RESUMED_BY_HEAD is no longer possible: a flag ends only when the retraining is passed. Flags that were resumed by hand earlier stay in the list with their reason, as records.
-const BASIS_LABEL: Record<string, string> = { RETRAINED_PASSED: "Retraining passed", RESUMED_BY_HEAD: "Resumed by the head of the unit" };
+const BASIS_LABEL: Record<string, string> = { RETRAINED_PASSED: "Qualified after retraining", RESUMED_BY_HEAD: "Resumed by the head of the unit" };
 
 /**
  * People whose work is suspended because they did not pass an assessment (SOP.0003 5.3.7). It is a flag, nothing else is blocked. It ends only when the retraining is passed;

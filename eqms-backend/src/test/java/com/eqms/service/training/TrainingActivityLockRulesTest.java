@@ -214,26 +214,6 @@ class TrainingActivityLockRulesTest {
     }
 
     @Test
-    void theResultsCanBeReturnedForCorrectionOnlyWhileTheyWaitForQa() {
-        activity("IN_PROGRESS");
-
-        assertThatThrownBy(() -> service.returnForCorrection(actor, activityId, new TrainingActivityService.CommandRequest(3, "score wrong", "token")))
-                .isInstanceOf(ResponseStatusException.class);
-    }
-
-    @Test
-    void returningTheResultsNeedsAReasonAndSendsTheActivityBackToInProgress() {
-        activity("PENDING_QA_CONFIRMATION");
-
-        assertThatThrownBy(() -> service.returnForCorrection(actor, activityId, new TrainingActivityService.CommandRequest(3, " ", "token")))
-                .isInstanceOf(IllegalArgumentException.class).hasMessage("TRAINING_REASON_REQUIRED");
-
-        service.returnForCorrection(actor, activityId, new TrainingActivityService.CommandRequest(3, "score wrong", "token"));
-
-        verify(store).setStatus(activityId, "IN_PROGRESS");
-    }
-
-    @Test
     void anActivityThatIsOnlyPlannedIsCancelledWithAReasonAndTheSignatureToo() {
         activity("PLANNED");
         when(jdbc.queryForObject(contains("result='PASSED'"), eq(Integer.class), eq(activityId))).thenReturn(0);

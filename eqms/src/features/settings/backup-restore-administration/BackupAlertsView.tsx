@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { IconCheck } from "@tabler/icons-react";
@@ -31,6 +32,8 @@ import { BackupAdminLivePage } from "./BackupAdminLivePage";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { readableCode } from "@/utils/machineText";
 import { tr } from "@/i18n";
+import { priorityColor } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 const ALL = "ALL";
 const STATE_OPTIONS = [
@@ -40,7 +43,7 @@ const STATE_OPTIONS = [
 ];
 const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: readableCode(value), value }))];
 type SortKey = "at" | "severity" | "code" | "ref" | "acknowledgedAt";
-const SEVERITY_COLOR = { CRITICAL: "red", HIGH: "red", WARNING: "amber", INFO: "blue" } as const;
+const SEVERITY_COLOR = Object.fromEntries((["CRITICAL", "HIGH", "WARNING", "INFO"] as const).map((code) => [code, priorityColor(code)])) as Record<"CRITICAL" | "HIGH" | "WARNING" | "INFO", BadgeColor>;
 
 const TABS: TabItem[] = [
   { id: "alerts", label: "Alerts" },
@@ -478,7 +481,7 @@ export const BackupAlertsView: React.FC = () => {
   return (
     <BackupAdminLivePage title={tr("Backup Alerts & Recipients")}>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-alerts-tab" ariaLabel="Backup alerts" />
+        <TabNav tabs={TABS} activeTab={active} onChange={(id) => setSearchParams({ tab: id }, { replace: true })} layoutId="backup-alerts-tab" ariaLabel={__ariaTr("Backup alerts")} />
         <div className="space-y-4 p-4 md:p-5">
           {active === "alerts" && <AlertsTab canManage={canManage} />}
           {active === "recipients" && <RecipientsTab canManage={canManage} />}

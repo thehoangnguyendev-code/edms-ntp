@@ -121,6 +121,7 @@ public class TrainingRecordExportBatchService {
                 throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
             }
         }
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.assigned(TYPE, "b.id"), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_record_export_batches b join departments d on d.id = b.department_id left join app_users pu on pu.id = b.prepared_by left join app_users au on au.id = b.approved_by" + where, Long.class, args.toArray());

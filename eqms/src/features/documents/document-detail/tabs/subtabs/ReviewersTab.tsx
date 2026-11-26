@@ -114,7 +114,7 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             onConfirm={handleSave}
             title={tr("Setup Reviewers")}
             description={tr("Select users who will review this document.")}
-            confirmText={`Update Reviewers (${selectedIds.length})`}
+            confirmText={`${tr("Update Reviewers")} (${selectedIds.length})`}
             confirmDisabled={selectedIds.length === 0}
             size="lg"
         >

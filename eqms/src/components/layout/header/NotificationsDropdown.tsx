@@ -2,7 +2,7 @@
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Bell, CheckCheck, Clock, Pin, PinOff, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCheck, Clock, Pin, PinOff } from 'lucide-react';
 import { Button } from '../../ui/button/Button';
 import { cn } from '../../ui/utils';
 import { ROUTES } from '@/app/routes.constants';
@@ -15,12 +15,13 @@ import { formatNotificationDateTime, formatNotificationRelativeTime, notificatio
 import { emitNotificationsChanged, subscribeNotificationsChanged } from '@/features/notifications/events';
 import { useNotificationRealtime } from '@/features/notifications/notificationRealtime';
 import { getNotificationTypeIcon, getNotificationTypeLabel } from '@/features/notifications/notificationMeta';
+import { moduleMenuIcon, type ModuleIcon } from '@/features/notifications/moduleIcon';
 import { createEmptyNotificationSummaryCounts, type NotificationSummaryCounts } from '@/features/notifications/types';
 import { moduleDisplayName } from '@/utils/moduleDisplay';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useNotificationDock } from './NotificationDockContext';
 import { useNotificationEntrance } from './useNotificationEntrance';
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, useLanguage } from "@/i18n";
 
 interface NotificationsDropdownProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export const FEED_MAX_ITEMS = 100;
 export type DropdownNotification = {
   id: string;
   status: Notification['status'];
-  icon: LucideIcon;
+  icon: ModuleIcon;
   /** low | medium | high | critical: the colour of the bar at the left of the row. */
   priority: string;
   title: string;
@@ -53,7 +54,8 @@ const toDropdownNotification = (item: NotificationApiItem): DropdownNotification
   return {
     id: viewModel.id,
     status: viewModel.status,
-    icon: getNotificationTypeIcon(viewModel.type, viewModel.icon),
+    // the module's own icon from the menu; a notification of no known module keeps the icon of its type
+    icon: (viewModel.module ? moduleMenuIcon(moduleDisplayName(viewModel.module)) : undefined) ?? getNotificationTypeIcon(viewModel.type, viewModel.icon),
     priority: (viewModel.priority || 'medium').toLowerCase(),
     title: viewModel.title || viewModel.description,
     body: viewModel.title && viewModel.description && viewModel.description !== viewModel.title ? viewModel.description : '',
@@ -63,19 +65,17 @@ const toDropdownNotification = (item: NotificationApiItem): DropdownNotification
   };
 };
 
-export type NotificationTab = 'all' | 'unread' | 'me' | 'system';
+export type NotificationTab = 'all' | 'unread';
 
 /** What each tab asks the server for: the tab is a filter of the server, never a cut of the few notifications that happen to be loaded. */
 const TAB_QUERY: Record<NotificationTab, Pick<GetNotificationsParams, 'scope' | 'status'>> = {
   all: { scope: 'all' },
   unread: { scope: 'all', status: 'unread' },
-  me: { scope: 'personal' },
-  system: { scope: 'system' },
 };
 
 /** How many notifications the server has for a tab. */
 export const countForTab = (counts: NotificationSummaryCounts, tab: NotificationTab): number =>
-  tab === 'unread' ? counts.unread : tab === 'me' ? counts.personal : tab === 'system' ? counts.system : counts.all;
+  tab === 'unread' ? counts.unread : counts.all;
 
 const GROUP_LABEL: Record<NotificationDayGroup, string> = { today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier' };
 
@@ -89,6 +89,7 @@ const NotificationItem: React.FC<{
   onClick?: () => void;
 }> = ({ notification, onClose, large = false, onClick }) => {
   const Icon = notification.icon;
+  const { tLabel } = useLanguage();
   const unread = notification.status === 'unread';
   const urgent = notification.priority === 'high' || notification.priority === 'critical';
 
@@ -110,20 +111,20 @@ const NotificationItem: React.FC<{
         <span className="flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-1.5 text-2xs font-bold uppercase tracking-wider text-slate-500">
             <Icon className="h-3 w-3 shrink-0" />
-            <span className="truncate">{notification.source}</span>
+            <span className="truncate">{tLabel(notification.source)}</span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-700">
             {unread && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
             {formatNotificationRelativeTime(notification.createdAt)}
           </span>
         </span>
-        <span className={cn('mt-1 line-clamp-2 block text-sm font-bold leading-snug', unread ? 'text-slate-900' : 'text-slate-600')}>
+        <span className={cn('mt-1 line-clamp-2 text-sm font-bold leading-snug', unread ? 'text-slate-900' : 'text-slate-600')}>
           {notification.title}
         </span>
-        {notification.body && <span className="mt-0.5 line-clamp-2 block text-xs font-normal leading-relaxed text-slate-600">{notification.body}</span>}
+        {notification.body && <span className="mt-0.5 line-clamp-2 text-xs font-normal leading-relaxed text-slate-600">{notification.body}</span>}
         {urgent && (
           <span className="mt-1.5 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-2xs font-semibold text-red-700">
-            {notification.priority === 'critical' ? 'Critical' : tr('High priority')}
+            {notification.priority === 'critical' ? tr('Critical') : tr('High priority')}
           </span>
         )}
         <span className="mt-2 flex items-center gap-1 text-2xs font-medium tabular-nums text-slate-500">
@@ -253,10 +254,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   // Only the unread number is worth a glance; the totals of the other tabs run into thousands and only crowd the row.
   const tabs: { id: NotificationTab; label: string; badge: number }[] = [
-    { id: 'all', label: 'All', badge: 0 },
-    { id: 'unread', label: 'Unread', badge: counts.unread },
-    { id: 'me', label: 'For Me', badge: 0 },
-    { id: 'system', label: 'System', badge: 0 },
+    { id: 'all', label: tr('All'), badge: 0 },
+    { id: 'unread', label: tr('Unread'), badge: counts.unread },
   ];
 
   useNotificationEntrance(scrollRef, notifications.map((n) => n.id), loaded);
@@ -279,18 +278,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
         <div className="min-w-0 flex-1">
           <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">{tr("Notifications")}</h3>
-          <p className="text-xs text-slate-500">{counts.unread > 0 ? `${counts.unread} unread` : tr('All caught up')}</p>
+          <p className="text-xs text-slate-500">{counts.unread > 0 ? trFormat('{count} unread', { count: counts.unread }) : tr('All caught up')}</p>
         </div>
-        <button
-          type="button"
-          className={cn(iconButton, 'text-emerald-600')}
-          onClick={onMarkAllRead}
-          disabled={counts.unread === 0}
-          aria-label={tr("Mark all as read")}
-          title={tr("Mark all as read")}
-        >
-          <CheckCheck className="h-4 w-4" />
-        </button>
         {pin && (
           <button
             type="button"
@@ -309,7 +298,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         </button>
       </div>
 
-      <div role="tablist" aria-label={tr("Show")} className="mx-4 my-3 grid shrink-0 grid-cols-4 rounded-xl bg-slate-100 p-1 text-xs font-medium">
+      <div role="tablist" aria-label={tr("Show")} className="mx-4 my-3 grid shrink-0 grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-medium">
         {tabs.map((item) => {
           const active = tab === item.id;
           return (
@@ -349,8 +338,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           </div>
         ) : (
           groups.map(({ group, items }) => (
-            <section key={group} aria-label={GROUP_LABEL[group]}>
-              <h4 className="bg-slate-50 px-4 py-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-500">{GROUP_LABEL[group]}</h4>
+            <section key={group} aria-label={tr(GROUP_LABEL[group])}>
+              <h4 className="bg-slate-50 px-4 py-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-500">{tr(GROUP_LABEL[group])}</h4>
               <div className="divide-y divide-slate-300">
                 {items.map((notification) => (
                   <NotificationItem
@@ -372,18 +361,15 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         {loaded && listFooter}
       </div>
 
-      <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3">
-        <button
-          type="button"
-          onClick={onViewAll}
-          className={cn(
-            'flex w-full items-center justify-center gap-1.5 bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
-            isScreen ? 'h-11 rounded-xl' : 'h-10 rounded-lg',
-          )}
-        >
-          {tr("Open Notification Center")}
-          <ArrowRight className="h-4 w-4" />
-        </button>
+      {/* Mark all as read on the left, View all on the right (a phone keeps the taller buttons for touch) */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-white px-4 py-2.5">
+        <Button variant="link" size={isScreen ? 'sm' : 'xs'} className="min-w-0 gap-1.5 px-0 md:px-0" onClick={onMarkAllRead} disabled={counts.unread === 0}>
+          <CheckCheck className="h-4 w-4 shrink-0" />
+          <span className="truncate">{tr("Mark all as read")}</span>
+        </Button>
+        <Button size={isScreen ? 'sm' : 'xs'} className="shrink-0 md:px-5" onClick={onViewAll}>
+          {tr("View all")}
+        </Button>
       </div>
     </div>
   );
@@ -644,7 +630,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
             {unreadCount > 0 && (
               <span
                 className="absolute -right-2 -top-2 grid h-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-2xs font-bold leading-none text-white ring-2 ring-white"
-                title={`${unreadCount} unread notifications`}
+                title={trFormat('{count} unread notifications', { count: unreadCount })}
               >
                 <span aria-hidden="true">{unreadLabel}</span>
                 <span className="sr-only">{unreadCount} {tr("unread notifications")}</span>

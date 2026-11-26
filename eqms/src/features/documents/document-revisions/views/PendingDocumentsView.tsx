@@ -360,8 +360,8 @@ export const PendingDocumentsView: React.FC<PendingDocumentsViewProps> = ({ view
                 isDragging={isDragging}
                 dropdownRef={getRef}
                 dropdownToggle={handleTableDropdownToggle}
-                emptyStateTitle="No Pending Documents Found"
-                emptyStateMessage="We couldn't find any pending documents matching your filters."
+                emptyStateTitle={tr("No Pending Documents Found")}
+                emptyStateMessage={tr("We couldn't find any pending documents matching your filters.")}
               />
             </div>
           </div>

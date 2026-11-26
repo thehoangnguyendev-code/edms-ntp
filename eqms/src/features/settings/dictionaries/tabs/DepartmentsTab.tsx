@@ -36,6 +36,7 @@ import { FolderColorField } from "../FolderColorField";
 import { userOptionLabel } from "../userOptionLabel";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 export const DepartmentsTab = React.forwardRef<
   { openAddModal: () => void },
@@ -276,7 +277,7 @@ export const DepartmentsTab = React.forwardRef<
       header: "Status",
       label: "Status",
       sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
-      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>),
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>),
     },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), sort: { direction: sortConfig.key === "modifiedDate" ? sortConfig.direction : undefined, onSort: () => handleSort("modifiedDate") }, cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];

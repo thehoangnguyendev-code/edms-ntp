@@ -25,7 +25,7 @@ import { SecurityAuthorizationTab } from "../tabs/SecurityAuthorizationTab";
 import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
 import type { ProfileTabId } from "../components/ProfileTabLayout";
 import { TOTAL_REQUIRED, countMissingRequired, tabsWithErrors } from "../requiredFields";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 type LookupOption = { label: string; value: string };
 type DictionaryBusinessUnit = { name: string; isActive?: boolean };
@@ -182,7 +182,7 @@ export const AddUserView: React.FC = () => {
     .map((position) => ({ label: position.name, value: position.name }));
 
    return filtered.length > 0 ? [...base, ...filtered] : base;
-  }, [positions, newUser.businessUnit, newUser.department]);
+  }, [positions, newUser.businessUnit, newUser.department, getCatalogLanguage()]);
 
  useEffect(() => {
   const loadLookupOptions = async () => {

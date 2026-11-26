@@ -9,7 +9,7 @@ const api = vi.hoisted(() => ({
 vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   trainingActivitiesApi: { people: api.people },
-  trainingMatrixApi: { positions: api.positions },
+  trainingMatrixApi: { positionsPage: api.positions },
   trainingWorkPositionApi: { of: api.of },
   trainingJobsApi: { eligibility: api.eligibility, create: api.create },
 }));
@@ -26,7 +26,7 @@ beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset());
   navigate.mockReset();
   api.people.mockResolvedValue([{ id: "p1", fullName: "Trainee Test 1", employeeCode: "E1" }]);
-  api.positions.mockResolvedValue([{ id: "r1", name: "QA Officer", departmentId: "d1", departmentName: "Quality Assurance" }]);
+  api.positions.mockResolvedValue({ data: [{ id: "r1", code: "QA-01", name: "QA Officer", departmentId: "d1", departmentName: "Quality Assurance" }], departments: [{ id: "d1", name: "Quality Assurance" }], pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } });
   api.of.mockResolvedValue({ roles: [] });
   api.eligibility.mockResolvedValue({ matrixMissing: false, missingCount: 0, items: [] });
   api.create.mockResolvedValue({ id: "job1", personName: "Trainee Test 1" });
@@ -39,8 +39,7 @@ describe("TrainingJobCreatePage", () => {
   it("is a page with the three steps, and cannot go on before an employee and a Work Position are chosen", async () => {
     renderPage();
 
-    expect(screen.getByText("Choose an employee and a Work Position")).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /^Next:/ }) as HTMLButtonElement).disabled).toBe(true);
     await waitFor(() => expect(api.people).toHaveBeenCalled());
   });
 
@@ -53,11 +52,11 @@ describe("TrainingJobCreatePage", () => {
     fireEvent.click(await screen.findByRole("checkbox", { name: /QA Officer/ }));
     expect(screen.getByText("1 selected")).toBeTruthy();
     expect(await screen.findByText(/Training check: complete/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Next:/ }));
 
     fireEvent.change(await screen.findByPlaceholderText("Search a SOP, or type a Training Topic..."), { target: { value: "Gowning" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /Gowning/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Next:/ }));
     expect(await screen.findByText("Other Trainings Required")).toBeTruthy();
     expect(await screen.findByText(/Training check: complete/)).toBeTruthy();
 
@@ -73,8 +72,7 @@ describe("TrainingJobCreatePage", () => {
     fireEvent.click(await screen.findByText("Trainee Test 1 (E1)"));
     fireEvent.click(await screen.findByRole("checkbox", { name: /QA Officer/ }));
     fireEvent.click(await screen.findByText("Replaces one held"));
-    expect(screen.getByText("Enter the reason for the change")).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /^Next:/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("says when the training check could not be made and tries again", async () => {

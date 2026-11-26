@@ -242,8 +242,7 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
           <Button variant="ghost" size="sm" onClick={() => setRefresh((value) => value + 1)}>
-            Retry
-          </Button>
+            {tr("Retry")}</Button>
         </div>
       )}
       <ReportListToolbar

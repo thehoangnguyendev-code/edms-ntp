@@ -42,6 +42,7 @@ import {
   TRAINING_PAGES } from "../shared/trainingLabels";
 import { SpecimenImagePicker } from "../shared/SpecimenImagePicker";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 
 /** Specimen signatures. The image is never in the list: it is opened on request, with a check each time, and the opening is recorded in the Audit Trail. */
@@ -73,6 +74,7 @@ export function TrainingSpecimenView() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-specimen-signatures", () => table.setCurrentPage(1));
   const extra = useMemo(() => ({
     status: status || undefined, department: departmentFilter || undefined,
     ...effectiveRange.params("effectiveFrom", "effectiveTo"), ...uploadedRange.params("uploadedFrom", "uploadedTo"),
@@ -82,7 +84,7 @@ export function TrainingSpecimenView() {
     fetcher,
     defaultSortBy: "createdAt",
     defaultSortDirection: "desc",
-    extraParams: extra,
+    extraParams: { ...extra, ...waiting.params },
     initialItemsPerPage: 10,
   });
 
@@ -234,6 +236,7 @@ export function TrainingSpecimenView() {
           {error}
         </p>
       )}
+      {waiting.node}
       <ReportListToolbar
         searchPlaceholder={tr("Search employee…")}
         search={table.searchQuery}

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useMemo, useState } from "react";
 import { IconBraces, IconCopy } from "@tabler/icons-react";
 import { Input } from "@/components/ui/form/ResponsiveForm";
@@ -33,7 +34,7 @@ export function ReportPlaceholdersSection() {
     }
   };
   const copyButton = (token: Token) => (
-    <Button size="xs" variant="outline" aria-label={`Copy ${token.code}`} onClick={() => copy(token)}>
+    <Button size="xs" variant="outline" aria-label={__ariaTrFormat("Copy {v1}", { v1: token.code })} onClick={() => copy(token)}>
       <IconCopy className="mr-1 h-3.5 w-3.5" aria-hidden />
       {copied === token.code ? "Copied" : "Copy"}
     </Button>

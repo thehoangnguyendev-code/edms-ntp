@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Switch } from '@/components/ui/switch';
 import { useNavigate } from "react-router-dom";
 import { Eye, Palette, Upload } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -54,6 +55,8 @@ const toInput = (d: EmailDesign): EmailDesignInput => ({
   logoText: d.logoText,
   brandColor: d.brandColor,
   buttonColor: d.buttonColor,
+  buttonSize: d.buttonSize ?? "MEDIUM",
+  showButtonLink: d.showButtonLink ?? true,
   bodyColor: d.bodyColor,
   footerColor: d.footerColor,
   logoAlign: d.logoAlign,
@@ -64,6 +67,7 @@ const toInput = (d: EmailDesign): EmailDesignInput => ({
   footerTextColor: d.footerTextColor,
   fontFamily: d.fontFamily,
   footerText: d.footerText,
+  footerTextVi: d.footerTextVi ?? null,
   supportEmail: d.supportEmail,
 });
 
@@ -177,6 +181,7 @@ export const EmailDesignView: React.FC = () => {
           ...form,
           logoUrl: form.logoUrl || null,
           footerText: form.footerText || null,
+          footerTextVi: form.footerTextVi || null,
           supportEmail: form.supportEmail || null,
         },
         design?.version,
@@ -378,6 +383,15 @@ export const EmailDesignView: React.FC = () => {
                     {colour("Button Colour", "buttonColor")}
                     <div>
                       <Select
+                        label={tr("Button size")}
+                        value={form.buttonSize ?? "MEDIUM"}
+                        disabled={!canManage}
+                        onChange={(value) => set("buttonSize", value)}
+                        options={[{ label: tr("Small"), value: "SMALL" }, { label: tr("Medium"), value: "MEDIUM" }, { label: tr("Large"), value: "LARGE" }]}
+                      />
+                    </div>
+                    <div>
+                      <Select
                         label={tr("Font")}
                         value={form.fontFamily}
                         disabled={!canManage}
@@ -385,6 +399,13 @@ export const EmailDesignView: React.FC = () => {
                         options={design.fonts.map((font) => ({ label: font, value: font }))}
                       />
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800">{tr("Show the link under the button")}</p>
+                      <p className="text-xs text-slate-500">{tr("The address in words, for a mail program that does not show the button.")}</p>
+                    </div>
+                    <Switch className="shrink-0" checked={form.showButtonLink ?? true} disabled={!canManage} onChange={(shown) => set("showButtonLink", shown)} aria-label={tr("Show the link under the button")} />
                   </div>
                 </div>
               </div>
@@ -400,6 +421,15 @@ export const EmailDesignView: React.FC = () => {
                       disabled={!canManage}
                       onChange={(e) => set("footerText", e.target.value)}
                       placeholder={tr("© {year} Company. This is an automatic message.")}
+                    />
+                  </FormField>
+                  <FormField label={tr("Footer line (Vietnamese)")} htmlFor="ed-footer-vi" hint={tr("Used in e-mail sent in Vietnamese. Empty: the footer line above is used.")}>
+                    <Input
+                      id="ed-footer-vi"
+                      value={form.footerTextVi ?? ""}
+                      maxLength={500}
+                      disabled={!canManage}
+                      onChange={(e) => set("footerTextVi", e.target.value)}
                     />
                   </FormField>
                   <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">

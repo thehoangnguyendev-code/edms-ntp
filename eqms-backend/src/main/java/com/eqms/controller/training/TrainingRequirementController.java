@@ -30,10 +30,11 @@ public class TrainingRequirementController {
                                   @RequestParam(required = false) String kind, @RequestParam(required = false) UUID departmentId,
                                   @RequestParam(required = false) String dueFrom, @RequestParam(required = false) String dueTo,
                                   @RequestParam(required = false) String createdFrom, @RequestParam(required = false) String createdTo,
+                                  @RequestParam(defaultValue = "false") boolean waitingForMe,
                                   @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                   @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(requirements.list(users.requireCurrentUser(), year, status, search,
-                new TrainingRequirementService.ListFilters(kind, departmentId, dueFrom, dueTo, createdFrom, createdTo), sortBy, sortDirection, page, limit));
+                new TrainingRequirementService.ListFilters(kind, departmentId, dueFrom, dueTo, createdFrom, createdTo, waitingForMe), sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/suggestions")

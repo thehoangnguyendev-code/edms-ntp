@@ -74,8 +74,13 @@ public class TrainingRequirementService {
     // ----------------------------------------------------------------------------------------------------------------------------- reading
 
     /** More filters of the list; dates are ISO yyyy-MM-dd and both days of a range are included. */
-    public record ListFilters(String kind, UUID departmentId, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+    public record ListFilters(String kind, UUID departmentId, String dueFrom, String dueTo, String createdFrom, String createdTo, boolean waitingForMe) {
         public static final ListFilters NONE = new ListFilters(null, null, null, null, null, null);
+        /** Only the requirements that wait for the person who asks. */
+        public static final ListFilters WAITING = new ListFilters(null, null, null, null, null, null, true);
+        public ListFilters(String kind, UUID departmentId, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+            this(kind, departmentId, dueFrom, dueTo, createdFrom, createdTo, false);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +97,7 @@ public class TrainingRequirementService {
             UUID own = access.departmentOf(actor);
             filter.raw("r.department_id = ?", own == null ? new UUID(0, 0) : own);
         }
+        if (extra.waitingForMe()) filter.raw(TrainingWaiting.assigned(TYPE, "r.id"), actor.getId());
         filter.equal("r.year", year).equal("r.status", status).equal("r.kind", extra.kind()).equal("r.department_id", extra.departmentId())
                 .contains(search, "r.request_no", "(select dd.name from departments dd where dd.id = r.department_id)", "(select u.full_name from app_users u where u.id = r.created_by)")
                 .dateRange("r.due_by", extra.dueFrom(), extra.dueTo()).timeRange("r.created_at", extra.createdFrom(), extra.createdTo());

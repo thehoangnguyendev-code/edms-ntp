@@ -1157,7 +1157,6 @@ public class WorkflowActionPolicyService {
                 case "SEND_ATTENDANCE_LIST" -> "Send Attendance List";
                 case "FINISH" -> "Finish Training";
                 case "CONFIRM_COMPLETION" -> "Confirm Completion";
-                case "RETURN_FOR_CORRECTION" -> "Return for Correction";
                 default -> pretty(code);
             };
         }

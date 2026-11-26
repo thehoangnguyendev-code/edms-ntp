@@ -119,7 +119,7 @@ export const ServiceStatusMonitor: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <h3 id="service-status-title" className="text-lg font-semibold text-slate-900">
-                      {down.length === 1 ? 'A service is not available' : 'Some services are not available'}
+                      {down.length === 1 ? tr('A service is not available') : tr('Some services are not available')}
                     </h3>
                     <p className="text-sm text-slate-500 mt-0.5">{tr("Part of the system may not work")}</p>
                   </div>
@@ -131,8 +131,8 @@ export const ServiceStatusMonitor: React.FC = () => {
                       <li key={item.code} className="flex gap-3">
                         <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-900">{item.name}</p>
-                          <p className="text-sm text-slate-600">{item.impact}</p>
+                          <p className="text-sm font-medium text-slate-900">{tr(item.name)}</p>
+                          <p className="text-sm text-slate-600">{tr(item.impact)}</p>
                         </div>
                       </li>
                     ))}

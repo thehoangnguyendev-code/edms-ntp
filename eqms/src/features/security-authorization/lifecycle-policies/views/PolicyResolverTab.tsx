@@ -16,7 +16,7 @@ import type {
   WorkflowActionPolicyEffectiveResponse,
   WorkflowActionPolicyOptions,
 } from "../types";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type ResolverFields = {
   moduleKey: string;
@@ -94,7 +94,7 @@ export const PolicyResolverTab: React.FC = () => {
         value: moduleKey,
       })),
     ],
-    [options],
+    [options, getCatalogLanguage()],
   );
 
   // Each list depends on the field before it: module -> workflow -> resource type -> action. Nothing is offered
@@ -106,7 +106,7 @@ export const PolicyResolverTab: React.FC = () => {
         .filter((workflow) => Boolean(fields.moduleKey) && workflow.moduleKey === fields.moduleKey)
         .map((workflow) => ({ label: workflow.label, value: workflow.value })),
     ],
-    [fields.moduleKey, options],
+    [fields.moduleKey, options, getCatalogLanguage()],
   );
 
   const objectTypeOptions: SelectOption[] = useMemo(() => {
@@ -125,7 +125,7 @@ export const PolicyResolverTab: React.FC = () => {
       { label: fields.workflowKey ? "Select resource type" : tr("Select a workflow first"), value: "" },
       ...types.map((objectType) => ({ label: objectType, value: objectType })),
     ];
-  }, [fields.workflowKey, options]);
+  }, [fields.workflowKey, options, getCatalogLanguage()]);
 
   const actionOptions: SelectOption[] = useMemo(() => {
     const relevant =
@@ -142,7 +142,7 @@ export const PolicyResolverTab: React.FC = () => {
         .filter((action) => !seen.has(action.value) && Boolean(seen.add(action.value)))
         .map((action) => ({ label: action.label || action.value, value: action.value })),
     ];
-  }, [fields.objectType, fields.workflowKey, options]);
+  }, [fields.objectType, fields.workflowKey, options, getCatalogLanguage()]);
 
   const selectedAction = useMemo(
     () =>
@@ -161,7 +161,7 @@ export const PolicyResolverTab: React.FC = () => {
           ...statuses.map((status) => ({ label: status, value: status })),
         ]
       : [];
-  }, [selectedAction]);
+  }, [selectedAction, getCatalogLanguage()]);
   const documentTypeOptions: SelectOption[] = useMemo(
     () => [
       { label: tr("Any (Global policy)"), value: "" },
@@ -170,7 +170,7 @@ export const PolicyResolverTab: React.FC = () => {
         value: documentType.id,
       })),
     ],
-    [options],
+    [options, getCatalogLanguage()],
   );
 
   const updateFields = (next: Partial<ResolverFields>) => {

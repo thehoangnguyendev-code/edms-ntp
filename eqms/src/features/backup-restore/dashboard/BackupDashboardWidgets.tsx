@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import type { ChartConfiguration } from "chart.js";
 import { ChartCanvas } from "@/components/ui/chart";
@@ -16,7 +17,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { formatBytes, formatDateTime } from "../format";
 import { groupAlerts, toAlerts, type Alert, type AlertGroup } from "./backupAlerts";
 import { refreshBackupStatus, useBackupStatus } from "./useBackupStatus";
-import { tr, trFormat, trPlural } from "@/i18n";
+import { tr, trFormat, trPlural, getCatalogLanguage } from "@/i18n";
 
 const OK = "#10b981";
 const WARN = "#f59e0b";
@@ -321,7 +322,7 @@ const DailyChart: React.FC<{ points: BackupDailyPoint[] | null; failed: boolean 
         ) : (
           <>
             <div className="h-64 w-full">
-              <ChartCanvas config={dailyConfig} ariaLabel="Backup runs per day for the last 30 days, by result" />
+              <ChartCanvas config={dailyConfig} ariaLabel={__ariaTr("Backup runs per day for the last 30 days, by result")} />
             </div>
             <ul className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600" aria-label={tr("Chart legend")}>
               {LEGEND.map(({ key, color }) => (
@@ -433,6 +434,6 @@ export function useBackupDashboardWidgets(): DashboardWidget[] {
             { id: "backup-manual-copy", label: tr("Manual copy"), width: "half", defaultVisible: false, content: <ManualCopyCard /> },
           ]
         : [],
-    [hasPermission],
+    [hasPermission, getCatalogLanguage()],
   );
 }

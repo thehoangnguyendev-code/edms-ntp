@@ -29,13 +29,19 @@ import java.util.UUID;
  * </ul>
  * The name of an assessment only identifies it in the library; it is never written in the form. Choosing one in the tab Assessment of an activity writes its content into the Word form APD.0009
  * that is enabled in Training Properties (Assessment Forms): the exam file and the answer key of the activity, which the organizer can still open and change in the editor. Taking the choice off
- * removes those two files from the activity (they stay on record). The person who designs (training.assessment.design) writes a draft and sends it for approval; the person who approves
- * (training.assessment.approve), who is not the person who made, changed or sent it, signs it into Effective. A change is a new version. The key is seen only by the people who design or approve,
+ * removes those two files from the activity (they stay on record). The person who manages (training.assessment.manage: the assessments they created; training.assessment.manage_all: every one) writes a draft and sends it for approval; the person who approves
+ * (training.assessment.approve), who is not the person who made, changed or sent it, signs it into Effective. A change is a new version. The key is seen only by the people who view, manage or approve,
  * and by the people who organize the activity.
  */
 @Service
 public class TrainingAssessmentLibraryService {
     public static final String TYPE = "TRAINING_ASSESSMENT";
+    private static final String VIEW = "training.assessment.view";
+    private static final String MANAGE = "training.assessment.manage";
+    private static final String MANAGE_ALL = "training.assessment.manage_all";
+    private static final String APPROVE = "training.assessment.approve";
+    /** Whoever may see the library: the viewer, and the people who manage or approve (they need to see what they work on). */
+    private static final String[] SEE = {VIEW, MANAGE, MANAGE_ALL, APPROVE};
     private static final Set<String> QUESTION_KINDS = Set.of("SINGLE", "MULTI", "TRUE_FALSE", "ESSAY");
     private static final String[] LETTERS = {"A", "B", "C", "D", "E", "F", "G", "H"};
 
@@ -117,9 +123,19 @@ public class TrainingAssessmentLibraryService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
-    private boolean designer(UserAccount actor) { return access.has(actor, "training.assessment.design"); }
+    /** Who may create an assessment: a person who manages their own, or all of them. */
+    private boolean designer(UserAccount actor) { return access.has(actor, MANAGE, MANAGE_ALL); }
 
-    private boolean approver(UserAccount actor) { return access.has(actor, "training.assessment.approve"); }
+    /** Who may change, delete, send for approval or give a new revision to ONE assessment: manage_all, or manage and the person created it. Managing never approves. */
+    private boolean canManage(UserAccount actor, Object createdBy) {
+        return access.has(actor, MANAGE_ALL) || (access.has(actor, MANAGE) && actor != null && actor.getId() != null && actor.getId().equals(createdBy));
+    }
+
+    private void requireCanManage(UserAccount actor, Map<String, Object> def) {
+        if (!canManage(actor, def.get("created_by"))) throw new SecurityException(TrainingAccess.DENIED);
+    }
+
+    private boolean approver(UserAccount actor) { return access.has(actor, APPROVE); }
 
     // ------------------------------------------------------------------------------------------------------------------------------ the library
 
@@ -127,7 +143,7 @@ public class TrainingAssessmentLibraryService {
     /** The names of the people who last changed an assessment (each once, in order), for the filter of the list. */
     @Transactional(readOnly = true)
     public List<String> editors(UserAccount actor) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        access.require(actor, SEE);
         return jdbc.queryForList("select distinct u.full_name from training_assessment_defs d join app_users u on u.id = d.updated_by where u.full_name is not null order by u.full_name", String.class);
     }
 
@@ -139,7 +155,7 @@ public class TrainingAssessmentLibraryService {
     /** {@code more}: updatedBy (a name), updatedFrom and updatedTo (the Last Changed date range, yyyy-MM-dd, both days included), revision (an exact revision number). */
     @Transactional(readOnly = true)
     public Map<String, Object> page(UserAccount actor, String search, String status, String kind, String sortBy, String sortDirection, int page, int limit, Map<String, String> more) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        access.require(actor, SEE);
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
         if (search != null && !search.isBlank()) {
@@ -159,18 +175,24 @@ public class TrainingAssessmentLibraryService {
         args.add(safeLimit);
         args.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select d.id, d.code, d.version_no, d.revision_number, d.name, d.kind, d.status, d.created_at, d.updated_at, u.full_name as updated_by_name, d.approved_at, a.full_name as approved_by_name,
+            select d.id, d.created_by, d.code, d.version_no, d.revision_number, d.name, d.kind, d.status, d.created_at, d.updated_at, u.full_name as updated_by_name, d.approved_at, a.full_name as approved_by_name,
                    (select count(*) from training_assessment_def_items i where i.def_id = d.id) as item_count,
                    case when d.kind = 'CHECKLIST' then null else (select coalesce(sum(i.points), 0) from training_assessment_def_items i where i.def_id = d.id) end as max_score
             """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "d.code", "name", "d.name", "kind", "d.kind", "status", "d.status", "updatedAt", "d.updated_at", "updatedBy", "u.full_name", "revision", "d.version_no", "versionNo", "d.version_no", "itemCount", "item_count", "maxScore", "max_score"), "d.updated_at desc") + " limit ? offset ?", args.toArray());
         // what the menu of a row may offer, decided here
-        boolean design = designer(actor), approve = approver(actor);
+        boolean approve = approver(actor);
         for (Map<String, Object> row : rows) {
             Map<String, Object> actions = new LinkedHashMap<>();
             actions.put("view", true);
-            actions.put("continueDraft", design && "DRAFT".equals(row.get("status")));
+            boolean mine = canManage(actor, row.get("created_by"));
+            actions.put("continueDraft", mine && "DRAFT".equals(row.get("status")));
             actions.put("review", approve && "PENDING_APPROVAL".equals(row.get("status")));
+            // the same rule as the Delete Draft button of the detail page (the server checks it again on the delete)
+            actions.put("delete", mine && "DRAFT".equals(row.get("status")));
+            // the same rule as the Submit for Approval button of the detail page: a draft with at least one question or line
+            actions.put("submit", mine && "DRAFT".equals(row.get("status")) && row.get("item_count") instanceof Number n && n.longValue() > 0);
             row.put("actions", actions);
+            row.remove("created_by");
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("data", TrainingRows.camel(rows));
@@ -182,7 +204,7 @@ public class TrainingAssessmentLibraryService {
     /** What a person who organizes a training can choose from: the approved versions, with no key. */
     @Transactional(readOnly = true)
     public Map<String, Object> approved(UserAccount actor, String search, String kind) {
-        access.require(actor, "training.activity.organize", "training.assessment.design", "training.assessment.approve");
+        access.require(actor, "training.activity.organize", VIEW, MANAGE, MANAGE_ALL, APPROVE);
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where d.status = 'EFFECTIVE'");
         if (search != null && !search.isBlank()) {
@@ -205,7 +227,7 @@ public class TrainingAssessmentLibraryService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> revisions(UserAccount actor, UUID id, String search, String sortBy, String sortDirection, int page, int limit) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        access.require(actor, SEE);
         Map<String, Object> def = row(id);
         List<Object> args = new ArrayList<>();
         args.add(def.get("code"));
@@ -250,7 +272,7 @@ public class TrainingAssessmentLibraryService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> get(UserAccount actor, UUID id) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        access.require(actor, SEE);
         return detail(actor, row(id));
     }
 
@@ -284,12 +306,13 @@ public class TrainingAssessmentLibraryService {
         boolean open = Integer.valueOf(1).equals(jdbc.queryForObject("select count(*) from training_assessment_defs where code = ? and status in ('DRAFT', 'PENDING_APPROVAL')", Integer.class, def.get("code")));
         boolean apart = !actor.getId().equals(def.get("created_by")) && !actor.getId().equals(def.get("updated_by")) && !actor.getId().equals(def.get("submitted_by"));
         Map<String, Object> caps = new LinkedHashMap<>();
-        caps.put("edit", designer(actor) && draft);
-        caps.put("delete", designer(actor) && draft);
-        caps.put("submit", designer(actor) && draft && !items.isEmpty());
-        caps.put("returnToDraft", (designer(actor) || approver(actor)) && pending);
+        boolean mine = canManage(actor, def.get("created_by"));
+        caps.put("edit", mine && draft);
+        caps.put("delete", mine && draft);
+        caps.put("submit", mine && draft && !items.isEmpty());
+        caps.put("returnToDraft", (mine || approver(actor)) && pending);
         caps.put("approve", approver(actor) && pending && apart);
-        caps.put("upgradeRevision", designer(actor) && "EFFECTIVE".equals(status) && !open);
+        caps.put("upgradeRevision", mine && "EFFECTIVE".equals(status) && !open);
         out.put("capabilities", withEngine(actor, def, caps));
         out.put("workflow", TrainingWorkflows.assessment(status));
         // Why the approval is not offered to a person who may approve in general (shown instead of hiding the button without a word).
@@ -373,7 +396,7 @@ public class TrainingAssessmentLibraryService {
      */
     @Transactional(readOnly = true)
     public byte[] preview(UserAccount actor, PreviewRequest request) {
-        access.require(actor, "training.assessment.design", "training.assessment.approve");
+        access.require(actor, SEE);
         if (request == null || request.name() == null || request.name().isBlank()) throw new IllegalArgumentException("TRAINING_ASSESSMENT_TITLE_REQUIRED");
         if (request.kind() == null || !Set.of("QUESTIONS", "CHECKLIST").contains(request.kind())) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEM_INVALID");
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
@@ -482,7 +505,7 @@ public class TrainingAssessmentLibraryService {
 
     @Transactional
     public Map<String, Object> create(UserAccount actor, SaveRequest request) {
-        access.require(actor, "training.assessment.design");
+        access.require(actor, MANAGE, MANAGE_ALL);
         checkHeader(request);
         List<Map<String, Object>> items = normalize(request.kind(), request.items());
         UUID id = UUID.randomUUID();
@@ -504,6 +527,7 @@ public class TrainingAssessmentLibraryService {
     private Map<String, Object> updateInner(UserAccount actor, UUID id, SaveRequest request) {
         // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
+        requireCanManage(actor, def);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.version() == null || request.version().intValue() != ((Number) def.get("version")).intValue()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_VERSION_CHANGED");
         checkHeader(request);
@@ -527,6 +551,7 @@ public class TrainingAssessmentLibraryService {
     private Map<String, Object> deleteInner(UserAccount actor, UUID id, ReasonRequest request) {
         // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
+        requireCanManage(actor, def);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         if (request == null || request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
         jdbc.update("delete from training_assessment_defs where id = ?", id);
@@ -544,6 +569,7 @@ public class TrainingAssessmentLibraryService {
     private Map<String, Object> submitInner(UserAccount actor, UUID id) {
         // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
+        requireCanManage(actor, def);
         if (!"DRAFT".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_DRAFT");
         Integer count = jdbc.queryForObject("select count(*) from training_assessment_def_items where def_id = ?", Integer.class, id);
         if (count == null || count == 0) throw new IllegalArgumentException("TRAINING_ASSESSMENT_ITEMS_REQUIRED");
@@ -599,6 +625,7 @@ public class TrainingAssessmentLibraryService {
     private Map<String, Object> upgradeRevisionInner(UserAccount actor, UUID id) {
         // who may do this (permission, and for the approval a person other than the author, the updater and the submitter) is decided by the Hybrid engine (TrainingShadow, TRAINING_ASSESSMENT)
         Map<String, Object> def = lock(id);
+        requireCanManage(actor, def);
         if (!"EFFECTIVE".equals(def.get("status"))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_NOT_APPROVED");
         Integer drafts = jdbc.queryForObject("select count(*) from training_assessment_defs where code = ? and status in ('DRAFT', 'PENDING_APPROVAL')", Integer.class, def.get("code"));
         if (drafts != null && drafts > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ASSESSMENT_DRAFT_EXISTS");

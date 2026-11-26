@@ -66,12 +66,15 @@ public final class PolicyMatrixHarness {
 
     /** (action|from) -> relation rows of an object type, from the relation block of a migration: ('TYPE', 'ACTION', 'FROM', 'CODE', TRUE|FALSE). */
     public static Map<String, List<WorkflowActionPolicyRelation>> relationsOf(String migration, String objectType) throws Exception {
-        String sql = java.nio.file.Files.readString(java.nio.file.Path.of(migration)).replaceAll("\\s+", " ");
-        int at = sql.indexOf("INSERT INTO workflow_action_policy_relations");
         Map<String, List<WorkflowActionPolicyRelation>> out = new HashMap<>();
-        if (at < 0) return out;
-        Matcher m = Pattern.compile("\\('" + objectType + "', '([A-Z_]+)', '([A-Z_]+)', '([A-Z_]+)', (TRUE|FALSE)\\)").matcher(sql.substring(at));
-        while (m.find()) out.computeIfAbsent(m.group(1) + "|" + m.group(2), k -> new ArrayList<>()).add(relation(m.group(3), "TRUE".equals(m.group(4))));
+        // several migrations may be named, separated by ";": the relation rows of a later one are added to those of the first (a policy a later migration changed)
+        for (String path : migration.split(";")) {
+            String sql = java.nio.file.Files.readString(java.nio.file.Path.of(path)).replaceAll("\\s+", " ");
+            int at = sql.indexOf("INSERT INTO workflow_action_policy_relations");
+            if (at < 0) continue;
+            Matcher m = Pattern.compile("\\('" + objectType + "', '([A-Z_]+)', '([A-Z_]+)', '([A-Z_]+)', (TRUE|FALSE)\\)").matcher(sql.substring(at));
+            while (m.find()) out.computeIfAbsent(m.group(1) + "|" + m.group(2), k -> new ArrayList<>()).add(relation(m.group(3), "TRUE".equals(m.group(4))));
+        }
         return out;
     }
 
@@ -164,10 +167,23 @@ public final class PolicyMatrixHarness {
 
     /** Every policy of the registry for the workflow is a row of the migration, with the same permission and description. */
     public static void assertMigrationHasThePolicies(String migration, String workflow, String objectType, int expectedCount) throws Exception {
-        String sql = java.nio.file.Files.readString(java.nio.file.Path.of(migration)).replaceAll("\\s+", " ");
+        assertMigrationHasThePolicies(migration, workflow, objectType, expectedCount, Set.of(), "");
+    }
+
+    /**
+     * {@code changedLater}: "ACTION|FROM" of the policies a later migration changed. The first migration no longer says what the registry says for them, so they are checked against
+     * {@code laterMigration}, which must carry the description of the registry.
+     */
+    public static void assertMigrationHasThePolicies(String migration, String workflow, String objectType, int expectedCount, Set<String> changedLater, String laterMigration) throws Exception {
+        String sql = java.nio.file.Files.readString(java.nio.file.Path.of(migration.split(";")[0])).replaceAll("\\s+", " ");
+        String later = laterMigration.isEmpty() ? "" : java.nio.file.Files.readString(java.nio.file.Path.of(laterMigration)).replaceAll("\\s+", " ");
         var defaults = defaultsOf(workflow);
         assertThat(defaults).hasSize(expectedCount);
         for (var d : defaults) {
+            if (changedLater.contains(d.policy().actionCode() + "|" + d.policy().fromStatus())) {
+                assertThat(later).as(workflow + " " + d.policy().actionCode() + " " + d.policy().fromStatus() + " (changed later)").contains(d.policy().description().replace("'", "''"));
+                continue;
+            }
             String row = "('" + workflow + "', '" + objectType + "', '" + d.policy().actionCode() + "', '" + d.policy().fromStatus() + "', '" + d.policy().requiredPermissionCode() + "', '"
                     + d.policy().description().replace("'", "''") + "')";
             assertThat(sql).as(workflow + " " + d.policy().actionCode() + " " + d.policy().fromStatus()).contains(row);

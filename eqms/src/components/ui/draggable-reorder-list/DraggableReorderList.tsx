@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 "use client";
 
 /*
@@ -91,7 +92,7 @@ function Row<T extends ReorderItem>({
           onPointerDown={(event) => dragControls.start(event)}
           className={cn("flex flex-shrink-0 cursor-grab touch-none items-center text-slate-400 transition-colors hover:text-slate-600 active:cursor-grabbing", alignTop && "h-9")}
           whileHover={{ scale: 1.1 }}
-          aria-label={`Drag ${item.label}`}
+          aria-label={__ariaTrFormat("Drag {v1}", { v1: item.label })}
         >
           <GripVertical className="h-4 w-4" />
         </motion.div>
@@ -115,7 +116,7 @@ function Row<T extends ReorderItem>({
           <button
             type="button"
             onClick={() => onRemove?.(item.id)}
-            aria-label={`Remove ${item.label}`}
+            aria-label={__ariaTrFormat("Remove {v1}", { v1: item.label })}
             className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
           >
             <X className="h-3.5 w-3.5" />

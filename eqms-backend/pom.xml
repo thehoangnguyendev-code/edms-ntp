@@ -143,6 +143,11 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
+					<!-- Cached integration contexts contain live schedulers/outbox workers.
+					     Close the previous context before another fixture claims its jobs. -->
+					<systemPropertyVariables>
+						<spring.test.context.cache.maxSize>1</spring.test.context.cache.maxSize>
+					</systemPropertyVariables>
 					<!-- Several @SpringBootTest classes each open their own Hikari pool against the shared dev
 					     Postgres (max_connections=100) next to the running backend; small pools keep a full run
 					     from failing with "too many clients already". -->

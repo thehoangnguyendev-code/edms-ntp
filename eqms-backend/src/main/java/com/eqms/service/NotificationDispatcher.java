@@ -76,6 +76,10 @@ public class NotificationDispatcher {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private EmailDesignService emailDesignService;
 
+    /** Field injection on purpose: without it (as in the unit tests of the dispatcher) every recipient gets the English wording, as before. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationTranslationService translations;
+
     public NotificationDispatcher(
             NotificationEventDefinitionRepository eventRepository,
             NotificationPolicyRepository policyRepository,
@@ -265,11 +269,17 @@ public class NotificationDispatcher {
             }
             Map<String, String> recipientVariables = withRecipientDefaults(variables, recipient);
             Related related = relatedOf(recipientVariables, event.getDataObject());
+            // the wording of the recipient's language; the English version itself unless a usable translation of exactly that version exists
+            NotificationTemplateVersion inAppWording = translations == null ? inAppVersion : translations.forRecipient(inAppVersion, recipient.getId());
+            NotificationTemplateVersion emailWording = translations == null ? emailVersion : translations.forRecipient(emailVersion, recipient.getId());
+            // a translated wording also gets the fixed words (action, status, kind) in Vietnamese; what is kept with the notification and where it opens do not change
+            Map<String, String> inAppValues = inAppWording == inAppVersion ? recipientVariables : NotificationValueWords.vietnamese(recipientVariables);
+            Map<String, String> emailValues = emailWording == emailVersion ? recipientVariables : NotificationValueWords.vietnamese(recipientVariables);
 
             if (inAppVersion != null && (inAppPeople == null || inAppPeople.contains(recipient.getId()))) {
-                String title = render(inAppVersion.getTitle(), recipientVariables);
-                String summary = render(inAppVersion.getSummary(), recipientVariables);
-                String actionUrl = render(inAppVersion.getActionUrlTemplate(), recipientVariables);
+                String title = render(inAppWording.getTitle(), inAppValues);
+                String summary = render(inAppWording.getSummary(), inAppValues);
+                String actionUrl = render(inAppWording.getActionUrlTemplate(), recipientVariables);
                 if (StringUtils.hasText(title)) {
                     notificationService.recordNotification(
                             recipient, null, "personal", moduleKey, event.getCode(),
@@ -281,8 +291,8 @@ public class NotificationDispatcher {
             }
 
             if (emailVersion != null && (emailPeople == null || emailPeople.contains(recipient.getId())) && StringUtils.hasText(recipient.getEmail())) {
-                String subject = render(emailVersion.getSubject(), recipientVariables);
-                String body = composeEmailBody(emailVersion, inAppVersion, recipientVariables);
+                String subject = render(emailWording.getSubject(), emailValues);
+                String body = composeEmailBody(emailWording, inAppVersion, emailValues, emailWording != emailVersion);
                 if (StringUtils.hasText(subject) && StringUtils.hasText(body)) {
                     // a mandatory e-mail goes out at once: a digest or quiet hours would delay a code and would keep the secret unencrypted in the dispatch queue
                     Instant deferredUntil = file == null && !mandatory ? computeDeferredSendTime(policy) : null;
@@ -307,8 +317,10 @@ public class NotificationDispatcher {
      * The message of an email: the wording as paragraphs, then the action button (its words from the email, its address from the email or,
      * failing that, from the in-app notification). The shared frame is put around it when the mail is sent.
      */
-    private String composeEmailBody(NotificationTemplateVersion emailVersion, NotificationTemplateVersion inAppVersion, Map<String, String> variables) {
-        String message = EmailTemplateService.sanitizeRenderedHtml(render(emailVersion.getBody(), variables));
+    private String composeEmailBody(NotificationTemplateVersion emailVersion, NotificationTemplateVersion inAppVersion, Map<String, String> variables, boolean vietnamese) {
+        // for the mail only: complete addresses, shown as words that can be pressed (a path cannot be opened from a mail and shows an internal identifier)
+        Map<String, String> mail = com.eqms.util.EmailLinks.absolute(variables, emailNotificationService == null ? null : emailNotificationService.resolvePublicAppBaseUrl());
+        String message = com.eqms.util.EmailLinks.friendly(EmailTemplateService.sanitizeRenderedHtml(render(emailVersion.getBody(), mail)), mail);
         String urlTemplate = StringUtils.hasText(emailVersion.getActionUrlTemplate()) ? emailVersion.getActionUrlTemplate()
                 : inAppVersion == null ? null : inAppVersion.getActionUrlTemplate();
         String url = render(urlTemplate, variables);
@@ -317,9 +329,11 @@ public class NotificationDispatcher {
             String absolute = url.startsWith("http://") || url.startsWith("https://") ? url
                     : emailNotificationService.resolvePublicAppBaseUrl() + (url.startsWith("/") ? url : "/" + url);
             String brand = emailDesignService == null ? null : emailDesignService.current().getButtonColor();
-            html += com.eqms.util.EmailFrameRenderer.button(emailVersion.getActionLabel(), absolute, brand);
+            html += com.eqms.util.EmailFrameRenderer.button(emailVersion.getActionLabel(), absolute, brand, vietnamese,
+                    emailDesignService == null ? null : emailDesignService.current().getButtonSize(),
+                    emailDesignService == null || emailDesignService.current().isShowButtonLink());
         }
-        return html;
+        return vietnamese && StringUtils.hasText(html) ? com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK + html : html;
     }
 
     private NotificationTemplateVersion activeVersion(java.util.UUID policyId, String channel) {

@@ -328,9 +328,6 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_ACTIVITY|CONFIRM_COMPLETION|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("CONFIRM_COMPLETION", "PENDING_QA_CONFIRMATION", "training.activity.close", 100, true,
                 "A person who may close activities, in the department, other than the one who prepared the list, confirms the completion.",
                 List.of(permission("training.activity.close")))));
-        m.put("TRAINING_ACTIVITY|RETURN_FOR_CORRECTION|PENDING_QA_CONFIRMATION", new TrainingDefault("TRAINING_ACTIVITY", "TRAINING_ACTIVITY", new DefaultPolicy("RETURN_FOR_CORRECTION", "PENDING_QA_CONFIRMATION", "training.activity.close", 100, true,
-                "The same person returns the results for correction, with a reason and a signature.",
-                List.of(permission("training.activity.close")))));
         TRAINING_DEFAULTS = Collections.unmodifiableMap(m);
     }
 
@@ -382,24 +379,24 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_PARTICIPANT|CONFIRM_READ|IN_PROGRESS", new ModuleDefault("TRAINING", "TRAINING_PARTICIPANT", "TRAINING_PARTICIPANT", new DefaultPolicy("CONFIRM_READ", "IN_PROGRESS", "training.self.view", 100, true,
                 "The invited person confirms that they read the material, with a signature.",
                 List.of(permission("training.self.view")))));
-        m.put("TRAINING_ASSESSMENT|UPDATE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPDATE", "DRAFT", "training.assessment.design", 100, true,
-                "A designer edits a draft assessment.",
-                List.of(permission("training.assessment.design")))));
-        m.put("TRAINING_ASSESSMENT|DELETE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("DELETE", "DRAFT", "training.assessment.design", 100, true,
-                "A designer deletes a draft assessment, with a reason.",
-                List.of(permission("training.assessment.design")))));
-        m.put("TRAINING_ASSESSMENT|SUBMIT|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("SUBMIT", "DRAFT", "training.assessment.design", 100, true,
-                "A designer submits a draft with at least one item for approval.",
-                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_ASSESSMENT|UPDATE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPDATE", "DRAFT", "", 100, true,
+                "A person who may manage the assessment (all of them, or the ones they created) edits a draft assessment.",
+                List.of())));
+        m.put("TRAINING_ASSESSMENT|DELETE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("DELETE", "DRAFT", "", 100, true,
+                "A person who may manage the assessment deletes a draft assessment, with a reason.",
+                List.of())));
+        m.put("TRAINING_ASSESSMENT|SUBMIT|DRAFT", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("SUBMIT", "DRAFT", "", 100, true,
+                "A person who may manage the assessment submits a draft with at least one item for approval.",
+                List.of())));
         m.put("TRAINING_ASSESSMENT|APPROVE|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.assessment.approve", 100, true,
                 "An approver who did not create, edit or submit the assessment approves it, with a signature.",
                 List.of(permission("training.assessment.approve")))));
         m.put("TRAINING_ASSESSMENT|RETURN_TO_DRAFT|PENDING_APPROVAL", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("RETURN_TO_DRAFT", "PENDING_APPROVAL", "", 100, true,
                 "A designer or an approver returns the assessment to Draft, with a reason.",
                 List.of())));
-        m.put("TRAINING_ASSESSMENT|UPGRADE_REVISION|EFFECTIVE", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPGRADE_REVISION", "EFFECTIVE", "training.assessment.design", 100, true,
-                "A designer starts a new revision of an effective assessment.",
-                List.of(permission("training.assessment.design")))));
+        m.put("TRAINING_ASSESSMENT|UPGRADE_REVISION|EFFECTIVE", new ModuleDefault("TRAINING", "TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", new DefaultPolicy("UPGRADE_REVISION", "EFFECTIVE", "", 100, true,
+                "A person who may manage the assessment starts a new revision of an effective assessment.",
+                List.of())));
         m.put("TRAINING_JOB_ASSIGNMENT|UPDATE|DRAFT", new ModuleDefault("TRAINING", "TRAINING_JOB_ASSIGNMENT", "TRAINING_JOB_ASSIGNMENT", new DefaultPolicy("UPDATE", "DRAFT", "training.job_assignment.manage", 100, true,
                 "A person who manages job assignments, in the department, edits a draft assignment.",
                 List.of(permission("training.job_assignment.manage")))));

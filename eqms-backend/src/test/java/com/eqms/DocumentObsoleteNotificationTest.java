@@ -84,6 +84,7 @@ class DocumentObsoleteNotificationTest {
     private List<UserAccount> pool;
 
     private final List<UUID> createdDocumentIds = new java.util.ArrayList<>();
+    private UUID readyOnlyRecipientId;
     private final java.util.Set<String> createdDocumentNumbers = new java.util.HashSet<>();
     private String originalEnabledChannels;
     private UUID addedTemplateVersionId;
@@ -131,6 +132,12 @@ class DocumentObsoleteNotificationTest {
         LifecycleFixtureCleanup.putAway(new TransactionTemplate(transactionManager), documentRepository, revisionRepository, documentStatusRepository, revisionStatusRepository, controlledCopyRepository, createdDocumentIds);
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(status -> {
+            if (readyOnlyRecipientId != null) {
+                userAccountRepository.findById(readyOnlyRecipientId).ifPresent(user -> {
+                    user.setStatus(UserStatus.Inactive);
+                    userAccountRepository.save(user);
+                });
+            }
             if (addedTemplateVersionId != null) {
                 notificationTemplateVersionRepository.deleteById(addedTemplateVersionId);
             }
@@ -399,7 +406,23 @@ class DocumentObsoleteNotificationTest {
     @Test
     void tcDoc064_readyForDistributionOnlyRecipient_isNotNotified() {
         UserAccount author = pool.get(0);
-        UserAccount readyOnlyRecipient = pool.get(4);
+        // A reused seed user may also be a DCO and legitimately receive the document
+        // notice independently of this copy. This case needs a recipient-only actor.
+        UserAccount readyOnlyRecipient = new TransactionTemplate(transactionManager).execute(status -> {
+            UserAccount user = new UserAccount();
+            user.setUsername("obsolete.ready-only." + UUID.randomUUID());
+            user.setEmail(UUID.randomUUID() + "@example.test");
+            user.setFullName("Ready-only notification fixture");
+            user.setRoleName("USER");
+            user.setStatus(UserStatus.Active);
+            user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                    .encode(UUID.randomUUID().toString()));
+            return userAccountRepository.saveAndFlush(user);
+        });
+        assertNotNull(readyOnlyRecipient);
+        readyOnlyRecipientId = readyOnlyRecipient.getId();
+        assertFalse(permissionEvaluationService.hasPermission(readyOnlyRecipient, "documents.workspace.manage"),
+                "The negative case must not independently qualify as a DCO notification recipient");
         DocumentRecord document = newActiveDocument("TCDOC064", author);
         DocumentRevisionRecord revision = newEffectiveRevision(document, author);
         newControlledCopy(document, revision, "READY_FOR_DISTRIBUTION", 1, readyOnlyRecipient, false);

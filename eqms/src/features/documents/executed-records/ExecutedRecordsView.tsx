@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { Eye, FileText, MoreVertical, Search, X } from "lucide-react";
@@ -167,7 +168,7 @@ export const ExecutedRecordsView: React.FC = () => {
               setPreviewRecord(r);
             }}
             className={LINK_CLASS}
-            aria-label={`Open scan of ${r.recordNumber}`}
+            aria-label={__ariaTrFormat("Open scan of {v1}", { v1: r.recordNumber })}
           >
             {r.recordNumber}
           </button>
@@ -190,7 +191,7 @@ export const ExecutedRecordsView: React.FC = () => {
               navigateTo(ROUTES.DOCUMENTS.DETAIL(r.formDocumentId!));
             }}
             className={cn(LINK_CLASS, "max-w-full truncate")}
-            aria-label={`Open document ${r.formDocumentNumber}`}
+            aria-label={__ariaTrFormat("Open document {v1}", { v1: r.formDocumentNumber })}
           >
             {r.formDocumentNumber}
           </button>
@@ -220,7 +221,7 @@ export const ExecutedRecordsView: React.FC = () => {
               navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.DETAIL(r.sourceControlledCopyId!));
             }}
             className={LINK_CLASS}
-            aria-label={`Open controlled copy ${r.sourceControlledCopyNumber}`}
+            aria-label={__ariaTrFormat("Open controlled copy {v1}", { v1: r.sourceControlledCopyNumber })}
           >
             {r.sourceControlledCopyNumber}
           </button>

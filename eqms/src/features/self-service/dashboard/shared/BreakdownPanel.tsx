@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import { tr } from "@/i18n";
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
@@ -157,7 +158,7 @@ const Donut = memo(function Donut({ rows, total, centerCaption, colorFor }: { ro
   return (
     <div className="grid h-full grid-cols-1 items-center gap-4 p-4 sm:grid-cols-[200px_minmax(0,1fr)]">
       <LazyMount className="relative mx-auto h-[200px] w-[200px]" placeholder={<div className="mx-auto h-full w-full animate-pulse rounded-full bg-slate-50" aria-hidden />}>
-        <ChartCanvas config={config} ariaLabel={`Share of each group: ${slices.map((slice) => `${slice.name} ${slice.value}`).join(', ')}`} />
+        <ChartCanvas config={config} ariaLabel={__ariaTrFormat("Share of each group: {v1}", { v1: slices.map((slice) => `${slice.name} ${slice.value}`).join(', ') })} />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <motion.span
             key={centerValue}
@@ -231,7 +232,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({
             activeTab={view}
             onChange={switchView}
             variant="pill"
-            ariaLabel="Chart view"
+            ariaLabel={__ariaTr("Chart view")}
             tabIdPrefix={`${idPrefix}-tab`}
             panelIdPrefix={`${idPrefix}-panel`}
             className="w-auto!"

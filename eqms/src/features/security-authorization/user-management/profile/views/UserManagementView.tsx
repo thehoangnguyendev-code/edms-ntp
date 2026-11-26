@@ -56,6 +56,7 @@ import { CustomColumnDrawer, useStickyPinnedColumns, useTableColumnPreferences }
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { useLanguage, tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 // --- Main Component ---
 
@@ -870,17 +871,7 @@ export const UserManagementView: React.FC = () => {
                                   <Badge
                                     size="sm"
                                     color={
-                                      user.accountLocked && user.status === "Active"
-                                        ? "red"
-                                        : user.status === "Active"
-                                          ? "emerald"
-                                          : user.status === "Inactive"
-                                            ? "slate"
-                                            : user.status === "Pending"
-                                              ? "amber"
-                                              : user.status === "Suspended"
-                                                ? "orange"
-                                                : "red"
+                                      user.accountLocked && user.status === "Active" ? "red" : statusColor(user.status)
                                     }
                                     pill
                                     title={

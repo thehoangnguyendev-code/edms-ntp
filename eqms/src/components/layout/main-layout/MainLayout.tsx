@@ -21,11 +21,13 @@ import { settingsApi } from '@/services/api/settings';
 import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { AnnouncementHost } from '../AnnouncementHost';
 import { RouteFade } from './RouteFade';
+import { recordRoute } from '@/app/navigation/routeTrail';
 import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 
 const MainLayoutContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  useEffect(() => { recordRoute(location.pathname); }, [location.pathname]);
   const { isSidebarCollapsed, isMobileMenuOpen, toggleSidebar, closeMobileMenu } = useResponsiveSidebar();
   const { user, logout, isAuthenticated } = useAuth();
   const { activeId, handleNavigate } = useNavigation();

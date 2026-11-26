@@ -1,6 +1,7 @@
 // Adapted from turbostarter/loading-ui (MIT); see LICENSE.md and README.md.
 import type * as React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 function Pulse({ className, ...props }: React.ComponentProps<"span">) {
   return (
@@ -19,7 +20,7 @@ function Pulse({ className, ...props }: React.ComponentProps<"span">) {
               "loading-ui-thin-pulse var(--duration, 1.5s) ease-in-out infinite",
           }}
         />
-        <span className="sr-only">Loading</span>
+        <span className="sr-only">{tr("Loading")}</span>
       </span>
     </>
   );

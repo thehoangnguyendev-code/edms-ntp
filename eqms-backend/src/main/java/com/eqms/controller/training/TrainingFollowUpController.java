@@ -42,9 +42,10 @@ public class TrainingFollowUpController {
 
     @GetMapping("/document-impact-assessments")
     public ResponseEntity<?> documentImpactAssessments(@RequestParam(required = false) UUID departmentId, @RequestParam(required = false) String status, @RequestParam(required = false) String activityStatus, @RequestParam(required = false) String search,
+                                               @RequestParam(defaultValue = "false") boolean waitingForMe,
                                                @RequestParam(required = false) String sortBy, @RequestParam(required = false) String sortDirection,
                                                @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(impacts.list(users.requireCurrentUser(), departmentId, status, activityStatus, search, sortBy, sortDirection, page, limit));
+        return ResponseEntity.ok(impacts.list(users.requireCurrentUser(), departmentId, status, activityStatus, search, waitingForMe, sortBy, sortDirection, page, limit));
     }
 
     @GetMapping("/document-impact-assessments/summary")

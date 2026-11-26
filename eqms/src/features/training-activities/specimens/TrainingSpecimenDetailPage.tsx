@@ -72,7 +72,7 @@ export function TrainingSpecimenDetailPage() {
             <ReadonlyField label={tr("Uploaded By")} value={specimen.uploadedByName} />
             <ReadonlyField label={tr("Uploaded On")} value={when(specimen.createdAt)} />
             <ReadonlyField label={tr("Confirmed By (earlier workflow)")} value={specimen.confirmedByName ?? "—"} />
-            <ReadonlyField label={tr("Signatures")} value={specimen.hasSecond ? "1st and 2nd signature" : "1st signature only"} />
+            <ReadonlyField label={tr("Signatures")} value={tr(specimen.hasSecond ? "1st and 2nd signature" : "1st signature only")} />
             {specimen.changeReason && <ReadonlyField label={tr("Reason for the Change")} value={specimen.changeReason} wide />}
           </ReadonlyGrid>
         )}

@@ -97,7 +97,10 @@ export function RequiredTrainingsField({ value, onChange, disabled, showChosen }
   return (
     <div className="space-y-3">
       {showChosen && <Chips items={chips} empty={none} onRemove={(key) => onChange(value.filter((v) => trainingKey(v) !== key))} />}
-      <SearchInput value={query} onChange={setQuery} placeholder="Search a SOP, or type a Training Topic..." ariaLabel="Search a SOP, or type a Training Topic..." />
+      <div>
+        <label htmlFor={`${baseId}-search`} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search")}</label>
+        <SearchInput value={query} onChange={setQuery} placeholder="Search a SOP, or type a Training Topic..." inputProps={{ id: `${baseId}-search` }} />
+      </div>
       <div className="overflow-hidden rounded-lg border border-slate-200">
         {(listedTopics.length > 0 || newTopic) && (
           <ul aria-label={tr("Training Topic")}>

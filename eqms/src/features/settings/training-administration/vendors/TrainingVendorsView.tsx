@@ -22,8 +22,10 @@ import { useTrainingRowMenu } from "@/features/training-activities/shared/useTra
 import { resettingDates, useDateRange } from "@/features/training-activities/shared/useListFilters";
 import { day, statusChange } from "@/features/training-activities/shared/trainingLabels";
 import { tr } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_COLOR: Record<string, "emerald" | "amber" | "slate" | "blue"> = { DRAFT: "blue", ACTIVE: "emerald", EXPIRED: "amber", INACTIVE: "slate" };
+const STATUS_COLOR = statusColors("DRAFT", "ACTIVE", "EXPIRED", "INACTIVE") as Record<string, BadgeColor>;
 const STATUS_OPTIONS = [{ label: "All", value: "" }, { label: "Draft", value: "DRAFT" }, { label: "Active", value: "ACTIVE" }, { label: tr("Approval ended"), value: "EXPIRED" }, { label: "Inactive", value: "INACTIVE" }];
 const END_OPTIONS = [{ label: "All", value: "" }, { label: tr("No end date"), value: "true" }];
 

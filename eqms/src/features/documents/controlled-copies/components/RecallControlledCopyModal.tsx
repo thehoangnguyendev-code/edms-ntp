@@ -28,7 +28,6 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
   controlledCopyNumber,
   isBatch = false,
 }) => {
-  const targetLabel = isBatch ? "controlled-copy batch" : "controlled copy";
   const [formCompleted, setFormCompleted] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -54,7 +53,7 @@ export const RecallControlledCopyModal: React.FC<RecallControlledCopyModalProps>
       title={tr("Recall Controlled Copy")}
       description={
         <>
-          {tr("Confirm recalling this")} {targetLabel}
+          {isBatch ? tr("Confirm recalling this controlled-copy batch") : tr("Confirm recalling this controlled copy")}
           {controlledCopyNumber ? ` (${controlledCopyNumber})` : ""}{tr(". The recall date will be recorded automatically at the moment you complete the electronic signature in the next step, and you will be asked for the reason there too.")}
         </>
       }

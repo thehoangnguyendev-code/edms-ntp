@@ -56,16 +56,16 @@ export function QuestionImageField({ value, onChange, disabled }: { value: strin
       <input ref={input} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={tr("Question picture")} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
       {value ? (
         <div className="flex items-start gap-3">
-          <img src={value} alt="Picture of the question" className="max-h-40 max-w-xs rounded border border-slate-200 bg-white object-contain" />
+          <img src={value} alt={tr("Picture of the question")} className="max-h-40 max-w-xs rounded border border-slate-200 bg-white object-contain" />
           {!disabled && (
             <div className="flex flex-col gap-1">
-              <Button size="sm" variant="outline" onClick={() => input.current?.click()}>{tr("Change picture")}</Button>
-              <Button size="sm" variant="outline" onClick={() => onChange("")}><IconTrash className="mr-1 h-4 w-4" />{tr("Remove picture")}</Button>
+              <Button size="sm" variant="outline-emerald" onClick={() => input.current?.click()}>{tr("Change picture")}</Button>
+              <Button size="sm" variant="destructive" onClick={() => onChange("")}><IconTrash className="mr-1 h-4 w-4" />{tr("Remove picture")}</Button>
             </div>
           )}
         </div>
       ) : !disabled ? (
-        <Button size="sm" variant="outline" onClick={() => input.current?.click()}><IconPhotoPlus className="mr-1 h-4 w-4" />{tr("Add a picture")}</Button>
+        <Button size="sm" variant="default" onClick={() => input.current?.click()}><IconPhotoPlus className="mr-1 h-4 w-4" />{tr("Add a picture")}</Button>
       ) : null}
       {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
     </div>

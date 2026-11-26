@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SectionLoading } from "@/components/ui/loading";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -58,7 +59,7 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   const dataColumns = columns.filter((column) => column.id !== "actions");
   return <section>
     {!hideHeading && <h3 className="mb-3 text-sm font-semibold text-slate-800">{title}{loaded ? ` (${total})` : ""}</h3>}
-    <div className="mb-4"><FilterSearchInput aria-label={`Search ${title}`} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder={tr("Search name or employee ID…")} /></div>
+    <div className="mb-4"><FilterSearchInput aria-label={__ariaTrFormat("Search {v1}", { v1: title })} value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder={tr("Search name or employee ID…")} /></div>
     {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
     {renderRow ? (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">

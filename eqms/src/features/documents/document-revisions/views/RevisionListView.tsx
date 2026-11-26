@@ -521,8 +521,8 @@ export const RevisionListView: React.FC = () => {
                 isDragging={isDragging}
                 dropdownRef={getRef}
                 dropdownToggle={toggle}
-                emptyStateTitle="No Revisions Found"
-                emptyStateMessage="We couldn't find any revision records matching your filters. Try adjusting your search criteria or clear filters."
+                emptyStateTitle={tr("No Revisions Found")}
+                emptyStateMessage={tr("We couldn't find any revision records matching your filters. Try adjusting your search criteria or clear filters.")}
               />
             </div>
           </div>

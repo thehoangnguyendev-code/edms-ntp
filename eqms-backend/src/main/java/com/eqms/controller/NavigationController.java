@@ -5,6 +5,7 @@ import com.eqms.auth.AuthenticatedUser;
 import com.eqms.dto.navigation.NavigationItemResponse;
 import com.eqms.entity.UserAccount;
 import com.eqms.service.NavigationService;
+import com.eqms.service.NavigationTaskCountService;
 import com.eqms.service.PermissionEvaluationService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,12 +22,15 @@ public class NavigationController {
     private final NavigationService navigationService;
     private final CurrentUserService currentUserService;
     private final PermissionEvaluationService permissionEvaluationService;
+    private final NavigationTaskCountService taskCountService;
 
     public NavigationController(
             NavigationService navigationService,
             CurrentUserService currentUserService,
-            PermissionEvaluationService permissionEvaluationService
+            PermissionEvaluationService permissionEvaluationService,
+            NavigationTaskCountService taskCountService
     ) {
+        this.taskCountService = taskCountService;
         this.navigationService = navigationService;
         this.currentUserService = currentUserService;
         this.permissionEvaluationService = permissionEvaluationService;
@@ -35,6 +39,12 @@ public class NavigationController {
     @GetMapping
     public List<NavigationItemResponse> getNavigation() {
         return navigationService.getNavigation(resolveUser(), resolvePermissions());
+    }
+
+    /** What waits for the signed-in person, per menu entry. The person is always the authenticated one, never a parameter. */
+    @GetMapping("/task-counts")
+    public NavigationTaskCountService.TaskCounts getTaskCounts() {
+        return taskCountService.counts(currentUserService.requireCurrentUser());
     }
 
     @GetMapping("/search")

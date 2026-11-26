@@ -7,7 +7,7 @@ import { WorkflowProgressStepper } from "@/components/ui/workflow-stepper/Workfl
 import type { WorkflowProgress } from "@/types/document";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import type { BreadcrumbItem } from "@/components/ui/breadcrumb/Breadcrumb";
-import { useLanguage, tr } from "@/i18n";
+import { useLanguage, tr, trFormat } from "@/i18n";
 
 interface Props {
   title: string;
@@ -146,7 +146,7 @@ export function TabBlock({ title, action, hint, count, children }: {
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-slate-800">{tLabel(title)}</h3>
               {count !== undefined && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{count}</span>}
-              {hint && <Popover title={title} content={hint} contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel={`About ${title}`} />}
+              {hint && <Popover title={title} content={hint} contentClassName="w-80 max-w-[calc(100vw-2rem)]" triggerAriaLabel={trFormat("About {title}", { title })} />}
             </div>
           )}
           {action}

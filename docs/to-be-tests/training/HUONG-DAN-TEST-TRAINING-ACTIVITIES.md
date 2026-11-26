@@ -88,7 +88,7 @@ Nút **Training Attendance List** (cạnh Back trong workspace, hoặc tab Parti
 ### A10. Gửi kết quả và QA xác nhận
 1. Sau Finish Training mới xuất hiện nút **Send results to QA** (trainer, ký). **Kỳ vọng:** **Pending QA Confirmation**; email "results are waiting for QA" kèm PDF APD.0117 đã có kết quả.
 2. REV đăng nhập: **Confirm completion** (ký). **Kỳ vọng:** **Completed**; ORG nhận thông báo; người đạt nhận "recorded in your training record"; hồ sơ cá nhân được ghi (Training Records). ORG không xác nhận được chính activity do mình lập danh sách (phân tách nhiệm vụ).
-3. Thử **Return for correction** (REV, bắt buộc lý do): trở về In progress, trainer sửa rồi gửi lại.
+3. QA không có bước trả lại: sau khi kết quả đã gửi, QA chỉ **Confirm completion** hoặc activity bị huỷ (quyết định 2026-11-26). Người không đạt hoặc vắng mặt được đào tạo lại/đào tạo bổ sung bằng bản ghi mới (SOP.0003 5.3.6, 5.3.7).
 
 Thứ tự các nút ở đầu workspace (chỉ một nút chính hiện cùng lúc): Send attendance list to QA, rồi Finish Training, rồi Send results to QA.
 ### A11. Người vắng hoặc không đạt
@@ -147,7 +147,7 @@ Làm như phần A từ A2: tài liệu được tính là Training Materials (k
 
 ## C. Thông báo cần kiểm tra
 Chuông thông báo và MailHog đều phải có, nội dung đúng số mã, tên, ngày dd/MM/yyyy, đường dẫn mở đúng activity; người làm hành động không tự nhận thông báo của mình:
-asked to review/approve; content ready; content approved; invited; work suspended after failed; attendance list received (người giữ quyền nhận); results waiting for QA; QA returned results (kèm lý do); completed; recorded in your training record; cancelled; postponed.
+asked to review/approve; content ready; content approved; invited; work suspended after failed; attendance list received (người giữ quyền nhận); results waiting for QA; completed; recorded in your training record; cancelled; postponed.
 
 ## D. Ghi nhận bằng chứng
 Mỗi activity có tab **Audit Trail** (ghi mọi bước, lý do, người ký). Ký điện tử có ở danh sách chữ ký. Chụp màn hình các kỳ vọng ở trên cho mỗi trường hợp để lưu vào hồ sơ test.

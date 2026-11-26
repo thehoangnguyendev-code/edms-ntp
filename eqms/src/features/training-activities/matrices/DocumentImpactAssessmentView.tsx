@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
-import { IconCircleOpenArrowRight, IconListCheck, IconPhotoSensor } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCircleOpenArrowRight, IconListCheck, IconPhotoSensor } from "@tabler/icons-react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -23,7 +23,8 @@ import { ImpactPositionsTable } from "./ImpactPositionsTable";
 import { departmentOptions, useOwnDepartment } from "../shared/useOwnDepartment";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 import { STATUS_COLOR, STATUS_LABEL, statusChange, trainingBreadcrumbs, TRAINING_PAGES, when } from "../shared/trainingLabels";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 const IMPACT_LABEL: Record<string, string> = { PENDING: "Pending Impact Assessment", MATRIX_UPDATE_PENDING: "Pending Matrix Update", DONE: "Done" };
 const IMPACT_COLOR: Record<string, "red" | "amber" | "emerald"> = { PENDING: "red", MATRIX_UPDATE_PENDING: "amber", DONE: "emerald" };
@@ -57,6 +58,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   const [positionIds, setPositionIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [signing, setSigning] = useState(false);
+  const [deviation, setDeviation] = useState<TrainingImpactRow>();
 
   useEffect(() => { dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([])); }, []);
 
@@ -64,8 +66,9 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
     (params: Record<string, string | number | boolean | undefined>) => trainingFollowUpApi.documentImpactAssessments(params).catch((e) => { setError(trainingError(e)); throw e; }),
     [],
   );
+  const waiting = useWaitingForMe("training-document-impact-assessment", () => table.setCurrentPage(1));
   const extra = useMemo(() => ({ departmentId: departmentId || undefined, status: status || undefined, activityStatus: activityStatus || undefined }), [departmentId, status, activityStatus]);
-  const table = useServerTable<TrainingImpactRow>({ persistKey: "training.documentImpactAssessment", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "impactStatus", extraParams: extra, initialItemsPerPage: 10, syncToUrl: false });
+  const table = useServerTable<TrainingImpactRow>({ persistKey: "training.documentImpactAssessment", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "impactStatus", extraParams: { ...extra, ...waiting.params }, initialItemsPerPage: 10, syncToUrl: false });
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
   const open = async (row: TrainingImpactRow) => {
@@ -79,6 +82,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   };
   const rowMenu = useTrainingRowMenu(table.items, (r) => [
     ...(r.canAssess ? [{ label: r.impactStatus === "PENDING" ? tr("Assess Impact") : tr("Assess Again"), icon: <IconCircleOpenArrowRight className="h-4 w-4" />, onClick: () => void open(r) }] : []),
+    ...(r.deviation ? [{ label: tr("Handle as a Deviation"), icon: <IconAlertTriangle className="h-4 w-4" />, onClick: () => setDeviation(r) }] : []),
     { label: tr("View Training Activity"), icon: <IconPhotoSensor className="h-4 w-4" />, onClick: () => navigate(`/training-management/activities/${r.id}`) },
   ]);
 
@@ -88,6 +92,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
     { id: "documentName", header: tr("Document Name"), sort: sorted("documentName"), cell: (r) => <div className="max-w-80 whitespace-normal">{r.documentName ?? "—"}</div> },
     { id: "revision", header: tr("Revision Number"), sort: sorted("revisionNumber"), cell: (r) => (r.revisionId && r.revisionNumber ? <button type="button" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left" onClick={() => navigate(ROUTES.DOCUMENTS.REVISIONS.DETAIL(r.revisionId!))}>{r.revisionNumber}</button> : r.revisionNumber ?? "—") },
     { id: "training", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (r) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${r.id}`)}>{r.trainingNumber}</button> },
+    { id: "department", header: tr("Department"), sort: sorted("departmentName"), cell: (r) => r.departmentName ?? "—" },
     { id: "activity", header: tr("Training Status"), sort: sorted("activityStatus"), cell: (r) => <Badge color={STATUS_COLOR[r.activityStatus] ?? "slate"}>{STATUS_LABEL[r.activityStatus] ?? r.activityStatus}</Badge> },
     { id: "impact", header: tr("Impact on the Matrix"), sort: sorted("impactStatus"), cell: (r) => <Badge color={IMPACT_COLOR[r.impactStatus]}>{IMPACT_LABEL[r.impactStatus]}</Badge> },
     { id: "outcome", header: "Assessment", cell: (r) => (r.outcome ? <div className="max-w-72 whitespace-normal">{OUTCOME_LABEL[r.outcome]}<div className="text-xs text-slate-500">{r.assessedByName} · {when(r.assessedAt)}</div></div> : "—") },
@@ -118,12 +123,13 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
     <div className="flex h-full w-full min-w-0 flex-1 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.documentImpactAssessment.title} breadcrumbItems={trainingBreadcrumbs(navigate, "documentImpactAssessment")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {waiting.node}
       <ReportListToolbar
         searchPlaceholder={tr("Search document or training number…")}
         search={table.searchQuery}
         onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters} dates={[]} hasActiveFilters={Boolean(departmentId || activityStatus || status !== "OPEN" || table.searchQuery)}
-        onClear={() => { setDepartmentId(""); setActivityStatus(""); setStatus("OPEN"); table.setSearchQuery(""); table.setCurrentPage(1); }}
+        filters={filters} dates={[]} hasActiveFilters={Boolean(departmentId !== ownDepartmentId || activityStatus || status !== "OPEN" || table.searchQuery)}
+        onClear={() => { setDepartmentId(ownDepartmentId); setActivityStatus(""); setStatus("OPEN"); table.setSearchQuery(""); table.setCurrentPage(1); }}
         customControl={control}
       >
         <DataTable
@@ -135,8 +141,8 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
       </ReportListToolbar>
       {rowMenu.node}
       <FormModal
-        isOpen={!!assessing && !signing} onClose={() => setAssessing(undefined)} title={`Impact of ${ctx?.documentNumber ?? "the document"} on the Training Matrix`} confirmText="Continue" size="3xl" confirmDisabled={!ready}
-        description={ctx ? `${ctx.documentName ?? ""} · revision ${ctx.revisionNumber ?? "—"} · ${ctx.trainingNumber}` : undefined}
+        isOpen={!!assessing && !signing} onClose={() => setAssessing(undefined)} title={trFormat("Impact of {document} on the Training Matrix", { document: ctx?.documentNumber ?? tr("the document") })} confirmText={tr("Continue")} size="3xl" confirmDisabled={!ready}
+        description={ctx ? `${ctx.documentName ?? ""} · ${trFormat("revision {number}", { number: ctx.revisionNumber ?? "—" })} · ${ctx.trainingNumber}` : undefined}
         onConfirm={() => setSigning(true)}
       >
         {ctx && (
@@ -144,14 +150,14 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">
               {ctx.effectiveMatrix
                 ? ctx.inEffectiveMatrix
-                  ? `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) already has this document, for: ${ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : tr("no Work Position")}.`
-                  : `The effective matrix (version ${ctx.effectiveMatrix.versionNo}) does not have this document.`
+                  ? trFormat("The effective matrix (version {version}) already has this document, for: {positions}.", { version: ctx.effectiveMatrix.versionNo, positions: ctx.positionsInMatrix.length ? ctx.positionsInMatrix.join(", ") : tr("no Work Position") })
+                  : trFormat("The effective matrix (version {version}) does not have this document.", { version: ctx.effectiveMatrix.versionNo })
                 : tr("The department has no effective matrix yet.")}
             </p>
             <RadioGroup label={tr("Result of the assessment")} required name="impact-outcome" value={outcome} onChange={(v) => setOutcome(String(v))}
               options={[
                 { label: OUTCOME_LABEL.MATRIX_UPDATE_NEEDED, value: "MATRIX_UPDATE_NEEDED" },
-                { label: OUTCOME_LABEL.MATRIX_ALREADY_COVERS, value: "MATRIX_ALREADY_COVERS", disabled: !ctx.inEffectiveMatrix, description: ctx.inEffectiveMatrix ? undefined : "Available only when the effective matrix already has this document." },
+                { label: OUTCOME_LABEL.MATRIX_ALREADY_COVERS, value: "MATRIX_ALREADY_COVERS", disabled: !ctx.inEffectiveMatrix, description: ctx.inEffectiveMatrix ? undefined : tr("Available only when the effective matrix already has this document.") },
                 { label: OUTCOME_LABEL.NO_TRAINING_IMPACT, value: "NO_TRAINING_IMPACT" },
               ]} />
             {needsPositions && (
@@ -162,6 +168,24 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
               </div>
             )}
             <FormField label={tr("Reason")} required><Textarea rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
+          </div>
+        )}
+      </FormModal>
+      <FormModal
+        isOpen={!!deviation} onClose={() => setDeviation(undefined)} onConfirm={() => setDeviation(undefined)} title={tr("Handle as a Deviation")} confirmText={tr("Close")} cancelText={tr("Close")} showCancel={false} size="lg"
+        description={deviation ? `${deviation.documentNumber ?? ""} · ${deviation.trainingNumber}` : undefined}
+      >
+        {deviation && (
+          <div className="space-y-3 text-sm text-slate-700">
+            <p>
+              {deviation.impactStatus === "PENDING"
+                ? tr("This training was implemented before the impact of the document on the training matrix was assessed.")
+                : tr("This training was implemented before the training matrix was updated for the document.")}{" "}
+              {tr("SOP.0003 5.3.1 asks for the assessment, and the update of the matrix, before the training is developed and implemented.")}
+            </p>
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+              {tr("This is a deviation from the SOP. Handle it under the deviation procedure of the company. Nothing is recorded on this screen, and the assessment can no longer be made here.")}
+            </p>
           </div>
         )}
       </FormModal>

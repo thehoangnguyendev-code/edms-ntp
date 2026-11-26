@@ -20,7 +20,7 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { permissionSets as permissionSetsBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
 import { settingsApi } from "@/services/api";
 import type { PermissionSetResponse } from "@/services/api/settings";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 const labelClass = "text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block";
 const inputClass =
@@ -129,7 +129,7 @@ export const PermissionSetFormView: React.FC = () => {
       { label: tr("Shared Permission Sets"), onClick: () => go(ROUTES.SECURITY.PERMISSION_SETS) },
       { label: isEdit ? tr("Edit Shared Permission Set") : tr("New Shared Permission Set"), isActive: true },
     ];
-  }, [go, isEdit, source]);
+  }, [go, isEdit, source, getCatalogLanguage()]);
 
   if (isEdit && loadingSource) {
     return <FullPageLoading text="Loading permission set..." />;

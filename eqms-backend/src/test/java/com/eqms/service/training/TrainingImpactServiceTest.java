@@ -65,8 +65,101 @@ class TrainingImpactServiceTest {
         when(signature.getId()).thenReturn(UUID.randomUUID());
         when(signatures.createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(signature);
         when(jdbc.queryForList(contains("from training_job_roles where id = ? and is_active and department_id = ?"), any(Object[].class))).thenReturn(List.of(Map.of("id", positionId, "name", "QA Specialist")));
+        // the person belongs to the department of the activity (SOP.0003 5.3.1: the department assesses)
+        when(access.inOwnDepartment(actor, departmentId)).thenReturn(true);
         service = spy(new TrainingImpactService(jdbc, access, store, signatures));
         doReturn(Map.of()).when(service).context(any(), any());
+    }
+
+    @Test
+    void aPersonOfAnotherDepartmentCanLookButCannotAssess() {
+        // the permission to see every department puts the activity in the scope of the person, but the person is not of the department
+        when(access.inOwnDepartment(actor, departmentId)).thenReturn(false);
+        when(access.inScope(actor, departmentId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.assess(actor, activityId, request("NO_TRAINING_IMPACT", "Editorial change only", List.of(), "token")))
+                .isInstanceOf(SecurityException.class);
+        verify(signatures, never()).createEntitySignature(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(jdbc, never()).update(contains("insert into training_impact_assessments"), any(Object[].class));
+    }
+
+    @Test
+    void theListOffersTheAssessmentOnlyForTheLinesOfTheDepartmentOfThePerson() {
+        UUID other = UUID.randomUUID();
+        Map<String, Object> mine = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "PLANNED"));
+        Map<String, Object> theirs = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", other, "activity_status", "PLANNED"));
+        when(access.has(actor, "training.matrix.manage")).thenReturn(true);
+        when(access.departmentOf(actor)).thenReturn(departmentId);
+        when(jdbc.queryForObject(contains("select count(*)"), eq(Long.class), any(Object[].class))).thenReturn(2L);
+        when(jdbc.queryForList(contains("select x.*"), any(Object[].class))).thenReturn(List.of(mine, theirs));
+
+        Map<String, Object> page = service.list(actor, other, null, null, null, null, 1, 10);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> data = (List<Map<String, Object>>) page.get("data");
+        assertThat(data).extracting(r -> r.get("canAssess")).containsExactly(true, false);
+    }
+
+    @Test
+    void theAssessmentIsOfferedOnlyUntilTheParticipantsAreNotified() {
+        Map<String, Object> planned = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "PENDING_APPROVAL"));
+        Map<String, Object> notified = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "NOTIFIED"));
+        Map<String, Object> completed = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "COMPLETED"));
+        when(access.has(actor, "training.matrix.manage")).thenReturn(true);
+        when(access.departmentOf(actor)).thenReturn(departmentId);
+        when(jdbc.queryForObject(contains("select count(*)"), eq(Long.class), any(Object[].class))).thenReturn(3L);
+        when(jdbc.queryForList(contains("select x.*"), any(Object[].class))).thenReturn(List.of(planned, notified, completed));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> data = (List<Map<String, Object>>) service.list(actor, departmentId, null, null, null, null, 1, 10).get("data");
+
+        assertThat(data).extracting(r -> r.get("canAssess")).containsExactly(true, false, false);
+    }
+
+    @Test
+    void aTrainingImplementedBeforeItsImpactWasAssessedIsADeviationNotSomethingToAssess() {
+        UUID id = UUID.randomUUID();
+        Map<String, Object> late = new HashMap<>(Map.of("id", id, "organizer_department_id", departmentId, "activity_status", "COMPLETED", "impact_status", "PENDING"));
+        Map<String, Object> lateMatrix = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "IN_PROGRESS", "impact_status", "MATRIX_UPDATE_PENDING"));
+        Map<String, Object> done = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "COMPLETED", "impact_status", "DONE"));
+        Map<String, Object> onTime = new HashMap<>(Map.of("id", UUID.randomUUID(), "organizer_department_id", departmentId, "activity_status", "PLANNED", "impact_status", "PENDING"));
+        when(access.has(actor, "training.matrix.manage")).thenReturn(true);
+        when(access.departmentOf(actor)).thenReturn(departmentId);
+        when(jdbc.queryForObject(contains("select count(*)"), eq(Long.class), any(Object[].class))).thenReturn(4L);
+        when(jdbc.queryForList(contains("select x.*"), any(Object[].class))).thenReturn(List.of(late, lateMatrix, done, onTime));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> data = (List<Map<String, Object>>) service.list(actor, departmentId, null, null, null, null, 1, 10).get("data");
+
+        assertThat(data).extracting(r -> r.get("deviation")).containsExactly(true, true, false, false);
+        assertThat(data).extracting(r -> r.get("canAssess")).containsExactly(false, false, false, true);
+    }
+
+    @Test
+    void anActivityWhoseParticipantsWereNotifiedCannotBeAssessedAnyMore() {
+        Map<String, Object> notified = new HashMap<>(store.activityForUpdate(activityId).orElseThrow());
+        notified.put("status", "NOTIFIED");
+        when(store.activityForUpdate(activityId)).thenReturn(Optional.of(notified));
+
+        assertThatThrownBy(() -> service.assess(actor, activityId, request("NO_TRAINING_IMPACT", "Editorial change only", List.of(), "token")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("TRAINING_IMPACT_AFTER_NOTICE");
+    }
+
+    @Test
+    void theParticipantsCannotBeNotifiedUntilTheImpactIsAssessedAndTheMatrixUpdated() {
+        when(jdbc.queryForList(contains("select organizer_department_id from training_activities where id = ?"), eq(UUID.class), eq(activityId))).thenReturn(List.of(departmentId));
+        when(jdbc.queryForList(contains("select x.impact_status from"), eq(String.class), any(Object[].class))).thenReturn(List.of("PENDING"));
+        assertThat(service.notifyBlocker(activityId)).isEqualTo("TRAINING_IMPACT_NOT_ASSESSED");
+
+        when(jdbc.queryForList(contains("select x.impact_status from"), eq(String.class), any(Object[].class))).thenReturn(List.of("MATRIX_UPDATE_PENDING"));
+        assertThat(service.notifyBlocker(activityId)).isEqualTo("TRAINING_MATRIX_NOT_UPDATED");
+
+        when(jdbc.queryForList(contains("select x.impact_status from"), eq(String.class), any(Object[].class))).thenReturn(List.of("DONE"));
+        assertThat(service.notifyBlocker(activityId)).isNull();
+
+        // a training that is not subject to the assessment (a periodic or unplanned one) has no line in the queue: nothing stops it
+        when(jdbc.queryForList(contains("select x.impact_status from"), eq(String.class), any(Object[].class))).thenReturn(List.of());
+        assertThat(service.notifyBlocker(activityId)).isNull();
     }
 
     private TrainingImpactService.AssessRequest request(String outcome, String reason, List<UUID> positions, String token) {

@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { PersonJobRolesPanel } from "./PersonJobRolesPanel";
@@ -38,6 +39,7 @@ import {
 } from "@/services/api/trainingActivities";
 import {
   day,
+  localized,
   trainingBreadcrumbs,
   TRAINING_PAGES,
 } from "../shared/trainingLabels";
@@ -47,25 +49,19 @@ import {
   useDepartmentOptions,
 } from "../shared/useListFilters";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 /** The one item of the Action menu: what is waiting on this job assignment. Every other status just opens it. */
-export const JOB_STATUS_LABEL: Record<string, string> = {
+export const JOB_STATUS_LABEL: Record<string, string> = localized({
   DRAFT: "Draft",
   PENDING_RECEIVER: "Pending Employee Acceptance",
   EFFECTIVE: "Effective",
   OBSOLETED: "Obsoleted",
   CANCELLED: "Cancelled",
-};
-export const JOB_STATUS_COLOR: Record<
-  string,
-  "emerald" | "amber" | "slate" | "red" | "blue"
-> = {
-  DRAFT: "blue",
-  PENDING_RECEIVER: "amber",
-  EFFECTIVE: "emerald",
-  OBSOLETED: "slate",
-  CANCELLED: "red",
-};
+});
+export const JOB_STATUS_COLOR = statusColors("DRAFT", "PENDING_RECEIVER", "EFFECTIVE", "OBSOLETED", "CANCELLED") as Record<string, BadgeColor>;
 
 /** Job assignments (APD.0024): the position a person is given, after the training the matrix requires for it. */
 const TABS: TabItem[] = [
@@ -116,6 +112,7 @@ export function TrainingJobListView() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-job-assignments", () => table.setCurrentPage(1));
   const extra = useMemo(
     () => ({
       status: status || undefined,
@@ -143,7 +140,7 @@ export function TrainingJobListView() {
     fetcher,
     defaultSortBy: "createdAt",
     defaultSortDirection: "desc",
-    extraParams: extra,
+    extraParams: { ...extra, ...waiting.params },
     initialItemsPerPage: 10,
   });
 
@@ -196,7 +193,7 @@ export function TrainingJobListView() {
       id: "case",
       header: "Type",
       sort: sorted("type"),
-      cell: (r) => (r.caseType === "INITIAL" ? "Initial" : "Change"),
+      cell: (r) => (r.caseType === "INITIAL" ? tr("Initial") : tr("Change")),
     },
     {
       id: "issue",
@@ -288,8 +285,8 @@ export function TrainingJobListView() {
       value: caseType,
       options: [
         { label: "All", value: "" },
-        { label: "Initial", value: "INITIAL" },
-        { label: "Change", value: "CHANGE" },
+        { label: tr("Initial"), value: "INITIAL" },
+        { label: tr("Change"), value: "CHANGE" },
       ],
       onChange: (v) => {
         setCaseType(v);
@@ -336,7 +333,7 @@ export function TrainingJobListView() {
         }
       />
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <TabNav tabs={TABS} activeTab={tab} onChange={setTab} variant="underline" ariaLabel="Job assignments" tabIdPrefix="jobs-tab" panelIdPrefix="jobs-panel" />
+        <TabNav tabs={TABS} activeTab={tab} onChange={setTab} variant="underline" ariaLabel={__ariaTr("Job assignments")} tabIdPrefix="jobs-tab" panelIdPrefix="jobs-panel" />
         <div id={`jobs-panel-${tab}`} role="tabpanel" aria-labelledby={`jobs-tab-${tab}`} className="min-w-0">
       {tab === "roles" && <PersonJobRolesPanel />}
       {tab === "assignments" && (
@@ -346,6 +343,7 @@ export function TrainingJobListView() {
           {error}
         </p>
       )}
+      {waiting.node}
       <ReportListToolbar
         framed={false}
         searchPlaceholder={tr("Search employee or work position…")}

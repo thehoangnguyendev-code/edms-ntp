@@ -4866,7 +4866,8 @@ public class ControlledCopyService {
      * invoked from ControlledCopyBatchCancelAsyncService, an @Async listener with no surrounding
      * transaction of its own (deliberately, so a slow SMTP send never holds a DB connection open).
      */
-    @Transactional(readOnly = true)
+    // Not read-only: sending the notification writes it to the e-mail outbox and to the inbox in this transaction.
+    @Transactional
     public void notifyBatchCancelled(UUID batchId, UUID actorUserId, int succeeded, int failed, int skipped) {
         try {
             if (batchId == null || actorUserId == null) {

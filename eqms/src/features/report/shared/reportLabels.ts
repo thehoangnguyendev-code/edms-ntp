@@ -1,3 +1,6 @@
+import { statusColor } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
+
 /**
  * Display text for the machine values of the report module (REPORT-LIST-STANDARD-2026-10-14). The machine value (COMPLETED, RETRY_SCHEDULED) stays
  * what the server sends and what the logic and the API use; only what the person reads is turned into ordinary text ("Completed", "Retry scheduled").
@@ -20,8 +23,8 @@ const RUN_STATUS: Record<string, string> = {
 };
 
 /** Colour of a run badge: Completed green, Failed and Dead-lettered red, Processing blue, Queued and Retry scheduled amber. */
-export const runStatusColor = (status?: string | null): "emerald" | "red" | "blue" | "amber" | "slate" =>
-  status === "COMPLETED" ? "emerald" : status === "FAILED" || status === "DEAD_LETTERED" ? "red" : status === "PROCESSING" ? "blue" : status === "QUEUED" || status === "RETRY_SCHEDULED" ? "amber" : "slate";
+export const runStatusColor = (status?: string | null): BadgeColor =>
+  statusColor(status);
 
 /** Status of a report run. */
 export const runStatusLabel = (status?: string | null): string => (status ? (RUN_STATUS[status] ?? humanize(status)) : "—");
@@ -39,8 +42,8 @@ export const scheduleStatusLabel = (status?: string | null): string =>
   !status ? "—" : status === "ACTIVE" ? "Active" : status === "PAUSED" ? "Paused" : status.startsWith("SUSPENDED_") ? "Suspended" : humanize(status);
 
 /** Colour of the status badge: Active green, Paused amber, Suspended red. */
-export const scheduleStatusColor = (status?: string | null): "emerald" | "amber" | "red" | "slate" =>
-  status === "ACTIVE" ? "emerald" : status === "PAUSED" ? "amber" : status?.startsWith("SUSPENDED_") ? "red" : "slate";
+export const scheduleStatusColor = (status?: string | null): BadgeColor =>
+  statusColor(status);
 
 /** Why a schedule is suspended ("Template not approved"); "—" when it is not suspended. */
 export const scheduleReasonLabel = (status?: string | null): string =>

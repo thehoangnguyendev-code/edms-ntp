@@ -17,6 +17,9 @@ const NAMES_SHOWN = 3;
 /** The channels a recipient is reached on: the ones it names (none at all while the person is still choosing), or every channel of the event when it names none. */
 export const channelsOfRule = (rule: RecipientRule, supported: string[]) => (rule.channels ? rule.channels.filter((c) => supported.includes(c)) : supported);
 
+/** The people a list of recipients reaches today, on each channel. */
+export interface RecipientReach { inApp: number; email: number }
+
 interface Props {
   kinds: RecipientRuleKind[];
   value: RecipientRule[];
@@ -26,6 +29,8 @@ interface Props {
   /** The channels that are switched on for the event: the column of a channel that is off says so. */
   channelsOn: string[];
   disabled?: boolean;
+  /** Told whenever the count of people reached changes; null while it is not known. */
+  onReach?: (reach: RecipientReach | null) => void;
 }
 
 interface Row {
@@ -61,7 +66,7 @@ const Who: React.FC<{ named: boolean; description: string; view?: RecipientRuleV
  * "Who gets this notification, and on which channel": a table with a row for each kind of recipient, who that is today, and a tick for each channel. The cells
  * of the name and of the people wrap, so a long name of a group or a long list of names never makes the table wider than its place.
  */
-export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supportedChannels, channelsOn, disabled }) => {
+export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supportedChannels, channelsOn, disabled, onReach }) => {
   const [preview, setPreview] = useState<RecipientPreview | null>(null);
   // the recipient whose people are listed in the window
   const [listed, setListed] = useState<number | null>(null);
@@ -83,11 +88,17 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
     };
   }, [key]);
 
+  const inApp = preview?.inAppPeople;
+  const email = preview?.emailPeople;
+  useEffect(() => {
+    onReach?.(inApp === undefined || email === undefined ? null : { inApp, email });
+  }, [inApp, email, onReach]);
+
   const kindOf = (rule: RecipientRule) => kinds.find((k) => k.type === rule.type);
   const nameOf = (rule: RecipientRule, index: number) => {
     const label = kindOf(rule)?.label ?? rule.type;
     const valueLabel = preview?.rules[index]?.valueLabel || rule.value;
-    return valueLabel ? `${label}: ${valueLabel}` : label;
+    return valueLabel ? `${tr(label)}: ${valueLabel}` : tr(label);
   };
   const rows = useMemo<Row[]>(() => value.map((rule, index) => ({ rule, index })), [value]);
 
@@ -111,26 +122,26 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
     {
       id: 'recipient',
       header: tr('Who Gets It'),
-      cell: (row) => <div className="min-w-48 max-w-xs whitespace-normal text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">{nameOf(row.rule, row.index)}</div>,
+      cell: (row) => <div className="min-w-40 max-w-[13rem] 2xl:max-w-xs whitespace-normal text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">{nameOf(row.rule, row.index)}</div>,
     },
     {
       id: 'people',
       header: tr('People Today'),
       cell: (row) => (
-        <div className="min-w-56 max-w-md whitespace-normal">
-          <Who named={kindOf(row.rule)?.kind === 'CONTEXT'} description={kindOf(row.rule)?.description ?? ''} view={preview?.rules[row.index]} onShowAll={() => setListed(row.index)} />
+        <div className="min-w-48 max-w-[19rem] 2xl:max-w-md whitespace-normal">
+                    <Who named={kindOf(row.rule)?.kind === 'CONTEXT'} description={tr(kindOf(row.rule)?.description ?? '')} view={preview?.rules[row.index]} onShowAll={() => setListed(row.index)} />
         </div>
       ),
     },
     ...supportedChannels.map<DataTableColumn<Row>>((channel) => ({
       id: channel,
-      header: channelsOn.includes(channel) ? CHANNEL_NAME[channel] : `${CHANNEL_NAME[channel]} (off)`,
+      header: channelsOn.includes(channel) ? tr(CHANNEL_NAME[channel]) : trFormat("{channel} (off)", { channel: tr(CHANNEL_NAME[channel]) }),
       cell: (row) => (
         <Checkbox
           checked={channelsOfRule(row.rule, supportedChannels).includes(channel)}
           onChange={(on) => toggle(row.index, channel, on)}
           disabled={disabled}
-          aria-label={`${nameOf(row.rule, row.index).replace(': ', ' ')}: ${CHANNEL_NAME[channel]}`}
+          aria-label={`${nameOf(row.rule, row.index).replace(': ', ' ')}: ${tr(CHANNEL_NAME[channel])}`}
         />
       ),
     })),
@@ -141,7 +152,7 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
         disabled ? null : (
           <button
             type="button"
-            aria-label={`Remove ${kindOf(row.rule)?.label ?? row.rule.type}${row.rule.value ? ` ${row.rule.value}` : ''}`}
+            aria-label={`${tr("Remove")} ${tr(kindOf(row.rule)?.label ?? row.rule.type)}${row.rule.value ? ` ${row.rule.value}` : ''}`}
             title={tr("Remove")}
             className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
             onClick={() => onChange(value.filter((_, i) => i !== row.index))}
@@ -167,13 +178,7 @@ export const RecipientsMatrix: React.FC<Props> = ({ kinds, value, onChange, supp
       </div>
       {noChannel ? <p className="text-xs text-red-600">{tr("A recipient needs at least one channel. Tick one, or remove the recipient.")}</p> : null}
       <RecipientPicker kinds={kinds} existing={value} onAdd={(rule) => onChange([...value, rule])} disabled={disabled} />
-      {preview && value.length > 0 ? (
-        <p className="text-xs text-slate-600" aria-label={tr("Who it reaches today")}>
-          {tr("Today this reaches")}{' '}
-          {supportedChannels.map((c) => trFormat("{count} people by {channel}", { count: c === 'IN_APP' ? preview.inAppPeople : preview.emailPeople, channel: CHANNEL_NAME[c].toLowerCase() })).join(tr(" and "))}
-          {named ? tr(", plus the people the module names when it happens") : ''}.
-        </p>
-      ) : null}
+      {named && value.length > 0 ? <p className="text-xs text-slate-600">{tr("The people the module names when it happens are reached too.")}</p> : null}
       <FormModal
         isOpen={listed !== null && Boolean(value[listed])}
         onClose={() => setListed(null)}

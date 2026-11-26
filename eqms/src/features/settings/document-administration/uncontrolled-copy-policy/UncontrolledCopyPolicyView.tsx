@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -421,7 +422,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
           tabs={POLICY_TABS}
           activeTab={activeTab}
           onChange={(id) => selectTab(id as PolicyTabKey)}
-          ariaLabel="Uncontrolled copies policy sections"
+          ariaLabel={__ariaTr("Uncontrolled copies policy sections")}
         />
 
         <fieldset disabled={saving} className="min-w-0 p-4 md:p-5">
@@ -659,7 +660,7 @@ export const UncontrolledCopyPolicyView: React.FC = () => {
                       ref={getRuleMenuRef(rule.id)}
                       onClick={(e) => toggleRuleMenu(rule.id, e)}
                       className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
-                      aria-label={`Actions for ${rule.documentTypeName ?? "Any"}`}
+                      aria-label={__ariaTrFormat("Actions for {v1}", { v1: rule.documentTypeName ?? tr("Any") })}
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>

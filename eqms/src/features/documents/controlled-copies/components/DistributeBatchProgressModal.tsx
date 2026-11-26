@@ -2,7 +2,8 @@ import React from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { Progress } from "@/components/ui/progress/Progress";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
+import { BATCH_ACTION_COPY, type BatchActionLabel } from "./batchActionCopy";
 
 interface DistributeBatchProgressModalProps {
   isOpen: boolean;
@@ -10,8 +11,8 @@ interface DistributeBatchProgressModalProps {
   total: number;
   failed?: number;
   status: "in_progress" | "completed" | "completed_with_errors";
-  /** e.g. "Distribution" (default) or "Recall" — customizes the modal's wording. */
-  actionLabel?: string;
+  /** Which batch action the wording is about. */
+  actionLabel?: BatchActionLabel;
 }
 
 export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModalProps> = ({
@@ -31,12 +32,13 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
   const succeeded = Math.max(processed - failed, 0);
   const isCompleted = status === "completed";
   const hasErrors = status === "completed_with_errors";
+  const copy = BATCH_ACTION_COPY[actionLabel];
 
   return (
     <FormModal
       isOpen={isOpen}
       onClose={() => undefined}
-      title={`${actionLabel} Processing`}
+      title={tr(copy.processing)}
       showFooter={false}
       size="md"
       className="max-w-md"
@@ -51,7 +53,7 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
             <div className="h-5 w-5 rounded-full border-2 border-emerald-200 border-t-emerald-600 animate-spin" />
           )}
           <h3 className="text-sm font-semibold text-slate-900 flex-1">
-            {isCompleted ? `${actionLabel} complete` : hasErrors ? `${actionLabel} completed with errors` : "Processing controlled copy files..."}
+            {isCompleted ? tr(copy.complete) : hasErrors ? tr(copy.errors) : tr("Processing controlled copy files...")}
           </h3>
           {total > 1 && (
             <span className="text-xs font-semibold text-slate-500 tabular-nums shrink-0">
@@ -78,10 +80,24 @@ export const DistributeBatchProgressModal: React.FC<DistributeBatchProgressModal
 
         <p className="mt-2.5 text-xs sm:text-sm text-slate-500 tabular-nums">
           {isCompleted
-            ? `Successfully processed ${succeeded} of ${total} controlled ${total === 1 ? "copy" : "copies"}.`
+            ? trFormat(
+                total === 1
+                  ? "Successfully processed {succeeded} of {total} controlled copy."
+                  : "Successfully processed {succeeded} of {total} controlled copies.",
+                { succeeded, total },
+              )
             : hasErrors
-              ? `Successfully processed ${succeeded} of ${total}. ${failed} controlled ${failed === 1 ? "copy" : "copies"} could not be processed and can be retried.`
-            : `Successfully processed ${succeeded} of ${total}. Processing copy ${Math.min(processed + 1, safeTotal)}...`}
+              ? trFormat(
+                  failed === 1
+                    ? "Successfully processed {succeeded} of {total}. {failed} controlled copy could not be processed and can be retried."
+                    : "Successfully processed {succeeded} of {total}. {failed} controlled copies could not be processed and can be retried.",
+                  { succeeded, total, failed },
+                )
+              : trFormat("Successfully processed {succeeded} of {total}. Processing copy {current}...", {
+                  succeeded,
+                  total,
+                  current: Math.min(processed + 1, safeTotal),
+                })}
         </p>
       </div>
     </FormModal>

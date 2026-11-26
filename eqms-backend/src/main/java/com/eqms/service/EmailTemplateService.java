@@ -699,6 +699,20 @@ public class EmailTemplateService {
         return escapeHtml(value).replace("'", "&#39;");
     }
 
+    private static final java.util.regex.Pattern LINK_PLACEHOLDER = java.util.regex.Pattern.compile("href=([\"'])\\{\\{\\s*([A-Za-z0-9_]+(?:Url|Link))\\s*}}\\1");
+
+    /**
+     * The wording of a template as a person wrote it, cleaned like {@link #sanitizeRenderedHtml}. A link whose whole address is a link placeholder (its name ends with
+     * Url or Link, for example {{loginLink}}) is kept: it is not an address yet, so the cleaner alone would drop it and the mail would lose its link.
+     */
+    public static String sanitizeWording(String html) {
+        if (html == null || html.isBlank()) {
+            return html;
+        }
+        String kept = LINK_PLACEHOLDER.matcher(html).replaceAll("href=$1https://placeholder.invalid/$2$1");
+        return sanitizeRenderedHtml(kept).replaceAll("https://placeholder\\.invalid/([A-Za-z0-9_]+)", "{{$1}}");
+    }
+
     /** What a person may put in the wording of an email: the usual text formatting, lists, links and tables, nothing that runs. */
     public static String sanitizeRenderedHtml(String html) {
         if (html == null || html.isBlank()) {

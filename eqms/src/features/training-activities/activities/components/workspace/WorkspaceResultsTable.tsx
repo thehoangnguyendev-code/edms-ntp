@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconChevronRight, IconEye, IconUpload } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -145,10 +146,10 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
   const draft = (p: TrainingParticipant) => {
     if (!(eligible(p) && valid(p))) return undefined;
     const got = parsed(p) as number;
-    if (allLines) return { pass: got === 1, label: `${got === 1 ? "Pass" : tr("Not passed")} · not saved`, short: got === 1 ? "Pass" : tr("Not passed") };
+    if (allLines) return { pass: got === 1, label: `${got === 1 ? tr("Qualified") : tr("Not qualified")} · not saved`, short: got === 1 ? tr("Qualified") : tr("Not qualified") };
     const percent = Math.round((got * 10000) / maxNumber) / 100;
     const pass = percent >= (passPercent ?? 0);
-    return { pass, label: `${pass ? "Pass" : tr("Not passed")} (${percent}%) · not saved`, short: `${got}/${maxNumber}` };
+    return { pass, label: `${pass ? tr("Qualified") : tr("Not qualified")} (${percent}%) · not saved`, short: `${got}/${maxNumber}` };
   };
 
   const scoreInput = (p: TrainingParticipant, extra?: { onEnter?: () => void; autoFocus?: boolean; label?: string }) => {
@@ -162,8 +163,8 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           onChange={(e) => setScores((s) => ({ ...s, [p.id]: e.target.value }))}
         >
           <option value="">—</option>
-          <option value="1">{tr("Pass")}</option>
-          <option value="0">{tr("Not passed")}</option>
+          <option value="1">{tr("Qualified")}</option>
+          <option value="0">{tr("Not qualified")}</option>
         </select>
       );
     }
@@ -196,7 +197,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     if (d) return <Badge color={d.pass ? "emerald" : "red"}>{d.label}</Badge>;
     return (
       <Badge color={p.result === "PASSED" ? "emerald" : p.result === "FAILED" ? "red" : "amber"}>
-        {p.result === "PASSED" ? "Pass" : p.result === "FAILED" ? tr("Not passed") : "Pending"}
+        {p.result === "PASSED" ? tr("Qualified") : p.result === "FAILED" ? tr("Not qualified") : "Pending"}
         {p.lastPercent != null && !allLines ? ` (${p.lastPercent}%)` : ""}
       </Badge>
     );
@@ -207,7 +208,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     return (
       <div className="flex items-center gap-2">
         {mine.length > 0 && p.personUserId && (
-          <button type="button" className="inline-flex items-center gap-1 text-sm text-emerald-700 hover:underline" onClick={() => setViewing(p)} aria-label={`View the scan of ${p.fullName}`}>
+          <button type="button" className="inline-flex items-center gap-1 text-sm text-emerald-700 hover:underline" onClick={() => setViewing(p)} aria-label={__ariaTrFormat("View the scan of {v1}", { v1: p.fullName })}>
             <IconEye className="h-4 w-4" /> {mine.length === 1 ? "View" : `View (${mine.length})`}
           </button>
         )}
@@ -275,7 +276,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
     if (d) return { color: d.pass ? "emerald" : "red", text: d.short };
     if (!isPresent(p)) return { color: "slate", text: "Absent" };
     if (p.result === "PENDING") return { color: "amber", text: eligible(p) ? (allLines ? tr("Pick result") : tr("Enter score")) : "Pending" };
-    const text = allLines ? (p.result === "PASSED" ? "Pass" : tr("Not passed")) : p.lastScore != null ? `${p.lastScore}/${p.lastMax}` : p.result === "PASSED" ? "Pass" : tr("Not passed");
+    const text = allLines ? (p.result === "PASSED" ? tr("Qualified") : tr("Not qualified")) : p.lastScore != null ? `${p.lastScore}/${p.lastMax}` : p.result === "PASSED" ? tr("Qualified") : tr("Not qualified");
     return { color: p.result === "PASSED" ? "emerald" : "red", text };
   };
 
@@ -304,7 +305,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
           </label>
         )}
         <div className="text-xs text-slate-600 sm:text-sm">
-          {allLines ? tr("Pass: every line correct") : tr("Pass mark")}: {!allLines && <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span>} · {tr("Results:")}{" "}
+          {allLines ? tr("Qualified: every line correct") : tr("Pass mark")}: {!allLines && <span className="font-semibold text-slate-900">{passPercent != null ? `${passPercent}%` : "—"}</span>} · {tr("Results:")}{" "}
           <span className="font-semibold text-slate-900">{recorded} / {present.length}</span>
         </div>
       </div>
@@ -339,7 +340,7 @@ export function WorkspaceResultsTable({ activityId, people, passPercent, default
                 const chip = chipOf(p);
                 return (
                   <li key={p.id}>
-                    <button type="button" aria-label={`Open ${p.fullName}`} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left" onClick={() => setSheetId(p.id)}>
+                    <button type="button" aria-label={__ariaTrFormat("Open {v1}", { v1: p.fullName })} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left" onClick={() => setSheetId(p.id)}>
                       <Avatar name={p.fullName || "User"} src={p.avatar} tone="brand" className="h-10 w-10 shrink-0" />
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2 break-words text-sm font-medium leading-snug text-slate-900">{p.fullName}</span>

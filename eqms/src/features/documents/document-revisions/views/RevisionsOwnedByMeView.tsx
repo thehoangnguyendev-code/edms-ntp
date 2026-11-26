@@ -27,6 +27,7 @@ import type { Revision } from "./types";
 import { mapStatusToStatusType } from "@/utils/status";
 import { getStatusBadgeColor } from "@/utils/status";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 const getBadgeColor = (statusCode?: string, statusLabel?: string): BadgeColor =>
   getStatusBadgeColor(statusLabel, statusCode) ?? "slate";
@@ -39,28 +40,29 @@ export const RevisionsOwnedByMeView: React.FC = () => {
 
   const [columns, setColumns] = useState<TableColumn[]>(() => [
     { id: "no", label: "No.", visible: true, order: 0, locked: true },
-    { id: "documentNumber", label: tr("Document Number"), visible: true, order: 1 },
-    { id: "revisionNumber", label: tr("Revision Number"), visible: true, order: 2 },
+    { id: "documentNumber", label: "Document Number", visible: true, order: 1 },
+    { id: "revisionNumber", label: "Revision Number", visible: true, order: 2 },
     { id: "created", label: "Created", visible: true, order: 3 },
     { id: "openedBy", label: "Opened By", visible: true, order: 4 },
-    { id: "revisionName", label: tr("Revision Name"), visible: true, order: 5 },
+    { id: "revisionName", label: "Revision Name", visible: true, order: 5 },
     { id: "state", label: "Status", visible: true, order: 6 },
-    { id: "documentName", label: tr("Document Name"), visible: true, order: 7 },
-    { id: "type", label: tr("Document Type"), visible: true, order: 8 },
-    { id: "relatedDocuments", label: tr("Related Document"), visible: true, order: 9 },
-    { id: "correlatedDocuments", label: tr("Correlated Document"), visible: true, order: 10 },
+    { id: "documentName", label: "Document Name", visible: true, order: 7 },
+    { id: "type", label: "Document Type", visible: true, order: 8 },
+    { id: "relatedDocuments", label: "Related Document", visible: true, order: 9 },
+    { id: "correlatedDocuments", label: "Correlated Document", visible: true, order: 10 },
     { id: "template", label: "Template", visible: true, order: 11 },
-    { id: "businessUnit", label: tr("Business Unit"), visible: true, order: 12 },
+    { id: "businessUnit", label: "Business Unit", visible: true, order: 12 },
     { id: "department", label: "Department", visible: true, order: 13 },
     { id: "author", label: "Author", visible: true, order: 14 },
-    { id: "effectiveDate", label: tr("Effective Date"), visible: true, order: 15 },
-    { id: "validUntil", label: tr("Valid Until"), visible: true, order: 16 },
-    { id: "trainingNumber", label: tr("Training Number"), visible: true, order: 17 },
+    { id: "effectiveDate", label: "Effective Date", visible: true, order: 15 },
+    { id: "validUntil", label: "Valid Until", visible: true, order: 16 },
+    { id: "trainingNumber", label: "Training Number", visible: true, order: 17 },
     { id: "action", label: "Action", visible: true, order: 18, locked: true },
   ]);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  const waiting = useWaitingForMe("rev-owned-me", () => setCurrentPage(1));
   const {
     searchQuery,
     setSearchQuery,
@@ -111,7 +113,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
     businessUnitOptions,
     departmentOptions,
     authorOptions,
-  } = useRevisionServerTable({ viewType: "owned-by-me", currentUser: user });
+  } = useRevisionServerTable({ viewType: "owned-by-me", currentUser: user, waitingForMe: waiting.on });
 
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
@@ -289,6 +291,7 @@ export const RevisionsOwnedByMeView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
         {/* Main Content Area (Filters + Table) */}
         <div className="p-4 md:p-5 flex-1 flex flex-col">
+          {waiting.node && <div className="mb-3">{waiting.node}</div>}
           <DocumentFilters
             showCard={false}
             searchQuery={searchQuery}
@@ -410,8 +413,8 @@ export const RevisionsOwnedByMeView: React.FC = () => {
               isDragging={isDragging}
               dropdownRef={getRef}
               dropdownToggle={toggle}
-              emptyStateTitle="No Revisions Found"
-              emptyStateMessage="We couldn't find any revision records matching your filters. Try adjusting your search criteria or clear filters."
+              emptyStateTitle={tr("No Revisions Found")}
+              emptyStateMessage={tr("We couldn't find any revision records matching your filters. Try adjusting your search criteria or clear filters.")}
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import type { BreadcrumbItem } from "../Breadcrumb";
 import { dashboard } from "./shared";
 import { ROUTES } from "@/app/routes.constants";
+import { tr } from "@/i18n";
 
 type NavigateFn = (path: string) => void;
 
@@ -283,8 +284,8 @@ export const destroyControlledCopy = (
   getControlledCopyParent(from, navigate),
   {
     label: reportType
-      ? `Report ${reportType} Controlled Copy`
-      : "Controlled Copy Destruction Report",
+      ? `${tr("Report")} ${tr(reportType)} ${tr("Controlled Copy")}`
+      : tr("Controlled Copy Destruction Report"),
     isActive: true,
   },
 ];

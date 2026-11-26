@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useRef, useState } from "react";
 import { IconCamera, IconSignature } from "@tabler/icons-react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
@@ -159,9 +160,9 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                         <p className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Custom Logo")}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           {value?.logoData && <img src={value.logoData} alt="Custom watermark logo" className="h-9 max-w-24 rounded border border-slate-200 bg-white object-contain p-0.5" />}
-                          <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInput.current?.click()}>{value?.logoData ? "Replace Logo" : tr("Upload Logo")}</Button>
+                          <Button type="button" size="sm" variant="outline-emerald" onClick={() => logoInput.current?.click()}>{value?.logoData ? tr("Replace Logo") : tr("Upload Logo")}</Button>
                         </div>
-                        <input ref={logoInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={`Upload ${title} watermark logo`} onChange={(e) => { void pickLogo(e.target.files?.[0]); e.currentTarget.value = ""; }} />
+                        <input ref={logoInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={__ariaTrFormat("Upload {v1} watermark logo", { v1: title })} onChange={(e) => { void pickLogo(e.target.files?.[0]); e.currentTarget.value = ""; }} />
                         <p className="mt-1 text-xs text-slate-500">{tr("PNG or JPEG, up to 2 MB.")}</p>
                       </div>
                     )}
@@ -240,7 +241,7 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                 <Button type="button" size="sm" variant="outline-emerald" disabled={nothingToStamp || needsLogo} aria-pressed={showOriginal} onClick={() => setShowOriginal((value) => !value)}>{showOriginal ? "Show With Watermark" : "Show Original"}</Button>
                 {picture && <Button type="button" size="sm" variant="ghost" onClick={() => setPicture(null)}>{tr("Back To The Sample Picture")}</Button>}
                 <span className="min-w-0 truncate text-xs text-slate-500">{picture ? picture.name : "A sample picture is shown."}</span>
-                <input ref={pictureInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={`Choose a picture to preview the ${title} watermark`} onChange={(e) => { setPicture(e.target.files?.[0] ?? null); e.currentTarget.value = ""; }} />
+                <input ref={pictureInput} type="file" accept="image/png,image/jpeg" className="hidden" aria-label={__ariaTrFormat("Choose a picture to preview the {v1} watermark", { v1: title })} onChange={(e) => { setPicture(e.target.files?.[0] ?? null); e.currentTarget.value = ""; }} />
               </div>
               <p className="mt-1 text-xs text-slate-500">{tr("Made by the server with the settings on this screen, before they are saved. The picture is not stored. The name and time shown are yours and now.")}</p>
             </div>
@@ -303,7 +304,7 @@ export const ImageWatermarkTab: React.FC<TabProps> = ({ config, onChange, active
       onChange={selectTab}
       changed={changed}
       onReset={savedConfig ? (tab) => { if (tab !== "history") revert(tab); } : undefined}
-      ariaLabel="Image watermark sections"
+      ariaLabel={__ariaTr("Image watermark sections")}
       idPrefix="image-watermark"
     >
       {activeTab === "controlled-copy" && (

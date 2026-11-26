@@ -51,11 +51,11 @@ export const SodConstraintFormView: React.FC = () => {
   const buildGroups = (excludeCode: string): SelectOptionGroup[] =>
     permissionGroups
       .map((group) => ({
-        groupLabel: group.name,
+        groupLabel: tr(group.name),
         options: group.permissions
           .filter((p) => p.id !== excludeCode)
           .map((p) => ({
-            label: p.label,
+            label: tr(p.label),
             value: p.id,
             icon: <span className="text-2xs text-slate-400 font-mono">{p.id}</span>,
           })),
@@ -166,15 +166,15 @@ export const SodConstraintFormView: React.FC = () => {
 
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ name, codeA, codeB, severity, regulationRef, active }, !loading);
-  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? "Edit SoD Constraint" : "New SoD Constraint", "the previous page");
+  const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? tr("Edit SoD Constraint") : tr("New SoD Constraint"), tr("the previous page"));
   const handleBack = () => navigateBack(go, location.state, ROUTES.SECURITY.SOD);
   const leaveAfterSave = () => navigateBack(navigate, location.state, ROUTES.SECURITY.SOD);
 
   const isSystem = Boolean(initial?.system);
 
   const errors = {
-    codeA: codeA.trim() ? "" : "Select Permission A.",
-    codeB: !codeB.trim() ? "Select Permission B." : codeA.trim() === codeB.trim() ? tr("Permission B must be different from Permission A.") : "",
+    codeA: codeA.trim() ? "" : tr("Select Permission A."),
+    codeB: !codeB.trim() ? tr("Select Permission B.") : codeA.trim() === codeB.trim() ? tr("Permission B must be different from Permission A.") : "",
     name: name.trim() ? "" : tr("Enter a name for this constraint."),
   };
   const shown = {
@@ -190,7 +190,7 @@ export const SodConstraintFormView: React.FC = () => {
       document.getElementById(`sod-field-${firstInvalid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    const sig = await requestSignature(isEdit ? "Update SoD Constraint" : "Create SoD Constraint", "SoD Rule Change");
+    const sig = await requestSignature(isEdit ? tr("Update SoD Constraint") : tr("Create SoD Constraint"), tr("SoD Rule Change"));
     if (!sig) return;
     setSaving(true);
     const payload: SodConstraintPayload = {
@@ -204,21 +204,21 @@ export const SodConstraintFormView: React.FC = () => {
     try {
       if (initial) {
         await settingsApi.updateSodConstraint(initial.id, payload, sig);
-        showToast({ type: "success", message: "Constraint updated" });
+        showToast({ type: "success", message: tr("Constraint updated") });
       } else {
         await settingsApi.createSodConstraint(payload, sig);
-        showToast({ type: "success", message: "Constraint created" });
+        showToast({ type: "success", message: tr("Constraint created") });
       }
       leaveAfterSave();
     } catch (e: any) {
-      showToast({ type: "error", message: e?.response?.data?.message ?? "Save failed" });
+      showToast({ type: "error", message: e?.response?.data?.message ?? tr("Save failed") });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <FullPageLoading text="Loading SoD constraint..." />;
+    return <FullPageLoading text={tr("Loading SoD constraint...")} />;
   }
 
   if (!canManage) {
@@ -231,7 +231,7 @@ export const SodConstraintFormView: React.FC = () => {
     );
   }
 
-  const title = isEdit ? "Edit SoD Constraint" : "New SoD Constraint";
+  const title = isEdit ? tr("Edit SoD Constraint") : tr("New SoD Constraint");
 
   const pairChosen = Boolean(codeA && codeB && codeA !== codeB);
   const noOneFlagged = !impact || (impact.violatingAccessProfiles.length === 0 && impact.violatingUserCombinations.length === 0);
@@ -317,7 +317,7 @@ export const SodConstraintFormView: React.FC = () => {
   const permField = (label: string, code: string, setCode: (value: string) => void, excludeCode: string, field: "codeA" | "codeB") => (
     <div id={`sod-field-${field}`} className="min-w-0">
       <Select
-        label={`${label} *`}
+        label={`${tr(label)} *`}
         value={code}
         onChange={(v) => setCode(String(v))}
         groups={buildGroups(excludeCode)}
@@ -355,7 +355,7 @@ export const SodConstraintFormView: React.FC = () => {
           >
             <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               {s === "WARN" ? <AlertTriangle className="h-4 w-4 text-amber-600" /> : <Ban className="h-4 w-4 text-red-600" />}
-              {s === "WARN" ? "Warn" : "Block"}
+              {s === "WARN" ? tr("Warn") : tr("Block")}
             </span>
             <span className="mt-1.5 block text-xs leading-5 text-slate-600">
               {s === "WARN"

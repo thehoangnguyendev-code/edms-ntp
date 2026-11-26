@@ -16,6 +16,7 @@ import { extractApiMessage } from "@/features/settings/dictionaries/utils";
 import { USER_MANAGEMENT_ROUTES } from "../../constants";
 import type { TimeLimitedUserGrant } from "../../types";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const WINDOW_STATE: Record<
   string,
@@ -178,11 +179,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
               <Badge
                 size="sm"
                 color={
-                  grant.status === "ACTIVE"
-                    ? "emerald"
-                    : grant.status === "CANCELLED"
-                      ? "rose"
-                      : "slate"
+                  statusColor(grant.status)
                 }
               >
                 {grant.status}

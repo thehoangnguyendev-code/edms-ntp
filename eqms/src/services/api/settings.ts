@@ -1146,7 +1146,7 @@ export const settingsApi = {
   listAccessReviewsPaged: async (params: {
     page?: number; limit?: number; search?: string; status?: string;
     createdFrom?: string; createdTo?: string; updatedFrom?: string; updatedTo?: string;
-    sortBy?: string; sortDir?: string;
+    sortBy?: string; sortDir?: string; waitingForMe?: boolean;
   }): Promise<PaginatedResponse<AccessReviewCampaignSummary>> => {
     const r = await api.get<PaginatedResponse<AccessReviewCampaignSummary>>('/security/access-reviews/paged', { params });
     return r.data;

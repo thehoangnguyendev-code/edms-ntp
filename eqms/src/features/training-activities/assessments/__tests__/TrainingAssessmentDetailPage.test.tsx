@@ -45,6 +45,7 @@ const renderPage = (path: string, isNew = false) =>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/training-management/assessments/new" element={<TrainingAssessmentDetailPage isNew />} />
+          <Route path="/training-management/assessments/:assessmentId/edit" element={<TrainingAssessmentDetailPage mode="edit" />} />
           <Route path="/training-management/assessments/:assessmentId" element={<TrainingAssessmentDetailPage isNew={isNew} />} />
         </Routes>
       </MemoryRouter>
@@ -90,7 +91,7 @@ describe("Training Assessment (APD.0009) in the library", () => {
   it("a new assessment cannot be created until it is complete, and the draft is created with the typed content", async () => {
     api.create.mockResolvedValue(detail());
     renderPage("/training-management/assessments/new", true);
-    const create = (await screen.findByRole("button", { name: "Create Draft" })) as HTMLButtonElement;
+    const create = (await screen.findAllByRole("button", { name: "Create Draft" }))[0] as HTMLButtonElement;
     expect(create.disabled).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("Kiểm tra đào tạo SOP.0006"), { target: { value: "Kiểm tra SOP.0006" } });
     await openItems();
@@ -164,7 +165,7 @@ describe("Training Assessment (APD.0009) in the library", () => {
       { no: 1, kind: "SINGLE", prompt: "Q1", options: [{ id: "A", text: "Một" }, { id: "B", text: "Hai" }], correct: ["A"], points: 1, modelAnswer: null },
       { no: 2, kind: "ESSAY", prompt: "Q2", options: [], correct: [], points: 1, modelAnswer: null },
     ] }));
-    renderPage("/training-management/assessments/d1");
+    renderPage("/training-management/assessments/d1/edit");
     await openItems();
     expect(await screen.findByLabelText("Drag Question 1")).toBeTruthy();
     expect(screen.getByLabelText("Drag Question 2")).toBeTruthy();
@@ -221,18 +222,18 @@ describe("the flow of the assessment", () => {
     api.get.mockResolvedValue(detail());
     api.submit.mockResolvedValue(detail({ status: "PENDING_APPROVAL", submittedByName: "Designer" }, { ...NO_CAPS, returnToDraft: true, approve: true }));
     api.approve.mockResolvedValue(detail({ status: "EFFECTIVE", approvedByName: "Approver", approvedAt: "2026-10-24T08:00:00Z" }, { ...NO_CAPS, upgradeRevision: true }));
-    renderPage("/training-management/assessments/d1");
-    expect(await screen.findByRole("button", { name: "Save Draft" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete Draft" })).toBeTruthy();
+    renderPage("/training-management/assessments/d1/edit");
+    expect((await screen.findAllByRole("button", { name: "Save Draft" })).length).toBe(2);
+    expect(screen.getAllByRole("button", { name: "Delete Draft" })[0]).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Complete Approval" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Submit for Approval" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Submit for Approval" })[0]);
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith("d1"));
     // pending: nothing to edit, the approver may approve or return it
-    expect(await screen.findByRole("button", { name: "Complete Approval" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Return to Draft" })).toBeTruthy();
+    expect((await screen.findAllByRole("button", { name: "Complete Approval" }))[0]).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Return to Draft" })[0]).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save Draft" })).toBeNull();
     expect((screen.getByPlaceholderText("Kiểm tra đào tạo SOP.0006") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Complete Approval" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Complete Approval" })[0]);
     fireEvent.click(await screen.findByRole("button", { name: "SIGN" }));
     await waitFor(() => expect(api.approve).toHaveBeenCalledWith("d1", "tok"));
     expect((await screen.findAllByRole("button", { name: "Upgrade Revision" })).length).toBe(2);
@@ -244,14 +245,14 @@ describe("the flow of the assessment", () => {
     api.get.mockResolvedValue(detail({ status: "PENDING_APPROVAL" }, { ...NO_CAPS, returnToDraft: true, approve: true }));
     api.returnToDraft.mockResolvedValue(detail());
     renderPage("/training-management/assessments/d1");
-    fireEvent.click(await screen.findByRole("button", { name: "Return to Draft" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Return to Draft" }))[0]);
     const confirm = (await screen.findAllByRole("button", { name: "Return" })).at(-1) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
     fireEvent.change(document.querySelector("textarea") as HTMLTextAreaElement, { target: { value: "Câu 2 sai" } });
     await waitFor(() => expect(confirm.disabled).toBe(false));
     fireEvent.click(confirm);
     await waitFor(() => expect(api.returnToDraft).toHaveBeenCalledWith("d1", "Câu 2 sai"));
-    expect(await screen.findByRole("button", { name: "Submit for Approval" })).toBeTruthy();
+    expect((await screen.findAllByRole("button", { name: "Submit for Approval" }))[0]).toBeTruthy();
   });
 
   it("a person who may approve but sent the draft is told why the approval is not offered", async () => {
@@ -370,13 +371,13 @@ describe("the questions fold like an accordion", () => {
 
   it("every question starts open; a click folds one to a line that keeps its text, its points and what is missing, and keeps what was typed", async () => {
     api.get.mockResolvedValue(two());
-    renderPage("/training-management/assessments/d1");
+    renderPage("/training-management/assessments/d1/edit");
     await openItems();
     expect(await screen.findByLabelText("Answer A")).toBeTruthy();
     const first = screen.getByRole("button", { name: /Question 1/, expanded: true });
     fireEvent.change(screen.getByLabelText("Answer A"), { target: { value: "Một sửa" } });
     fireEvent.click(first);
-    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    await waitFor(() => expect(screen.queryByLabelText("Answer A")).toBeNull(), { timeout: 2000 });
     expect(screen.getByRole("button", { name: /Question 1/, expanded: false }).textContent).toMatch(/Q1/);
     expect(screen.getByLabelText("Drag Question 1")).toBeTruthy(); // the grip stays: a folded question is still dragged
     fireEvent.click(screen.getByRole("button", { name: /Question 1/ }));
@@ -388,7 +389,7 @@ describe("the questions fold like an accordion", () => {
     renderPage("/training-management/assessments/d1");
     await openItems();
     fireEvent.click(await screen.findByRole("button", { name: "Collapse all" }));
-    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    await waitFor(() => expect(screen.queryByLabelText("Answer A")).toBeNull(), { timeout: 2000 });
     expect(screen.getAllByRole("button", { expanded: false }).length).toBeGreaterThanOrEqual(2);
     fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
     expect(await screen.findByLabelText("Answer A")).toBeTruthy();
@@ -398,7 +399,7 @@ describe("the questions fold like an accordion", () => {
     renderPage("/training-management/assessments/new", true);
     await openItems();
     fireEvent.click(await screen.findByRole("button", { name: /Question 1/, expanded: true }));
-    expect(screen.queryByLabelText("Answer A")).toBeNull();
+    await waitFor(() => expect(screen.queryByLabelText("Answer A")).toBeNull(), { timeout: 2000 });
     fireEvent.click(screen.getByRole("button", { name: /1 not complete/ }));
     expect(await screen.findByLabelText("Answer A")).toBeTruthy();
   });

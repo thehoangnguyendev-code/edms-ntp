@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useMemo, useState } from "react";
 import { Lock, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -160,7 +161,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
         </p>
       </div>
       {p.removable ? (
-        <Button variant="ghost" size="icon-sm" aria-label={`Remove ${p.label}`} onClick={() => setRemoveTarget(p)} className="shrink-0 text-slate-500 hover:text-red-600">
+        <Button variant="ghost" size="icon-sm" aria-label={__ariaTrFormat("Remove {v1}", { v1: p.label })} onClick={() => setRemoveTarget(p)} className="shrink-0 text-slate-500 hover:text-red-600">
           <Trash2 className="h-4 w-4" />
         </Button>
       ) : p.inherited ? (
@@ -182,7 +183,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
             <div className="w-64">
               <TabNav
                 variant="pill"
-                ariaLabel="Which shares to show"
+                ariaLabel={__ariaTr("Which shares to show")}
                 tabs={[{ id: "all", label: "All" }, { id: "mine", label: tr("Shared by me") }]}
                 activeTab={show}
                 onChange={(id) => setShow(id as "all" | "mine")}
@@ -191,7 +192,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
           )}
         </div>
         <ShareScrollList<SharingPerson>
-          ariaLabel="Who has access"
+          ariaLabel={__ariaTr("Who has access")}
           fetchPage={fetchPeople}
           renderRow={row}
           getKey={personKey}
@@ -215,7 +216,7 @@ export const SharePeopleTab: React.FC<SharePeopleTabProps> = ({ node, entries, o
             <div className="w-48">
               <TabNav
                 variant="pill"
-                ariaLabel="Effect"
+                ariaLabel={__ariaTr("Effect")}
                 tabs={[{ id: "ALLOW", label: "Share" }, { id: "DENY", label: "Exclude" }]}
                 activeTab={effect}
                 onChange={(id) => setEffect(id as "ALLOW" | "DENY")}

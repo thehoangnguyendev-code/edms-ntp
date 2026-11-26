@@ -2,7 +2,8 @@ import React from "react";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
-import { tr, trFormat } from "@/i18n";
+import { tr } from "@/i18n";
+import { BATCH_ACTION_COPY, type BatchActionLabel } from "./batchActionCopy";
 
 export interface DistributeBatchFailedItem {
   controlledCopyId: string;
@@ -21,8 +22,8 @@ interface DistributeBatchResultModalProps {
   isRetrying: boolean;
   onRetryAllFailed: () => void;
   onClose: () => void;
-  /** e.g. "Distribution" (default) or "Recall" — customizes the modal's wording. */
-  actionLabel?: string;
+  /** Which batch action the wording is about. */
+  actionLabel?: BatchActionLabel;
   /** e.g. "Ready for Distribution" (default) or "Distributed" — the status failed copies were left in. */
   failedStatusLabel?: string;
 }
@@ -46,18 +47,19 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
 
   const hasErrors = failed > 0;
   const hasExceptions = hasErrors || skipped > 0;
+  const copy = BATCH_ACTION_COPY[actionLabel];
 
   return (
     <FormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${actionLabel} Result`}
+      title={tr(copy.result)}
       size="md"
       className="max-w-lg"
       showFooter
       showCancel={hasErrors}
-      cancelText="Close"
-      confirmText={hasErrors ? (isRetrying ? "Retrying..." : "Retry All Failed") : "OK"}
+      cancelText={tr("Close")}
+      confirmText={hasErrors ? (isRetrying ? tr("Retrying...") : tr("Retry All Failed")) : tr("OK")}
       confirmVariant="default"
       isLoading={isRetrying}
       onConfirm={hasErrors ? onRetryAllFailed : onClose}
@@ -70,7 +72,7 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
             <IconCheck className="h-5 w-5 text-emerald-600" />
           )}
           <h3 className="text-sm font-semibold text-slate-900">
-            {hasExceptions ? `${actionLabel} completed with exceptions` : `${actionLabel} complete`}
+            {tr(hasExceptions ? copy.exceptions : copy.complete)}
           </h3>
         </div>
 
@@ -102,7 +104,7 @@ export const DistributeBatchResultModal: React.FC<DistributeBatchResultModalProp
         {hasErrors && (
           <div className="space-y-2">
             <p className="text-xs sm:text-sm text-slate-600">
-              {tr("These controlled copies were left as")} <span className="font-medium">{failedStatusLabel}</span> {tr("and can be retried:")}
+              {tr("These controlled copies were left as")} <span className="font-medium">{tr(failedStatusLabel)}</span> {tr("and can be retried:")}
             </p>
             <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
               {failedItems.map((item) => (

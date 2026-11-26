@@ -27,7 +27,7 @@ import {
 import { REVISION_STATUS, whenText } from "./ReportTemplateRevisions";
 import { ReportRevisionStepper } from "../shared/ReportRevisionStepper";
 import { ReadonlyField } from "../shared/ReadonlyField";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type FieldRow = ReportTemplate["fields"][number];
 type ScopeRow = NonNullable<ReportTemplate["roleScopes"]>[number];
@@ -162,7 +162,7 @@ export function ReportTemplateRevisionPage({
         <span className="font-medium text-slate-900">{row.item}</span>
       ),
     },
-    { id: "kind", header: "Change", cell: (row) => KIND_LABEL[row.kind] },
+      { id: "kind", header: tr("Change"), cell: (row) => KIND_LABEL[row.kind] },
     {
       id: "from",
       header: "Before",
@@ -194,7 +194,7 @@ export function ReportTemplateRevisionPage({
         count: content?.roleScopes?.length ?? 0,
       });
     return list;
-  }, [comparison, content, inAdministration]);
+  }, [comparison, content, inAdministration, getCatalogLanguage()]);
   const shownTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab
     : "general";
@@ -211,8 +211,7 @@ export function ReportTemplateRevisionPage({
             className="whitespace-nowrap touch-manipulation"
             onClick={parent.onClick}
           >
-            Back
-          </Button>
+            {tr("Back")}</Button>
         }
       />
       {error && (
@@ -444,8 +443,7 @@ export function ReportTemplateRevisionPage({
               className="whitespace-nowrap touch-manipulation"
               onClick={parent.onClick}
             >
-              Back
-            </Button>
+              {tr("Back")}</Button>
           </div>
         </>
       )}

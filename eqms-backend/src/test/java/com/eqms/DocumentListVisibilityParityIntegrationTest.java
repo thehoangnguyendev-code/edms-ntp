@@ -60,6 +60,9 @@ public class DocumentListVisibilityParityIntegrationTest {
     @Autowired
     private DocumentRevisionRepository documentRevisionRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     private void authenticateAs(UserAccount user) {
         AuthenticatedUser principal = new AuthenticatedUser(
                 user.getId(),
@@ -119,8 +122,10 @@ public class DocumentListVisibilityParityIntegrationTest {
      */
     @Test
     void documentAndRevisionLists_matchDetailVisibility_forEveryNonAdminUser() {
-        List<DocumentRecord> documents = documentRecordRepository.findAll();
-        List<DocumentRevisionRecord> revisions = documentRevisionRepository.findAll();
+        // Only IDs are needed to choose the existing outside-list sample. Hydrating
+        // every entity also evaluates all its workflow formulas on a large demo DB.
+        List<UUID> documentIds = jdbc.queryForList("select id from documents order by id", UUID.class);
+        List<UUID> revisionIds = jdbc.queryForList("select id from document_revisions order by id", UUID.class);
         int checkedUsers = 0;
 
         List<UserAccount> withoutBlanketGrant = userAccountRepository.findAll().stream()
@@ -135,28 +140,26 @@ public class DocumentListVisibilityParityIntegrationTest {
 
             Listed listedDocumentsRead = documentIdsInList();
             Set<String> listedDocuments = listedDocumentsRead.ids();
-            for (DocumentRecord document : documents) {
-                if (listedDocuments.contains(document.getId().toString())) {
-                    assertTrue(documentAuthorizationService.isDirectStakeholder(user, document),
-                            "Document " + document.getDocumentNumber() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
-                }
+            for (String id : listedDocuments) {
+                DocumentRecord document = documentRecordRepository.findById(UUID.fromString(id)).orElseThrow();
+                assertTrue(documentAuthorizationService.isDirectStakeholder(user, document),
+                        "Document " + document.getDocumentNumber() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
             }
             if (listedDocumentsRead.complete()) {
-                assertOutsideTheListIsRefused(user, documents, listedDocuments, DocumentRecord::getId,
-                        document -> documentAuthorizationService.isDirectStakeholder(user, document), "Document");
+                assertOutsideTheListIsRefused(user, documentIds, listedDocuments, java.util.function.Function.identity(),
+                        id -> documentAuthorizationService.isDirectStakeholder(user, documentRecordRepository.findById(id).orElseThrow()), "Document");
             }
 
             Listed listedRevisionsRead = revisionIdsInList();
             Set<String> listedRevisions = listedRevisionsRead.ids();
-            for (DocumentRevisionRecord revision : revisions) {
-                if (listedRevisions.contains(revision.getId().toString())) {
-                    assertTrue(documentAuthorizationService.isDirectStakeholder(user, revision),
-                            "Revision " + revision.getId() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
-                }
+            for (String id : listedRevisions) {
+                DocumentRevisionRecord revision = documentRevisionRepository.findById(UUID.fromString(id)).orElseThrow();
+                assertTrue(documentAuthorizationService.isDirectStakeholder(user, revision),
+                        "Revision " + revision.getId() + " is in the list of " + user.getUsername() + " but the detail rule refuses it");
             }
             if (listedRevisionsRead.complete()) {
-                assertOutsideTheListIsRefused(user, revisions, listedRevisions, DocumentRevisionRecord::getId,
-                        revision -> documentAuthorizationService.isDirectStakeholder(user, revision), "Revision");
+                assertOutsideTheListIsRefused(user, revisionIds, listedRevisions, java.util.function.Function.identity(),
+                        id -> documentAuthorizationService.isDirectStakeholder(user, documentRevisionRepository.findById(id).orElseThrow()), "Revision");
             }
         }
         assertEquals(true, checkedUsers > 0, "Seed data must include at least one user without a blanket view grant");

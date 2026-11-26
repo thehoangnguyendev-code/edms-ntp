@@ -45,8 +45,7 @@ export function ReportTemplateRunPage() {
         breadcrumbItems={reportBreadcrumbs(navigate, "Create Report", false, { label: tr("Report Library"), onClick: () => navigate("/report/templates") })}
         actions={
           <Button size="sm" variant="outline" className="whitespace-nowrap touch-manipulation" onClick={() => navigate("/report/templates")}>
-            Back
-          </Button>
+            {tr("Back")}</Button>
         }
       />
       {error ? (

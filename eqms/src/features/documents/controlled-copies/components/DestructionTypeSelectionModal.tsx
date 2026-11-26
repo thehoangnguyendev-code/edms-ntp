@@ -55,7 +55,7 @@ const ReportTypeOption: React.FC<{
         {styles.icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-slate-900">{type}</span>
+        <span className="block text-sm font-semibold text-slate-900">{tr(type)}</span>
         <span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span>
         <span
           className={cn(
@@ -64,7 +64,7 @@ const ReportTypeOption: React.FC<{
           )}
         >
           {evidenceRequired ? <Camera className="h-3 w-3" /> : <CameraOff className="h-3 w-3" />}
-          {evidenceRequired ? "Evidence photos required" : "No evidence photos"}
+          {evidenceRequired ? tr("Evidence photos required") : tr("No evidence photos")}
         </span>
       </span>
       <span
@@ -118,8 +118,8 @@ export const DestructionTypeSelectionModal: React.FC<
       onConfirm={handleConfirm}
       title={tr("Select Report Type")}
       description={tr("Please select the appropriate report type for this controlled copy:")}
-      confirmText="Continue"
-      cancelText="Cancel"
+      confirmText={tr("Continue")}
+      cancelText={tr("Cancel")}
       size="lg"
       showCancel={true}
     >

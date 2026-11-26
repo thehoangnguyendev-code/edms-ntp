@@ -116,6 +116,7 @@ public final class AuditObjectRegistry {
         entry("Training Assessments", 'A', "TRAININGASSESSMENT", "TRAININGFORMTEMPLATE");
         entry("Training Calendar (retired)", 'C', "TRAININGCALENDAR");
         entry("Training Code Rules", 'B', "TRAININGCODERULE");
+        entry("Training Compliance", 'C', "TRAININGCOMPLIANCE");
         entry("Training Matrix", 'A', "TRAININGMATRIX", "TRAININGMATRIXVERSION");
         entry("Training Notifications", 'B', "TRAININGNOTIFICATIONS");
         entry("Training Properties", 'B', "TRAININGSETTINGS");

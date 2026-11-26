@@ -1,3 +1,4 @@
+import { statusColor } from "@/components/ui/badge/statusColors";
 import { sessionStarted } from "@/services/api/trainingActivities";
 import { CheckInReveal } from "./CheckInReveal";
 import { useCountdown } from "./useCountdown";
@@ -143,7 +144,7 @@ export function TrainingCheckInBlock({
     <section aria-label={tr("Self check-in")} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
         <h3 className="text-sm font-semibold text-slate-900">{tr("Self check-in")}</h3>
-        <Badge color={open ? "emerald" : "slate"} showDot>{open ? "Open" : "Closed"}</Badge>
+        <Badge color={statusColor(open ? "OPEN" : "CLOSED")}>{open ? "Open" : "Closed"}</Badge>
       </div>
       <div className="flex flex-col gap-4 p-4">
         {held.length > 1 && (

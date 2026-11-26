@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -8,7 +9,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingPreparationApi, type TrainingActivityDetail, type TrainingPreparationSession, type TrainingPrepItem } from "@/services/api/trainingActivities";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
 import { DELIVERY_LABEL, useTrainingPaper } from "./TrainingPaperBlock";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 const ITEM_LABEL: Record<TrainingPrepItem, { label: string; hint: string }> = {
   VENUE: { label: tr("Training room"), hint: tr("The room or place is booked and ready for the session.") },
@@ -118,14 +119,14 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
   const readyCount = required.filter((r) => r.ready).length;
   return (
     <>
-      <TabBlock title={tr("Checklist")} action={<Badge color={required.length > 0 && readyCount === required.length ? "emerald" : "amber"}>{`${readyCount} of ${required.length} ready`}</Badge>}>
+      <TabBlock title={tr("Checklist")} action={<Badge color={required.length > 0 && readyCount === required.length ? "emerald" : "amber"}>{trFormat("{ready} of {total} ready", { ready: readyCount, total: required.length })}</Badge>}>
         {paper && session && (
           <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5">
             <div>
               <div className="text-sm font-medium text-slate-900">{tr("Delivery of the session")}</div>
               <div className="text-xs text-slate-500">{tr("Electronic, on paper, or both.")}</div>
             </div>
-            <div role="radiogroup" aria-label={`Delivery of session ${session.sessionNo}`}>
+            <div role="radiogroup" aria-label={__ariaTrFormat("Delivery of session {v1}", { v1: session.sessionNo })}>
               <RadioGroup
                 name={`delivery-${session.id}`}
                 layout="horizontal"

@@ -129,7 +129,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                     id="navigation-guard-modal-title"
                     className="text-base font-semibold text-slate-900"
                   >
-                    {title || (mode === "discard" ? tr("Discard unsaved changes?") : tr("Leave without saving?"))}
+                    {title ? tr(title) : (mode === "discard" ? tr("Discard unsaved changes?") : tr("Leave without saving?"))}
                   </h3>
                   <p className="text-sm leading-relaxed text-slate-600">
                     {mode === "discard"
@@ -156,7 +156,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                     <p>
                       {tr("If you continue, any unsaved changes in")}{" "}
-                      <span className="font-semibold text-slate-900">{currentPageTitle || tr("this form")}</span> {tr("will be lost.")}
+                      <span className="font-semibold text-slate-900">{tr(currentPageTitle || "this form")}</span> {tr("will be lost.")}
                     </p>
                     <p className="mt-3 text-xs leading-relaxed text-slate-500">
                       {tr("This action cannot be undone.")}
@@ -165,7 +165,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 ) : (
                   <div className="space-y-3">
                     <p>
-                      {tr("If you leave")} <span className="font-semibold text-slate-900">{currentPageTitle || tr("this page")}</span>{tr(", any unsaved progress may be lost.")}
+                      {tr("If you leave")} <span className="font-semibold text-slate-900">{tr(currentPageTitle || "this page")}</span>{tr(", any unsaved progress may be lost.")}
                     </p>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
@@ -175,7 +175,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                             {tr("Current page")}
                           </div>
                           <div className="mt-1 font-medium text-slate-900">
-                            {currentPageTitle || "This page"}
+                            {currentPageTitle ? tr(currentPageTitle) : tr("This page")}
                           </div>
                         </div>
                         <div>
@@ -183,7 +183,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                             {tr("Next Page")}
                           </div>
                           <div className="mt-1 font-medium text-amber-700">
-                            {destinationLabel || "Another page"}
+                            {destinationLabel ? tr(destinationLabel) : tr("Another page")}
                           </div>
                         </div>
                       </div>
@@ -205,7 +205,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 disabled={isLoading}
                 className="min-w-[120px]"
               >
-                {secondaryActionLabel || (mode === "discard" ? tr("Keep editing") : tr("Stay on page"))}
+                {secondaryActionLabel ? tr(secondaryActionLabel) : (mode === "discard" ? tr("Keep editing") : tr("Stay on page"))}
               </Button>
               <Button
                 size="sm"
@@ -219,7 +219,7 @@ export const NavigationGuardModal: React.FC<NavigationGuardModalProps> = ({
                 {isLoading ? (
                   <ButtonLoading text={tr("Processing...")} light />
                 ) : (
-                  primaryActionLabel || (mode === "discard" ? tr("Discard Changes") : tr("Leave Anyway"))
+                  primaryActionLabel ? tr(primaryActionLabel) : (mode === "discard" ? tr("Discard Changes") : tr("Leave Anyway"))
                 )}
               </Button>
             </div>

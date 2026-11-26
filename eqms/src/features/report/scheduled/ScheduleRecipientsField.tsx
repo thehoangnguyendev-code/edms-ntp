@@ -140,7 +140,7 @@ export function ScheduleRecipientsField({
         isOpen={adding}
         onClose={() => setAdding(false)}
         title={tr("Recipients of the Scheduled Report")}
-        confirmText={`Save (${selection.length})`}
+        confirmText={`${tr("Save")} (${selection.length})`}
         size="2xl"
         className="max-w-5xl"
         confirmDisabled={selection.length === people.length && selection.every((s) => people.some((p) => p.id === s.id))}

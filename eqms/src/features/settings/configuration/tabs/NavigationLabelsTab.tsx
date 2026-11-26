@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, RotateCcw, Search, X } from 'lucide-react';
@@ -188,7 +189,7 @@ export const NavigationLabelsTab: React.FC<NavigationLabelsTabProps> = ({ config
                                 maxLength={80}
                                 onChange={(event) => handleNavigationLabelChange(option.id, option.defaultLabel, event.target.value)}
                                 onBlur={(event) => handleNavigationLabelBlur(option.id, option.defaultLabel, event.target.value)}
-                                aria-label={`Display name for ${option.hierarchy}`}
+                                aria-label={__ariaTrFormat("Display name for {v1}", { v1: option.hierarchy })}
                                 className={cn(
                                   "h-9 w-full rounded-lg border bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:border-emerald-500 focus:ring-emerald-500",
                                   override ? "border-emerald-300" : "border-slate-200",

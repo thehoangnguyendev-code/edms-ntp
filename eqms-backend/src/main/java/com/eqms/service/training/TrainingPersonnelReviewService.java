@@ -133,6 +133,7 @@ public class TrainingPersonnelReviewService {
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
         // The same person's own entries, for the "related" card of a detail screen.
         if (more.get("personId") != null && !more.get("personId").isBlank()) extra.raw("r.person_user_id = ?", java.util.UUID.fromString(more.get("personId")));
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.personnelReview(), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_personnel_reviews r join app_users u on u.id = r.person_user_id left join app_users cu on cu.id = r.created_by" + where, Long.class, args.toArray());
@@ -353,32 +354,46 @@ public class TrainingPersonnelReviewService {
         switch (code) {
             case "SPECIMEN": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select version_no, effective_date from training_specimen_signatures where person_user_id = ? and status = 'APPROVED' order by version_no desc limit 1", person);
-                return rows.isEmpty() ? check(false, "No specimen signature record yet.")
-                        : check(true, "Specimen signature record, version " + rows.getFirst().get("version_no") + (rows.getFirst().get("effective_date") == null ? "" : ", effective " + rows.getFirst().get("effective_date")) + ".");
+                if (rows.isEmpty()) return check(false, part("No specimen signature record yet."));
+                Object version = rows.getFirst().get("version_no"), effective = rows.getFirst().get("effective_date");
+                return check(true, effective == null ? part("Specimen signature record, version {version}.", "version", version)
+                        : part("Specimen signature record, version {version}, effective {date}.", "version", version, "date", DateTimeFormatUtils.display(effective)));
             }
             case "JOB_ASSIGNMENT": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select issue_no, effective_at from training_job_assignments where person_user_id = ? and status = 'EFFECTIVE' order by issue_no desc limit 1", person);
                 Map<String, Object> gaps = compliance.gapsOfPerson(person, access.departmentOf(users.findById(person).orElseThrow()));
                 long open = ((Number) gaps.get("missing")).longValue() + ((Number) gaps.get("due")).longValue();
-                String matrix = ((Number) gaps.get("required")).intValue() == 0 ? "" : open == 0 ? " The matrix of the position is complete." : " " + open + " training of the matrix of the position is still open.";
-                return rows.isEmpty() ? check(false, "No effective job assignment yet." + matrix)
-                        : check(open == 0, "Job assignment, issue " + rows.getFirst().get("issue_no") + (rows.getFirst().get("effective_at") == null ? "" : ", effective " + DateTimeFormatUtils.display(rows.getFirst().get("effective_at"))) + "." + matrix);
+                Map<String, Object> matrix = ((Number) gaps.get("required")).intValue() == 0 ? null
+                        : open == 0 ? part("The matrix of the position is complete.") : part("{count} training of the matrix of the position is still open.", "count", open);
+                if (rows.isEmpty()) return check(false, part("No effective job assignment yet."), matrix);
+                Object issue = rows.getFirst().get("issue_no"), effective = rows.getFirst().get("effective_at");
+                return check(open == 0, effective == null ? part("Job assignment, issue {issue}.", "issue", issue)
+                        : part("Job assignment, issue {issue}, effective {date}.", "issue", issue, "date", DateTimeFormatUtils.display(effective)), matrix);
             }
             case "HANDOVER": {
                 List<Map<String, Object>> rows = jdbc.queryForList("select generated_at from training_record_exports where person_user_id = ? and status = 'APPROVED' order by generated_at desc nulls last limit 1", person);
-                return rows.isEmpty() ? check(false, "No approved export of the training record yet (Training Record Exports).")
-                        : check(true, "A signed export of the record was approved" + (rows.getFirst().get("generated_at") == null ? "" : " on " + DateTimeFormatUtils.display(rows.getFirst().get("generated_at"))) + ".");
+                if (rows.isEmpty()) return check(false, part("No approved export of the training record yet (Training Record Exports)."));
+                Object generated = rows.getFirst().get("generated_at");
+                return check(true, generated == null ? part("A signed export of the record was approved.")
+                        : part("A signed export of the record was approved on {date}.", "date", DateTimeFormatUtils.display(generated)));
             }
             default:
                 return null;
         }
     }
 
-    private static Map<String, Object> check(boolean found, String text) {
+    /** The result is sent as sentences with their values apart, so that the screen writes them in the language of the reader. */
+    private static Map<String, Object> check(boolean found, Map<?, ?>... parts) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("found", found);
-        out.put("text", text);
+        out.put("parts", java.util.Arrays.stream(parts).filter(java.util.Objects::nonNull).toList());
         return out;
+    }
+
+    private static Map<String, Object> part(String template, Object... namesAndValues) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (int i = 0; i < namesAndValues.length; i += 2) values.put((String) namesAndValues[i], namesAndValues[i + 1]);
+        return Map.of("template", template, "values", values);
     }
 
     /** The gaps of the person against the matrix of the department: what the head of department and the assigned employee look at when they review the record (SOP.0003 5.3.11). */

@@ -8,6 +8,7 @@ import { formatDate } from "@/utils/format";
 import { settingsApi } from "@/services/api/settings";
 import type { Certification } from "../../types";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 interface CertPreviewModalProps {
   isOpen: boolean; // Added isOpen prop for external control
@@ -115,7 +116,7 @@ export const CertPreviewModal: React.FC<CertPreviewModalProps> = ({ isOpen, cert
           <div>
             <p className="text-2xs sm:text-xs text-slate-400 mb-0.5">{tr("Status")}</p>
             {isExpired ? (
-              <Badge color="red" size="sm" pill>{tr("Expired")}</Badge>
+              <Badge color={statusColor("EXPIRED")} size="sm" pill>{tr("Expired")}</Badge>
             ) : (
               <Badge color="emerald" size="sm" pill>{tr("Valid")}</Badge>
             )}

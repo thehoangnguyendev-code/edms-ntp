@@ -150,8 +150,7 @@ export const ReportStampFields: React.FC<{
           aria-label={tr("Reset Stamp Position")}
           onClick={() => onChange({ x: undefined, y: undefined, width: undefined })}
         >
-          Reset Position
-        </Button>
+          {tr("Reset Position")}</Button>
       </div>
     )}
   </>

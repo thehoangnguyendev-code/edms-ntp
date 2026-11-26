@@ -38,7 +38,7 @@ import {
 } from "@/services/api/reports";
 import { reportError } from "@/services/api/reportTemplates";
 import { displayDateTime, formatFileSize } from "@/utils/format";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 const APPROVAL_LABEL: Record<string, string> = {
   APPROVED: "Approved",
@@ -259,7 +259,7 @@ export function ReportRunDetailPage() {
       { id: "audit", label: tr("Audit Trail") },
       { id: "notices", label: tr("Notices Sent"), count: run?.deliveries?.length },
     ],
-    [run],
+    [run, getCatalogLanguage()],
   );
   const shownTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab

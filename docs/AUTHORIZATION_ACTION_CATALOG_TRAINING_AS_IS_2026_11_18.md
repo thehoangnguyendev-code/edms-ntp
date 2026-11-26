@@ -89,7 +89,7 @@ Vòng đời: `PLANNED` → `NOTIFIED` → `IN_PROGRESS` → `PENDING_QA_CONFIRM
 | Xác nhận hoàn thành | PENDING_QA_CONFIRMATION | `training.activity.close` (ACTIVITY_COMPLETE, bất kỳ người đủ điều kiện) | `keptApart(activity,...)`; SoD DB `assignment.manage` vs `activity.close` (WARN) | có (COMPLETED) | `confirmCompletion` | Bước này cho "bất kỳ người đủ điều kiện": có muốn chỉ định bắt buộc? |
 | Hủy | PLANNED..PENDING_QA | `training.activity.organize` | cần lý do; không hủy nếu đã có người đạt | có | `cancel` | — |
 | Bổ sung (supplementary) | COMPLETED | `training.activity.organize` | chỉ cho người vắng hoặc trượt | có | `supplementary` | — |
-| Mở lại nội dung / trả lại sửa | các trạng thái | `training.activity.organize` / `.close` | — | có | `reopenContent`, `returnForCorrection` | — |
+| Mở lại nội dung | các trạng thái | `training.activity.organize` | — | có | `reopenContent` | — (bước "trả lại sửa" của QA đã bỏ ngày 2026-11-26, V859) |
 | Hủy bản ghi đào tạo (void) | COMPLETED | `training.record.void` | người void ≠ người xác nhận hoàn thành | có + lý do | `TrainingRecordService.voidRecord` | Ý nghĩa bước RECORD_VOID trong bảng chế độ? |
 | Ngoại lệ người giảng | PLANNED | `training.activity.organize` | người duyệt ≠ người yêu cầu ≠ người giảng | có | `TrainingTrainerService` | — |
 

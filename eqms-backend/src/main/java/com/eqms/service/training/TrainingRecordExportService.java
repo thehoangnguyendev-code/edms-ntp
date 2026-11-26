@@ -88,6 +88,7 @@ public class TrainingRecordExportService {
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("search"), "u.full_name", "u.employee_code", "e.reason", "pu.full_name", "au.full_name").contains(more.get("preparedBy"), "pu.full_name").contains(more.get("approvedBy"), "au.full_name")
                 .timeRange("e.generated_at", more.get("generatedFrom"), more.get("generatedTo")).timeRange("e.created_at", more.get("requestedFrom"), more.get("requestedTo"));
         if (more.get("department") != null && !more.get("department").isBlank()) extra.raw("lower(trim(u.department)) = lower(trim(?))", more.get("department"));
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.assigned(TYPE, "e.id"), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         Long total = jdbc.queryForObject("select count(*) from training_record_exports e join app_users u on u.id = e.person_user_id left join app_users pu on pu.id = e.prepared_by left join app_users au on au.id = e.approved_by" + where, Long.class, args.toArray());

@@ -1,3 +1,4 @@
+import { statusColors } from "@/components/ui/badge/statusColors";
 /**
  * Backup & Restore UI contract (preview).
  *
@@ -50,18 +51,9 @@ export const COMPONENT_LABEL: Record<BackupComponentKey, string> = {
   CONFIGURATION: "System settings",
 };
 
-export const BACKUP_STATUS_COLOR = {
-  RUNNING: "blue",
-  COMPLETED: "emerald",
-  FAILED: "red",
-  EXPIRED: "slate",
-} as const;
+export const BACKUP_STATUS_COLOR = statusColors("RUNNING", "COMPLETED", "FAILED", "EXPIRED");
 
-export const VERIFICATION_COLOR = {
-  VERIFIED: "emerald",
-  NOT_VERIFIED: "amber",
-  FAILED: "red",
-} as const;
+export const VERIFICATION_COLOR = statusColors("VERIFIED", "NOT_VERIFIED", "FAILED");
 
 export const statusLabel = (code: string) =>
   code

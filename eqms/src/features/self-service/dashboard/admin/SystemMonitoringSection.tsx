@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -98,7 +99,7 @@ const RuntimeCard: React.FC<{
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
               role="img"
-              aria-label={`Heap memory: ${heap}%`}
+              aria-label={__ariaTrFormat("Heap memory: {v1}%", { v1: heap })}
             >
               <div
                 className="h-full rounded-full bg-emerald-500 transition-[width] duration-700"
@@ -409,14 +410,14 @@ export function useSystemMonitoringWidgets() {
       content: (
         <BreakdownPanel
           title={tr("Users by status")}
-          idleSubtitle="All user accounts, per status"
-          subtitle={(total) => `${total.toLocaleString()} user accounts`}
+          idleSubtitle={tr("All user accounts, per status")}
+          subtitle={(total) => trFormat("{total} user accounts", { total: total.toLocaleString() })}
           resource={users}
-          valueLabel="Users"
-          centerCaption="Users"
-          chartLabel="users by status"
+          valueLabel={tr("Users")}
+          centerCaption={tr("Users")}
+          chartLabel={tr("users by status")}
           emptyLabel={
-            totalUsers === 0 && data ? tr("There are no user accounts") : "No data"
+            totalUsers === 0 && data ? tr("There are no user accounts") : tr("No data")
           }
           errorMessage={tr("Users by status could not be loaded.")}
           idPrefix="users-status"

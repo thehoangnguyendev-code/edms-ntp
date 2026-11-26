@@ -14,6 +14,7 @@ import { useSodAccessProfileCheck } from "../../../shared/useSodAccessProfileChe
 import { SodViolationPanel } from "../../../shared/SodViolationPanel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 interface Props {
   isOpen: boolean;
@@ -353,7 +354,7 @@ export const EditAccessProfilesModal: React.FC<Props> = ({
                               <IconUserKey className="h-3 w-3 text-emerald-600" />
                             </div>
                             <span className="font-medium text-slate-900 truncate min-w-0 flex-1">{p.name}</span>
-                            {!p.active && <Badge color="slate" size="sm">{tr("Inactive")}</Badge>}
+                            {!p.active && <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>}
                             {p.system && <Badge color="blue" size="sm">{tr("System")}</Badge>}
                           </div>
                         );

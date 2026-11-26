@@ -22,7 +22,8 @@ describe("report display labels", () => {
     expect(scheduleReasonLabel("PAUSED")).toBe("—");
     expect(scheduleStatusColor("ACTIVE")).toBe("emerald");
     expect(scheduleStatusColor("PAUSED")).toBe("amber");
-    expect(scheduleStatusColor("SUSPENDED_INVALID_SCHEDULE")).toBe("red");
+    // a suspension has the colour of "Suspended" everywhere (shared status table)
+    expect(scheduleStatusColor("SUSPENDED_INVALID_SCHEDULE")).toBe("orange");
   });
 
   it("turns an unknown code into a sentence-case phrase, never leaving capitals", () => {

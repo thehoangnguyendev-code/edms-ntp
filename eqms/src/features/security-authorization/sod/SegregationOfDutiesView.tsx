@@ -240,8 +240,8 @@ export const SegregationOfDutiesView: React.FC = () => {
   }, [canViewSod]);
 
   const severityOptions: SelectOption[] = [
-    { label: "All", value: "ALL" },
-    ...severities.map((sv) => ({ label: sv, value: sv })),
+    { label: tr("All"), value: "ALL" },
+    ...severities.map((sv) => ({ label: tr(sv === "WARN" ? "Warn" : sv === "BLOCK" ? "Block" : sv), value: sv })),
   ];
 
   const hasFilters = !!search || severityFilter !== "ALL" || typeFilter !== "ALL" || statusFilter !== "ALL" || !!createdFrom || !!createdTo || !!updatedFrom || !!updatedTo;
@@ -317,7 +317,7 @@ export const SegregationOfDutiesView: React.FC = () => {
       sort: { direction: sortKey === "name" ? sortDir : undefined, onSort: () => handleSort("name") },
       cell: (c) => (
         <>
-          <div className="font-medium text-slate-800">{c.name}</div>
+                <div className="font-medium text-slate-800">{tr(c.name)}</div>
           {c.regulationRef && <div className="text-xs text-slate-400 mt-0.5">{c.regulationRef}</div>}
         </>
       ),
@@ -329,7 +329,7 @@ export const SegregationOfDutiesView: React.FC = () => {
       sort: { direction: sortKey === "permissionCodeA" ? sortDir : undefined, onSort: () => handleSort("permissionCodeA") },
       cell: (c) => (
         <>
-          <div className="font-medium text-slate-800">{c.permissionNameA}</div>
+                <div className="font-medium text-slate-800">{tr(c.permissionNameA)}</div>
           <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeA}</div>
         </>
       ),
@@ -341,7 +341,7 @@ export const SegregationOfDutiesView: React.FC = () => {
       sort: { direction: sortKey === "permissionCodeB" ? sortDir : undefined, onSort: () => handleSort("permissionCodeB") },
       cell: (c) => (
         <>
-          <div className="font-medium text-slate-800">{c.permissionNameB}</div>
+                <div className="font-medium text-slate-800">{tr(c.permissionNameB)}</div>
           <div className="text-2xs text-slate-400 mt-0.5 font-mono">{c.permissionCodeB}</div>
         </>
       ),
@@ -358,7 +358,7 @@ export const SegregationOfDutiesView: React.FC = () => {
             size="sm"
             icon={c.severity === "BLOCK" ? <Ban className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
           >
-            {c.severity}
+                  {tr(c.severity === "BLOCK" ? "Blocking" : "Warning")}
           </Badge>
           {c.system && <Badge color="blue" size="xs">{tr("System")}</Badge>}
         </div>
@@ -665,7 +665,7 @@ export const SegregationOfDutiesView: React.FC = () => {
                 emptyState={
                   <TableEmptyState
                     title={tr("No SoD Constraints")}
-                    description={hasFilters ? tr("Try adjusting your search or filters.") : "No Segregation of Duties constraints have been defined yet."}
+                    description={hasFilters ? tr("Try adjusting your search or filters.") : tr("No Segregation of Duties constraints have been defined yet.")}
                   />
                 }
                 pagination={
@@ -710,7 +710,7 @@ export const SegregationOfDutiesView: React.FC = () => {
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {severityOptions.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setSeverityFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(severityFilter === opt.value)}>
-                <span className="text-xs">{opt.label}</span>
+                <span className="text-xs">{tr(opt.label)}</span>
                 {severityFilter === opt.value && <Check className="h-4 w-4 text-emerald-500" />}
               </button>
             ))}
@@ -720,7 +720,7 @@ export const SegregationOfDutiesView: React.FC = () => {
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {TYPE_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setTypeFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(typeFilter === opt.value)}>
-                <span className="text-xs">{opt.label}</span>
+                <span className="text-xs">{tr(opt.label)}</span>
                 {typeFilter === opt.value && <Check className="h-4 w-4 text-emerald-500" />}
               </button>
             ))}
@@ -730,7 +730,7 @@ export const SegregationOfDutiesView: React.FC = () => {
           <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
             {STATUS_OPTIONS.map((opt) => (
               <button key={String(opt.value)} onClick={() => { setStatusFilter(String(opt.value)); setCurrentPage(1); }} className={filterOptionClass(statusFilter === opt.value)}>
-                <span className="text-xs">{opt.label}</span>
+                <span className="text-xs">{tr(opt.label)}</span>
                 {statusFilter === opt.value && <Check className="h-4 w-4 text-emerald-500" />}
               </button>
             ))}
@@ -744,7 +744,7 @@ export const SegregationOfDutiesView: React.FC = () => {
         onConfirm={() => void handleDelete()}
         type="warning"
         title={tr("Delete SoD Constraint")}
-        description={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ""}
+        description={deleteTarget ? trFormat('Are you sure you want to delete "{name}"? This action cannot be undone.', { name: tr(deleteTarget.name) }) : ""}
         confirmText="Delete"
         cancelText="Cancel"
         showCancel

@@ -18,12 +18,15 @@ import { usePortalDropdown } from "@/hooks/usePortalDropdown";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingError, trainingExportsApi, type TrainingPerson, type TrainingRecordExport } from "@/services/api/trainingActivities";
-import { day, when, statusChange } from "../../shared/trainingLabels";
+import { day, localized, when, statusChange } from "../../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentNameOptions } from "../../shared/useListFilters";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_LABEL: Record<string, string> = { PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" };
-const STATUS_COLOR: Record<string, "amber" | "emerald" | "red"> = { PENDING_APPROVAL: "amber", APPROVED: "emerald", REJECTED: "red" };
+const STATUS_LABEL: Record<string, string> = localized({ PENDING_APPROVAL: "Pending Approval", APPROVED: "Approved", REJECTED: "Rejected" });
+const STATUS_COLOR = statusColors("PENDING_APPROVAL", "APPROVED", "REJECTED") as Record<string, BadgeColor>;
 
 /** Exports of the personal training record as a PDF (APD.0014): prepared with a signature, approved by a person designated with a signature, then kept unchanged. */
 export function ExportsPersonalTab({ creating, setCreating }: { creating: boolean; setCreating: (open: boolean) => void }) {
@@ -46,12 +49,13 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
   const [rejecting, setRejecting] = useState<{ id: string; reason: string }>();
 
   const fetcher = useCallback((params: Record<string, string | number | boolean | undefined>) => trainingExportsApi.list(params).catch((e) => { setError(trainingError(e)); throw e; }), []);
+  const waiting = useWaitingForMe("training-record-exports", () => table.setCurrentPage(1), false);
   const extra = useMemo(() => ({
     status: status || undefined, department: departmentFilter || undefined,
     ...requestedRange.params("requestedFrom", "requestedTo"), ...generatedRange.params("generatedFrom", "generatedTo"),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [status, departmentFilter, requestedRange.from, requestedRange.to, generatedRange.from, generatedRange.to]);
-  const table = useServerTable<TrainingRecordExport>({ persistKey: "training.exports.personal", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: extra, initialItemsPerPage: 10 });
+  const table = useServerTable<TrainingRecordExport>({ persistKey: "training.exports.personal", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: { ...extra, ...waiting.params }, initialItemsPerPage: 10 });
 
   const searchPeople = useCallback(async (query: string) => {
     const list = await trainingActivitiesApi.people(query).catch(() => []);
@@ -152,6 +156,7 @@ export function ExportsPersonalTab({ creating, setCreating }: { creating: boolea
   return (
     <div className="space-y-4">
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {waiting.node}
       <ReportListToolbar searchPlaceholder={tr("Search employee, code or reason…")} search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([requestedRange.filter, generatedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || requestedRange.isSet || generatedRange.isSet || table.searchQuery)}

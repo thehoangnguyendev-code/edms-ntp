@@ -26,18 +26,18 @@ public class EmailDesignController {
     /** The colours and alignments are optional in a request: a client that does not send them keeps the look every email had before. */
     public record DesignBody(String logoUrl, String logoText, String brandColor, String buttonColor, String bodyColor, String footerColor, String logoAlign, String footerAlign,
                              String headerTextColor, String headerFontFamily, String bodyTextColor, String footerTextColor,
-                             String fontFamily, String footerText, String supportEmail, Integer expectedVersion) {
+                             String fontFamily, String footerText, String supportEmail, String footerTextVi, String buttonSize, Boolean showButtonLink, Integer expectedVersion) {
         EmailDesignService.Change toChange() {
             return new EmailDesignService.Change(logoUrl, logoText, brandColor, buttonColor == null ? brandColor : buttonColor, bodyColor == null ? "#FFFFFF" : bodyColor, footerColor == null ? "#F8FAFC" : footerColor,
                     logoAlign == null ? "LEFT" : logoAlign, footerAlign == null ? "LEFT" : footerAlign,
                     headerTextColor == null ? "#FFFFFF" : headerTextColor, headerFontFamily, bodyTextColor == null ? "#334155" : bodyTextColor,
-                    footerTextColor == null ? "#6B7280" : footerTextColor, fontFamily, footerText, supportEmail);
+                    footerTextColor == null ? "#6B7280" : footerTextColor, fontFamily, footerText, supportEmail, footerTextVi, buttonSize == null ? "MEDIUM" : buttonSize, showButtonLink == null || showButtonLink);
         }
     }
 
     public record DesignResponse(String logoUrl, String logoText, String brandColor, String buttonColor, String bodyColor, String footerColor, String logoAlign, String footerAlign,
                                  String headerTextColor, String headerFontFamily, String bodyTextColor, String footerTextColor, String fontFamily, String footerText, String supportEmail, int version, String updatedBy, Instant updatedAt,
-                                 List<String> fonts, String headerTitle) {
+                                 List<String> fonts, String headerTitle, String footerTextVi, String buttonSize, boolean showButtonLink) {
     }
 
     public record PreviewResponse(String html) {
@@ -90,14 +90,14 @@ public class EmailDesignController {
         String content = "<h2>Action needed: return controlled copy CC-0042-007</h2>"
                 + EmailFrameRenderer.paragraphs("Dear Nguyen Van A,\n\nThe controlled copy CC-0042-007 has been recalled because the SOP was revised. "
                 + "Please return the paper copy to Document Control by 20/11/2026.")
-                + EmailFrameRenderer.button("Open the recall", "https://eqms.example/controlled-copies/42", change.buttonColor());
+                + EmailFrameRenderer.button("Open the recall", "https://eqms.example/controlled-copies/42", change.buttonColor(), false, change.buttonSize(), change.showButtonLink());
         return ResponseEntity.ok(new PreviewResponse(EmailFrameRenderer.render(draft, content, service.headerTitle(), true)));
     }
 
     private DesignResponse toResponse(EmailDesign d) {
         return new DesignResponse(d.getLogoUrl(), d.getLogoText(), d.getBrandColor(), d.getButtonColor(), d.getBodyColor(), d.getFooterColor(), d.getLogoAlign(), d.getFooterAlign(),
                 d.getHeaderTextColor(), d.getHeaderFontFamily(), d.getBodyTextColor(), d.getFooterTextColor(), d.getFontFamily(), d.getFooterText(), d.getSupportEmail(), d.getVersion(), d.getUpdatedBy(), d.getUpdatedAt(),
-                EmailFrameRenderer.SAFE_FONTS, service.headerTitle());
+                EmailFrameRenderer.SAFE_FONTS, service.headerTitle(), d.getFooterTextVi(), d.getButtonSize(), d.isShowButtonLink());
     }
 
     private void requireView() {

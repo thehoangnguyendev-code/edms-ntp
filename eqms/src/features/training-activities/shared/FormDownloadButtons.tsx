@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button/Button";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePortalDropdown } from "@/hooks/usePortalDropdown";
+import { tr } from "@/i18n";
 import {
   trainingError,
   type TrainingFormFormat,
 } from "@/services/api/trainingActivities";
 import { saveBlob } from "./trainingLabels";
-import { tr } from "@/i18n";
 
 /**
  * The Export button of a form of the company: one button that opens the choice of PDF File or Word File. The file is written by the server in the Word template that Training Administration
@@ -23,7 +23,7 @@ export function FormDownloadButtons({
   fileName,
   parts,
   label,
-  buttonText = "Export",
+  buttonText = tr("Export"),
 }: {
   load?: (format: TrainingFormFormat) => Promise<Blob>;
   fileName?: (format: TrainingFormFormat) => string;

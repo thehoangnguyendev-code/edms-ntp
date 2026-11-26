@@ -377,7 +377,7 @@ export const TwoFactorView: React.FC<TwoFactorViewProps> = ({
                             className={cn(isSendingEmail ? "animate-spin opacity-80" : "opacity-100")}
                             style={isSendingEmail ? { animationDuration: "1s" } : {}}
                           />
-                          {isSendingEmail ? "Sending code..." : canResend ? tr("Resend Code") : `Resend in ${resendTimer}s`}
+                          {isSendingEmail ? tr("Sending code...") : canResend ? tr("Resend Code") : `Resend in ${resendTimer}s`}
                         </button>
                       )}
 

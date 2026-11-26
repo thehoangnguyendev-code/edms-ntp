@@ -34,6 +34,7 @@ import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/docum
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type ResultModalState = {
   isOpen: boolean;
@@ -292,7 +293,7 @@ export const DocumentSubTypesView: React.FC = () => {
     { id: "name", header: tr("Sub-Type Name"), label: tr("Sub-Type Name"), sort: { direction: sortConfig.key === "name" ? sortConfig.direction : undefined, onSort: () => handleSort("name") }, cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
     { id: "documentType", header: tr("Document Type"), label: tr("Document Type"), cell: (item) => <span className="text-slate-700">{item.documentType || "-"}</span> },
     { id: "description", header: "Description", label: "Description", cellClassName: "text-slate-600 max-w-md truncate", cell: (item) => item.description || "-" },
-    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>) },
+    { id: "isActive", header: "Status", label: "Status", sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") }, cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>) },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];
   const subTypesAction: DataTableAction<Row> = {

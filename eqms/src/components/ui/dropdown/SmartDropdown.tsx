@@ -141,6 +141,7 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
           left: left ?? position.left,
           maxHeight: position.maxHeight,
           minWidth: `min(${minWidth}px, calc(100vw - 16px))`,
+          width: 'max-content',
           maxWidth: 'calc(100vw - 16px)',
           zIndex: 50,
         }}
@@ -209,7 +210,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
       )}
     >
       {icon && <span className="h-4 w-4 shrink-0 text-slate-500">{icon}</span>}
-      <span>{children}</span>
+      <span className="whitespace-nowrap">{children}</span>
     </button>
   );
 };

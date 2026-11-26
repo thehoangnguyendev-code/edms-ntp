@@ -110,7 +110,20 @@ public class AccessReviewService {
     public com.eqms.dto.user.PageResponse<CampaignSummaryResponse> listPaged(
             int page, int limit, String search, String status, String createdFrom, String createdTo,
             String updatedFrom, String updatedTo, String sortBy, String sortDir) {
-        java.util.List<CampaignSummaryResponse> filtered = listCampaigns().stream()
+        return listPaged(page, limit, search, status, createdFrom, createdTo, updatedFrom, updatedTo, false, sortBy, sortDir);
+    }
+
+    /** {@code waitingForMe}: only the campaigns still in progress whose reviewer is the person who asks. */
+    @Transactional
+    public com.eqms.dto.user.PageResponse<CampaignSummaryResponse> listPaged(
+            int page, int limit, String search, String status, String createdFrom, String createdTo,
+            String updatedFrom, String updatedTo, boolean waitingForMe, String sortBy, String sortDir) {
+        requireView();
+        // Only the campaigns that are asked for are summarised: this list is also what the menu counts.
+        java.util.List<AccessReviewCampaign> campaigns = waitingForMe
+                ? campaignRepo.findAllByStatusAndReviewer_Id("IN_PROGRESS", currentUserService.requireCurrentUser().getId())
+                : campaignRepo.findAllByOrderByCreatedAtDesc();
+        java.util.List<CampaignSummaryResponse> filtered = campaigns.stream().map(this::toSummary)
                 .filter(c -> {
                     if (org.springframework.util.StringUtils.hasText(status)
                             && !"ALL".equalsIgnoreCase(status) && !c.status().equalsIgnoreCase(status)) return false;

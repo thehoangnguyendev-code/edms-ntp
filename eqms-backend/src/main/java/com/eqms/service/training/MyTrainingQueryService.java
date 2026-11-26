@@ -54,18 +54,18 @@ public class MyTrainingQueryService {
                case a.object_type when 'TRAINING_ACTIVITY' then t.training_number when 'TRAINING_JOB_ASSIGNMENT' then 'JA #' || ja.issue_no
                  when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen #' || sp.version_no when 'TRAINING_RECORD_EXPORT' then 'Export' when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export'
                  when 'TRAINING_REQUIREMENT' then rq.request_no when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy evidence'
-                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception' else m.code || ' v' || mv.version_no end as training_number,
+                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception' when 'TRAINING_PERSONNEL_REVIEW' then 'Review ' || pr.review_no else m.code || ' v' || mv.version_no end as training_number,
                case a.object_type when 'TRAINING_ACTIVITY' then training_activity_topics(t.id) when 'TRAINING_JOB_ASSIGNMENT' then 'Job assignment of ' || jau.full_name
                  when 'TRAINING_SPECIMEN_SIGNATURE' then 'Specimen signature of ' || spu.full_name
                  when 'TRAINING_RECORD_EXPORT' then 'Training record export of ' || exu.full_name
                  when 'TRAINING_RECORD_EXPORT_BATCH' then 'Batch export of training records, ' || bxd.name || ' ' || bx.year
                  when 'TRAINING_REQUIREMENT' then 'Training requirement ' || rq.request_no
                  when 'TRAINING_LEGACY_EVIDENCE' then 'Legacy training evidence of ' || lev.document_number
-                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number else 'Training matrix' end as subject,
+                 when 'TRAINING_TRAINER_EXCEPTION' then 'Trainer exception for ' || tea.training_number when 'TRAINING_PERSONNEL_REVIEW' then 'Training review of ' || pru.full_name else 'Training matrix' end as subject,
                case a.object_type when 'TRAINING_ACTIVITY' then t.status when 'TRAINING_JOB_ASSIGNMENT' then ja.status
                  when 'TRAINING_SPECIMEN_SIGNATURE' then sp.status when 'TRAINING_RECORD_EXPORT' then ex.status when 'TRAINING_RECORD_EXPORT_BATCH' then bx.status
                  when 'TRAINING_REQUIREMENT' then rq.status when 'TRAINING_LEGACY_EVIDENCE' then lev.status
-                 when 'TRAINING_TRAINER_EXCEPTION' then te.status else mv.status end as status,
+                 when 'TRAINING_TRAINER_EXCEPTION' then te.status when 'TRAINING_PERSONNEL_REVIEW' then pr.status else mv.status end as status,
                a.assigned_at, coalesce(t.id, te.activity_id) as activity_id
           from training_approval_assignments a
           left join training_activities t on a.object_type = 'TRAINING_ACTIVITY' and t.id = a.object_id
@@ -83,7 +83,11 @@ public class MyTrainingQueryService {
           left join training_legacy_evidence lev on a.object_type = 'TRAINING_LEGACY_EVIDENCE' and lev.id = a.object_id
           left join training_trainer_exceptions te on a.object_type = 'TRAINING_TRAINER_EXCEPTION' and te.id = a.object_id
           left join training_activities tea on tea.id = te.activity_id
+          left join training_personnel_reviews pr on a.object_type = 'TRAINING_PERSONNEL_REVIEW' and pr.id = a.object_id
+          left join app_users pru on pru.id = pr.person_user_id
          where a.assignee_user_id = ? and a.status = 'PENDING'
+        """ + TrainingWaiting.NOT_BEFORE_READY + """
+
         union all
         select 'job-' || j.id, 'RECEIVER_ACCEPT', 'TRAINING_JOB_ASSIGNMENT', j.id, 'JA #' || j.issue_no,
                'Job assignment: ' || (select string_agg(r.name, ', ' order by ar.sort_order) from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id where ar.assignment_id = j.id), j.status, j.created_at, null::uuid

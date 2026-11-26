@@ -161,7 +161,7 @@ export const InAppDesignView: React.FC = () => {
     showToast({
       type: "info",
       title: tr("Test notification"),
-      message: `This is how a system message looks: this colour, this place, ${time} seconds.`,
+      message: trFormat("This is how a system message looks: this colour, this place, {seconds} seconds.", { seconds: time }),
       color: form.toastColor,
       shadow: form.toastShadow,
       position: form.toastPosition,
@@ -367,11 +367,11 @@ export const InAppDesignView: React.FC = () => {
                   <FormField
                     label={tr("Toast Display Time (Seconds)")}
                     htmlFor="iad-seconds"
-                    hint={`How long a system message stays on screen before it goes away (${MIN_SECONDS} to ${MAX_SECONDS}).`}
+                    hint={trFormat("How long a system message stays on screen before it goes away ({min} to {max}).", { min: MIN_SECONDS, max: MAX_SECONDS })}
                     error={
                       secondsOk
                         ? undefined
-                        : `Enter a whole number from ${MIN_SECONDS} to ${MAX_SECONDS}.`
+                        : trFormat("Enter a whole number from {min} to {max}.", { min: MIN_SECONDS, max: MAX_SECONDS })
                     }
                   >
                     <Input

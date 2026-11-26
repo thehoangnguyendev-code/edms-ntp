@@ -290,7 +290,9 @@ const FOUNDATION_MODULES: NavItem[] = [
           "training.requirement.view",
           "training.activity.view",
           "training.matrix.view",
-          "training.assessment.design",
+          "training.assessment.view",
+          "training.assessment.manage",
+          "training.assessment.manage_all",
           "training.assessment.approve",
         ],
         children: [
@@ -317,7 +319,9 @@ const FOUNDATION_MODULES: NavItem[] = [
             label: "Training Assessments",
             path: ROUTES.TRAINING.ASSESSMENTS,
             allowedPermissions: [
-              "training.assessment.design",
+              "training.assessment.view",
+              "training.assessment.manage",
+              "training.assessment.manage_all",
               "training.assessment.approve",
             ],
           },

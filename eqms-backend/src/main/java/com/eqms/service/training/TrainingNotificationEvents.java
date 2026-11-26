@@ -68,7 +68,6 @@ public final class TrainingNotificationEvents {
             new Event("TRAINING_RECORDED", "Training Recorded", "The training was recorded in the training record of the person.", "LOW"),
             new Event("TRAINING_REQUIREMENT_APPROVED", "Training Requirement Approved", "A training requirement was approved.", "MEDIUM"),
             new Event("TRAINING_REQUIREMENT_REJECTED", "Training Requirement Sent Back", "A training requirement was sent back.", "HIGH"),
-            new Event("TRAINING_RETURNED", "Training Results Returned", "QA returned the results of a training.", "HIGH"),
             new Event("TRAINING_MATRIX_APPROVED", "Training Matrix Approved", "A training matrix was approved and is effective.", "MEDIUM"),
             new Event("TRAINING_MATRIX_REJECTED", "Training Matrix Sent Back", "A training matrix was sent back.", "HIGH"));
 

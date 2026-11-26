@@ -374,8 +374,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
             size="sm"
             onClick={() => setRefresh((value) => value + 1)}
           >
-            Retry
-          </Button>
+            {tr("Retry")}</Button>
         </div>
       )}
       <ReportListToolbar
@@ -474,8 +473,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                 close();
               }}
             >
-              View Detail
-            </DropdownMenuItem>
+              {tr("View Detail")}</DropdownMenuItem>
             {!inAdministration && rowCan("createReport") && (
               <DropdownMenuItem
                 icon={<FilePlus2 className="h-4 w-4" />}
@@ -484,8 +482,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                   close();
                 }}
               >
-                Create Report
-              </DropdownMenuItem>
+                {tr("Create Report")}</DropdownMenuItem>
             )}
             {/* Changing a template belongs to Report Templates; an effective revision is changed by Upgrade, on its details page. */}
             {inAdministration && (rowCan("edit") || rowCan("delete")) && (
@@ -515,8 +512,7 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
                         close();
                       }}
                     >
-                      Delete Report Template
-                    </DropdownMenuItem>
+                      {tr("Delete Report Template")}</DropdownMenuItem>
                   </>
                 )}
               </>

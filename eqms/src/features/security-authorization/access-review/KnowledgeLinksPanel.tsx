@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Check, MoreVertical, Search, X } from "lucide-react";
 import { IconFilter2, IconLinkOff } from "@tabler/icons-react";
@@ -23,6 +24,7 @@ import { knowledgeSharesApi, type KnowledgeLinkAdminRow } from "@/services/api/k
 import { formatDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr, trFormat } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: "ALL", label: "All" },
@@ -31,7 +33,7 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: "REVOKED", label: "Revoked" },
 ];
 
-const STATUS_COLOR = { ACTIVE: "emerald", EXPIRED: "slate", REVOKED: "red" } as const;
+const STATUS_COLOR = statusColors("ACTIVE", "EXPIRED", "REVOKED");
 const STATUS_LABEL = { ACTIVE: "Active", EXPIRED: "Expired", REVOKED: "Revoked" } as const;
 const LEVEL_LABEL: Record<string, string> = {
   ADMIN: "Administrator", UNIT_HEAD: "Head of Unit", DEPARTMENT_HEAD: "Department Head", DELEGATE: "Shares for the Head",
@@ -175,7 +177,7 @@ export const KnowledgeLinksPanel: React.FC = () => {
               ref={getRef(r.id)}
               onClick={(e) => toggle(r.id, e)}
               className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 sm:h-8 sm:w-8"
-              aria-label={`Actions for the link to ${r.label}`}
+              aria-label={__ariaTrFormat("Actions for the link to {v1}", { v1: r.label })}
             >
               <MoreVertical className="h-4 w-4 text-slate-600" />
             </button>

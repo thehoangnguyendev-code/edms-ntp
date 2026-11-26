@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
+import { FilePlus2, ScanSearch } from "lucide-react";
+import { IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -23,6 +25,7 @@ import { TrainingPersonRelatedCard } from "../shared/TrainingPersonRelatedCard";
 import { trFormat, tr } from "@/i18n";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL } from "./personnelReviewLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
+import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
 
 const ITEM_STATUS = { PENDING: "Pending", DONE: "Done", NOT_NEEDED: "Not needed" } as const;
 const ITEM_COLOR = { PENDING: "amber", DONE: "emerald", NOT_NEEDED: "slate" } as const;
@@ -69,6 +72,29 @@ export function PersonnelReviewDetailPage() {
     }
   }, [showToast]);
 
+  // Creates the training activity the item asks for, links it, and opens it to add the session and the list.
+  const startTraining = async (item: TrainingReviewItem) => {
+    setBusy(true);
+    try {
+      const next = await trainingReviewsApi.createTraining(reviewId, item.itemCode);
+      setReview(next);
+      navigate(`/training-management/activities/${next.createdActivityId}/edit`);
+    } catch (e) {
+      showToast({ type: "error", title: tr("The training was not created"), message: trainingError(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const rows = (review?.items ?? []).map((item) => ({ ...item, id: item.itemCode }));
+  const rowMenu = useTrainingRowMenu(rows, (i) => {
+    const edit = Boolean(review?.capabilities.editItems);
+    return [
+      ...(edit ? [{ label: "Update", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => setEditing(i) }] : []),
+      ...(edit && i.canLink && !i.activityId && i.status === "PENDING" && !busy ? [{ label: "Create training", icon: <FilePlus2 className="h-4 w-4" />, onClick: () => void startTraining(i) }] : []),
+      ...(i.activityId ? [{ label: "View scanned tests", icon: <ScanSearch className="h-4 w-4" />, onClick: () => setScans(i.activityId ?? undefined) }] : []),
+    ];
+  });
+
   const title = "Training Review Details";
   const crumbs = trainingBreadcrumbs(navigate, "reviews", title);
   if (!review) {
@@ -80,23 +106,10 @@ export function PersonnelReviewDetailPage() {
     );
   }
   const caps = review.capabilities;
-  // Creates the training activity the item asks for, links it, and opens it to add the session and the list.
-  const startTraining = async (item: TrainingReviewItem) => {
-    setBusy(true);
-    try {
-      const next = await trainingReviewsApi.createTraining(review.id, item.itemCode);
-      setReview(next);
-      navigate(`/training-management/activities/${next.createdActivityId}/edit`);
-    } catch (e) {
-      showToast({ type: "error", title: tr("The training was not created"), message: trainingError(e) });
-    } finally {
-      setBusy(false);
-    }
-  };
   const tabs: TabItem[] = [{ id: "overview", label: tr("General Information") }, { id: "checklist", label: "Checklist", count: review.items.length }, { id: "gaps", label: tr("Matrix Gaps"), count: gaps ? gaps.missing + gaps.due : undefined }, { id: "audit", label: tr("Audit Trail") }];
-  const columns: DataTableColumn<TrainingReviewItem>[] = [
+  const columns: DataTableColumn<(typeof rows)[number]>[] = [
     { id: "no", header: "No.", locked: true, cell: (_i, n) => n + 1 },
-    { id: "item", header: "To do", cell: (i) => <div className="max-w-80 whitespace-normal"><div className="font-medium text-slate-900">{i.label}</div><div className="text-xs text-slate-500">{i.hint}</div></div> },
+    { id: "item", header: "To do", cell: (i) => <div className="max-w-80 whitespace-normal"><div className="font-medium text-slate-900">{tr(i.label)}</div><div className="text-xs text-slate-500">{tr(i.hint)}</div></div> },
     { id: "status", header: "State", cell: (i) => <Badge color={ITEM_COLOR[i.status]}>{ITEM_STATUS[i.status]}</Badge> },
     { id: "activity", header: "Training", cell: (i) => (i.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${i.activityId}`)}>{i.trainingNumber}</button> : i.canLink ? <span className="text-slate-400">{tr("not linked")}</span> : "—") },
     {
@@ -104,24 +117,13 @@ export function PersonnelReviewDetailPage() {
       header: tr("System check"),
       cell: (i) => (i.systemCheck ? (
         <div className="max-w-72 whitespace-normal">
-          <Badge color={i.systemCheck.found ? "emerald" : "amber"}>{i.systemCheck.found ? "Found" : "Not yet"}</Badge>
-          <div className="mt-1 text-xs text-slate-600">{i.systemCheck.text}</div>
+          <Badge color={i.systemCheck.found ? "emerald" : "amber"}>{i.systemCheck.found ? tr("Found") : tr("Not yet")}</Badge>
+          <div className="mt-1 text-xs text-slate-600">{i.systemCheck.parts.map((p) => trFormat(p.template, p.values)).join(" ")}</div>
         </div>
       ) : "—"),
     },
     { id: "note", header: "Description", cell: (i) => <div className="max-w-64 whitespace-normal text-xs text-slate-600">{i.note ?? "—"}</div> },
     { id: "done", header: "Done by", cell: (i) => (i.doneByName ? <div><div>{i.doneByName}</div><div className="text-xs text-slate-500">{when(i.doneAt)}</div></div> : "—") },
-    {
-      id: "actions",
-      header: "Action",
-      cell: (i) => (caps.editItems || i.activityId ? (
-        <div className="flex flex-wrap gap-2">
-          {caps.editItems && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>{tr("Update")}</Button>}
-          {caps.editItems && i.canLink && !i.activityId && i.status === "PENDING" && <Button size="sm" variant="outline-emerald" disabled={busy} onClick={() => void startTraining(i)}>{tr("Create training")}</Button>}
-          {i.activityId && <Button size="sm" variant="outline" onClick={() => setScans(i.activityId ?? undefined)}>{tr("View scanned tests")}</Button>}
-        </div>
-      ) : null),
-    },
   ];
   const searchClosers = async (query: string) => {
     const page = await trainingReviewsApi.eligibleClosers(review.personUserId, query).catch(() => undefined);
@@ -143,7 +145,7 @@ export function PersonnelReviewDetailPage() {
         tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
         {review.readyToClose && (
           <p role="status" className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            {tr("Every item is settled.")} {review.closerName ? `${review.closerName} must check the review and sign to close it.` : tr("A person who may close the review must check it and sign.")}
+            {tr("Every item is settled.")} {review.closerName ? trFormat("{name} must check the review and sign to close it.", { name: review.closerName }) : tr("A person who may close the review must check it and sign.")}
           </p>
         )}
         {tab === "overview" && (
@@ -159,7 +161,7 @@ export function PersonnelReviewDetailPage() {
             {review.kind === "ABSENCE_RETURN" && (
               <>
                 <ReadonlyField label={tr("Absent from")} value={day(review.absenceFrom)} />
-                <ReadonlyField label={tr("Absent until")} value={`${day(review.absenceTo)}${review.absenceOverSixMonths ? " (more than six months)" : " (six months or less)"}`} />
+                <ReadonlyField label={tr("Absent until")} value={`${day(review.absenceTo)} ${tr(review.absenceOverSixMonths ? "(more than six months)" : "(six months or less)")}`} />
               </>
             )}
             {(review.kind === "DEPT_TRANSFER" || review.kind === "LOCATION_TRANSFER") && (
@@ -176,10 +178,13 @@ export function PersonnelReviewDetailPage() {
           </ReadonlyGrid>
         )}
         {tab === "checklist" && (
-          <TabBlock title={tr("Checklist of the SOP")}>
-            <p className="px-4 py-3 text-xs text-slate-500">{tr("Each item is done by people, not by the system. Mark it done, or not needed with the reason, and link the training that was organised. The review is closed by someone other than the employee, with a signature, when no item is pending.")}</p>
-            <DataTable rows={review.items} getRowKey={(i) => i.itemCode} columns={columns} />
-          </TabBlock>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">{tr("Each item is done by people, not by the system. Mark it done, or not needed with the reason, and link the training that was organised. The review is closed by someone other than the employee, with a signature, when no item is pending.")}</p>
+            <TabBlock title={tr("Checklist of the SOP")}>
+              <DataTable rows={rows} getRowKey={(i) => i.id} columns={columns} action={rowMenu.action} />
+            </TabBlock>
+            {rowMenu.node}
+          </div>
         )}
         {tab === "gaps" && (
           <div className="space-y-4">
@@ -205,7 +210,7 @@ export function PersonnelReviewDetailPage() {
                     columns={[
                       { id: "rowNo", header: "No.", locked: true, cell: (_g, i) => i + 1 },
                       { id: "topic", header: tr("Required training"), cell: (g) => <div className="max-w-96 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}</div> },
-                      { id: "annual", header: "Annual", cell: (g) => (g.annualRequired ? "Yes" : "No") },
+                      { id: "annual", header: "Annual", cell: (g) => (g.annualRequired ? tr("Yes") : tr("No")) },
                       { id: "last", header: tr("Last trained"), cell: (g) => day(g.lastDone) },
                       { id: "status", header: "Status", cell: (g) => <Badge color={GAP_COLOR[g.status]}>{GAP_LABEL[g.status]}</Badge> },
                     ] as DataTableColumn<TrainingGap>[]}
@@ -256,7 +261,7 @@ function ItemDialog({ item, personName, busy, onClose, onSave }: { item: Trainin
   }, []);
   useEffect(() => { if (item.canLink) void search(""); }, [item.canLink, search]);
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status, activityId: item.canLink ? activityId || null : null, note: note.trim() || null })} title={item.label} description={`For ${personName}. ${item.hint}`}
+    <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status, activityId: item.canLink ? activityId || null : null, note: note.trim() || null })} title={tr(item.label)} description={`${trFormat("For {name}.", { name: personName })} ${tr(item.hint)}`}
       confirmText="Save" isLoading={busy} confirmDisabled={status === "NOT_NEEDED" && !note.trim()} size="xl">
       <div className="grid gap-4">
         <FormField label={tr("State")} required><Select value={status} enableSearch={false} onChange={setStatus} options={Object.entries(ITEM_STATUS).map(([value, label]) => ({ value, label }))} /></FormField>

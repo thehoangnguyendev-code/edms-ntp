@@ -301,8 +301,8 @@ describe("Results in Training Activity Details", () => {
     expect(await screen.findByText("TRN-QA-26-070_E-1_Trainee 1.pdf")).toBeTruthy();
     expect(screen.getByText("10 / 20 (50%)")).toBeTruthy();
     expect(screen.getByText("18 / 20 (90%)")).toBeTruthy();
-    expect(screen.getByText("Not passed")).toBeTruthy();
-    expect(screen.getByText("Passed")).toBeTruthy();
+    expect(screen.getByText("Not qualified")).toBeTruthy();
+    expect(screen.getByText("Qualified")).toBeTruthy();
     // the sub tab is below the Back and command buttons, and the page has no tab of that name any more
     const subTab = screen.getByRole("tab", { name: /^Results/ });
     const backButtons = screen.getAllByRole("button", { name: "Back" });

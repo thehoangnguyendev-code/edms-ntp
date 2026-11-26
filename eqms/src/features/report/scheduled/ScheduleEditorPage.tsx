@@ -22,7 +22,7 @@ import {
   type ReportScheduleDetail,
 } from "@/services/api/reports";
 import { reportError, type ReportTemplate } from "@/services/api/reportTemplates";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 const blank = (): ReportScheduleDetail => ({
   id: "",
@@ -109,7 +109,7 @@ export function ScheduleEditorPage() {
       { id: "criteria", label: tr("Criteria & Columns"), count: template ? (draft.fields?.length ?? 0) : undefined },
       { id: "recipients", label: tr("Recipients"), count: draft.recipientUserIds?.length ?? 0 },
     ],
-    [template, draft.fields, draft.recipientUserIds],
+    [template, draft.fields, draft.recipientUserIds, getCatalogLanguage()],
   );
   const actions = (
     <>

@@ -19,6 +19,7 @@ import { trainingActivitiesApi, trainingError, type TrainingActivitySummary } fr
 import { dictionaryApi } from "@/services/api/dictionary";
 import { KIND_LABEL, KIND_REASON_LABEL, METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day, when, trainingBreadcrumbs, TRAINING_PAGES } from "../shared/trainingLabels";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 const STATUSES = ["PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED", "RESERVED"];
 
@@ -56,13 +57,14 @@ export function TrainingActivityListView() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-activities", () => table.setCurrentPage(1));
   const extraParams = useMemo(() => ({
     status, kind, overdue: overdue === "yes" ? true : undefined, year: year || undefined, departmentId: departmentId || undefined,
     method: method || undefined, kindReason: reason || undefined, onPaper: paper === "yes" ? true : paper === "no" ? false : undefined,
     scheduledFrom: pickerDateToIso(scheduledFrom) || undefined, scheduledTo: pickerDateToIso(scheduledTo) || undefined, dueFrom: pickerDateToIso(dueFrom) || undefined, dueTo: pickerDateToIso(dueTo) || undefined,
     createdFrom: pickerDateToIso(createdFrom) || undefined, createdTo: pickerDateToIso(createdTo) || undefined,
   }), [status, kind, overdue, year, departmentId, method, reason, paper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo]);
-  const table = useServerTable<TrainingActivitySummary>({ persistKey: "training.activities", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams, initialItemsPerPage: 10 });
+  const table = useServerTable<TrainingActivitySummary>({ persistKey: "training.activities", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "createdAt", defaultSortDirection: "desc", extraParams: { ...extraParams, ...waiting.params }, initialItemsPerPage: 10 });
   useEffect(() => setError(""), [table.items]);
 
   const reset = (apply: () => void) => {
@@ -110,7 +112,7 @@ export function TrainingActivityListView() {
     { id: "sessions", header: tr("Sessions"), sort: sorted("sessionCount"), cell: (r) => r.sessionCount ?? 0 },
     { id: "people", header: "People", sort: sorted("participantCount"), cell: (r) => r.participantCount },
     { id: "attended", header: "Attended", sort: sorted("attendedCount"), cell: (r) => (r.participantCount ? `${r.attendedCount ?? 0} / ${r.participantCount}` : "—") },
-    { id: "passed", header: "Passed", sort: sorted("passedCount"), cell: (r) => (r.participantCount ? `${r.passedCount ?? 0} / ${r.participantCount}` : "—") },
+    { id: "passed", header: "Qualified", sort: sorted("passedCount"), cell: (r) => (r.participantCount ? `${r.passedCount ?? 0} / ${r.participantCount}` : "—") },
     { id: "due", header: "Due", sort: sorted("dueDate"), cell: (r) => day(r.dueDate) },
     { id: "createdBy", header: "Opened By", sort: sorted("createdByName"), cell: (r) => r.createdByName ?? "—" },
     { id: "createdAt", header: "Created", sort: sorted("createdAt"), cell: (r) => when(r.createdAt) },
@@ -150,6 +152,7 @@ export function TrainingActivityListView() {
           {error}
         </p>
       )}
+      {waiting.node}
       <ReportListToolbar
         searchPlaceholder={tr("Search number, Training Topic, trainer, document, creator…")}
         search={table.searchQuery}

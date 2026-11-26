@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useState, type ReactNode } from "react";
 import { CloudUpload, Download, ExternalLink, Eye, Link2, Lock, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -173,7 +174,7 @@ export function TrainingMaterialsBoard(props: Props) {
       <button
         type="button"
         ref={menu.getRef(m.id)}
-        aria-label={`More actions for ${m.title}`}
+        aria-label={__ariaTrFormat("More actions for {v1}", { v1: m.title })}
         className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 md:h-8 md:w-8 ${className}`}
         onClick={(event) => menu.toggle(m.id, event)}
       >

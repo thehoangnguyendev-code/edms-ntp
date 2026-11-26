@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Bell, ChevronLeft, ChevronRight, Eye, Home, Search, Star, ThumbsUp } from "lucide-react";
@@ -153,7 +154,7 @@ export const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ overview, nav,
                       type="button"
                       onClick={() => onGo({ kind: "kb", kb: { key: kb.key, label: kb.label }, path: [] })}
                       aria-current={active ? "page" : undefined}
-                      aria-label={`Open ${kb.label}`}
+                      aria-label={__ariaTrFormat("Open {v1}", { v1: kb.label })}
                       title={kb.label}
                       className={cn(
                         "flex w-full justify-center rounded-lg p-2 transition-colors",

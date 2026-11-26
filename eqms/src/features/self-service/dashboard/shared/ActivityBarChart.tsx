@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { memo, useMemo } from 'react';
 import type { ChartConfiguration } from 'chart.js';
 import { ChartCanvas, barValueLabels, emphasize } from '@/components/ui/chart';
@@ -86,7 +87,7 @@ const ActivityBarChartBase: React.FC<ActivityBarChartProps> = ({ data, color, va
 
   return (
     <LazyMount style={{ height }} className="px-2 pb-3 pt-2" placeholder={<div className="h-full animate-pulse rounded-lg bg-slate-50" aria-hidden />}>
-      <ChartCanvas config={config} ariaLabel={`${valueLabel} by ${data.length} groups`} />
+      <ChartCanvas config={config} ariaLabel={__ariaTrFormat("{v1} by {v2} groups", { v1: valueLabel, v2: data.length })} />
     </LazyMount>
   );
 };

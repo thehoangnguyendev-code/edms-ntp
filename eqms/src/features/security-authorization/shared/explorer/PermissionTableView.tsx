@@ -3,7 +3,7 @@ import { Check, Lock } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
 import type { Permission } from "../permission-types";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 interface PermissionTableViewProps {
   permissions: Permission[];
@@ -95,7 +95,7 @@ export const PermissionTableView: React.FC<PermissionTableViewProps> = ({ permis
       },
     );
     return list;
-  }, [showTick, selectedCodes, disabled, isLocked, lockedNotes, onToggle]);
+  }, [showTick, selectedCodes, disabled, isLocked, lockedNotes, onToggle, getCatalogLanguage()]);
 
   return (
     <DataTable

@@ -36,6 +36,7 @@ import { createEmptyNotificationSummaryCounts } from "./types";
 import { formatNotificationDateTime, notificationDayGroup, notificationDayKey, type NotificationDayGroup } from "./date";
 import { getNotificationTypeIcon, getNotificationIconStyles } from "./notificationMeta";
 import { tr, useLanguage } from "@/i18n";
+import { priorityColor } from "@/components/ui/badge/statusColors";
 
 /** The modules that send notifications, for the filter of the inbox (the names of the menu; the server finds every spelling of a module in the table). */
 const INBOX_MODULES = ["documents", "controlled-copies", "training", "reports", "access-review", "security", "backup", "audit-trail"];
@@ -61,7 +62,7 @@ const SCOPE_OPTIONS: { label: string; value: NotificationFilterTab }[] = [
   { label: "Systems", value: "system" },
 ];
 
-const PRIORITY_COLOR: Record<NotificationPriority, BadgeColor> = { critical: "red", high: "red", medium: "amber", low: "emerald" };
+const PRIORITY_COLOR = Object.fromEntries((["critical", "high", "medium", "low"] as const).map((code) => [code, priorityColor(code)])) as Record<"critical" | "high" | "medium" | "low", BadgeColor>;
 const PRIORITY_DOT: Record<NotificationPriority, string> = { critical: "bg-red-500", high: "bg-red-500", medium: "bg-amber-500", low: "bg-emerald-500" };
 
 const GROUP_LABEL: Record<NotificationDayGroup, string> = { today: "Today", yesterday: "Yesterday", earlier: "Earlier" };
@@ -194,8 +195,8 @@ const InboxRow: React.FC<ItemProps> = ({ notification, isSelected, showCheckbox,
       )}
       <IconTile notification={notification} />
       <button type="button" onClick={() => onOpen(notification)} className={cn("min-w-0 flex-1 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none", FOCUS_RING)}>
-        <span className={cn("block break-words pr-8 text-pretty text-xs line-clamp-2 transition-colors group-hover:text-emerald-700 md:pr-0 md:text-sm", unread ? "font-bold text-slate-900" : "font-medium text-slate-500")}>{notification.title}</span>
-        <span className={cn("mt-0.5 block max-w-2xl break-words text-pretty text-xs line-clamp-1 md:text-sm", unread ? "text-slate-600" : "text-slate-500")}>{notification.description}</span>
+        <span className={cn("break-words pr-8 text-pretty text-xs line-clamp-2 transition-colors group-hover:text-emerald-700 md:pr-0 md:text-sm", unread ? "font-bold text-slate-900" : "font-medium text-slate-500")}>{notification.title}</span>
+        <span className={cn("mt-0.5 max-w-2xl break-words text-pretty text-xs line-clamp-1 md:text-sm", unread ? "text-slate-600" : "text-slate-500")}>{notification.description}</span>
         <span className="mt-1 block text-xs tabular-nums text-slate-500 md:hidden">{formatNotificationDateTime(notification.createdAt)}</span>
       </button>
       <div className="relative hidden h-9 w-40 shrink-0 items-center justify-end md:flex">
@@ -249,7 +250,7 @@ const TimelineCard: React.FC<ItemProps> = ({ notification, isSelected, showCheck
             <span className={cn("min-w-0 break-words text-pretty text-sm transition-colors group-hover:text-emerald-700", unread ? "font-bold text-slate-900" : "font-medium text-slate-500")}>{notification.title}</span>
             <Badge color={PRIORITY_COLOR[notification.priority] ?? "slate"} size="sm" className="shrink-0 capitalize">{notification.priority}</Badge>
           </span>
-          <span className={cn("mt-1 block break-words text-pretty text-sm line-clamp-2", unread ? "text-slate-600" : "text-slate-500")}>{notification.description}</span>
+          <span className={cn("mt-1 break-words text-pretty text-sm line-clamp-2", unread ? "text-slate-600" : "text-slate-500")}>{notification.description}</span>
           <span className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <StatusBadge status="draft" label={moduleDisplayName(notification.module)} className="text-slate-700 bg-slate-50 border-slate-200" size="sm" />
@@ -893,7 +894,7 @@ export const NotificationsView: React.FC = () => {
         <PortalDropdownMenu isOpen={true} onClose={headerMenu.close} position={headerMenu.position} minWidth={192}>
           <div className="py-1">
             {[
-              { icon: Download, label: isExporting ? tr("Exporting...") : "Export", disabled: isExporting, run: () => setIsExportOpen(true) },
+              { icon: Download, label: isExporting ? tr("Exporting...") : tr("Export"), disabled: isExporting, run: () => setIsExportOpen(true) },
               { icon: Trash2, label: tr("Clear read"), disabled: isBulkActionLoading, run: handleClearAllRead },
               { icon: ListChecks, label: tr("Select notifications"), disabled: false, run: () => setSelectMode(true) },
             ].map(({ icon: Icon, label, disabled, run }) => (

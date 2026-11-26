@@ -1,6 +1,7 @@
 // Adapted from turbostarter/loading-ui (MIT); see LICENSE.md and README.md.
 import type * as React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 function QuarterRing({ className, ...props }: React.ComponentProps<"span">) {
   return (
@@ -18,7 +19,7 @@ function QuarterRing({ className, ...props }: React.ComponentProps<"span">) {
         }}
         {...props}
       >
-        <span className="sr-only">Loading</span>
+        <span className="sr-only">{tr("Loading")}</span>
       </span>
     </>
   );

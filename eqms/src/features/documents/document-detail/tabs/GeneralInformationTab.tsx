@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox/Checkbox';
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
-import { useLanguage, tr } from "@/i18n";
+import { useLanguage, tr, trFormat } from "@/i18n";
 
 interface DocumentDetail {
   documentNumber: string;
@@ -179,7 +179,7 @@ export const GeneralInformationTab: React.FC<GeneralInformationTabProps> = ({
                     <Popover
                       title={tr("Selected")}
                       placement="top"
-                      triggerAriaLabel={`View ${hiddenCoAuthors.length} more selected items`}
+                      triggerAriaLabel={trFormat("View {count} more selected items", { count: hiddenCoAuthors.length })}
                       trigger={<span className="text-2xs font-medium">+{hiddenCoAuthors.length}</span>}
                       triggerClassName="inline-flex items-center rounded-lg bg-slate-100 px-1.5 py-0.5 text-2xs font-medium whitespace-nowrap text-slate-500 hover:bg-slate-200"
                       contentClassName="min-w-[180px] max-w-[280px]"

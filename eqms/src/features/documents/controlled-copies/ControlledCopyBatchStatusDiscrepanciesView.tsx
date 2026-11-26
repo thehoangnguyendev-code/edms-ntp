@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useBackNavigation } from "@/app/navigation/backNavigation";
@@ -280,7 +281,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                       variant="ghost"
                       size="icon-sm"
                       className="text-slate-500 hover:text-emerald-700"
-                      aria-label={`Open batch ${row.batchNumber}`}
+                      aria-label={__ariaTrFormat("Open batch {v1}", { v1: row.batchNumber })}
                       onClick={(event) => {
                         event.stopPropagation();
                         navigate(
@@ -307,7 +308,7 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
                       )
                     }
                     className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-amber-200 hover:bg-amber-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                    aria-label={`Open batch ${row.batchNumber}`}
+                    aria-label={__ariaTrFormat("Open batch {v1}", { v1: row.batchNumber })}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="flex min-w-0 items-center gap-2 font-semibold text-slate-900">

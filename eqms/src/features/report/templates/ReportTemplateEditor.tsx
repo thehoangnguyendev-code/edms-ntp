@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -319,28 +320,23 @@ export function ReportTemplateEditor() {
           title={defaultCount > maxColumns ? `A report carries at most ${maxColumns} columns: reduce the default columns.` : undefined}
           onClick={requestSave}
         >
-          Save
-        </Button>
+          {tr("Save")}</Button>
       )}
       {!create && stored && lifecycle === "DRAFT" && can("submitForApproval") && (
         <Button size="sm" variant="outline-emerald" disabled={saving || dirty} onClick={submitVersion} title={dirty ? tr("Save your changes first.") : undefined}>
-          Submit for Approval
-        </Button>
+          {tr("Submit for Approval")}</Button>
       )}
       {!create && stored && lifecycle === "PENDING_APPROVAL" && can("approve") && (
         <>
           <Button size="sm" variant="outline-emerald" disabled={saving} onClick={() => setRejecting({ reason: "", step: "form" })}>
-            Reject
-          </Button>
+            {tr("Reject")}</Button>
           <Button size="sm" variant="outline-emerald" disabled={saving} onClick={() => setApproving({ reason: "", step: "form" })}>
-            Complete Approval
-          </Button>
+            {tr("Complete Approval")}</Button>
         </>
       )}
       {locked && stored && can("upgrade") && (
         <Button size="sm" variant="outline-emerald" onClick={() => setUpgrading(true)}>
-          Upgrade Report Template
-        </Button>
+          {tr("Upgrade Report Template")}</Button>
       )}
     </>
   );
@@ -363,8 +359,7 @@ export function ReportTemplateEditor() {
               disabled={saving}
               onClick={parent.onClick}
             >
-              Back
-            </Button>
+              {tr("Back")}</Button>
             {actionButtons}
           </>
         }
@@ -485,8 +480,7 @@ export function ReportTemplateEditor() {
                 </p>
                 {can("upgrade") && (
                   <Button size="sm" variant="outline-emerald" onClick={() => setUpgrading(true)}>
-                    Upgrade Report Template
-                  </Button>
+                    {tr("Upgrade Report Template")}</Button>
                 )}
               </div>
             </div>
@@ -497,7 +491,7 @@ export function ReportTemplateEditor() {
               activeTab={tab}
               onChange={setTab}
               variant="underline"
-              ariaLabel="Report template configuration"
+              ariaLabel={__ariaTr("Report template configuration")}
             />
             {tab !== "audit" && tab !== "fields" && (
             <fieldset
@@ -759,7 +753,7 @@ export function ReportTemplateEditor() {
                       cell: (row) => (
                         <span className="inline-flex flex-wrap items-center gap-2">
                           {source?.fields[row.code] ?? row.code}
-                          {sensitiveOf(row.code) && <Badge color="amber">Sensitive</Badge>}
+                          {sensitiveOf(row.code) && <Badge color="amber">{tr("Sensitive")}</Badge>}
                         </span>
                       ),
                     },
@@ -839,8 +833,7 @@ export function ReportTemplateEditor() {
           </div>
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <Button variant="outline-emerald" size="sm" disabled={saving} onClick={parent.onClick}>
-              Back
-            </Button>
+              {tr("Back")}</Button>
             {actionButtons}
           </div>
           </>

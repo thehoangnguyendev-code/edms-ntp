@@ -444,7 +444,7 @@ export const DestroyControlledCopyView: React.FC = () => {
     <div className="space-y-4 md:space-y-6">
       {/* Header: Title + Breadcrumb + Actions */}
       <PageHeader
-        title={`Report ${destructionType} Controlled Copy`}
+        title={`${tr("Report")} ${tr(destructionType)} ${tr("Controlled Copy")}`}
         breadcrumbItems={destroyControlledCopy(undefined, location.state?.from, destructionType)}
         actions={
           <>
@@ -623,7 +623,7 @@ export const DestroyControlledCopyView: React.FC = () => {
 
         {/* Evidence Upload */}
         <FormSection
-          title={destructionType === "Damaged" ? "Destruction Evidence" : "Additional Information"}
+          title={destructionType === "Damaged" ? tr("Destruction Evidence") : tr("Additional Information")}
           icon={<IconPhoto className="h-4 w-4" />}
         >
           <div className="space-y-5">

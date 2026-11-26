@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
@@ -266,7 +267,7 @@ export const NewBackupPolicyView: React.FC = () => {
                     checked={c.included}
                     size="sm"
                     disabled={c.info.code === "T1"}
-                    aria-label={`Use ${c.info.code}`}
+                    aria-label={__ariaTrFormat("Use {v1}", { v1: c.info.code })}
                     onChange={(included) => change(c.info.code, { included })}
                   />
                 </div>
@@ -279,7 +280,7 @@ export const NewBackupPolicyView: React.FC = () => {
                 />
                 <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
                   <span>{tr("Off-site")}</span>
-                  <Switch checked={c.offsite} size="sm" disabled={locked} aria-label={`${c.info.code} off-site`} onChange={(offsite) => change(c.info.code, { offsite })} />
+                  <Switch checked={c.offsite} size="sm" disabled={locked} aria-label={__ariaTrFormat("{v1} off-site", { v1: c.info.code })} onChange={(offsite) => change(c.info.code, { offsite })} />
                 </div>
               </div>
             );

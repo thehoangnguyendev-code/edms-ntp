@@ -17,7 +17,7 @@ export function WorkspaceResultsStep({ table, absent, failed }: {
       {table}
       {waiting > 0 && (
         <WarningBanner
-          description={`${[absent > 0 ? trFormat("{count} absent", { count: absent }) : "", failed > 0 ? trFormat("{count} did not pass", { count: failed }) : ""].filter(Boolean).join(` ${tr("and")} `)}${tr(": after the training is Completed they are trained again in a separate list under the same Training Number (SOP.0003 5.3.7).")}`}
+          description={`${[absent > 0 ? trFormat("{count} absent", { count: absent }) : "", failed > 0 ? trFormat("{count} not qualified", { count: failed }) : ""].filter(Boolean).join(` ${tr("and")} `)}${tr(": after the training is Completed they are trained again in a separate list under the same Training Number (SOP.0003 5.3.7).")}`}
         />
       )}
     </>

@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconCamera, IconCameraOff } from "@tabler/icons-react";
 import jsQR from "jsqr";
@@ -174,7 +175,7 @@ export function CheckInDialog({ isOpen, initialCode = "", onClose, onDone }: { i
         {cameraError && <p role="alert" className="text-sm text-red-700">{cameraError}</p>}
         <div className="space-y-2">
           <div className="text-center text-sm font-medium text-slate-700">{tr("Or type the code")}</div>
-          <OtpInput value={code} onChange={setCode} disabled={busy} autoFocus ariaLabel="Check-in code digit" />
+          <OtpInput value={code} onChange={setCode} disabled={busy} autoFocus ariaLabel={__ariaTr("Check-in code digit")} />
         </div>
       </div>
     </FormModal>

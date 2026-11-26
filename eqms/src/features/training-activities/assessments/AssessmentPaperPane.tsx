@@ -31,13 +31,13 @@ export function AssessmentPaperPane({ make, ready, blockedReason, revision, heig
   ready: boolean;
   /** Why a paper cannot be made now. */
   blockedReason?: string;
-  /** Goes up every time the editor changes; a paper made at another number is out of date. */
-  revision: number;
+  /** Stands for what the paper would show (a fingerprint of the content): a paper made from other content is out of date, and one made from the same content is never made again. */
+  revision: string;
   height?: string;
 }) {
   const [view, setView] = useState<Paper>("test");
   const [auto, setAuto] = useState(true);
-  const [made, setMade] = useState<Partial<Record<Paper, { url: string; revision: number }>>>({});
+  const [made, setMade] = useState<Partial<Record<Paper, { url: string; revision: string }>>>({});
   const [loading, setLoading] = useState(false);
   // the paper and the revision that the server refused or failed: the automatic update does not try them again by itself (that would be a loop), the person's button does
   const [failed, setFailed] = useState("");

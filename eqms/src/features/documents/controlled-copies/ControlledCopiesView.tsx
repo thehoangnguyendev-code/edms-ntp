@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useState, createRef, useRef, useEffect, useLayoutEffect, useMemo } from "react";
@@ -53,7 +54,7 @@ import { normalizeControlledCopyBatch } from "./controlledCopyMapping";
 import { Badge, BadgeColor } from "@/components/ui/badge/Badge";
 import {
   USAGE_PURPOSE_ALL,
-  USAGE_PURPOSE_FILTER_OPTIONS,
+  usagePurposeFilterOptions,
   normalizeUsagePurpose,
   usagePurposeFilterFromParam,
   usagePurposeLabel,
@@ -1466,7 +1467,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             onPointerEnter={prefetchChildren}
             onPointerDown={prefetchChildren}
             onFocus={prefetchChildren}
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} controlled copy batch ${(copy as any).batchNumber || (copy as any).distributionBatchNumber || (copy as any).controlledCopyNumber || ""}`}
+            aria-label={__ariaTrFormat("{v1} controlled copy batch {v2}", { v1: isExpanded ? tr("Collapse") : tr("Expand"), v2: (copy as any).batchNumber || (copy as any).distributionBatchNumber || (copy as any).controlledCopyNumber || "" })}
             aria-expanded={isExpanded}
             className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
           >
@@ -1566,7 +1567,8 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
   };
   const { layout: controlledLayout, control: controlledControl } = useCustomColumnLayout("documents.controlled-copies", controlledColumns, controlledAction);
 
-  if (isLoading || isNavigating || (isActionLoading && !batchDistributeProgress)) return <SectionLoading minHeight="60vh" />;
+  // The whole page waits only for the first load: sorting, filtering and paging keep it in place and let the table show that it is loading.
+  if ((isLoading && !hasLoadedOnceRef.current) || isNavigating || (isActionLoading && !batchDistributeProgress)) return <SectionLoading minHeight="60vh" />;
 
   return (
     <div className="flex flex-col h-full gap-4 md:gap-6 w-full flex-1">
@@ -1679,7 +1681,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
               status={viewType === 'all' ? statusFilter : viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed'}
               statusOptions={viewType === 'all' ? statusOptions : [{ value: viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed', label: viewType === 'ready' ? tr('Ready for Distribution') : 'Distributed' }]}
               statusLocked={viewType !== 'all'} allStatus="All"
-              selects={[{ id: 'usagePurpose', label: 'Purpose', value: usagePurposeFilter, defaultValue: USAGE_PURPOSE_ALL, options: USAGE_PURPOSE_FILTER_OPTIONS }]}
+              selects={[{ id: 'usagePurpose', label: 'Purpose', value: usagePurposeFilter, defaultValue: USAGE_PURPOSE_ALL, options: usagePurposeFilterOptions() }]}
               dates={[
                 { id: 'created', label: tr('Created Date Range'), from: createdFromDate, to: createdToDate },
                 { id: 'valid', label: tr('Valid Until Date Range'), from: validFromDate, to: validToDate },
@@ -1749,7 +1751,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                     setUsagePurposeFilter(usagePurposeFilterFromParam(value === USAGE_PURPOSE_ALL ? null : String(value)));
                     setCurrentPage(1);
                   }}
-                  options={USAGE_PURPOSE_FILTER_OPTIONS}
+                  options={usagePurposeFilterOptions()}
                   placeholder={tr("All")}
                   enableSearch={false}
                 />
@@ -1864,7 +1866,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
                 onToggle={() => toggleSection("purpose")}
               >
                 <div className="grid grid-cols-1 gap-2 pt-1 pb-4">
-                  {USAGE_PURPOSE_FILTER_OPTIONS.map((opt) => (
+                  {usagePurposeFilterOptions().map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => {
@@ -1969,6 +1971,7 @@ export const ControlledCopiesView: React.FC<ControlledCopiesViewProps> = ({ view
             )}>
               <DataTable
                 rows={controlledCopiesData}
+                isLoading={isLoading}
                 getRowKey={(copy) => copy.id}
                 columns={controlledLayout.columns}
                 columnLayout={controlledLayout}

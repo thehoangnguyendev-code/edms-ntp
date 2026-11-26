@@ -31,8 +31,12 @@ public class EntityChangeBroadcaster {
     private final NotificationRealtimeService realtimeService;
     private final ControlledCopyPreviewRealtimeService previewRealtimeService;
 
+    private final NavigationTaskCountCache taskCounts;
+
     public EntityChangeBroadcaster(NotificationRealtimeService realtimeService,
-                                   ControlledCopyPreviewRealtimeService previewRealtimeService) {
+                                   ControlledCopyPreviewRealtimeService previewRealtimeService,
+                                   NavigationTaskCountCache taskCounts) {
+        this.taskCounts = taskCounts;
         this.realtimeService = realtimeService;
         this.previewRealtimeService = previewRealtimeService;
         instance = this;
@@ -89,6 +93,8 @@ public class EntityChangeBroadcaster {
     private void publish(Map<String, Object> event) {
         Map<String, Object> payload = new LinkedHashMap<>(event);
         payload.put("occurredAt", Instant.now().toString());
+        // Before the screens are told: the counts they read next must not be the ones kept from before the change (a background job makes no request).
+        taskCounts.clear();
         realtimeService.publishGlobalEvent("entity-changed", payload);
         // Recipients viewing a controlled copy through its e-mail link have no session, so they listen on their own
         // grant-authorised stream (see ControlledCopyPreviewRealtimeService).

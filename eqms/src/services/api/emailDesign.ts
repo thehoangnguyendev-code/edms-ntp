@@ -10,6 +10,10 @@ export interface EmailDesign {
   brandColor: string;
   /** The colour of the action button and of the links. */
   buttonColor: string;
+  /** SMALL, MEDIUM or LARGE. */
+  buttonSize?: string;
+  /** Whether the address of the button is also written under it. */
+  showButtonLink?: boolean;
   /** Background of the body (the white card) and of the footer. */
   bodyColor: string;
   footerColor: string;
@@ -23,6 +27,8 @@ export interface EmailDesign {
   footerTextColor: string;
   fontFamily: string;
   footerText: string | null;
+  /** The footer of a mail sent in Vietnamese; empty: the footer above. */
+  footerTextVi?: string | null;
   supportEmail: string | null;
   version: number;
   updatedBy: string | null;
@@ -34,7 +40,7 @@ export interface EmailDesign {
 
 export type EmailAlign = 'LEFT' | 'CENTER' | 'RIGHT';
 
-export type EmailDesignInput = Pick<EmailDesign, 'logoUrl' | 'logoText' | 'brandColor' | 'buttonColor' | 'bodyColor' | 'footerColor' | 'logoAlign' | 'footerAlign' | 'headerTextColor' | 'headerFontFamily' | 'bodyTextColor' | 'footerTextColor' | 'fontFamily' | 'footerText' | 'supportEmail'>;
+export type EmailDesignInput = Pick<EmailDesign, 'logoUrl' | 'logoText' | 'brandColor' | 'buttonColor' | 'buttonSize' | 'showButtonLink' | 'bodyColor' | 'footerColor' | 'logoAlign' | 'footerAlign' | 'headerTextColor' | 'headerFontFamily' | 'bodyTextColor' | 'footerTextColor' | 'fontFamily' | 'footerText' | 'footerTextVi' | 'supportEmail'>;
 
 const ENDPOINT = '/settings/email-design';
 

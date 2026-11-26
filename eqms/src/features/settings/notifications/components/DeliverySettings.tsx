@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { FormModal } from '@/components/ui/modal/FormModal';
+import { Clock, Users } from 'lucide-react';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { FormField, Input } from '@/components/ui/form/ResponsiveForm';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -8,8 +8,8 @@ import { TimePicker } from '@/components/ui/datetime-picker';
 import type { DigestMode, NotificationPolicyDetail, RecipientRule, UpdateNotificationPolicyPayload } from '@/services/api/notificationPolicy';
 import type { RecipientRuleKind } from '@/services/api/notificationAdministration';
 import { RecipientRulesEditor } from './RecipientRulesEditor';
-import { RecipientsMatrix } from './RecipientsMatrix';
-import { tr } from "@/i18n";
+import { RecipientsMatrix, type RecipientReach } from './RecipientsMatrix';
+import { tr, trFormat } from "@/i18n";
 
 /** What an administrator decides about the delivery of a notification: whether it is sent, on which channels, to whom, and when. */
 export interface DeliveryForm {
@@ -124,66 +124,28 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
   const set = (patch: Partial<DeliveryForm>) => onChange({ ...form, ...patch });
   const on = channelOn(form, channel);
   const words = CHANNEL_WORDS[channel];
-  // the timing, the quiet hours and the escalation are rarely touched: they are in a window of their own, so that opening them never moves the screen
-  const [advanced, setAdvanced] = useState(false);
-  const summary =
-    channel === 'EMAIL'
-      ? `${DIGEST_OPTIONS.find((o) => o.value === form.digest)?.label ?? 'Immediately'}${form.quietStart && form.quietEnd ? `, quiet ${form.quietStart} to ${form.quietEnd}` : tr(', no quiet hours')}`
-      : form.escalate
-        ? `Escalates after ${form.escalateMinutes || '…'} minutes to ${form.escalationRules.length} ${form.escalationRules.length === 1 ? 'group' : 'groups'}`
-        : tr('No escalation');
+  // who the list reaches today, told by the table and shown in the header of its section
+  const [reach, setReach] = useState<RecipientReach | null>(null);
   const channelsOn = supportedChannels.filter((c) => channelOn(form, c));
+  const chip = 'rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700';
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       {intro ? <p className="text-sm text-slate-600">{intro}</p> : null}
 
-      {/* the settings of the notification on the left, who gets it on the right (the table has the width): one under the other on a narrow screen */}
-      <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-4 self-start">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800">{words.name}</p>
-              <p className="text-xs text-slate-500">{on ? words.on : words.off}</p>
-            </div>
-            <Switch className="shrink-0" checked={on} onChange={(next) => onChange(withChannel(form, channel, next, supportedChannels))} disabled={disabled} aria-label={words.name} />
+      <FormSection title={tr("Delivery Settings")} icon={<Clock className="h-4 w-4" />}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800">{tr(words.name)}</p>
+            <p className="text-xs text-slate-500">{tr(on ? words.on : words.off)}</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setAdvanced(true)}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left hover:bg-slate-50"
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-slate-800">{tr("Advanced")}</span>
-              <span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">
-                {channel === 'EMAIL' ? tr('When the email is sent: timing and quiet hours.') : tr('Escalate the notification when it is not acted on.')} {summary}.
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />
-          </button>
+          <Switch className="shrink-0" checked={on} onChange={(next) => onChange(withChannel(form, channel, next, supportedChannels))} disabled={disabled} aria-label={tr(words.name)} />
         </div>
 
-        <div className="min-w-0">
-          <p className="mb-2 text-sm font-medium text-slate-800">{tr("Who gets this notification, and on which channel")}</p>
-          <RecipientsMatrix kinds={kinds} value={form.rules} onChange={(rules) => set({ rules })} supportedChannels={supportedChannels} channelsOn={channelsOn} disabled={disabled} />
-          <p className="mt-2 text-xs text-slate-500">{tr("The same list is shown on the in-app and on the email screen of this event.")}</p>
-        </div>
-      </div>
-
-      <FormModal
-        isOpen={advanced}
-        onClose={() => setAdvanced(false)}
-        onConfirm={() => setAdvanced(false)}
-        title={channel === 'EMAIL' ? tr('Advanced: when the email is sent') : tr('Advanced: escalation')}
-        description={tr("What you change here is part of this notification and is saved with Publish.")}
-        confirmText="Done"
-        showCancel={false}
-        size="lg"
-      >
-        <div className="flex flex-col gap-4">
+        <div className="-mx-4 mt-4 flex flex-col gap-4 border-t border-slate-200 px-4 pt-4 md:-mx-5 md:px-5">
           {channel === 'EMAIL' ? (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* the fields move to the next line when there is no room, instead of squeezing their labels */}
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-4 [&_label]:whitespace-nowrap">
                 <FormField label={tr("Email timing")}>
                   <Select value={form.digest} onChange={(digest: DigestMode) => set({ digest })} options={DIGEST_OPTIONS} disabled={disabled} aria-label={tr("Email timing")} />
                 </FormField>
@@ -198,27 +160,43 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
             </>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-800">{tr("Escalate when it is not acted on")}</p>
                   <p className="text-xs text-slate-500">{tr("Tell more people when the notification stays unread.")}</p>
                 </div>
-                <Switch checked={form.escalate} onChange={(escalate) => set({ escalate })} disabled={disabled} aria-label={tr("Escalate when it is not acted on")} />
+                <Switch className="shrink-0" checked={form.escalate} onChange={(escalate) => set({ escalate })} disabled={disabled} aria-label={tr("Escalate when it is not acted on")} />
               </div>
               {form.escalate ? (
-                <>
+                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                   <FormField label={tr("Escalate after (minutes)")}>
                     <Input type="number" min={1} value={form.escalateMinutes} disabled={disabled} onChange={(e) => set({ escalateMinutes: e.target.value })} />
                   </FormField>
                   <FormField label={tr("Escalate to")}>
                     <RecipientRulesEditor kinds={kinds.filter((k) => k.kind === 'AUDIENCE')} value={form.escalationRules} onChange={(escalationRules) => set({ escalationRules })} disabled={disabled} />
                   </FormField>
-                </>
+                </div>
               ) : null}
             </>
           )}
         </div>
-      </FormModal>
+      </FormSection>
+
+      <FormSection
+        title={tr("Recipients")}
+        icon={<Users className="h-4 w-4" />}
+        headerRight={
+          reach && form.rules.length > 0 ? (
+            <div className="flex flex-wrap gap-2" aria-label={tr("Who it reaches today")}>
+              {supportedChannels.includes('IN_APP') ? <span className={chip}>{trFormat("In-app: {count} people", { count: reach.inApp })}</span> : null}
+              {supportedChannels.includes('EMAIL') ? <span className={chip}>{trFormat("Email: {count} people", { count: reach.email })}</span> : null}
+            </div>
+          ) : undefined
+        }
+      >
+        <RecipientsMatrix kinds={kinds} value={form.rules} onChange={(rules) => set({ rules })} supportedChannels={supportedChannels} channelsOn={channelsOn} disabled={disabled} onReach={setReach} />
+        <p className="mt-2 text-xs text-slate-500">{tr("The same list is shown on the in-app and on the email screen of this event.")}</p>
+      </FormSection>
     </div>
   );
 };

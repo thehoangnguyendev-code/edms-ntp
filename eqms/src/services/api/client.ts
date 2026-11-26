@@ -361,7 +361,12 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    // the menu counts are read again after anything that may have changed what waits for the person
+    const method = response.config?.method?.toLowerCase();
+    if (method && method !== "get" && method !== "head" && method !== "options" && !response.config.url?.includes("/auth/session/heartbeat")) window.dispatchEvent(new Event("eqms:data-changed"));
+    return response;
+  },
   async (error: AxiosError) => {
     if (error.response) {
       const { status, data } = error.response;

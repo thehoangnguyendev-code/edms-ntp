@@ -31,7 +31,7 @@ import { publishingTemplates as publishingTemplatesBreadcrumbs } from "@/compone
 import { usePermissions } from "@/hooks/usePermissions";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr, trPlural } from "@/i18n";
+import { tr, trPlural, getCatalogLanguage } from "@/i18n";
 
 type SortConfig = {
   key: string;
@@ -261,7 +261,7 @@ export const PublishingTemplatesView: React.FC = () => {
   const tableSummary = useMemo(() => {
     if (isLoading && templates.length === 0) return tr("Loading templates...");
     return trPlural(totalItems, "{count} publishing template", "{count} publishing templates");
-  }, [isLoading, templates.length, totalItems]);
+  }, [isLoading, templates.length, totalItems, getCatalogLanguage()]);
 
   type Row = (typeof templates)[number];
   const publishingTemplatesColumns: DataTableColumn<Row>[] = [

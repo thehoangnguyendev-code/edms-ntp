@@ -198,8 +198,7 @@ export function ReportTemplateRevisions({
         {menuRow && (
           <div className="py-1">
             <DropdownMenuItem icon={<IconInfoCircle className="h-4 w-4" />} onClick={() => { open(menuRow); menu.close(); }}>
-              View Detail
-            </DropdownMenuItem>
+              {tr("View Detail")}</DropdownMenuItem>
           </div>
         )}
       </PortalDropdownMenu>

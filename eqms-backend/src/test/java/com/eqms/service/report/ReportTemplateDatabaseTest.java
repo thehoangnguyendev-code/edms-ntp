@@ -30,6 +30,11 @@ class ReportTemplateDatabaseTest {
     String schema;
     ObjectMapper json=new ObjectMapper();
     @BeforeEach void setup() throws Exception {
+        // Register our own renderer; PDF tests must not depend on another class running first.
+        String chartUrl = System.getenv("EQMS_CHART_RENDERER_TEST_URL");
+        if (chartUrl != null && !chartUrl.isBlank()) {
+            ReportCharts.use(new ChartJsRenderer(chartUrl, System.getenv().getOrDefault("EQMS_CHART_RENDERER_TEST_TOKEN", ""), 30));
+        }
         String url=System.getenv("EQMS_REPORT_TEST_DB"),user=System.getenv("EQMS_REPORT_TEST_USER"),password=System.getenv("EQMS_REPORT_TEST_PASSWORD");
         bootstrap=new JdbcTemplate(new DriverManagerDataSource(url,user,password));
         schema="report_test_"+UUID.randomUUID().toString().replace("-","");
@@ -45,6 +50,8 @@ class ReportTemplateDatabaseTest {
             jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration",migration)));
         }
         jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V536__report_template_soft_delete.sql")));
+        // V798 adds this column alongside other modules absent from this deliberately small schema.
+        jdbc.execute("alter table report_schedules add column schedule_number varchar(40)");
         jdbc.execute("create table system_configurations(id uuid primary key default gen_random_uuid(),features_config jsonb not null default '[]',updated_at timestamptz)");
         // The run file shows the signature of a signed run (REPORT-SIGNATURE-IN-FILE-2026-11-13); no run of these tests is signed.
         jdbc.execute("create table electronic_signatures(id uuid primary key default gen_random_uuid(),meaning text,entity_type text,entity_id uuid,full_name text,signed_at timestamptz,reason text,signature_id text)");
@@ -84,6 +91,17 @@ class ReportTemplateDatabaseTest {
         var target=new ReportTemplateService(jdbc,json,permissions,audit,List.of(new DocumentReportMetadataProvider(ReportTestVisibility.everything())));
         // A change of what a report contains is signed (REPORT-DEFINITION-SIGNATURE-2026-10-14): the service gets a signature service that records nothing, as when e-signature is not required.
         target.configureSignatures(mock(com.eqms.service.SecurityChangeSignatureService.class));
+        // This fixture tests SQL transactions; engine decisions have their own negative tests.
+        // Keep inactive actors refused here as well, rather than allowing every invocation.
+        var engine = mock(com.eqms.service.authorization.AuthorizationEngineService.class);
+        when(engine.authorize(any(com.eqms.service.authorization.AuthorizationRequest.class))).thenAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.eqms.service.authorization.AuthorizationRequest.class);
+            return request.actor() != null && request.actor().getStatus() == UserStatus.Active
+                    && permissions.getEffectivePermissionCodes(request.actor()).contains("reports.definition.manage")
+                    ? com.eqms.service.authorization.AuthorizationDecision.allow("reports.definition.manage", List.of(), List.of(), 1L, null, Map.of())
+                    : com.eqms.service.authorization.AuthorizationDecision.deny("MISSING_PERMISSION");
+        });
+        target.configureEngine(engine);
         ProxyFactory factory=new ProxyFactory(target);factory.setProxyTargetClass(true);
         factory.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(ds),new AnnotationTransactionAttributeSource()));
         service=(ReportTemplateService)factory.getProxy();
@@ -135,7 +153,7 @@ class ReportTemplateDatabaseTest {
         actor.setStatus(UserStatus.Inactive);
         assertThrows(SecurityException.class,()->service.delete(actor,"QA_REGISTER",1,"Remove"));
         actor.setStatus(UserStatus.Active);
-        doThrow(new IllegalStateException("audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_TEMPLATE_DELETED"),any(),any(),anyString());
+        doThrow(new IllegalStateException("audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_TEMPLATE_DELETED"),any(),any(),anyString(),anyList());
         assertThrows(IllegalStateException.class,()->service.delete(actor,"QA_REGISTER",1,"Remove"));
         assertNull(service.definition("QA_REGISTER").get("deletedAt"));
         assertEquals(1,service.definition("QA_REGISTER").get("definitionVersion"));
@@ -163,7 +181,7 @@ class ReportTemplateDatabaseTest {
         assertEquals(List.of("report.title","report.executor"),ref.placeholders());
         assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update report_word_components set file_name='changed.docx' where id=?",ref.id()));
         assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("delete from report_word_components where id=?",ref.id()));
-        doThrow(new IllegalStateException("AUDIT_UNAVAILABLE")).when(audit).logAs(eq(actor),eq("REPORT_TEMPLATE"),anyString(),any(UUID.class),eq("REPORT_WORD_COMPONENT_UPLOADED"),isNull(),isNull(),anyString());
+        doThrow(new IllegalStateException("AUDIT_UNAVAILABLE")).when(audit).logAs(eq(actor),eq("REPORT_TEMPLATE"),anyString(),any(UUID.class),eq("REPORT_WORD_COMPONENT_UPLOADED"),isNull(),isNull(),anyString(),anyList());
         assertThrows(IllegalStateException.class,()->words.upload(actor,"footer","test.docx",ReportWordServiceTest.docx("{{report.title}}")));
         assertEquals(1,jdbc.queryForObject("select count(*) from report_word_components",Integer.class));
     }
@@ -192,7 +210,7 @@ class ReportTemplateDatabaseTest {
         assertThrows(IllegalArgumentException.class,()->service.snapshot(actor,"QA_REGISTER",new ReportTemplateService.Criteria(2,null,Map.of(),"id;drop table documents","asc")));
     }
     @Test void auditFailureRollsBackConfigurationAndVersionTogether() {
-        doThrow(new IllegalStateException("audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),anyString(),any(),any(),anyString());
+        doThrow(new IllegalStateException("audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),anyString(),any(),any(),anyString(),anyList());
         assertThrows(IllegalStateException.class,()->service.save(actor,"QA_REGISTER",request(1,"DEPARTMENT"),false));
         assertEquals(1,jdbc.queryForObject("select definition_version from report_definitions where code='QA_REGISTER'",Integer.class));
         assertEquals("SYSTEM",jdbc.queryForObject("select scope_code from report_template_role_scopes",String.class));
@@ -357,7 +375,7 @@ class ReportTemplateDatabaseTest {
         var value=new com.eqms.service.ReportPlatformService.ScheduleRequest("TEST Updated","QA_REGISTER","0 0 9 * * *","PDF",Map.of("search","FORM"),null,List.of());
         schedules.update(actor,id,new ReportScheduleAdministrationService.Update(1,value,"Approved test edit"));assertEquals(2,schedules.detail(actor,id).get("version"));
         assertThrows(org.springframework.web.server.ResponseStatusException.class,()->schedules.update(actor,id,new ReportScheduleAdministrationService.Update(1,value,"Stale edit")));
-        doThrow(new IllegalStateException("Audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_SCHEDULE_UPDATED"),any(),any(),anyString());
+        doThrow(new IllegalStateException("Audit unavailable")).when(audit).logAs(eq(actor),anyString(),anyString(),any(),eq("REPORT_SCHEDULE_UPDATED"),any(),any(),anyString(),anyList());
         assertThrows(IllegalStateException.class,()->schedules.update(actor,id,new ReportScheduleAdministrationService.Update(2,value,"Rollback test")));assertEquals(2,schedules.detail(actor,id).get("version"));
         assertEquals(13,jdbc.queryForObject("select count(*) from documents",Integer.class));
     }

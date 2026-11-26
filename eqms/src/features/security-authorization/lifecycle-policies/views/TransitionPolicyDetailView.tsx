@@ -21,6 +21,7 @@ import { extractApiError } from "../workflowPolicyUtils";
 import type { WorkflowActionPolicy, WorkflowActionPolicyActor } from "../types";
 import { statusText } from "../../shared/humanizeCode";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const MANAGE_PERM = "security.workflow_authorization.manage";
 const LIST_ROUTE = `${ROUTES.SECURITY.WORKFLOW_AUTHORIZATION}?tab=transitions`;
@@ -176,7 +177,7 @@ export const TransitionPolicyDetailView: React.FC = () => {
         icon={<Workflow className="h-4 w-4" />}
         headerRight={
           <>
-            <Badge color={policy.active ? "emerald" : "slate"} size="sm">{policy.active ? "Active" : "Inactive"}</Badge>
+            <Badge color={statusColor(policy.active ? "ACTIVE" : "INACTIVE")} size="sm">{policy.active ? "Active" : "Inactive"}</Badge>
             <Badge color={policy.system ? "blue" : "slate"} size="sm">{policy.system ? "System" : "Custom"}</Badge>
           </>
         }

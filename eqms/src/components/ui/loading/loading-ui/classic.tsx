@@ -1,6 +1,7 @@
 // Adapted from turbostarter/loading-ui (MIT); see LICENSE.md and README.md.
 import type * as React from "react";
 import { cn } from "@/components/ui/utils";
+import { tr } from "@/i18n";
 
 type ClassicProps = Omit<React.ComponentProps<"span">, "children">;
 
@@ -30,7 +31,7 @@ function Classic({ className, ...props }: ClassicProps) {
             />
           ))}
         </span>
-        <span className="sr-only">Loading</span>
+        <span className="sr-only">{tr("Loading")}</span>
       </span>
     </>
   );

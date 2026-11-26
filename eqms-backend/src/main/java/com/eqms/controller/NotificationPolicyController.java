@@ -33,14 +33,17 @@ public class NotificationPolicyController {
     private static final String MANAGE_PERMISSION = "settings.notification_policy.manage";
 
     private final NotificationPolicyService notificationPolicyService;
+    private final com.eqms.service.NotificationTranslationService translationService;
     private final AuthorizationService authorizationService;
     private final CurrentUserService currentUserService;
 
     public NotificationPolicyController(
             NotificationPolicyService notificationPolicyService,
             AuthorizationService authorizationService,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            com.eqms.service.NotificationTranslationService translationService
     ) {
+        this.translationService = translationService;
         this.notificationPolicyService = notificationPolicyService;
         this.authorizationService = authorizationService;
         this.currentUserService = currentUserService;
@@ -119,6 +122,20 @@ public class NotificationPolicyController {
     }
 
 
+    /** The Vietnamese wording of one channel: whether it may be translated, the placeholders it must keep, and the translation in use. */
+    @GetMapping("/{eventCode}/translations/{channel}")
+    public ResponseEntity<java.util.Map<String, Object>> getTranslation(@PathVariable String eventCode, @PathVariable String channel) {
+        requireView();
+        return ResponseEntity.ok(translationService.get(eventCode, channel));
+    }
+
+    @PutMapping("/{eventCode}/translations/{channel}")
+    public ResponseEntity<java.util.Map<String, Object>> saveTranslation(@PathVariable String eventCode, @PathVariable String channel,
+                                                                         @RequestBody com.eqms.service.NotificationTranslationService.SaveRequest request) {
+        requireManage();
+        return ResponseEntity.ok(translationService.save(eventCode, channel, request));
+    }
+
     public record TestSendBody(String to) {
     }
 
@@ -139,10 +156,11 @@ public class NotificationPolicyController {
     @PostMapping("/{eventCode}/preview")
     public ResponseEntity<NotificationPreviewResponse> preview(
             @PathVariable String eventCode,
-            @RequestBody NotificationPreviewRequest request
+            @RequestBody NotificationPreviewRequest request,
+        @org.springframework.web.bind.annotation.RequestParam(required = false) String language
     ) {
         requireView();
-        return ResponseEntity.ok(notificationPolicyService.preview(eventCode, request));
+        return ResponseEntity.ok(notificationPolicyService.preview(eventCode, request, language));
     }
 
     private void requireView() {

@@ -21,7 +21,9 @@ import { emailTemplateApi } from "@/services/api/emailTemplates";
 import { MODULE_OPTIONS, PRIORITY_COLOR, moduleLabel, priorityLabel } from "./labels";
 import { useServerList } from "./useServerList";
 import { useRowMenu } from "./components/useRowMenu";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
+import { statusColors, statusColor, channelColor } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 const ALL = "All";
 type Direction = "asc" | "desc";
@@ -66,7 +68,10 @@ const USAGE_OPTIONS = [
   { label: tr("Never sent"), value: "NEVER_SENT" },
 ];
 
-const STATUS_COLOR: Record<string, "emerald" | "slate" | "gray"> = { ACTIVE: "emerald", DRAFT: "slate", INACTIVE: "gray" };
+/** What the Language column says, by the code the server sends. */
+const TRANSLATION_LABEL: Record<string, string> = { TRANSLATED: "Bilingual", OUTDATED: "Vietnamese needs update", NOT_TRANSLATED: "English only" };
+
+const STATUS_COLOR = statusColors("ACTIVE", "DRAFT", "INACTIVE") as Record<string, BadgeColor>;
 
 /** "controlled-copy-recall-notification" as "Controlled Copy Recall Notification". */
 const typeLabel = (type: string) => type.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -122,7 +127,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     let live = true;
     emailTemplateApi
       .getEmailTemplateTypes()
-      .then((types) => live && setTypeOptions([{ label: "All", value: ALL }, ...types.map((value) => ({ label: typeLabel(value), value }))]))
+      .then((types) => live && setTypeOptions([{ label: "All", value: ALL }, ...types.map((value) => ({ label: tr(typeLabel(value)), value }))]))
       .catch(() => undefined);
     return () => {
       live = false;
@@ -162,7 +167,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
           <span className="block truncate font-mono text-xs text-slate-500">{row.code}</span>
           {/* on a narrow screen the channel and the status columns are not shown: they are said here */}
           <span className="mt-1 flex flex-wrap gap-1 md:hidden">
-            <Badge color={row.channel === "EMAIL" ? "blue" : "slate"} size="sm">{CHANNEL_LABEL[row.channel]}</Badge>
+            <Badge color={channelColor(row.channel)} size="sm">{CHANNEL_LABEL[row.channel]}</Badge>
             <Badge color={STATUS_COLOR[row.status] ?? "gray"} size="sm">{STATUS_OPTIONS.find((o) => o.value === row.status)?.label ?? row.status}</Badge>
           </span>
         </div>
@@ -174,17 +179,30 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
       label: "Channel",
       sort: list.sortFor("channel"),
       cell: (row) => (
-        <Badge color={row.channel === "EMAIL" ? "blue" : "slate"} size="sm">
+        <Badge color={channelColor(row.channel)} size="sm">
           {CHANNEL_LABEL[row.channel]}
         </Badge>
       ),
+    },
+    {
+      id: "translation",
+      header: tr("Language"),
+      label: tr("Language"),
+      cell: (row) =>
+        row.translation ? (
+          <Badge color={statusColor(row.translation)} size="sm">
+            {tr(TRANSLATION_LABEL[row.translation] ?? row.translation)}
+          </Badge>
+        ) : (
+          "—"
+        ),
     },
     {
       id: "category",
       header: tr("Module / Type"),
       label: tr("Module / Type"),
       sort: list.sortFor("category"),
-      cell: (row) => (row.module ? moduleLabel(row.module) : row.type ? typeLabel(row.type) : "—"),
+      cell: (row) => (row.module ? tr(moduleLabel(row.module)) : row.type ? tr(typeLabel(row.type)) : "—"),
     },
     {
       id: "details",
@@ -197,7 +215,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
               {priorityLabel(row.priority)}
             </Badge>
           ) : null}
-          <span className="text-xs text-slate-600">{row.sent ? `Sent ${row.sent} time(s)` : tr("Never sent")}</span>
+          <span className="text-xs text-slate-600">{row.sent ? trFormat("Sent {count} time(s)", { count: row.sent }) : tr("Never sent")}</span>
         </div>
       ),
     },
@@ -207,7 +225,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
       label: "Status",
       sort: list.sortFor("status"),
       cell: (row) => (
-        <Badge color={STATUS_COLOR[row.status] ?? "gray"} size="sm" showDot={row.status === "ACTIVE"}>
+        <Badge color={STATUS_COLOR[row.status] ?? "gray"} size="sm">
           {STATUS_OPTIONS.find((o) => o.value === row.status)?.label ?? row.status}
         </Badge>
       ),

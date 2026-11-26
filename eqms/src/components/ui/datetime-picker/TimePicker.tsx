@@ -106,7 +106,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   label,
   value,
   onChange,
-  placeholder = 'Select time',
+  placeholder = tr('Select time'),
   disabled = false,
 }) => {
   const pickerId = useId();
@@ -264,7 +264,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
               <div className="space-y-3 border-t border-slate-100 px-4 py-3">
                 <ChoiceGrid
                   label={tr("Hour")}
-                  unit="hours"
+                  unit={tr("hours")}
                   options={HOURS}
                   selected={hour}
                   columns="grid-cols-6"
@@ -272,7 +272,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                 />
                 <ChoiceGrid
                   label={tr("Minute")}
-                  unit="minutes"
+                  unit={tr("minutes")}
                   options={MINUTES}
                   selected={minute}
                   columns="grid-cols-4"

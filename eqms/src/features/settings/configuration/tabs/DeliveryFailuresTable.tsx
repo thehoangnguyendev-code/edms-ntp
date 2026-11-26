@@ -14,6 +14,7 @@ import { moduleDisplayName } from '@/utils/moduleDisplay';
 import { readableCode } from '@/utils/machineText';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const MAX_ATTEMPTS = 5;
 const STATUS_OPTIONS = [{ label: 'Failed', value: 'FAILED' }, { label: 'Resolved', value: 'RESOLVED' }];
@@ -66,7 +67,7 @@ export const DeliveryFailuresTable: React.FC = () => {
     { id: 'notificationType', header: 'Type', sort: sorted('notificationType'), cell: (r) => readableCode(r.notificationType) },
     { id: 'eventDomain', header: tr('Event Domain'), sort: sorted('eventDomain'), cell: (r) => (r.eventDomain ? moduleDisplayName(r.eventDomain) : '—') },
     { id: 'channel', header: 'Channel', sort: sorted('channel'), cell: (r) => (r.channel === 'IN_APP' ? 'In-App' : 'Email') },
-    { id: 'status', header: 'Status', sort: sorted('status'), cell: (r) => <Badge semantic={r.status === 'RESOLVED' ? 'success' : 'danger'}>{r.status === 'RESOLVED' ? 'Resolved' : 'Failed'}</Badge> },
+    { id: 'status', header: 'Status', sort: sorted('status'), cell: (r) => <Badge color={statusColor(r.status === 'RESOLVED' ? 'RESOLVED' : 'FAILED')} semantic={r.status === 'RESOLVED' ? 'success' : 'danger'}>{r.status === 'RESOLVED' ? 'Resolved' : 'Failed'}</Badge> },
     { id: 'attempts', header: 'Attempts', sort: sorted('attempts'), cell: (r) => `${r.attempts}/${MAX_ATTEMPTS}` },
     { id: 'errorMessage', header: 'Error', cell: (r) => <span className="block max-w-72 truncate" title={r.errorMessage ?? ''}>{r.errorMessage || '—'}</span> },
     { id: 'createdAt', header: tr('First Failed On'), sort: sorted('createdAt'), cell: (r) => displayDateTime(r.createdAt) },

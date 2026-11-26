@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,6 +53,18 @@ describe("TrainingPersonRelatedCard", () => {
     expect(api.jobs).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" }), expect.any(AbortSignal));
     fireEvent.click(screen.getByRole("tab", { name: /Training Reviews/ }));
     await waitFor(() => expect(api.reviews).toHaveBeenCalledWith(expect.objectContaining({ personId: "person-1" }), expect.any(AbortSignal)));
+  });
+
+  it("opens the whole list of Work Positions of a job assignment that gives more than the cell writes", async () => {
+    state.permissions = new Set(["training.job_assignment.view"]);
+    api.jobs.mockResolvedValue(page([{ id: "j2", issueNo: 7, caseType: "CHANGE", status: "EFFECTIVE", positionName: "QA Manager, DCO Staff, QA Specialist, Auditor, Trainer", createdAt: "2026-10-01" }]));
+    renderCard();
+
+    fireEvent.click(await screen.findByRole("button", { name: "+2 more" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(dialog).getByText("Trainer")).toBeTruthy();
   });
 
   it("searches on the server: the text typed in the search box is sent with the person, from the first page", async () => {

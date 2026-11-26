@@ -28,6 +28,7 @@ import { leaveRestoreNotice } from "../restoreSessionNotice";
 import { useProductionRestoreRun } from "../components/useProductionRestoreRun";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 const ALL = "ALL";
 const STATUS_OPTIONS = [
@@ -36,11 +37,7 @@ const STATUS_OPTIONS = [
   { label: "Finalized", value: "FINALIZED" },
   { label: tr("Rolled back"), value: "ROLLED_BACK" },
 ];
-const STATUS_COLOR: Record<ProductionRestoreStatus, "amber" | "emerald" | "slate"> = {
-  PENDING_FINALIZATION: "amber",
-  FINALIZED: "emerald",
-  ROLLED_BACK: "slate",
-};
+const STATUS_COLOR = statusColors("PENDING_FINALIZATION", "FINALIZED", "ROLLED_BACK");
 const STATUS_TEXT: Record<ProductionRestoreStatus, string> = {
   PENDING_FINALIZATION: "Waiting to finalize",
   FINALIZED: "Finalized",

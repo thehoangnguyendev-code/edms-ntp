@@ -1,4 +1,5 @@
 import type { BadgeColor } from "@/components/ui/badge/Badge";
+import { knownStatusColor } from "@/components/ui/badge/statusColors";
 
 /**
  * Status utilities — centralised colour mappings for all status strings
@@ -40,112 +41,9 @@ const STATUS_BADGE_CLASS: Record<BadgeColor, string> = {
   green: "bg-green-50 text-green-700 border-green-200/70",
 };
 
-const normalizeStatusCode = (status?: string): string =>
-  status?.trim().toUpperCase().replace(/[\s-]+/g, "_") ?? "";
-
-const normalizeStatusLabel = (status?: string): string =>
-  status?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
-
+/** The colour of a status from the shared table of the badges (the code the API sends, else the label); undefined when neither is known. */
 export function getStatusBadgeColor(status?: string, statusCode?: string): BadgeColor | undefined {
-  const code = normalizeStatusCode(statusCode ?? status);
-  const label = normalizeStatusLabel(status);
-
-  switch (code) {
-    case "DRAFT":
-      return "slate";
-    case "PENDING_REVIEW":
-      return "amber";
-    case "PENDING_APPROVAL":
-      return "blue";
-    case "PENDING_TRAINING":
-      return "purple";
-    case "READY_FOR_PUBLISHING":
-      return "indigo";
-    case "PUBLISHED":
-      return "emerald";
-    case "EFFECTIVE":
-    case "ACTIVE":
-    case "APPROVED":
-    case "QUALIFIED":
-    case "PASS":
-    case "COMPLETED":
-    case "RESOLVED":
-    case "IMPLEMENTED":
-    case "MITIGATED":
-      return "emerald";
-    case "READY_FOR_DISTRIBUTION":
-      return "blue";
-    case "DISTRIBUTED":
-      return "emerald";
-    case "OBSOLETE":
-    case "OBSOLETED":
-      return "amber";
-    case "CLOSED_CANCELLED":
-    case "CANCELLED":
-    case "REJECTED":
-    case "DISQUALIFIED":
-    case "FAIL":
-    case "BLOCKED":
-    case "OVERDUE":
-    case "CRITICAL":
-      return "red";
-    case "ARCHIVED":
-    case "ARCHIVE":
-    case "INACTIVE":
-      return "slate";
-    case "CURRENT":
-      return "blue";
-  }
-
-  switch (label) {
-    case "draft":
-      return "slate";
-    case "pending review":
-      return "amber";
-    case "pending approval":
-      return "blue";
-    case "pending training":
-      return "purple";
-    case "ready for publishing":
-      return "indigo";
-    case "published":
-      return "emerald";
-    case "effective":
-    case "active":
-    case "approved":
-    case "qualified":
-    case "pass":
-    case "completed":
-    case "resolved":
-    case "implemented":
-    case "mitigated":
-      return "emerald";
-    case "ready for distribution":
-      return "blue";
-    case "distributed":
-      return "emerald";
-    case "obsolete":
-    case "obsoleted":
-      return "amber";
-    case "closed - cancelled":
-    case "closed cancelled":
-    case "cancelled":
-    case "rejected":
-    case "disqualified":
-    case "fail":
-    case "blocked":
-    case "overdue":
-    case "critical":
-      return "red";
-    case "archived":
-    case "archive":
-    case "inactive":
-      return "slate";
-    case "current":
-      return "blue";
-  }
-
-  return undefined;
+  return knownStatusColor(statusCode) ?? knownStatusColor(status);
 }
 
 // ─── Common Status Color Classes ─────────────────────────────────────────────
@@ -464,5 +362,5 @@ export function mapStatusToStatusType(status: string): string {
  * the "on" state is green and the "off" state is rose, so the two are told apart at a glance; grey is not used for a state.
  * Failure and suspension stay red, waiting stays amber.
  */
-export const flagColor = (on: boolean): BadgeColor => (on ? "emerald" : "rose");
+export const flagColor = (on: boolean): BadgeColor => (on ? "emerald" : "rose"); // as ACTIVE and INACTIVE in the shared table
 

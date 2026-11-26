@@ -1,4 +1,4 @@
-export { LanguageProvider, useLanguage } from './LanguageProvider';
+export { LanguageProvider, RedrawOnLanguage, useLanguage } from './LanguageProvider';
 export {
   LANGUAGE_OPTIONS,
   languageCacheKey,

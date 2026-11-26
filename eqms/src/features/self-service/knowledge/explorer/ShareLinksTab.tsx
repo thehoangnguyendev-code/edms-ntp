@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useState } from "react";
 import { Check, Copy, Link2 } from "lucide-react";
 import { ROUTES } from "@/app/routes.constants";
@@ -10,6 +11,7 @@ import { knowledgeApi, type SharingLink, type SharingLinkCreated, type SharingNo
 import { errorMessage, refOf, useShareAction, type FooterAction } from "./shareUi";
 import { ShareScrollList } from "./ShareScrollList";
 import { tr, trFormat } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 interface ShareLinksTabProps {
   node: SharingNode;
@@ -17,7 +19,7 @@ interface ShareLinksTabProps {
   registerAction: (action: FooterAction | null) => void;
 }
 
-const STATUS_COLOR = { ACTIVE: "emerald", EXPIRED: "slate", REVOKED: "red" } as const;
+const STATUS_COLOR = statusColors("ACTIVE", "EXPIRED", "REVOKED");
 const STATUS_LABEL = { ACTIVE: "Active", EXPIRED: "Expired", REVOKED: "Revoked" } as const;
 
 /** The address a person pastes into a browser to open the link. */
@@ -119,7 +121,7 @@ export const ShareLinksTab: React.FC<ShareLinksTabProps> = ({ node, active, regi
       <section className="order-2 min-w-0 space-y-2.5" aria-label={tr("Links")}>
         <h3 className="text-sm font-semibold text-slate-900">{tr("Links that reach this item")}</h3>
         <ShareScrollList<SharingLink>
-          ariaLabel="Links that reach this item"
+          ariaLabel={__ariaTr("Links that reach this item")}
           fetchPage={fetchLinks}
           getKey={(link) => link.id}
           searchPlaceholder={tr("Search the links")}

@@ -213,8 +213,6 @@ class DocumentLifecycleBaselineTest {
 
     @Test
     void tcDoc001_002_003_validCreate_isDraftWithSingleCreateAuditAndNoSignature() {
-        long auditRowsBefore = auditLogRepository.count();
-
         var response = documentService.createDocumentDraft(createRequest("Baseline Create Test " + UUID.randomUUID()));
         UUID documentId = UUID.fromString(response.id());
         DocumentRecord document = fetchDocument(documentId);
@@ -228,7 +226,10 @@ class DocumentLifecycleBaselineTest {
         assertEquals(1, createRows.size(), "Create must produce exactly one CREATE audit entry");
         assertNull(createRows.get(0).getFromStatus());
         assertEquals("DRAFT", createRows.get(0).getToStatus());
-        assertEquals(auditRowsBefore + 1, auditLogRepository.count(), "Create must not produce any other audit entry");
+        // Assert this document's complete audit trail, not a global counter that
+        // also includes independent scheduler/outbox work during the request.
+        long documentAuditCount = auditLogRepository.count((root, query, cb) -> cb.equal(root.get("entityId"), documentId));
+        assertEquals(1L, documentAuditCount, "Create must not produce any other audit entry for this Document");
 
         // TC-DOC-003: no ElectronicSignature row for Create
         assertTrue(electronicSignatureRepository.findByEntityTypeIgnoreCaseAndEntityIdOrderBySignedAtAsc("documents", documentId).isEmpty());

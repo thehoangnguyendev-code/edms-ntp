@@ -52,7 +52,7 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 border-b border-slate-200 bg-white px-3 py-2.5 md:px-4">
-      <Button variant="ghost" size="icon-sm" onClick={onOpenMenu} aria-label={t("knowledge.openNavigation", "Open navigation")} className={cn(ICON_BUTTON, "md:hidden")}>
+      <Button variant="ghost" size="icon-sm" onClick={onOpenMenu} aria-label={t("knowledge.openNavigation", "Open navigation")} className={cn(ICON_BUTTON, "lg:hidden")}>
         <Menu className="h-[18px] w-[18px]" />
       </Button>
       <Button variant="ghost" size="icon-sm" onClick={onBack} disabled={!canBack} aria-label={t("knowledge.back", "Back")} className={ICON_BUTTON}>
@@ -143,10 +143,12 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
               size="icon-sm"
               onClick={onToggleWidgets}
               aria-label={t("knowledge.showWidgets", "Show widgets")}
+              title={widgetsVisible ? t("knowledge.hideOverview", "Hide the overview") : t("knowledge.showOverview", "Show the overview")}
               aria-pressed={widgetsVisible}
-              className={cn("hidden h-10 w-10 shrink-0 sm:inline-flex md:h-8 md:w-8", widgetsVisible ? "border-transparent bg-emerald-50" : "text-slate-500 hover:text-slate-900")}
+              className={cn("hidden h-10 shrink-0 gap-1.5 sm:inline-flex md:h-8 lg:w-auto lg:px-2.5", widgetsVisible ? "border-transparent bg-emerald-50" : "text-slate-500 hover:text-slate-900")}
             >
               <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden text-sm font-medium lg:inline">{t("knowledge.overview", "Overview")}</span>
             </Button>
           )}
         </div>

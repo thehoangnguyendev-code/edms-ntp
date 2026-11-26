@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/components/ui/utils";
 import { useLocation } from "react-router-dom";
@@ -1116,7 +1117,7 @@ export const RequestControlledCopyView: React.FC = () => {
                     }));
                   }}
                   variant="pill"
-                  ariaLabel="Distribution mode"
+                  ariaLabel={__ariaTr("Distribution mode")}
                 />
               )}
               {!canRequestForOthers ? null : distributionMode === "internal" ? (
@@ -1205,7 +1206,7 @@ export const RequestControlledCopyView: React.FC = () => {
                               type="button"
                               onClick={() => removeExternalRecipient(email)}
                               className="rounded-full p-0.5 hover:bg-black/5"
-                              aria-label={`Remove ${email}`}
+                              aria-label={__ariaTrFormat("Remove {v1}", { v1: email })}
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -1295,8 +1296,8 @@ export const RequestControlledCopyView: React.FC = () => {
                 }}
                 options={(Object.keys(USAGE_PURPOSE_LABELS) as ControlledCopyUsagePurpose[]).map((code) => ({
                   value: code,
-                  label: USAGE_PURPOSE_LABELS[code],
-                  description: USAGE_PURPOSE_DESCRIPTIONS[code],
+                  label: tr(USAGE_PURPOSE_LABELS[code]),
+                        description: tr(USAGE_PURPOSE_DESCRIPTIONS[code]),
                 }))}
                 error={errors.usagePurpose || undefined}
               />
@@ -1490,7 +1491,7 @@ export const RequestControlledCopyView: React.FC = () => {
         actionTitle="Confirm Controlled Copy Request"
         meaningDisplayName="Controlled Copy Requested"
         meaningCode="CONTROLLED_COPY_REQUESTED"
-        changes={usagePurpose ? [{ action: "Usage Purpose", oldValue: "-", newValue: USAGE_PURPOSE_LABELS[usagePurpose], category: "metadata" }] : undefined}
+        changes={usagePurpose ? [{ action: "Usage Purpose", oldValue: "-", newValue: tr(USAGE_PURPOSE_LABELS[usagePurpose]), category: "metadata" }] : undefined}
       />
 
       {/* Cancel Confirmation Modal */}

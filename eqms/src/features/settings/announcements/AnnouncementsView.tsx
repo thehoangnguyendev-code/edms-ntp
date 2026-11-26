@@ -313,7 +313,7 @@ export const AnnouncementsView: React.FC = () => {
           ) : (
             <span className="font-medium text-slate-900">{row.title}</span>
           )}
-          <span className="line-clamp-1 block text-xs text-slate-500">
+          <span className="line-clamp-1 text-xs text-slate-500">
             {row.message}
           </span>
         </div>

@@ -580,13 +580,13 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
 
     const infoItems = [
       { label: tr("Document Number"), value: doc.documentNumber || "N/A" },
-      { label: "Created", value: doc.created || "N/A" },
-      { label: "Opened By", value: doc.openedBy || "N/A" },
+      { label: tr("Created"), value: doc.created || "N/A" },
+      { label: tr("Opened By"), value: doc.openedBy || "N/A" },
       { label: tr("Document Name"), value: doc.documentName, fullWidth: true },
-      { label: "State", value: <StatusBadge status={(doc.status?.toLowerCase() as any) || 'draft'} size="xs" /> },
+      { label: tr("State"), value: <StatusBadge status={(doc.status?.toLowerCase() as any) || 'draft'} size="xs" /> },
       { label: tr("Document Type"), value: doc.type },
-      { label: "Department", value: doc.department || "N/A" },
-      { label: "Author", value: doc.author || doc.authorCoAuthor || "N/A" },
+      { label: tr("Department"), value: doc.department || "N/A" },
+      { label: tr("Author"), value: doc.author || doc.authorCoAuthor || "N/A" },
       { label: tr("Effective Date"), value: doc.effectiveDate || "N/A" },
       { label: tr("Valid Until"), value: doc.validUntil || "N/A" },
     ];
@@ -620,8 +620,8 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
         size="2xl"
         className="max-w-[95%] sm:max-w-3xl"
         showCancel={true}
-        cancelText="Cancel"
-        confirmText="Save"
+        cancelText={tr("Cancel")}
+        confirmText={tr("Save")}
         onConfirm={handleSaveCorrelated}
       >
         <div className="flex flex-col h-full">
@@ -775,7 +775,7 @@ export const DocumentRelationships: React.FC<DocumentRelationshipsProps> = ({
         size="2xl"
         className="max-w-[95%] sm:max-w-3xl"
         showCancel={true}
-        cancelText="Cancel"
+        cancelText={tr("Cancel")}
         confirmText={tr("Save Selection")}
         onConfirm={handleSaveRelated}
       >

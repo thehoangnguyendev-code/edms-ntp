@@ -43,7 +43,7 @@ import type {
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { statusText } from "@/features/security-authorization/shared/humanizeCode";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -202,7 +202,7 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
     { label: "All", value: "ALL" },
     { label: tr("Global only"), value: "GLOBAL" },
     ...(options?.documentTypes ?? []).map((d) => ({ label: d.name, value: d.id })),
-  ], [options]);
+  ], [options, getCatalogLanguage()]);
 
   const paginated = policies;
 

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
@@ -338,7 +339,7 @@ const MatrixLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => 
                                   type="button"
                                   disabled={identityLocked}
                                   aria-pressed={selected}
-                                  aria-label={`${action.label || action.value} from ${prettify(status)}`}
+                                  aria-label={__ariaTrFormat("{v1} from {v2}", { v1: action.label || action.value, v2: prettify(status) })}
                                   onClick={() => choose(action.value, status)}
                                   className={cn(
                                     "relative inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-default",

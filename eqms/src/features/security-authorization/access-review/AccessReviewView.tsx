@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
@@ -35,9 +36,11 @@ import { formatDateTime, formatDateUS } from "@/utils/format";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
-  status === "COMPLETED" ? "emerald" : status === "CANCELLED" ? "slate" : "blue";
+  statusColor(status);
 
 const ddmmyyyyToIso = (value: string): string | undefined => {
   const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -143,6 +146,7 @@ export const AccessReviewView: React.FC = () => {
   const [cancelTarget, setCancelTarget] = useState<AccessReviewCampaignSummary | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
+  const waiting = useWaitingForMe("sec-access-review", () => setCurrentPage(1));
   const load = useCallback(async () => {
     if (!canView) {
       setCampaigns([]);
@@ -152,6 +156,7 @@ export const AccessReviewView: React.FC = () => {
     setLoading(true);
     try {
       const res = await settingsApi.listAccessReviewsPaged({
+        ...waiting.params,
         page: currentPage,
         limit: itemsPerPage,
         search: debouncedSearch || undefined,
@@ -171,7 +176,7 @@ export const AccessReviewView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [canView, currentPage, itemsPerPage, debouncedSearch, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast]);
+  }, [canView, currentPage, itemsPerPage, debouncedSearch, statusFilter, createdFrom, createdTo, updatedFrom, updatedTo, sortKey, sortDir, showToast, waiting.params]);
 
   useEffect(() => {
     if (!canView) return;
@@ -234,7 +239,7 @@ export const AccessReviewView: React.FC = () => {
     setCancelling(true);
     try {
       await settingsApi.cancelAccessReview(cancelTarget.id);
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: tr("Campaign cancelled") });
       setCancelTarget(null);
       void load();
     } catch (e: any) {
@@ -343,7 +348,7 @@ export const AccessReviewView: React.FC = () => {
                           ref={getRef(campaign.id)}
                           onClick={(event) => toggle(campaign.id, event)}
                           className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
-                          aria-label={`Actions for ${campaign.name}`}
+                          aria-label={__ariaTrFormat("Actions for {v1}", { v1: campaign.name })}
                         >
                           <MoreVertical className="h-4 w-4 text-slate-600" />
                         </button>
@@ -404,6 +409,7 @@ export const AccessReviewView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-hidden flex flex-col">
           <TabNav tabs={PAGE_TABS} activeTab={pageTab} onChange={(id) => setPageTab(id === "shares" ? "shares" : id === "links" ? "links" : "campaigns")} variant="underline" />
           <div className="p-4 md:p-5 flex-1 flex flex-col">
+            {waiting.node && <div className="mb-3">{waiting.node}</div>}
 
             {/* Mobile: search + filter drawer */}
             <div className="flex md:hidden items-center gap-2 mb-4">

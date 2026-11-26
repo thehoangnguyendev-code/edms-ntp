@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useSearchParams } from "react-router-dom";
@@ -457,7 +458,7 @@ export const TrainingPropertiesView: React.FC = () => {
       />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={tabs} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Training properties" tabIdPrefix="training-properties-tab" panelIdPrefix="training-properties-panel" />
+        <TabNav tabs={tabs} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel={__ariaTr("Training properties")} tabIdPrefix="training-properties-tab" panelIdPrefix="training-properties-panel" />
         <div className="p-4 md:p-5">
           <div id={`training-properties-panel-${tab}`} role="tabpanel" aria-labelledby={`training-properties-tab-${tab}`} className="min-w-0">
         {settingTab && (

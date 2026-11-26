@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page/PageHeader";
+import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { Button } from "@/components/ui/button/Button";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
@@ -180,7 +181,7 @@ export function TrainingMatrixVersionPage() {
     return () => { alive = false; };
   }, [departmentOfVersion, version?.version]);
 
-  const title = "Training Matrix Details";
+  const title = tr("Training Matrix Details");
   // Leaving with changes that were not saved asks first (Back, the breadcrumb, a link, the sidebar, a reload).
   const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(dirty, title, "the previous page");
   const crumbs = trainingBreadcrumbs(go, "matrices", title);
@@ -355,12 +356,18 @@ export function TrainingMatrixVersionPage() {
           </div>
         }
       >
-        <p className="mb-3 text-sm text-slate-700">{NEXT_STEP[version.status]}</p>
+        <p className="mb-3 text-sm text-slate-700">{tr(NEXT_STEP[version.status])}</p>
         {waiting > 0 && (
-          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {trFormat("{count} new or revised documents of this department wait for the matrix to be assessed or updated.", { count: waiting })}{" "}
-            <button type="button" className="font-medium underline" onClick={() => go("/training-management/document-impact-assessment")}>{tr("Open Document Impact Assessment")}</button>
-          </p>
+          <WarningBanner
+            variant="warning"
+            className="mb-3"
+            description={
+              <>
+                {trFormat("{count} new or revised documents of this department wait for the matrix to be assessed or updated.", { count: waiting })}{" "}
+                <button type="button" className="font-medium underline" onClick={() => go("/training-management/document-impact-assessment")}>{tr("Open Document Impact Assessment")}</button>
+              </>
+            }
+          />
         )}
         {tab === "general" && (
           <div className="space-y-4">
@@ -376,7 +383,7 @@ export function TrainingMatrixVersionPage() {
               />
               <ReadonlyField
                 label={tr("Status")}
-                value={STATUS_LABEL[version.status]}
+                value={tr(STATUS_LABEL[version.status])}
               />
               <ReadonlyField
                 label={tr("Pending With")}

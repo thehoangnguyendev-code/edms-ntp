@@ -35,7 +35,7 @@ export function useSpecimenActions(): {
           <div className="grid gap-4">
             {viewing.urls.map((url, i) => (
               <figure key={url} className="space-y-1">
-                <figcaption className="text-xs font-medium text-slate-600">{i === 0 ? "1st signature" : "2nd signature"}</figcaption>
+                <figcaption className="text-xs font-medium text-slate-600">{tr(i === 0 ? "1st signature" : "2nd signature")}</figcaption>
                 <img src={url} alt={i === 0 ? tr("1st specimen signature") : tr("2nd specimen signature")} className="mx-auto max-h-48 max-w-full rounded border border-slate-200 bg-white" />
               </figure>
             ))}

@@ -60,3 +60,6 @@
 !/deploy/env/*.env.example
 
 /node_modules/
+
+# Nested git metadata kept only as a local backup; never part of the repo index.
+eqms/.git_disabled/

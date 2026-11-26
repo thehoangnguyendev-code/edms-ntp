@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 ﻿import React from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
@@ -82,7 +83,7 @@ export const SectionCard: React.FC<{
             variant="outline"
             size="xs"
             onClick={onEdit}
-            aria-label={`Edit ${title}`}
+            aria-label={__ariaTrFormat("Edit {v1}", { v1: title })}
             className="gap-1.5 h-7 px-2.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
           >
             <IconPencilMinus className="h-3.5 w-3.5" />

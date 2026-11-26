@@ -21,7 +21,7 @@ import { authApi } from '@/services/api/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAvatarFileWithinLimit, isSupportedAvatarFile, readFileAsDataUrl } from '@/utils/avatar';
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 /** Fixed, so the tab bar is handed the same list on every keystroke. */
 const PROFILE_TABS = [
@@ -196,7 +196,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         const base = tr(resolveConfiguredNavigationLabel('Personal Information', navigationLabelOverrides));
         const displayName = authUser?.fullName || authUser?.username;
         return displayName ? `${base} - ${displayName}` : base;
-    }, [navigationLabelOverrides, authUser?.fullName, authUser?.username]);
+    }, [navigationLabelOverrides, authUser?.fullName, authUser?.username, getCatalogLanguage()]);
 
     const handleSubmit = async () => {
         let hasError = false;

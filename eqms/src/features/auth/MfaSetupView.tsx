@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { IconCopy, IconCheck, IconMailOpened, IconQrcode, IconRefresh, IconShieldCheck, IconRosetteDiscountCheck, IconDeviceMobile } from "@tabler/icons-react";
 import { Smartphone } from "lucide-react";
@@ -63,7 +64,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       const response = await authApi.setupMFA(selectedMethod);
       setSetupData({ ...response, method: selectedMethod });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to initialize MFA setup.");
+      setError(err instanceof Error ? err.message : tr("Unable to initialize MFA setup."));
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +112,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
       setConfirmed(true);
       setStep("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid verification code. Please try again.");
+      setError(err instanceof Error ? err.message : tr("Invalid verification code. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +200,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
     >
       <div className={cn(ui.headerArea, "mb-1 sm:mb-1")}>
         <div className={ui.headingBlock}>
-          <h1 className={ui.pageTitle}>{method === "app" ? "Scan QR Code" : "Verify Email"}</h1>
+          <h1 className={ui.pageTitle}>{method === "app" ? tr("Scan QR Code") : tr("Verify Email")}</h1>
           <p className={ui.description}>
             {method === "app" ? (
               "Open your authenticator app and scan the code below."
@@ -291,7 +292,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
               onChange={(e) => handleOtpChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               disabled={isLoading}
-              aria-label={`Verification code digit ${index + 1}`}
+              aria-label={__ariaTrFormat("Verification code digit {v1}", { v1: index + 1 })}
               className={cn(
                 "otp-input h-16 w-full rounded-[12px] border text-center font-bold outline-none leading-normal transition-all",
                 "focus:ring-1 focus:ring-emerald-600",
@@ -372,7 +373,7 @@ export const MfaSetupView: React.FC<MfaSetupViewProps> = ({
             <div>
               <p className="text-xs font-semibold uppercase text-emerald-800">{tr("Primary Method")}</p>
               <p className="text-sm font-semibold text-emerald-900">
-                {method === "app" ? "Authenticator Application" : `Email: ${email}`}
+                {method === "app" ? tr("Authenticator Application") : `Email: ${email}`}
               </p>
             </div>
           </div>

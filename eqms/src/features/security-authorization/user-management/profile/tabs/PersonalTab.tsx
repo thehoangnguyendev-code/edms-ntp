@@ -6,7 +6,7 @@ import { cn } from "@/components/ui/utils";
 import { useDebounce } from "@/hooks";
 import { settingsApi } from "@/services/api/settings";
 import type { User } from "../../types";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 const EMPLOYEE_CODE_PREFIX = "NTP.";
 
@@ -125,7 +125,7 @@ export const PersonalTab: React.FC<PersonalTabProps> = ({
       return [...base, { label: current, value: current }, ...normalized];
     }
     return [...base, ...normalized];
-  }, [draft.language, languageOptions]);
+  }, [draft.language, languageOptions, getCatalogLanguage()]);
 
   return (
     <div>

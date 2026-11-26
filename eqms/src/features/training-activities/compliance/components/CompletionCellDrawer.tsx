@@ -7,11 +7,12 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { trainingComplianceApi, trainingError, type CompletionCellDetail, type CompletionState } from "@/services/api/trainingActivities";
 import { METHOD_LABEL, STATUS_COLOR, STATUS_LABEL, day } from "../../shared/trainingLabels";
 import { tr, trFormat } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 const STATE_LABEL: Record<CompletionState, string> = { NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In Progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due" };
-const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = { NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange" };
+const STATE_COLOR = statusColors("NOT_REQUIRED", "REQUIRED", "IN_PROGRESS", "QUALIFIED", "UPDATE_NEEDED", "DUE");
 const GROUP_LABEL = { FACTORY_GENERAL: "General training of the whole factory", DEPARTMENT_GENERAL: "General training of the department", SOP: "SOP of the Work Position" } as const;
-const RESULT_LABEL: Record<string, string> = { PASSED: "Passed", READ: "Read and understood", ATTENDED: "Attended" };
+const RESULT_LABEL: Record<string, string> = { PASSED: "Qualified", READ: "Read and understood", ATTENDED: "Attended" };
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -50,28 +50,24 @@ import {
 } from "@/services/api/trainingActivities";
 import {
   day,
+  localized,
   saveBlob,
   trainingBreadcrumbs,
   TRAINING_PAGES,
   when,
 } from "../shared/trainingLabels";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-export const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
+export const REQUIREMENT_STATUS_LABEL: Record<string, string> = localized({
   DRAFT: "Draft",
   PENDING_REVIEW: "Pending Review",
   PENDING_APPROVAL: "Pending Approval",
   APPROVED: "Approved",
-};
-export const REQUIREMENT_STATUS_COLOR: Record<
-  string,
-  "blue" | "amber" | "emerald"
-> = {
-  DRAFT: "blue",
-  PENDING_REVIEW: "amber",
-  PENDING_APPROVAL: "amber",
-  APPROVED: "emerald",
-};
+});
+export const REQUIREMENT_STATUS_COLOR = statusColors("DRAFT", "PENDING_REVIEW", "PENDING_APPROVAL", "APPROVED") as Record<string, BadgeColor>;
 const KIND_LABEL: Record<string, string> = {
   ANNUAL: "Annual",
   SOP_PERIODIC: "SOP periodic review",
@@ -106,6 +102,7 @@ export function TrainingRequirementListView() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-requirements", () => table.setCurrentPage(1));
   const extra = useMemo(() => ({
     status: status || undefined, kind: kindFilter || undefined, departmentId: departmentId || undefined, year: yearFilter || undefined,
     ...dueRange.params("dueFrom", "dueTo"), ...createdRange.params("createdFrom", "createdTo"),
@@ -115,7 +112,7 @@ export function TrainingRequirementListView() {
     fetcher,
     defaultSortBy: "year",
     defaultSortDirection: "desc",
-    extraParams: extra,
+    extraParams: { ...extra, ...waiting.params },
     initialItemsPerPage: 10,
   });
 
@@ -153,7 +150,7 @@ export function TrainingRequirementListView() {
       header: "Status", sort: sorted("status"),
       cell: (r) => (
         <Badge color={REQUIREMENT_STATUS_COLOR[r.status]}>
-          {REQUIREMENT_STATUS_LABEL[r.status]}
+          {tr(REQUIREMENT_STATUS_LABEL[r.status])}
         </Badge>
       ),
     },
@@ -255,6 +252,7 @@ export function TrainingRequirementListView() {
           {error}
         </p>
       )}
+      {waiting.node}
       <ReportListToolbar
         searchPlaceholder={tr("Search request number…")}
         search={table.searchQuery}

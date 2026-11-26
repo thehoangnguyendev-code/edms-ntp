@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useId } from "react";
 import { cn } from "@/components/ui/utils";
 import {
@@ -64,7 +65,7 @@ export const TrendVisual: React.FC<TrendVisualProps> = ({
   const caption = info ?? { title: `Peak ${peak.value.toLocaleString()}`, text: peak.label };
 
   return (
-    <div role="img" aria-label={`Trend from ${points[0].label} to ${points[last].label}, peak ${peak.value} on ${peak.label}`} className="absolute inset-0 overflow-hidden">
+    <div role="img" aria-label={__ariaTrFormat("Trend from {v1} to {v2}, peak {v3} on {v4}", { v1: points[0].label, v2: points[last].label, v3: peak.value, v4: peak.label })} className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0">
         <svg className="h-full w-full" viewBox={`0 0 ${last} ${HEIGHT}`} preserveAspectRatio="none" fill="none">
           <defs>

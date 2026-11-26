@@ -3,9 +3,10 @@ import { dashboard } from "@/components/ui/breadcrumb/breadcrumbs/shared";
 import type { BadgeColor } from "@/components/ui/badge/Badge";
 import { tr } from "@/i18n";
 import { displayDate, displayDateTime } from "@/utils/format";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 /** Translates a label map when it is read, so every screen that uses it shows the active language. */
-function localized<T extends Record<string, string>>(map: T): T {
+export function localized<T extends Record<string, string>>(map: T): T {
   return new Proxy(map, {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
@@ -31,16 +32,7 @@ export const STATUS_LABEL: Record<string, string> = localized({
   COMPLETED: "Completed",
   CANCELLED: "Closed - Cancelled",
 });
-export const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate" | "blue"> = {
-  RESERVED: "slate",
-  PLANNED: "blue",
-  PENDING_APPROVAL: "amber",
-  NOTIFIED: "blue",
-  IN_PROGRESS: "amber",
-  PENDING_QA_CONFIRMATION: "amber",
-  COMPLETED: "emerald",
-  CANCELLED: "red",
-};
+export const STATUS_COLOR = statusColors("RESERVED", "PLANNED", "PENDING_APPROVAL", "NOTIFIED", "IN_PROGRESS", "PENDING_QA_CONFIRMATION", "COMPLETED", "CANCELLED") as Record<string, BadgeColor>;
 export const KIND_LABEL: Record<string, string> = localized({
   INITIAL: "Initial Training",
   PERIODIC: "Periodic Training",
@@ -65,7 +57,7 @@ export const KIND_REASON_LABEL: Record<string, string> = localized({
   VISITOR: "Visitor",
   ABSENCE_RETURN: "Return after absence",
   ABSENT_MAKEUP: "Supplementary for absence",
-  FAILED_ASSESSMENT: "Failed assessment",
+  FAILED_ASSESSMENT: "Not qualified, retraining",
   OTHER: "Other",
 });
 export const METHOD_LABEL: Record<string, string> = localized({ SELF_READING: "Self-reading", CLASSROOM: "Classroom training", HYBRID: "Hybrid training", PRACTICAL: "Practical training" });
@@ -107,6 +99,7 @@ export const STEP_LABEL: Record<string, string> = localized({
   TRAINER_EXCEPTION: "Exception for a trainer who is not yet qualified",
   REQUIREMENT_REVIEW: "Review of the training requirement",
   REQUIREMENT_APPROVE: "Approval of the training requirement",
+  REVIEW_CLOSE: "Closing of the training review",
 });
 
 export const when = (value?: string | null) => (value ? displayDateTime(value) : "—");

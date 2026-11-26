@@ -109,6 +109,7 @@ public class TrainingLegacyEvidenceService {
                 throw new IllegalArgumentException("TRAINING_FILTER_INVALID");
             }
         }
+        if ("true".equals(more.get(TrainingWaiting.PARAM))) extra.raw(TrainingWaiting.assigned(TYPE, "le.id"), actor.getId());
         where.append(extra.and());
         args.addAll(extra.args());
         // The evidence of a revision is its own, or the one of the activity it shares with other revisions (one paper number for several SOPs).

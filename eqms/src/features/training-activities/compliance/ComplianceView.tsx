@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -73,7 +74,7 @@ function TrainingCompliance({ ownDepartmentId }: { ownDepartmentId: string }) {
         ) : undefined}
       />
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel="Training compliance" tabIdPrefix="compliance-tab" panelIdPrefix="compliance-panel" />
+        <TabNav tabs={TABS} activeTab={tab} onChange={changeTab} variant="underline" ariaLabel={__ariaTr("Training compliance")} tabIdPrefix="compliance-tab" panelIdPrefix="compliance-panel" />
         <div className="p-4 md:p-5">
           <div id={`compliance-panel-${tab}`} role="tabpanel" aria-labelledby={`compliance-tab-${tab}`} className="min-w-0">
             {tab === "summary" && <ComplianceSummaryTab departmentId={departmentId} departments={departmentOptions(departments, ownDepartmentId)} onDepartment={setDepartmentId} registerPrint={setPrinter} />}

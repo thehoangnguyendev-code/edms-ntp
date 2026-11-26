@@ -35,7 +35,8 @@ import {
   TRAINING_PAGES,
 } from "../shared/trainingLabels";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 const OPEN_LABEL: Record<string, string> = {
   DRAFT: "Draft",
@@ -72,12 +73,13 @@ export function TrainingMatrixListView() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-matrices", () => table.setCurrentPage(1));
   const extraParams = useMemo(() => ({ state: state || undefined }), [state]);
   const table = useServerTable<TrainingMatrixSummary>({ persistKey: "training.matrices", liveTypes: ["TRAINING"],
     fetcher,
     defaultSortBy: "department",
     defaultSortDirection: "asc",
-    extraParams,
+    extraParams: { ...extraParams, ...waiting.params },
     initialItemsPerPage: 10,
   });
   useEffect(() => setError(""), [table.items]);
@@ -141,12 +143,12 @@ export function TrainingMatrixListView() {
     {
       id: "effective",
       header: tr("Effective version"), sort: sorted("effective"),
-      cell: (m) => (m.effectiveVersionId ? `Version ${m.effectiveVersionNo} (${day(m.effectiveAt)})` : "—"),
+      cell: (m) => (m.effectiveVersionId ? trFormat("Version {number} ({date})", { number: m.effectiveVersionNo, date: day(m.effectiveAt) }) : "—"),
     },
     {
       id: "open",
       header: tr("Draft in progress"), sort: sorted("prepared"),
-      cell: (m) => (m.openVersionId ? <Badge color="amber">Version {m.openVersionNo}: {OPEN_LABEL[m.openStatus ?? ""] ?? m.openStatus}</Badge> : "—"),
+      cell: (m) => (m.openVersionId ? <Badge color="amber">{trFormat("Version {number}: {status}", { number: m.openVersionNo, status: OPEN_LABEL[m.openStatus ?? ""] ?? m.openStatus })}</Badge> : "—"),
     },
   ];
   const { layout, control } = useCustomColumnLayout(
@@ -186,6 +188,7 @@ export function TrainingMatrixListView() {
           {error}
         </p>
       )}
+      {waiting.node}
       <ReportListToolbar
         searchPlaceholder={tr("Search matrix or department…")}
         search={table.searchQuery}

@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React from 'react';
 import onlyOfficeLogo from '@/assets/images/logo-app/onlyoffice.webp';
 import EmbedPDF from '@/assets/images/logo-app/PDF_file_icon.svg.webp'
@@ -132,7 +133,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
         onDocumentsChange(next as unknown as DocumentConfig);
       }
     }}
-    ariaLabel="Preview file sections"
+    ariaLabel={__ariaTr("Preview file sections")}
     idPrefix="preview-file"
   >
     {activeTab === 'onlyoffice-preview' && (

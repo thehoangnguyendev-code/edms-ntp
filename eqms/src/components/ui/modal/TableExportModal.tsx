@@ -20,8 +20,8 @@ export interface TableExportModalProps {
 }
 
 const FORMATS: { value: TableExportFormat; label: string; description: string; icon: React.ReactNode }[] = [
-  { value: 'xlsx', label: 'Excel', description: '.xlsx workbook', icon: <IconFileTypeXls className="h-5 w-5" /> },
-  { value: 'csv', label: 'CSV', description: '.csv text file', icon: <IconFileTypeCsv className="h-5 w-5" /> },
+  { value: 'xlsx', label: 'Excel', description: tr('.xlsx workbook'), icon: <IconFileTypeXls className="h-5 w-5" /> },
+  { value: 'csv', label: 'CSV', description: tr('.csv text file'), icon: <IconFileTypeCsv className="h-5 w-5" /> },
 ];
 
 /** A rough size per cell: an Excel file is zipped, a CSV is plain text (measured on DEV: Excel 5-8 bytes, CSV 12-13 bytes per cell). Only for the "About ..." line; the server makes the real file. */
@@ -86,17 +86,17 @@ export const TableExportModal: React.FC<TableExportModalProps> = ({ isOpen, onCl
 
   const formatLabel = FORMATS.find((item) => item.value === format)?.label ?? '';
   const sizeLine = totalRecords === undefined
-    ? 'The file size is known once it is made'
-    : `About ${formatBytes(estimateExportBytes(format, totalRecords, chosen.length))} · ${new Intl.NumberFormat('en-US').format(totalRecords)} ${totalRecords === 1 ? 'record' : 'records'}`;
+    ? tr('The file size is known once it is made')
+    : `${tr("About")} ${formatBytes(estimateExportBytes(format, totalRecords, chosen.length))} · ${new Intl.NumberFormat('en-US').format(totalRecords)} ${tr(totalRecords === 1 ? 'record' : 'records')}`;
 
   return (
     <FormModal
       isOpen={isOpen}
       onClose={() => { if (!busy) onClose(); }}
       onConfirm={() => void run()}
-      title={title ? `Export ${title}` : 'Export'}
+      title={title ? `${tr("Export")} ${title}` : tr('Export')}
       description={tr("The file holds every record that matches the filters on the screen.")}
-      confirmText={`Export ${formatLabel}`}
+      confirmText={`${tr("Export")} ${formatLabel}`}
       confirmDisabled={loading || loadError || chosen.length === 0}
       isLoading={busy}
       size="lg"

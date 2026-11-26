@@ -25,7 +25,7 @@ public final class TrainingAnnexSamples {
                     List<Item> people = new ArrayList<>();
                     for (int i = 1; i <= 3; i++) {
                         people.add(new Item().field("NO", String.valueOf(i)).field("CODE", "E00" + i).field("NAME", "Employee " + i).field("DEPARTMENT", "QA")
-                                .field("RESULT", i == 3 ? "Not passed" : "Passed").field("RETRAINING_RESULT", i == 3 ? "Passed" : "").signature("ATTENDANCE", SIGNED));
+                                .field("RESULT", i == 3 ? "Not qualified" : "Qualified").field("RETRAINING_RESULT", i == 3 ? "Qualified" : "").signature("ATTENDANCE", SIGNED));
                     }
                     sessions.add(new Item().field("LABEL", "0" + s).children("ATTENDEE", people));
                 }

@@ -10,6 +10,7 @@ import {
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { usagePurposeLabel } from "../../usagePurpose";
 import { tr } from "@/i18n";
+import { withdrawalReason } from "../withdrawalReason";
 
 interface DocumentInformationTabProps {
   controlledCopy: ControlledCopy;
@@ -287,13 +288,38 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
           </div>
         )}
 
-        {/* Comments - Full width */}
+        {/* Why it was asked for (typed at the request) and why it is out of use */}
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
+            {tr("Reason for Request")}
+          </label>
+          <textarea
+            value={controlledCopy.reason || ""}
+            readOnly
+            rows={2}
+            className={CONTROL_STATE_CLASSES.readonlyTextarea}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
+            {tr("Reason for Recall")}
+          </label>
+          <textarea
+            value={withdrawalReason(controlledCopy)}
+            readOnly
+            rows={2}
+            className={CONTROL_STATE_CLASSES.readonlyTextarea}
+          />
+        </div>
+
+        {/* Comments (typed when signing the distribution or the cancellation) - Full width */}
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <label className="text-xs sm:text-sm font-medium text-slate-700 capitalize">
             {tr("Comments")}
           </label>
           <textarea
-            value={controlledCopy.distributionComment || controlledCopy.reason || ""}
+            value={controlledCopy.distributionComment || ""}
             readOnly
             rows={3}
             className={CONTROL_STATE_CLASSES.readonlyTextarea}

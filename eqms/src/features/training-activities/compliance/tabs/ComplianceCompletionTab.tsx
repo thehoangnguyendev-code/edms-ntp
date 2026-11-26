@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -14,14 +15,13 @@ import { trainingComplianceApi, trainingError, type CompletionCell, type Complet
 import { saveBlob } from "../../shared/trainingLabels";
 import { CompletionCellDrawer } from "../components/CompletionCellDrawer";
 import { tr, trFormat } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 /** Names of the six cell states. The server decides the state; these are only the labels (PLAN-TR-001 17.11, D-58 — QA may rename them). */
 const STATE_LABEL: Record<CompletionState, string> = {
   NOT_REQUIRED: "Not required", REQUIRED: "Required", IN_PROGRESS: "In Progress", QUALIFIED: "Qualified", UPDATE_NEEDED: "Update needed", DUE: "Annual training due",
 };
-const STATE_COLOR: Record<CompletionState, "slate" | "red" | "blue" | "emerald" | "amber" | "orange"> = {
-  NOT_REQUIRED: "slate", REQUIRED: "red", IN_PROGRESS: "blue", QUALIFIED: "emerald", UPDATE_NEEDED: "amber", DUE: "orange",
-};
+const STATE_COLOR = statusColors("NOT_REQUIRED", "REQUIRED", "IN_PROGRESS", "QUALIFIED", "UPDATE_NEEDED", "DUE");
 const STATES = Object.keys(STATE_LABEL) as CompletionState[];
 /** The small square of one cell on the phone card: the same six states as the grid, without the words. */
 const DOT: Record<CompletionState, string> = { NOT_REQUIRED: "bg-slate-100", REQUIRED: "bg-red-400", IN_PROGRESS: "bg-sky-400", QUALIFIED: "bg-emerald-500", UPDATE_NEEDED: "bg-amber-400", DUE: "bg-orange-400" };
@@ -110,7 +110,7 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter, regist
     const c = r.counts;
     return [rowId, { done: c.QUALIFIED ?? 0, required: (c.QUALIFIED ?? 0) + (c.IN_PROGRESS ?? 0) + (c.UPDATE_NEEDED ?? 0) + (c.DUE ?? 0) + (c.REQUIRED ?? 0) }];
   }));
-  const viewSwitch = <TabNav tabs={VIEWS} activeTab={view} onChange={(id) => { setView(id as "rows" | "people"); setPage(1); }} variant="pill" layoutId="completion-view" ariaLabel="Matrix completion view" tabIdPrefix="completion-view-tab" panelIdPrefix="completion-view-panel" />;
+  const viewSwitch = <TabNav tabs={VIEWS} activeTab={view} onChange={(id) => { setView(id as "rows" | "people"); setPage(1); }} variant="pill" layoutId="completion-view" ariaLabel={__ariaTr("Matrix completion view")} tabIdPrefix="completion-view-tab" panelIdPrefix="completion-view-panel" />;
   const filters: ReportSelectFilter[] = view === "rows" ? [] : [
     { id: "state", label: "State", value: status, options: [{ label: "All", value: "" }, ...STATES.map((s) => ({ label: STATE_LABEL[s], value: s }))], onChange: (v) => { setStatus(v); setPage(1); } },
     { id: "gaps", label: tr("Gap analysis"), value: gapsOnly ? "1" : "", options: [{ label: "Everyone", value: "" }, { label: tr("Only people with a gap"), value: "1" }], onChange: (v) => { setGapsOnly(v === "1"); setPage(1); } },

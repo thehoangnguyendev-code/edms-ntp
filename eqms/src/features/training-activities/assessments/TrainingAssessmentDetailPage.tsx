@@ -1,5 +1,8 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
+import { AnimatePresence, motion } from "framer-motion";
+import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconAlertTriangle, IconChevronDown, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
@@ -142,7 +145,7 @@ export const itemIssues = (d: Draft): string[] => {
     case "MULTI":
       if (d.options.length < 2) issues.push("At least two answers are needed");
       d.options.forEach((o, k) => {
-        if (!o.text.trim()) issues.push(`Answer ${LETTERS[k]} is empty`);
+        if (!o.text.trim()) issues.push(trFormat("Answer {letter} is empty", { letter: LETTERS[k] }));
       });
       if (d.kind === "SINGLE" ? d.correct.length !== 1 : d.correct.length < 1) {
         issues.push(d.kind === "SINGLE" ? tr("The right answer is not ticked") : tr("No right answer is ticked"));
@@ -157,7 +160,7 @@ export const itemIssues = (d: Draft): string[] => {
         d.answerLines.trim() !== "" &&
         !(Number.isInteger(Number(d.answerLines)) && Number(d.answerLines) >= 1 && Number(d.answerLines) <= 30)
       ) {
-        issues.push("The lines to write on: a whole number from 1 to 30");
+        issues.push(tr("The lines to write on: a whole number from 1 to 30"));
       }
       break;
     default:
@@ -206,8 +209,11 @@ export function distributePoints(
 /** One Training Assessment of the library (APD.0009): a test of questions or a checklist. A draft is written here and sent for approval; another person signs it into Effective; a change is a new version. */
 export function TrainingAssessmentDetailPage({
   isNew = false,
+  mode = "view",
 }: {
   isNew?: boolean;
+  /** Details only shows the assessment; Edit (the address ends in /edit) is where a draft is changed. */
+  mode?: "view" | "edit";
 }) {
   const { assessmentId = "" } = useParams();
   const navigate = useNavigate();
@@ -231,13 +237,12 @@ export function TrainingAssessmentDetailPage({
   // `dirty` is what Save needs (a new test starts so); `edited` is what the person has changed, which is what leaving without saving would lose.
   const [dirty, setDirtyState] = useState(isNew);
   const [edited, setEdited] = useState(false);
-  // Counts what happens to the content (a change by the person, a load from the server): a paper made at another number does not show what is in the editor now.
-  const [edits, setEdits] = useState(0);
-  const setDirty = useCallback((value: boolean) => { setDirtyState(value); setEdited(value); if (value) setEdits((n) => n + 1); }, []);
+  const setDirty = useCallback((value: boolean) => { setDirtyState(value); setEdited(value); }, []);
   // Beside the questions the paper has a column of its own; under that width the questions and the paper are two tabs.
   const wide = useMediaQuery("(min-width: 1440px)");
   const [pane, setPane] = useState<"edit" | "paper">("edit");
   // The questions that are folded to one line (by their key); every question starts open, and a new one opens.
+  const expandTransition = useExpandTransition();
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleItem = (id: string) =>
     setCollapsed((previous) => {
@@ -254,7 +259,10 @@ export function TrainingAssessmentDetailPage({
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<{ url: string }>();
 
+  // What is on the screen from the server (a load, or the answer to a Save): a load that brings the same record changes nothing (the questions keep their place, folds and focus, and the paper is not made again).
+  const loaded = useRef<{ version?: number; status?: string; updatedAt?: string } | undefined>(undefined);
   const apply = useCallback((d: TrainingAssessmentDetail) => {
+    loaded.current = { version: d.version, status: d.status, updatedAt: d.updatedAt };
     setDetail(d);
     setHead({
       name: d.name,
@@ -279,13 +287,15 @@ export function TrainingAssessmentDetailPage({
       })),
     );
     setDirty(false);
-    setEdits((n) => n + 1);
     setTotalText(null);
   }, []);
   const refetch = useCallback(() => {
     trainingAssessmentsApi
       .get(assessmentId)
-      .then(apply)
+      .then((d) => {
+        const same = loaded.current && loaded.current.version === d.version && loaded.current.status === d.status && loaded.current.updatedAt === d.updatedAt;
+        if (!same) apply(d);
+      })
       .catch((e) => setError(trainingError(e)));
   }, [assessmentId, apply]);
   useEffect(() => {
@@ -298,12 +308,24 @@ export function TrainingAssessmentDetailPage({
     if (!typing.current && !isNew) refetch();
   });
 
+  // The paper is made again only when what it shows changed: this text is the same for the same questions, however often the editor or the server touches the state.
+  const paperKey = useMemo(
+    () => JSON.stringify([
+      head.name.trim(), head.kind, head.duration.trim(), head.essayNumbering, detail?.code, detail?.revisionNumber,
+      items.map((d) => [d.kind, d.prompt.trim(), d.kind === "SINGLE" || d.kind === "MULTI" ? d.options.map((o) => o.text.trim()) : [], d.correct, d.kind === "CHECK" ? 1 : d.points,
+        d.modelAnswer.trim(), d.optionLayout, d.answerLines.trim(), d.image ? `${d.image.length}:${d.image.slice(-48)}` : ""]),
+    ]),
+    [head, items, detail?.code, detail?.revisionNumber],
+  );
+
   const caps = detail?.capabilities;
-  const editable = isNew || Boolean(caps?.edit);
+  const editable = isNew || (mode === "edit" && Boolean(caps?.edit));
   const checklist = head.kind === "CHECKLIST";
   const title = isNew
     ? tr("New Training Assessment")
-    : tr("Training Assessment Details");
+    : mode === "edit"
+      ? tr("Edit Training Assessment")
+      : tr("Training Assessment Details");
   // Leaving with changes that were not saved asks first (Back, the breadcrumb, the sidebar, a reload); the moves after a Save or a delete are not leaves.
   const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(edited, title, "the previous page");
   const crumbs = trainingBreadcrumbs(go, "assessments", title);
@@ -454,7 +476,7 @@ export function TrainingAssessmentDetailPage({
         message: `${next.code} ${next.revisionNumber}`,
       });
       if (isNew)
-        navigate(`/training-management/assessments/${next.id}`, {
+        navigate(`/training-management/assessments/${next.id}/edit`, {
           replace: true,
         });
       else apply(next);
@@ -506,8 +528,7 @@ export function TrainingAssessmentDetailPage({
   const renderItem = (d: Draft, i: number) => (
     <section
       id={`assessment-item-${i}`}
-      className="space-y-3"
-      aria-label={`${checklist ? "Line" : "Question"} ${i + 1}`}
+      aria-label={trFormat("{label} {number}", { label: tr(checklist ? "Line" : "Question"), number: i + 1 })}
     >
       <div className="flex min-h-9 items-center justify-between gap-2">
         <button
@@ -518,16 +539,16 @@ export function TrainingAssessmentDetailPage({
           className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           <IconChevronDown
-            className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${collapsed.has(d.id) ? "-rotate-90" : ""}`}
+            className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed.has(d.id) ? "-rotate-90" : ""}`}
           />
           <h4 className="shrink-0 text-sm font-semibold text-slate-900">
-            {checklist ? "Line" : "Question"} {i + 1}
+            {trFormat("{label} {number}", { label: tr(checklist ? "Line" : "Question"), number: i + 1 })}
           </h4>
           {collapsed.has(d.id) && (
             <span className="flex min-w-0 flex-1 items-center gap-2 text-xs text-slate-500">
               {!checklist && (
                 <span className="hidden shrink-0 sm:inline">
-                  {QUESTION_KIND_LABEL[d.kind] ?? d.kind} ·
+                  {tr(QUESTION_KIND_LABEL[d.kind] ?? d.kind)} ·
                 </span>
               )}
               <span className={`truncate ${d.prompt.trim() ? "text-slate-700" : "italic"}`}>
@@ -561,8 +582,10 @@ export function TrainingAssessmentDetailPage({
           </Button>
         )}
       </div>
+      <AnimatePresence initial={false}>
       {!collapsed.has(d.id) && (
-      <div id={`assessment-item-body-${i}`} className="space-y-3">
+      <motion.div key="body" {...EXPAND_CONTENT_MOTION} transition={expandTransition} className="-mx-1.5 -mb-1.5 overflow-hidden px-1.5 pb-1.5">
+      <div id={`assessment-item-body-${i}`} className="space-y-3 pt-3">
       {!checklist && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="md:col-span-2">
@@ -586,7 +609,7 @@ export function TrainingAssessmentDetailPage({
               options={Object.entries(QUESTION_KIND_LABEL).map(
                 ([value, label]) => ({
                   value: value as AssessmentItemKind,
-                  label,
+                  label: tr(label),
                 }),
               )}
             />
@@ -604,7 +627,7 @@ export function TrainingAssessmentDetailPage({
           </FormField>
         </div>
       )}
-      <FormField label={checklist ? tr("Line to check") : "Question"} required>
+      <FormField label={checklist ? tr("Line to check") : tr("Question")} required>
         <Textarea
           rows={2}
           maxLength={2000}
@@ -703,12 +726,12 @@ export function TrainingAssessmentDetailPage({
       )}
       {d.kind === "ESSAY" && (
         <FormField
-          label={`Lines to write on (1 to 30, empty: ${DEFAULT_ANSWER_LINES})`}
+          label={trFormat("Lines to write on (1 to 30, empty: {count})", { count: DEFAULT_ANSWER_LINES })}
           hint={tr("The form is ruled with this number of light lines under the question.")}
           error={
             d.answerLines.trim() !== "" &&
             !(Number(d.answerLines) >= 1 && Number(d.answerLines) <= 30)
-              ? `Enter a whole number from 1 to 30, or leave it empty for ${DEFAULT_ANSWER_LINES} lines.`
+              ? trFormat("Enter a whole number from 1 to 30, or leave it empty for {count} lines.", { count: DEFAULT_ANSWER_LINES })
               : undefined
           }
         >
@@ -751,7 +774,9 @@ export function TrainingAssessmentDetailPage({
         </div>
       )}
       </div>
+      </motion.div>
       )}
+      </AnimatePresence>
     </section>
   );
   const answerRow = (d: Draft, i: number, k: number) => (
@@ -765,7 +790,7 @@ export function TrainingAssessmentDetailPage({
       <Checkbox
         checked={d.correct.includes(LETTERS[k])}
         disabled={!editable}
-        aria-label={`Answer ${LETTERS[k]} is right`}
+        aria-label={__ariaTrFormat("Answer {v1} is right", { v1: LETTERS[k] })}
         onChange={(c) =>
           setItem(i, {
             correct:
@@ -783,7 +808,7 @@ export function TrainingAssessmentDetailPage({
       <Input
         value={d.options[k].text}
         maxLength={500}
-        aria-label={`Answer ${LETTERS[k]}`}
+        aria-label={__ariaTrFormat("Answer {v1}", { v1: LETTERS[k] })}
         disabled={!editable}
         onChange={(e) =>
           setItem(i, {
@@ -801,7 +826,7 @@ export function TrainingAssessmentDetailPage({
       {editable && d.options.length > 2 && (
         <button
           type="button"
-          aria-label={`Remove answer ${LETTERS[k]}`}
+          aria-label={__ariaTrFormat("Remove answer {v1}", { v1: LETTERS[k] })}
           className="rounded p-1 text-slate-400 hover:text-red-600"
           onClick={() =>
             setItem(i, {
@@ -824,7 +849,7 @@ export function TrainingAssessmentDetailPage({
     { id: "overview", label: tr("General Information") },
     {
       id: "items",
-      label: checklist ? tr("Checklist Lines") : "Questions",
+      label: checklist ? tr("Checklist Lines") : tr("Questions"),
       count: items.length,
     },
     ...(isNew ? [] : [{ id: "audit", label: tr("Audit Trail") }]),
@@ -863,14 +888,20 @@ export function TrainingAssessmentDetailPage({
       {tr("Upgrade Revision")}
     </Button>
   ) : null;
-  const headerExtra = (
-    <>
-      {previewButton}
-      {upgradeRevisionButton}
-    </>
-  );
+  const editButton = !isNew && mode === "view" && caps?.edit ? (
+    <Button
+      size="sm"
+      variant="outline-emerald"
+      className="whitespace-nowrap"
+      onClick={() => go(`/training-management/assessments/${detail!.id}/edit`)}
+    >
+      {tr("Edit Assessment")}
+    </Button>
+  ) : null;
+  // The same buttons, in the same order, at the top and at the foot of the page (repeatFooterInHeader), so a person finds each one in the same place wherever the page is scrolled.
   const footer = (
     <>
+      {editButton}
       {previewButton}
       {editable && (
         <Button
@@ -965,7 +996,7 @@ export function TrainingAssessmentDetailPage({
         onTab={setTab}
         tabLayoutId="training-assessment-detail-tab"
         footer={footer}
-        headerExtra={headerExtra}
+        repeatFooterInHeader
         afterFooter={
           tab === "overview" && !isNew && detail ? (
             <AssessmentRevisionsCard
@@ -1159,7 +1190,7 @@ export function TrainingAssessmentDetailPage({
             {!wide && (
               <TabNav
                 tabs={[
-                  { id: "edit", label: checklist ? tr("Checklist Lines") : "Questions" },
+                  { id: "edit", label: checklist ? tr("Checklist Lines") : tr("Questions") },
                   { id: "paper", label: "Paper" },
                 ]}
                 activeTab={pane}
@@ -1198,7 +1229,7 @@ export function TrainingAssessmentDetailPage({
                     }}
                   >
                     <Badge color="amber">
-                      {incomplete} {tr("not complete")}: {checklist ? "Line" : "Question"} {firstIncomplete + 1}
+                      {incomplete} {tr("not complete")}: {trFormat("{label} {number}", { label: tr(checklist ? "Line" : "Question"), number: firstIncomplete + 1 })}
                     </Badge>
                   </button>
                 )}
@@ -1207,7 +1238,7 @@ export function TrainingAssessmentDetailPage({
                 {items.length > 1 && (
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="outline-emerald"
                     className="whitespace-nowrap"
                     onClick={() =>
                       setCollapsed(
@@ -1241,7 +1272,7 @@ export function TrainingAssessmentDetailPage({
                   alignTop
                   items={items.map((d, i) => ({
                     id: d.id,
-                    label: `${checklist ? "Line" : "Question"} ${i + 1}`,
+                    label: trFormat("{label} {number}", { label: tr(checklist ? "Line" : "Question"), number: i + 1 }),
                   }))}
                   onReorder={dragItems}
                   renderItem={(row) => {
@@ -1270,7 +1301,7 @@ export function TrainingAssessmentDetailPage({
                   make={(paper) => makePaper(paper)}
                   ready={valid}
                   blockedReason="Complete the assessment name and every question or line to see the preview."
-                  revision={edits}
+                  revision={paperKey}
                 />
               </aside>
             )}

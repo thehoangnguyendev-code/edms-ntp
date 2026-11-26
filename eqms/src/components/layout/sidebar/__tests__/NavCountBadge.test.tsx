@@ -4,7 +4,7 @@ import { gsap } from "@/lib/gsap";
 import { NavCountBadge } from "../NavCountBadge";
 
 const motion = (reduce: boolean) => vi.stubGlobal("matchMedia", (query: string) => ({ matches: reduce && query.includes("reduce"), media: query }));
-const badge = () => screen.queryByText(/^\d+$/) as HTMLElement | null;
+const badge = () => screen.queryByText(/^\(\d+\+?\)$/) as HTMLElement | null;
 const scale = (element: HTMLElement) => Number(gsap.getProperty(element, "scale"));
 
 afterEach(() => {
@@ -20,7 +20,7 @@ describe("sidebar count badge", () => {
     rerender(<NavCountBadge value={0} className="pill" />);
     expect(badge()).toBeNull();
     rerender(<NavCountBadge value={3} className="pill" />);
-    expect(badge()?.textContent).toBe("3");
+    expect(badge()?.textContent).toBe("(3)");
     expect(badge()?.className).toBe("pill");
   });
 

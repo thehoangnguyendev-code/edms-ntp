@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -427,7 +428,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({ viewType, onViewDo
             onPointerEnter={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
             onPointerDown={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
             onFocus={() => expandedDocumentId !== doc.id && preloadExpandedDocumentDetails({ documentId: doc.id })}
-            aria-label={`${expandedDocumentId === doc.id ? "Collapse" : "Expand"} document ${doc.documentNumber}`}
+            aria-label={__ariaTrFormat("{v1} document {v2}", { v1: expandedDocumentId === doc.id ? tr("Collapse") : tr("Expand"), v2: doc.documentNumber })}
             aria-expanded={expandedDocumentId === doc.id}
             className="inline-flex items-center justify-center h-5 w-5 rounded-lg transition-colors hover:bg-slate-200"
           >

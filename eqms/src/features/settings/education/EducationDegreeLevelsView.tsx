@@ -36,6 +36,7 @@ import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 /** Application Settings > Education > Degree Levels -- its own page, not part of "Dictionaries". */
 export const EducationDegreeLevelsView: React.FC = () => {
@@ -140,7 +141,7 @@ export const EducationDegreeLevelsView: React.FC = () => {
       header: "Status",
       label: "Status",
       sort: { direction: sortConfig.key === "isActive" ? sortConfig.direction : undefined, onSort: () => handleSort("isActive") },
-      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>),
+      cell: (item) => (item.isActive ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>),
     },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), sort: { direction: sortConfig.key === "modifiedDate" ? sortConfig.direction : undefined, onSort: () => handleSort("modifiedDate") }, cellClassName: "text-slate-600", cell: (item) => item.modifiedDate },
   ];

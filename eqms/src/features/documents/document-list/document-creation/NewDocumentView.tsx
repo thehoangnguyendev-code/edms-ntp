@@ -141,7 +141,7 @@ type SubTabId =
 
 import type { Reviewer, Approver } from "@/features/documents/types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type WorkflowUserOption = {
   id: string;
@@ -1394,7 +1394,7 @@ export const NewDocumentView: React.FC = () => {
       return [{ label: tr("— No Sub-Type —"), value: "" }, ...mapped];
     }
     return [{ label: tr("— No Sub-Type —"), value: "" }, ...mapped, { label: currentValue, value: currentValue }];
-  }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions]);
+  }, [documentTypeLookupOptions, formData.subType, formData.type, subTypeLookupOptions, getCatalogLanguage()]);
 
   // Document policy comes from the server, never from its classification Sub-Type.
   const [serverReviewRequirement, setServerReviewRequirement] = useState<

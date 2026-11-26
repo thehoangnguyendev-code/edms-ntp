@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 ﻿import React, { useState } from 'react';
 import { DeliveryFailuresTable } from './DeliveryFailuresTable';
 
@@ -122,7 +123,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
       onChange={selectTab}
       changed={changed}
       onReset={savedConfig ? (tab) => onChange(revertFields(config, savedConfig, FIELDS[tab])) : undefined}
-      ariaLabel="Notification sections"
+      ariaLabel={__ariaTr("Notification sections")}
       idPrefix="notifications"
     >
       {activeTab === 'channels-delivery' && (

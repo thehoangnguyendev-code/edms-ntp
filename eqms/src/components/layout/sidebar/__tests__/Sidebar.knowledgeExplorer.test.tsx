@@ -21,7 +21,7 @@ vi.mock("@/services/api", () => ({
     ]),
   },
 }));
-vi.mock("@/services/api/navigation", () => ({ invalidateNavigationCache: vi.fn() }));
+vi.mock("@/services/api/navigation", () => ({ invalidateNavigationCache: vi.fn(), navigationApi: { getTaskCounts: vi.fn(async () => ({ counts: {}, shared: {} })) } }));
 vi.mock("@/services/api/notifications", () => ({ notificationApi: { getUnreadCount: vi.fn(async () => 0), getSummary: vi.fn(async () => ({})) } }));
 vi.mock("@/features/notifications/events", () => ({ subscribeNotificationsChanged: () => () => undefined }));
 vi.mock("../../header/SearchDropdown", () => ({ SearchDropdown: () => null }));

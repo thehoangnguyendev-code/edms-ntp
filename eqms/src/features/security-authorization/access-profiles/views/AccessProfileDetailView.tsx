@@ -32,7 +32,7 @@ import { DOCUMENT_CONTROL_VISIBILITY_COLOR, DOCUMENT_CONTROL_VISIBILITY_LABEL } 
 import { moduleVisibilityBadges } from "../shared/moduleVisibility";
 import { AccessProfilePermissionSetModal } from "./tabs/AccessProfilePermissionSetModal";
 import { accessProfileDetail as accessProfileDetailBreadcrumb } from "@/components/ui/breadcrumb/breadcrumbs/settings";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "users" | "audit";
 
@@ -321,7 +321,7 @@ export const AccessProfileDetailView: React.FC = () => {
       { icon: <IconArrowsShuffle className="h-4 w-4" />, value: profile.workflowRoles.length, label: tr("Workflow Eligibility"), tab: "workflow" },
       { icon: <Users className="h-4 w-4" />, value: assignedUserIds.length, label: tr("Assigned Users"), tab: "users" },
     ];
-  }, [profile, assignedUserIds.length]);
+  }, [profile, assignedUserIds.length, getCatalogLanguage()]);
 
   if (loading) return <FullPageLoading text="Loading…" />;
 

@@ -83,6 +83,8 @@ class ReportDocumentSourcesDatabaseTest {
         long all = Objects.requireNonNull(jdbc.queryForObject("select count(*) from document_revisions", Long.class));
         assertEquals(all, listed);
         var codes = PROVIDERS.stream().map(ReportMetadataProvider::code).collect(Collectors.toSet());
-        assertEquals(22, codes.size());
+        // Includes Permission Holders, added to the security sources after the original 22 types.
+        assertEquals(23, codes.size());
+        assertEquals(PROVIDERS.size(), codes.size(), "each tested type has a distinct code");
     }
 }

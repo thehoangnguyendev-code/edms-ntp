@@ -89,6 +89,13 @@ public class TrainingStore {
         return new com.eqms.dto.audittrail.AuditTrailChangeResponse(field, before == null ? null : String.valueOf(before), after == null ? null : String.valueOf(after));
     }
 
+    /** The result of a training in the words of the form APD.0009 (SOP.0003): Qualified or Not qualified. */
+    public static String resultWords(String result) {
+        if ("PASSED".equals(result)) return "Qualified";
+        if ("FAILED".equals(result)) return "Not qualified";
+        return words(result);
+    }
+
     /** A code in words for the Audit Trail (CONTENT_APPROVE -> "Content Approve"). */
     public static String words(String code) {
         if (code == null || code.isBlank()) return code;

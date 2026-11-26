@@ -19,7 +19,7 @@ import {
 } from "./useTableColumnPreferences";
 import { useColumnReorderMotion, type ColumnMotionHandle } from "./useColumnReorderMotion";
 import { useRowEntrance } from "./useRowEntrance";
-import { useLanguage, tr } from "@/i18n";
+import { useLanguage, tr, getCatalogLanguage } from "@/i18n";
 import { closeMenuRenderGate, menuRenderGateOpen, menuTouchesRow } from "./rowRenderGate";
 
 export type DataTableSortDirection = "asc" | "desc";
@@ -254,6 +254,8 @@ interface DataTableRowProps<T> {
   onRowKeyDown?: (event: React.KeyboardEvent<HTMLTableRowElement>, row: T, index: number) => void;
   rowTabIndex?: number;
   layoutToken?: number;
+  /** The interface language: a memoised row must be drawn again when it changes. */
+  language?: string;
 }
 
 function DataTableRow<T>({ rowKey, row, index, columns, visibleSelection, selection, action, rowClassName, onRowClick, onRowKeyDown, rowTabIndex }: DataTableRowProps<T>) {
@@ -307,6 +309,7 @@ function DataTableRow<T>({ rowKey, row, index, columns, visibleSelection, select
 function sameRowWhileMenuMoves<T>(previous: DataTableRowProps<T>, next: DataTableRowProps<T>): boolean {
   return menuRenderGateOpen()
     && !menuTouchesRow(next.rowKey)
+    && previous.language === next.language
     && previous.row === next.row
     && previous.index === next.index
     && previous.layoutToken === next.layoutToken
@@ -489,6 +492,7 @@ function DataTableBase<T>({
                       onRowKeyDown={onRowKeyDown}
                       rowTabIndex={rowTabIndex}
                       layoutToken={columnLayout?.reorderToken}
+                      language={getCatalogLanguage()}
                     />
                     {/* The detail row opens and closes with a motion. It is mounted only while expanded, so the presence
                         boundary has to be HERE: a boundary inside the detail component would be unmounted with it and

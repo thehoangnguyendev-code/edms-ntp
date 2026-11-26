@@ -40,9 +40,11 @@ const readNumber = (params: URLSearchParams, key: string, fallback: number) => {
 interface UseRevisionServerTableOptions {
   viewType: "all" | "owned-by-me" | "pending-review" | "pending-approval";
   currentUser: User | null;
+  /** Only the person's own revisions that were sent back to Draft (the switch of the menu count). */
+  waitingForMe?: boolean;
 }
 
-export function useRevisionServerTable({ viewType, currentUser }: UseRevisionServerTableOptions) {
+export function useRevisionServerTable({ viewType, currentUser, waitingForMe }: UseRevisionServerTableOptions) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestSeqRef = useRef(0);
   const { showToast } = useToast();
@@ -345,6 +347,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
           validTo: validToDate || undefined,
           ownedByMe: viewType === "owned-by-me",
           pending: viewType === "pending-review" || viewType === "pending-approval",
+          waitingForMe: waitingForMe || undefined,
           sortBy: sortConfig.key,
           sortDirection: sortConfig.direction,
           page: currentPage,
@@ -381,6 +384,7 @@ export function useRevisionServerTable({ viewType, currentUser }: UseRevisionSer
   }, [
     querySignature,
     viewType,
+    waitingForMe,
     debouncedSearch,
     statusFilter,
     typeFilter,

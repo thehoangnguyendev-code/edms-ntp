@@ -61,10 +61,10 @@ export const NotificationIconPicker: React.FC<{
           {/* the search first, with the library; the icons under it */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
-              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} ariaLabel="Search icons" placeholder={tr("Search an icon by name, for example bell, shield, clock…")} />
+              <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} ariaLabel={tr("Search icons")} placeholder={tr("Search an icon by name, for example bell, shield, clock…")} />
             </div>
             <div className="sm:w-56 sm:shrink-0">
-              <TabNav tabs={LIBRARIES} activeTab={library} onChange={(id) => { setLibrary(id as IconLibrary); setPage(1); }} variant="pill" ariaLabel="Icon library" layoutId="notification-icon-library" />
+              <TabNav tabs={LIBRARIES} activeTab={library} onChange={(id) => { setLibrary(id as IconLibrary); setPage(1); }} variant="pill" ariaLabel={tr("Icon library")} layoutId="notification-icon-library" />
             </div>
           </div>
           <p className="-mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-500" role="status" aria-label={tr("State of the icon sets")}>
@@ -73,7 +73,7 @@ export const NotificationIconPicker: React.FC<{
             ) : sets.state === 'current' ? (
               <span>
                 {tr("Up to date with the newest Lucide and Tabler")}{sets.checkedAt ? trFormat(" (checked {date})", { date: formatDateTime(sets.checkedAt.toISOString()) }) : ''}
-                {sets.added.lucide + sets.added.tabler > 0 ? `: ${sets.added.lucide + sets.added.tabler} icons newer than the application` : ''}.
+                {sets.added.lucide + sets.added.tabler > 0 ? trFormat(": {count} icons newer than the application", { count: sets.added.lucide + sets.added.tabler }) : ''}.
               </span>
             ) : (
               <span>{tr("Checking for the newest icons…")}</span>

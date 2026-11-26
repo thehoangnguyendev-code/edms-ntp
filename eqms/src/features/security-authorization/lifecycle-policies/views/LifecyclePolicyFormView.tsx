@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useMemo, useState } from "react";
@@ -59,7 +60,7 @@ import type {
 } from "../types";
 import { IconHierarchy, IconSection } from "@tabler/icons-react";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 const VIEW_PERM = "security.workflow_authorization.view";
 const MANAGE_PERM = "security.workflow_authorization.manage";
@@ -206,7 +207,7 @@ function initTransitionForm(
 const POLICY_LAYOUT_TABS: readonly TabItem[] = [
   { id: "sentence", label: "Sentence", icon: TextCursorInput },
   { id: "steps", label: "Steps", icon: ListOrdered },
-  { id: "matrix", label: "Matrix", icon: Grid3x3 },
+      { id: "matrix", label: tr("Matrix"), icon: Grid3x3 },
   { id: "templates", label: "Templates", icon: LayoutTemplate },
 ];
 const POLICY_LAYOUT_KEY = "eqms.policy-form.layout";
@@ -374,7 +375,7 @@ const TransitionPolicyForm: React.FC = () => {
       .filter(Boolean)
       .sort();
     return [...base, ...typesForWorkflow.map((o) => ({ label: o, value: o }))];
-  }, [form.workflowKey, options]);
+  }, [form.workflowKey, options, getCatalogLanguage()]);
   const actionOptions: SelectOption[] = useMemo(() => {
     const base = [{ label: tr("Select action"), value: "" }];
     const allActions = options?.actions ?? [];
@@ -397,7 +398,7 @@ const TransitionPolicyForm: React.FC = () => {
       ...base,
       ...deduped.map((a) => ({ label: a.label || a.value, value: a.value })),
     ];
-  }, [form.workflowKey, form.objectType, options]);
+  }, [form.workflowKey, form.objectType, options, getCatalogLanguage()]);
   const docTypeOptions: SelectOption[] = [
     { label: tr("None (global)"), value: "" },
     ...(options?.documentTypes ?? []).map((d) => ({
@@ -820,7 +821,7 @@ const TransitionPolicyForm: React.FC = () => {
           activeTab={layout}
           onChange={(value) => setStoredLayout(value as PolicyLayoutMode)}
           variant="pill"
-          ariaLabel="How the policy is filled in"
+          ariaLabel={__ariaTr("How the policy is filled in")}
           className="!w-auto"
         />
       </div>

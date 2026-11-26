@@ -165,18 +165,16 @@ describe('Pinning the notification list to the side', () => {
 });
 
 describe('The tabs of the notification list are filters of the server', () => {
-  it('asks the server for the unread ones, and for the personal ones, instead of cutting the eight that were loaded', async () => {
+  it('asks the server for the unread ones instead of cutting the eight that were loaded, and offers All and Unread only', async () => {
     render(<Layout />);
     fireEvent.click(bell());
     await screen.findByText('Notice 1');
     expect(api.getNotifications).toHaveBeenLastCalledWith(expect.not.objectContaining({ status: 'unread' }));
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('tab', { name: /^Unread/ }));
     await waitFor(() => expect(api.getNotifications).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'all', status: 'unread' })));
-
-    fireEvent.click(screen.getByRole('tab', { name: /^For Me/ }));
-    await waitFor(() => expect(api.getNotifications).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'personal' })));
-    expect(screen.getByRole('tab', { name: /^For Me/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /^Unread/ })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows the notifications under a heading of the day', async () => {

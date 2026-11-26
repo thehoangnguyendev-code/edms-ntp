@@ -117,7 +117,7 @@ export const SecuritySettingsTab: React.FC<SecuritySettingsTabProps> = ({ onRegi
       const data = await authApi.setupMFA();
       setSetupData(data);
     } catch (err) {
-      setSetupError(err instanceof Error ? err.message : 'Unable to initialize MFA setup.');
+      setSetupError(err instanceof Error ? err.message : tr('Unable to initialize MFA setup.'));
     } finally {
       setIsSaving(false);
     }

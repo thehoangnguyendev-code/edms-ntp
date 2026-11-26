@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -41,14 +42,9 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleLabel } from "./accessExplorerLabels";
 import { IconReportSearch } from "@tabler/icons-react";
 import { tr } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
-const STATUS_COLOR: Record<string, BadgeColor> = {
-  Active: "emerald",
-  Suspended: "orange",
-  Terminated: "red",
-  Pending: "amber",
-  Inactive: "slate",
-};
+const STATUS_COLOR = statusColors("Active", "Suspended", "Terminated", "Pending", "Inactive") as Record<string, BadgeColor>;
 type TabId = "general" | "people" | "through";
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
@@ -447,7 +443,7 @@ export const AccessExplorerDetailView: React.FC = () => {
             tabs={tabs}
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as TabId)}
-            ariaLabel="Access Explorer Details"
+            ariaLabel={__ariaTr("Access Explorer Details")}
           />
           <div className="p-4 md:p-5">
             {activeTab === "general" && permission && (

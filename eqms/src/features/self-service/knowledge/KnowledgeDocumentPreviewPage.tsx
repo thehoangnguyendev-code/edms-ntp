@@ -14,7 +14,7 @@ import { knowledgeApi } from "@/services/api/knowledge";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/images/logo_nobg.png";
 import { displayDateTime } from "@/utils/format";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 const buildWatermarkDataUri = (lines: string[]) => {
   const escape = (value: string) =>
@@ -47,10 +47,10 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
   const [openedAt] = useState(() => new Date());
 
   const watermarkUrl = useMemo(() => {
-    const who = user?.fullName || user?.username || "Unknown user";
+    const who = tr(user?.fullName || user?.username || "Unknown user");
     const stamp = displayDateTime(openedAt);
     return buildWatermarkDataUri([who, stamp]);
-  }, [user?.fullName, user?.username, openedAt]);
+  }, [user?.fullName, user?.username, openedAt, getCatalogLanguage()]);
 
   useEffect(() => {
     document.title = `${documentName} — Preview`;
@@ -124,7 +124,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
       <div className="relative flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] md:gap-4 md:px-6 md:py-3">
         <img
           src={logo}
-          alt="Ngoc Thien"
+          alt={tr("EQMS logo")}
           className="hidden sm:block h-7 md:h-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         />
         <div className="relative z-10 min-w-0 flex items-center gap-2 md:gap-3 max-w-[55%] sm:max-w-[38%]">
@@ -134,7 +134,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
           <div className="min-w-0">
             <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">{documentName}</p>
             <p className="text-xs text-slate-600 truncate">
-              {[documentNumber, revisionNumber && `Revision ${revisionNumber}`, departmentName].filter(Boolean).join(" · ")}
+              {[documentNumber, revisionNumber && `${tr("Revision")} ${revisionNumber}`, departmentName].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>
@@ -167,7 +167,7 @@ export const KnowledgeDocumentPreviewPage: React.FC = () => {
             )}
           </div>
         ) : isLoading || !blobUrl ? (
-          <FullPageLoading text="Loading preview..." />
+          <FullPageLoading text={tr("Loading preview...")} />
         ) : (
           <DocumentPdfViewer
             fileUrl={blobUrl}

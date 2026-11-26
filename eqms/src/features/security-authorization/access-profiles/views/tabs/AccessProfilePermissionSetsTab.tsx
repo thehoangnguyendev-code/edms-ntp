@@ -16,6 +16,7 @@ import type { AssignDiff } from "../AccessProfileDetailView";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { moduleDisplayName } from "@/utils/moduleDisplay";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type SortKey = "name" | "type" | "permissionCount" | "moduleCount";
 
@@ -140,7 +141,7 @@ export const PermissionSetsTab: React.FC<{
     ) },
     { id: "code", header: "Code", label: "Code", cell: (row) => <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{row.code}</code> },
     { id: "type", header: "Type", label: "Type", sort: sortOf("type"), cell: (row) => <Badge color={row.system ? "blue" : "slate"} size="sm">{row.system ? "System" : "Custom"}</Badge> },
-    { id: "status", header: "Status", label: "Status", cell: (row) => <Badge semantic={row.active ? "success" : "neutral"} size="sm">{row.active ? "Active" : "Inactive"}</Badge> },
+    { id: "status", header: "Status", label: "Status", cell: (row) => <Badge color={statusColor(row.active ? "ACTIVE" : "INACTIVE")} semantic={row.active ? "success" : "neutral"} size="sm">{row.active ? "Active" : "Inactive"}</Badge> },
     { id: "permissionCount", header: "Permissions", label: "Permissions", sort: sortOf("permissionCount"), cellClassName: "text-slate-600", cell: (row) => row.permissionCount },
     { id: "modules", header: "Modules", label: "Modules", sort: sortOf("moduleCount"), cellClassName: "text-slate-600", cell: (row) => summarizeModules(row.modules) },
     { id: "description", header: "Description", label: "Description", cellClassName: "max-w-md truncate text-slate-600", cell: (row) => row.description || "-" },

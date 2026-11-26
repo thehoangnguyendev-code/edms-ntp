@@ -24,8 +24,8 @@ const TABS: TabItem[] = [{ id: "results", label: "Results" }];
 
 const resultOf = (p: TrainingParticipant): { label: string; color: BadgeColor } =>
   p.state === "ABSENT" ? { label: "Absent", color: "slate" }
-    : p.result === "PASSED" ? { label: "Passed", color: "emerald" }
-      : p.result === "FAILED" ? { label: tr("Not passed"), color: "red" }
+    : p.result === "PASSED" ? { label: tr("Qualified"), color: "emerald" }
+      : p.result === "FAILED" ? { label: tr("Not qualified"), color: "red" }
         : { label: tr("Not scored yet"), color: "amber" };
 
 /**
@@ -106,7 +106,7 @@ export function TrainingActivityResultsCard({ activity, sessionId }: { activity:
         const scans = scansOf(p);
         if (scans.length === 0) return <span className="text-slate-400">—</span>;
         return (
-          <div className="max-w-80 space-y-1 whitespace-normal break-words">
+          <div className="max-w-80 space-y-1 whitespace-normal wrap-break-word">
             {scans.map((e, i) => <div key={e.id}>{nameOf(p, e, i, scans.length)}</div>)}
           </div>
         );

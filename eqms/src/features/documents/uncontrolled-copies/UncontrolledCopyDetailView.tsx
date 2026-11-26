@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import {
@@ -190,7 +191,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
           tabs={DETAIL_TABS}
           activeTab={activeTab}
           onChange={(tab) => setActiveTab(tab as DetailTab)}
-          ariaLabel="Uncontrolled copy detail sections"
+          ariaLabel={__ariaTr("Uncontrolled copy detail sections")}
         />
         <div className="p-4 md:p-5">
           {activeTab === "information" && (

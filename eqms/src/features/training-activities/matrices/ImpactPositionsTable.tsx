@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useCallback, useRef } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -53,7 +54,7 @@ export function ImpactPositionsTable({ activityId, selected, onChange }: { activ
         selection={{
           visible: true,
           header: <Checkbox checked={allShown} onChange={toggleShown} aria-label={tr("Select the Work Positions shown")} />,
-          cell: (p) => <Checkbox checked={chosen.has(p.id)} onChange={(on) => toggle(p.id, Boolean(on))} aria-label={`Select ${p.name}`} />,
+          cell: (p) => <Checkbox checked={chosen.has(p.id)} onChange={(on) => toggle(p.id, Boolean(on))} aria-label={__ariaTrFormat("Select {v1}", { v1: p.name })} />,
         }}
         emptyState={<TableEmptyState title={table.searchQuery ? "No Work Position matches" : tr("No Work Position")} description={table.searchQuery ? tr("Change the search.") : "The department has no Work Position."} />}
         scrollerRef={drag.scrollerRef} scrollProps={drag.dragEvents} isDragging={drag.isDragging}

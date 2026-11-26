@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import { ArrowDown, ArrowUp, GripVertical, ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
@@ -80,8 +81,8 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
             <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />
             {tr("Change picture")}
           </Button>
-          <Button type="button" size="sm" variant="ghost" aria-label={`Move slide ${index + 1} up`} disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" aria-hidden="true" /></Button>
-          <Button type="button" size="sm" variant="ghost" aria-label={`Move slide ${index + 1} down`} disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" aria-hidden="true" /></Button>
+          <Button type="button" size="sm" variant="ghost" aria-label={__ariaTrFormat("Move slide {v1} up", { v1: index + 1 })} disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" aria-hidden="true" /></Button>
+          <Button type="button" size="sm" variant="ghost" aria-label={__ariaTrFormat("Move slide {v1} down", { v1: index + 1 })} disabled={index === count - 1} onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" aria-hidden="true" /></Button>
           <Button type="button" size="sm" variant="ghost" className="ml-auto text-red-600 hover:text-red-700" onClick={onRemove}>
             <Trash2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
             {tr("Remove")}
@@ -91,7 +92,7 @@ const SlideRow: React.FC<SlideRowProps> = ({ id, index, count, slide, busy, onPa
       {count > 1 && (
         <button
           type="button"
-          aria-label={`Drag slide ${index + 1} to change its place`}
+          aria-label={__ariaTrFormat("Drag slide {v1} to change its place", { v1: index + 1 })}
           title={tr("Drag to change the order")}
           onPointerDown={(event) => controls.start(event)}
           className="absolute right-2 top-2 flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing sm:static sm:self-start"

@@ -71,6 +71,11 @@ public class TrainingMatrixService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> matrices(UserAccount actor, String search, String state, String sortBy, String sortDirection, int page, int limit) {
+        return matrices(actor, search, state, false, sortBy, sortDirection, page, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> matrices(UserAccount actor, String search, String state, boolean waitingForMe, String sortBy, String sortDirection, int page, int limit) {
         access.require(actor, "training.matrix.view", "training.matrix.manage");
         List<Object> args = new ArrayList<>();
         StringBuilder where = new StringBuilder(" where 1=1");
@@ -83,6 +88,10 @@ public class TrainingMatrixService {
         String like = "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             where.append(" and (lower(m.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
             args.add(like); args.add(like);
+        }
+        if (waitingForMe) {
+            where.append(" and exists (select 1 from training_matrix_versions wv where wv.matrix_id = m.id and ").append(TrainingWaiting.assigned(TYPE, "wv.id")).append(")");
+            args.add(actor.getId());
         }
         if ("EFFECTIVE".equals(state)) where.append(" and ev.id is not null");
         else if ("NO_EFFECTIVE".equals(state)) where.append(" and ev.id is null");
@@ -638,6 +647,45 @@ public class TrainingMatrixService {
     public List<Map<String, Object>> allPositions(UserAccount actor) {
         access.require(actor, "training.admin.manage", "training.matrix.view", "training.matrix.manage");
         return TrainingRows.camel(jdbc.queryForList("select p.id, p.code, p.name, p.department_id, d.name as department_name from training_job_roles p left join departments d on d.id = p.department_id where p.is_active order by p.name"));
+    }
+
+    /**
+     * One page of the active Work Positions that can be given (a Work Position without a department has no matrix), searched by name, code or department and filtered by department,
+     * ordered by department. {@code departments} are all the departments that have such a Work Position, for the filter. Same access as {@link #allPositions}.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> positionsPage(UserAccount actor, String search, UUID departmentId, List<UUID> exclude, int page, int limit) {
+        access.require(actor, "training.admin.manage", "training.matrix.view", "training.matrix.manage");
+        String from = " from training_job_roles p join departments d on d.id = p.department_id where p.is_active";
+        StringBuilder where = new StringBuilder(from);
+        java.util.List<Object> args = new java.util.ArrayList<>();
+        if (search != null && !search.isBlank()) {
+            String like = "%" + escape(search.trim().toLowerCase(java.util.Locale.ROOT)) + "%";
+            where.append(" and (lower(p.name) like ? escape '\\' or lower(p.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
+            args.add(like);
+            args.add(like);
+            args.add(like);
+        }
+        if (departmentId != null) {
+            where.append(" and p.department_id = ?");
+            args.add(departmentId);
+        }
+        if (exclude != null && !exclude.isEmpty()) {
+            where.append(" and p.id not in (").append(String.join(",", java.util.Collections.nCopies(exclude.size(), "?"))).append(")");
+            args.addAll(exclude);
+        }
+        int safePage = Math.max(1, page);
+        int safeLimit = Math.min(100, Math.max(1, limit));
+        Long count = jdbc.queryForObject("select count(*)" + where, Long.class, args.toArray());
+        long total = count == null ? 0 : count;
+        java.util.List<Object> paged = new java.util.ArrayList<>(args);
+        paged.add(safeLimit);
+        paged.add((long) (safePage - 1) * safeLimit);
+        List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(
+                "select p.id, p.code, p.name, p.department_id, d.name as department_name" + where + " order by d.name, p.name, p.id limit ? offset ?", paged.toArray()));
+        List<Map<String, Object>> departments = TrainingRows.camel(jdbc.queryForList("select distinct d.id, d.name" + from + " order by d.name"));
+        return Map.of("data", rows, "departments", departments,
+                "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total, "totalPages", Math.max(1, (total + safeLimit - 1) / safeLimit)));
     }
 
     // ----------------------------------------------------------------------------------------------------------------------------- helpers

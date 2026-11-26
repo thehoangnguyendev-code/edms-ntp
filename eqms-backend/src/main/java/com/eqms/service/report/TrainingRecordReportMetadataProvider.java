@@ -22,7 +22,7 @@ public class TrainingRecordReportMetadataProvider implements ReportMetadataProvi
         column("completedOn", "Completed On", "r.completed_on");
         column("method", "Method", ReportQueryKit.labelCase("r.method", "SELF_READING", "Self-reading", "CLASSROOM", "Classroom training", "HYBRID", "Hybrid training",
                 "PRACTICAL", "Practical training", "EXTERNAL", "External training", "PAPER", "Paper training", "SIGNATORY", "Reading by a signatory"));
-        column("result", "Result", ReportQueryKit.labelCase("r.result", "PASSED", "Passed", "READ", "Read and understood", "ATTENDED", "Attended", "TRAINER", "Trainer"));
+        column("result", "Result", ReportQueryKit.labelCase("r.result", "PASSED", "Qualified", "READ", "Read and understood", "ATTENDED", "Attended", "TRAINER", "Trainer"));
         column("source", "Source", ReportQueryKit.labelCase("r.source", "ACTIVITY", "Training activity", "LEGACY_IMPORT", "Legacy import", "SIGNATORY_INITIAL", "Signatory (initial)"));
         column("employeeCode", "Employee Code", "r.employee_code");
         column("fullName", "Employee", "r.full_name");

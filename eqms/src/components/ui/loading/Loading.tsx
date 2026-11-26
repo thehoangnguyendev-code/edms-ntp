@@ -30,11 +30,11 @@ export const Loading: React.FC<LoadingProps> = ({
   const sizeConfig = sizeMap[size];
 
   const loadingContent = (
-    <div role="status" aria-live="polite" aria-label={text || tr('Loading')} className={cn("flex flex-col items-center justify-center gap-3", className)}>
+    <div role="status" aria-live="polite" aria-label={text ? tr(text) : tr('Loading')} className={cn("flex flex-col items-center justify-center gap-3", className)}>
       <LoadingIndicator color={color} size={sizeConfig.size} />
       {text && (
         <span className={cn('text-slate-600 font-medium', sizeConfig.textSize)}>
-          {text}
+          {tr(text)}
         </span>
       )}
     </div>
@@ -77,7 +77,7 @@ export const ButtonLoading: React.FC<{ text?: string; light?: boolean; size?: ke
   return (
     <div className="flex items-center justify-center gap-2">
       <LoadingIndicator color={light ? '#ffffff' : undefined} size={config.spinner} />
-      <span className={config.text}>{text}</span>
+      <span className={config.text}>{tr(text)}</span>
     </div>
   );
 };

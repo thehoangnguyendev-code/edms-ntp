@@ -96,6 +96,7 @@ export const PersonnelReviewListView: React.FC = () => {
     handleSort,
     clearFilters,
     hasActiveFilters,
+    waitingNode,
   } = usePersonnelReviewServerTable();
 
   useEffect(() => {
@@ -240,6 +241,7 @@ export const PersonnelReviewListView: React.FC = () => {
 
       <NewPersonnelReviewModal key={newReviewKey} isOpen={isNewReviewOpen} onClose={() => setIsNewReviewOpen(false)} initialForm={newReviewForm} initialPeople={newReviewPeople} />
 
+      {waitingNode}
       <ReportListToolbar
         searchPlaceholder={tr("Search employee…")}
         search={searchQuery}

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -70,7 +71,7 @@ export const SignatureMeaningsTable: React.FC<Props> = ({ meanings, canEdit, onR
       sort: sorted("displayName"),
       cell: (r) => (
         <input
-          aria-label={`Meaning of ${r.code}`}
+          aria-label={__ariaTrFormat("Meaning of {v1}", { v1: r.code })}
           className="h-9 w-full min-w-[220px] rounded-lg border border-slate-200 px-2.5 text-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50 sm:text-sm"
           value={typed.get(r.code) ?? r.displayName}
           disabled={!canEdit}

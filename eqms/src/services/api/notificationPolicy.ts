@@ -127,6 +127,18 @@ export interface NotificationPreviewResult {
   renderedHtml: string | null;
 }
 
+/** The Vietnamese wording of one channel: whether there is English wording to translate, and the translation in use. */
+export interface NotificationTranslation {
+  translatable: boolean;
+  noEnglishWording?: boolean;
+  requiredPlaceholders?: string[];
+  baseVersionId?: string;
+  translation?: {
+    title?: string | null; summary?: string | null; subject?: string | null; body?: string | null; actionLabel?: string | null;
+    outdated: boolean;
+  };
+}
+
 const ENDPOINT = '/notification-policies';
 const event = (eventCode: string) => `${ENDPOINT}/${encodeURIComponent(eventCode)}`;
 
@@ -166,8 +178,14 @@ export const notificationPolicyApi = {
     return response.data;
   },
 
-  preview: async (eventCode: string, payload: NotificationPreviewPayload) => {
-    const response = await api.post<NotificationPreviewResult>(`${event(eventCode)}/preview`, { channel: 'IN_APP', ...payload });
+  getTranslation: async (eventCode: string, channel: NotificationChannel) =>
+    (await api.get<NotificationTranslation>(`${event(eventCode)}/translations/${channel}`, { signal: new AbortController().signal })).data,
+
+  saveTranslation: async (eventCode: string, channel: NotificationChannel, payload: { baseVersionId: string; title?: string; summary?: string; subject?: string; body?: string; actionLabel?: string }) =>
+    (await api.put<NotificationTranslation>(`${event(eventCode)}/translations/${channel}`, payload)).data,
+
+  preview: async (eventCode: string, payload: NotificationPreviewPayload, language?: 'vi') => {
+    const response = await api.post<NotificationPreviewResult>(`${event(eventCode)}/preview`, { channel: 'IN_APP', ...payload }, language ? { params: { language } } : undefined);
     return response.data;
   },
 };

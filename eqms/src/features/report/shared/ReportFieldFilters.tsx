@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { SearchInput } from "@/components/ui/form/SearchInput";
 import { Select } from "@/components/ui/select/Select";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
@@ -30,7 +31,7 @@ export function ReportFieldFilters({
     <div className={narrow ? "grid grid-cols-1 gap-4 sm:grid-cols-2 items-end" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 items-end"}>
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("Search fields")}</label>
-        <SearchInput value={search} onChange={onSearchChange} placeholder={tr("Name or group...")} ariaLabel="Search fields" />
+        <SearchInput value={search} onChange={onSearchChange} placeholder={tr("Name or group...")} ariaLabel={__ariaTr("Search fields")} />
       </div>
       <Select
         label={tr("Group")}

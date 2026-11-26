@@ -7,7 +7,7 @@ import java.util.*;
 
 /**
  * Report Type "Training Activities" (REPORT-TRAINING-SOURCES-2026-11-12): the training activities with their number, topic, kind, status, organizing department, due date, how late
- * they are, and how many people were invited, attended, were absent, passed or failed. A person needs training.activity.view or training.compliance.view, as for the screens.
+ * they are, and how many people were invited, attended, were absent, qualified or not qualified. A person needs training.activity.view or training.compliance.view, as for the screens.
  * The Training module's own rule applies on top of the scope of the template: without training.scope.all only the activities of the own department are shown.
  * Never a column: the free texts (remarks, reasons of cancellation, exemptions).
  */
@@ -26,7 +26,7 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
                 "RETRAINING", "Supplementary Training", "EXTERNAL", "External Training", "LEGACY", "Paper Training (Legacy Import)"));
         column("kindReason", "Reason for the Training", ReportQueryKit.labelCase("a.kind_reason", "NEW_HIRE", "New hire", "TRANSFER", "Transfer", "NEW_SOP", "New SOP",
                 "SOP_VERSION", "New version of an SOP", "CAPA", "CAPA", "AUDIT_FINDING", "Audit finding", "VISITOR", "Visitor", "ABSENCE_RETURN", "Return after absence",
-                "ABSENT_MAKEUP", "Supplementary for absence", "FAILED_ASSESSMENT", "Failed assessment", "OTHER", "Other"));
+                "ABSENT_MAKEUP", "Supplementary for absence", "FAILED_ASSESSMENT", "Not qualified, retraining", "OTHER", "Other"));
         column("status", "Status", ReportQueryKit.labelCase("a.status", "RESERVED", "Pending Document Approval", "PLANNED", "Planned", "PENDING_APPROVAL", "Pending Approval", "NOTIFIED", "Notified",
                 "IN_PROGRESS", "In Progress", "PENDING_QA_CONFIRMATION", "Pending QA Confirmation", "COMPLETED", "Completed", "CANCELLED", "Closed - Cancelled"));
         column("department", "Organizing Department", "dep.name");
@@ -41,8 +41,8 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
         column("participants", "Participants", "(select count(*) from training_participants p where p.activity_id=a.id)");
         column("attended", "Attended or Read", "(select count(*) from training_participants p where p.activity_id=a.id and " + PRESENT + ")");
         column("absent", "Absent", "(select count(*) from training_participants p where p.activity_id=a.id and p.state='ABSENT')");
-        column("passed", "Passed", "(select count(*) from training_participants p where p.activity_id=a.id and p.result='PASSED')");
-        column("failed", "Failed", "(select count(*) from training_participants p where p.activity_id=a.id and p.result='FAILED')");
+        column("passed", "Qualified", "(select count(*) from training_participants p where p.activity_id=a.id and p.result='PASSED')");
+        column("failed", "Not qualified", "(select count(*) from training_participants p where p.activity_id=a.id and p.result='FAILED')");
         column("createdBy", "Created By", "cb.full_name");
         column("createdAt", "Created At", ReportQueryKit.timestamp("a.created_at"));
         column("confirmedAt", "Confirmed At", ReportQueryKit.timestamp("a.confirmed_at"));
@@ -86,7 +86,7 @@ public class TrainingActivityReportMetadataProvider implements ReportMetadataPro
     public String code() { return "TRAINING_ACTIVITIES"; }
     public String name() { return "Training Activities"; }
     public String category() { return "Training"; }
-    public String description() { return "Training activities with their kind, status, organizing department, due date, days overdue and the number of people who attended, were absent, passed or failed."; }
+    public String description() { return "Training activities with their kind, status, organizing department, due date, days overdue and the number of people who attended, were absent, qualified or not qualified."; }
     public List<String> usePermissions() { return List.of("training.activity.view", "training.compliance.view"); }
     public List<String> allowedScopes() { return List.of("PERSONAL", "DEPARTMENT", "SYSTEM"); }
     public Map<String, String> columns() { return COLUMNS; }

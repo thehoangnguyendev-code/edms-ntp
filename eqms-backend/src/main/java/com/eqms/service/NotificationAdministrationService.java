@@ -36,9 +36,16 @@ public class NotificationAdministrationService {
     /**
      * One notification. {@code id} opens it: the event code of an in-app notification, the id of an email message.
      * {@code module} and {@code priority} belong to events; {@code type} and {@code sent} to email messages.
+     * {@code translation} says whether the wording of this channel has its Vietnamese: TRANSLATED, OUTDATED (the English changed since) or NOT_TRANSLATED;
+     * null when the channel has no wording.
      */
     public record Row(String id, String channel, String name, String code, String description, String module, String priority,
-                      String type, Integer sent, String status, Instant updatedAt) {
+                      String type, Integer sent, String status, Instant updatedAt, String translation) {
+        /** A row whose translation is not known. */
+        public Row(String id, String channel, String name, String code, String description, String module, String priority,
+                   String type, Integer sent, String status, Instant updatedAt) {
+            this(id, channel, name, code, description, module, priority, type, sent, status, updatedAt, null);
+        }
     }
 
     public record Query(String search, String channel, String status, String module, String type, String usage,
@@ -75,6 +82,26 @@ public class NotificationAdministrationService {
         return counts;
     }
 
+    /** The translation of the active English wording of every event and channel, keyed "code/CHANNEL". A failure leaves the column empty. */
+    private java.util.Map<String, String> translationStates() {
+        java.util.Map<String, String> states = new java.util.HashMap<>();
+        if (jdbc == null) return states;
+        try {
+            // the same rule as sending: a Vietnamese wording counts only when it was made from the English version in use
+            jdbc.query("""
+                select p.event_code, v.channel, case when t.id is null then 'NOT_TRANSLATED' when t.base_version_id = v.id then 'TRANSLATED' else 'OUTDATED' end
+                  from notification_policies p
+                  join notification_template_versions v on v.policy_id = p.id and v.status = 'ACTIVE'
+                  left join notification_template_translations t on t.policy_id = p.id and t.channel = v.channel and t.language = 'vi' and t.status = 'ACTIVE'
+                """, rs -> {
+                states.put(rs.getString(1) + "/" + rs.getString(2), rs.getString(3));
+            });
+        } catch (RuntimeException failure) {
+            // the list is still useful without the translation column
+        }
+        return states;
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<Row> list(Query q, boolean includeEvents, boolean includeEmails) {
         String channel = StringUtils.hasText(q.channel()) ? q.channel().trim().toUpperCase(Locale.ROOT) : "";
@@ -85,9 +112,10 @@ public class NotificationAdministrationService {
         if (wantEvents) {
             java.util.Map<String, Integer> inApp = channel.equals(EMAIL) ? java.util.Map.of() : sentCounts(IN_APP);
             java.util.Map<String, Integer> mail = channel.equals(IN_APP) ? java.util.Map.of() : sentCounts(EMAIL);
+            java.util.Map<String, String> translations = translationStates();
             policies.list(null, null, null, null, "module", "asc", 1, Integer.MAX_VALUE).data().forEach(e -> fromEvent(e).forEach(row ->
                     rows.add(new Row(row.id(), row.channel(), row.name(), row.code(), row.description(), row.module(), row.priority(), row.type(),
-                            (IN_APP.equals(row.channel()) ? inApp : mail).getOrDefault(row.code(), 0), row.status(), row.updatedAt()))));
+                            (IN_APP.equals(row.channel()) ? inApp : mail).getOrDefault(row.code(), 0), row.status(), row.updatedAt(), translations.get(row.code() + "/" + row.channel())))));
         }
         if (wantEmails) {
             emailTemplates.findAll().forEach(t -> rows.add(fromEmail(t)));
@@ -187,14 +215,14 @@ public class NotificationAdministrationService {
     private static Row fromEmailInApp(EmailTemplate t) {
         String note = "The in-app text is taken from this e-mail message. ";
         return new Row(t.getId().toString(), IN_APP, t.getName(), t.getType(), note + (t.getDescription() == null ? "" : t.getDescription()), moduleOfType(t.getType()), null,
-                t.getType(), t.getUsageCount(), statusKey(t.getStatus()), t.getUpdatedDate());
+                t.getType(), t.getUsageCount(), statusKey(t.getStatus()), t.getUpdatedDate(), "NOT_TRANSLATED");
     }
 
     private static Row fromEmail(EmailTemplate t) {
         // the notification of such a message is its registry event; the message is kept for an e-mail to an external address and as the wording it started from
         String note = LegacyMessageEvents.forMessageType(t.getType()).map(e -> "The notification itself is edited as the event " + e.code() + "; this message is used for e-mail to an external address. ").orElse("");
         return new Row(t.getId().toString(), EMAIL, t.getName(), t.getType(), note + (t.getDescription() == null ? "" : t.getDescription()), null, null,
-                t.getType(), t.getUsageCount(), statusKey(t.getStatus()), t.getUpdatedDate());
+                t.getType(), t.getUsageCount(), statusKey(t.getStatus()), t.getUpdatedDate(), "NOT_TRANSLATED");
     }
 
     /** Active, Draft and Inactive for both kinds: an event is "disabled" where an email message is "inactive". */

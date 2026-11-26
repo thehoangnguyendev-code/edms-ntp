@@ -131,7 +131,7 @@ public class TrainingPrintService {
             Map<String, Object> r = compliance.coverage(actor, departmentId, status, newOnly, search, rowId, null, null, page, 100);
             for (Map<String, Object> g : (List<Map<String, Object>>) r.get("data")) {
                 if ("OK".equals(g.get("status"))) continue;
-                String last = g.get("lastDone") == null ? "never" : String.valueOf(g.get("lastDone")).substring(0, 10);
+                String last = g.get("lastDone") == null ? "never" : DateTimeFormatUtils.display(g.get("lastDone"));
                 body.add(new String[]{String.valueOf(++n), g.get("fullName") + (g.get("employeeCode") == null ? "" : " (" + g.get("employeeCode") + ")") + (g.get("positionName") == null ? "" : ", " + g.get("positionName")),
                         (g.get("code") == null ? "" : g.get("code") + " ") + g.get("title"), ("MISSING".equals(g.get("status")) ? "Not trained" : "Annual training due") + "; last trained " + last});
             }

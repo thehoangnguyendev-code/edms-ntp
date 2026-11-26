@@ -34,6 +34,10 @@ export const navigationApi = {
     return request;
   },
 
+  /** What waits for the signed-in person, by menu id. */
+  // A signal of its own keeps the request out of the client's short cache and sharing of GETs: a read asked because something changed must reach the server.
+  getTaskCounts: async () => (await api.get<{ counts: Record<string, number>; shared: Record<string, number> }>('/navigation/task-counts', { signal: new AbortController().signal })).data,
+
   searchNavigation: async (query: string) => {
     const response = await api.get<FlatMenuItem[]>(`/navigation/search?q=${encodeURIComponent(query)}`);
     return response.data;

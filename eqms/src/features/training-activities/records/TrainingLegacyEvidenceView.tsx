@@ -25,10 +25,13 @@ import { TrainingFileDropzone } from "../shared/TrainingFileDropzone";
 import { day, trainingBreadcrumbs, TRAINING_PAGES, statusChange } from "../shared/trainingLabels";
 import { resettingDates, useDateRange, useDepartmentOptions } from "../shared/useListFilters";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 // FILED: the person who imported (or attached) the evidence signed it; there is no second person. VERIFIED: evidence that a person verified before that was changed (history).
 const STATE_LABEL: Record<string, string> = { MISSING: "No evidence yet", FILED: "Filed", VERIFIED: "Verified" };
-const STATE_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", FILED: "emerald", VERIFIED: "emerald" };
+const STATE_COLOR = statusColors("MISSING", "FILED", "VERIFIED") as Record<string, BadgeColor>;
 const stateOf = (r: TrainingLegacyRow) => r.evidenceStatus ?? "MISSING";
 const LINK = "font-medium text-emerald-700 hover:underline";
 
@@ -55,12 +58,13 @@ export function TrainingLegacyEvidenceView() {
       trainingLegacyApi.queue(params).then((page) => { setCanSubmit(page.canSubmit); return page; }).catch((e) => { setError(trainingError(e)); throw e; }),
     [],
   );
+  const waiting = useWaitingForMe("training-legacy-evidence", () => table.setCurrentPage(1));
   const extra = useMemo(() => ({
     status: status || undefined, departmentId: departmentFilter || undefined,
     ...completedRange.params("completionFrom", "completionTo"), ...submittedRange.params("submittedFrom", "submittedTo"), ...verifiedRange.params("verifiedFrom", "verifiedTo"),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [status, departmentFilter, completedRange.from, completedRange.to, submittedRange.from, submittedRange.to, verifiedRange.from, verifiedRange.to]);
-  const table = useServerTable<TrainingLegacyRow>({ persistKey: "training.legacy", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "document", extraParams: extra, initialItemsPerPage: 10 });
+  const table = useServerTable<TrainingLegacyRow>({ persistKey: "training.legacy", liveTypes: ["TRAINING"], fetcher, defaultSortBy: "document", extraParams: { ...extra, ...waiting.params }, initialItemsPerPage: 10 });
 
   const submit = async (signatureToken: string) => {
     if (!submitting) return;
@@ -143,6 +147,7 @@ export function TrainingLegacyEvidenceView() {
     <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader title={TRAINING_PAGES.legacy.title} breadcrumbItems={trainingBreadcrumbs(navigate, "legacy")} />
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {waiting.node}
       <ReportListToolbar searchPlaceholder={tr("Search training number, document number or name…")} search={table.searchQuery} onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
         filters={filters} dates={resettingDates([completedRange.filter, submittedRange.filter, verifiedRange.filter], () => table.setCurrentPage(1))}
         hasActiveFilters={Boolean(status || departmentFilter || completedRange.isSet || submittedRange.isSet || verifiedRange.isSet || table.searchQuery)}

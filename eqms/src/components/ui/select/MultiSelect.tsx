@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { displayText } from '@/utils/machineText';
 import { observeOverlayPosition, preferredScrollBehavior } from "@/utils/scroll";
 import React, { useState, useEffect, useRef, useId } from 'react';
@@ -12,7 +13,7 @@ import { Checkbox } from '../checkbox/Checkbox';
 import { Popover } from '../popover/Popover';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 export interface MultiSelectOption {
   label: string;
@@ -398,7 +399,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                         ? "hover:bg-slate-200/70 text-slate-500"
                         : "hover:bg-emerald-200/50"
                     )}
-                    aria-label={`Remove ${displayText(option.label)}`}
+                    aria-label={__ariaTrFormat("Remove {v1}", { v1: displayText(option.label) })}
                   >
                     <X className="h-2.5 w-2.5" />
                   </button>
@@ -412,7 +413,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
             <Popover
               title={tr("Selected")}
               placement="top"
-              triggerAriaLabel={`View ${remainingCount} more selected items`}
+              triggerAriaLabel={trFormat("View {count} more selected items", { count: remainingCount })}
               trigger={<span className="text-[10px] font-medium">+{remainingCount}</span>}
               triggerClassName="inline-flex items-center rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-slate-500 hover:bg-slate-200"
               contentClassName="min-w-[180px] max-w-[280px]"

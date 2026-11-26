@@ -49,10 +49,11 @@ public class TrainingActivityController {
                                   @RequestParam(required = false) String scheduledFrom, @RequestParam(required = false) String scheduledTo,
                                   @RequestParam(required = false) String dueFrom, @RequestParam(required = false) String dueTo,
                                   @RequestParam(required = false) String createdFrom, @RequestParam(required = false) String createdTo,
+                                  @RequestParam(defaultValue = "false") boolean waitingForMe,
                                   @RequestParam(defaultValue = "createdAt") String sortBy,
                                   @RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(activities.list(users.requireCurrentUser(), search, status, kind, departmentId, year, documentNumber, overdue,
-                new TrainingActivityService.ListFilters(method, kindReason, onPaper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo), sortBy, sortDirection, page, limit));
+                new TrainingActivityService.ListFilters(method, kindReason, onPaper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo, waitingForMe), sortBy, sortDirection, page, limit));
     }
 
     @PostMapping("/activities")
@@ -198,9 +199,6 @@ public class TrainingActivityController {
 
     @PostMapping("/activities/{id}/reopen-content")
     public ResponseEntity<?> reopenContent(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.reopenContent(users.requireCurrentUser(), id, request)); }
-
-    @PostMapping("/activities/{id}/return-for-correction")
-    public ResponseEntity<?> returnForCorrection(@PathVariable UUID id, @RequestBody CommandRequest request) { return ResponseEntity.ok(activities.returnForCorrection(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/people/groups")
     public ResponseEntity<?> peopleGroups(@RequestParam String by) {

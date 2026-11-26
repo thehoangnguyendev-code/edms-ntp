@@ -153,13 +153,13 @@ export function TrainingJobRolesView() {
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{viewing.code}</p>
                 <h3 className="text-lg font-semibold text-slate-900">{viewing.name}</h3>
               </div>
-              <Badge color={flagColor(viewing.active)}>{viewing.active ? "Active" : "Inactive"}</Badge>
+              <Badge color={flagColor(viewing.active)}>{tr(viewing.active ? "Active" : "Inactive")}</Badge>
             </div>
 
             <dl className="grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 md:grid-cols-4">
-              {[["Department", viewing.departmentName], ["Job Title", viewing.titlePositionName ?? "—"], ["People Holding It", String(viewing.holders)], ["Training Topics in the Effective Matrix", String(viewing.effectiveTopics)], ...(viewing.seniorManagement ? [["Matrix built by", "QA (senior management)"]] : [])].map(([label, value]) => (
+              {[["Department", viewing.departmentName], ["Job Title", viewing.titlePositionName ?? "—"], ["People Holding It", String(viewing.holders)], ["Training Topics in the Effective Matrix", String(viewing.effectiveTopics)], ...(viewing.seniorManagement ? [["Matrix built by", tr("QA (senior management)")]] : [])].map(([label, value]) => (
                 <div key={label} className="min-w-0">
-                  <dt className="text-xs text-slate-500">{label}</dt>
+                  <dt className="text-xs text-slate-500">{tr(label)}</dt>
                   <dd className="mt-0.5 wrap-break-words text-sm font-medium text-slate-900">{value}</dd>
                 </div>
               ))}

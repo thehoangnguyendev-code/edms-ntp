@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -13,7 +14,7 @@ import { settingsApi } from "@/services/api/settings";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { USER_MANAGEMENT_ROUTES } from "../../user-management/constants";
 import type { User } from "@/types";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type SortKey = "employeeCode" | "fullName" | "businessUnit" | "department" | "email";
 type SortDirection = "asc" | "desc";
@@ -109,7 +110,7 @@ export const WizardUsersStep: React.FC<{
   const selection: DataTableSelection<User> = {
     visible: true,
     header: <Checkbox aria-label={tr("Select every user of this page")} checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={() => onToggleMany(rows, !pageAllSelected)} />,
-    cell: (user) => <span onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select ${user.fullName}`} checked={selectedIds.has(user.id)} onChange={() => onToggle(user)} /></span>,
+    cell: (user) => <span onClick={(event) => event.stopPropagation()}><Checkbox aria-label={__ariaTrFormat("Select {v1}", { v1: user.fullName })} checked={selectedIds.has(user.id)} onChange={() => onToggle(user)} /></span>,
     cellClassName: "w-10",
   };
 
@@ -151,7 +152,7 @@ export const WizardUsersStep: React.FC<{
       { id: "email", header: "Email", label: "Email", sort: sortOf("email"), cellClassName: "text-slate-600", cell: (user) => user.email || "—" },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sort, page, limit],
+    [sort, page, limit, getCatalogLanguage()],
   );
 
   const hasFilters = Boolean(debouncedSearch.trim()) || businessUnit !== "All" || department !== "All";

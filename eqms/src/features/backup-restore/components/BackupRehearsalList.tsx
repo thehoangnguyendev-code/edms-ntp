@@ -11,6 +11,7 @@ import { BackupExportButton } from "./BackupExportButton";
 import { ServerListPanel } from "./ServerListPanel";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type SortKey = "status" | "requestedBy" | "requestedAt";
 
@@ -79,7 +80,7 @@ export function BackupRehearsalList({ backupNumber, reloadKey }: { backupNumber:
   const columns: DataTableColumn<RestoreRehearsal>[] = [
     { id: "no", header: "No.", label: "No.", locked: true, headerClassName: TABLE_STYLES.headerCell35, cellClassName: TABLE_STYLES.cell30, cell: (_row, index) => (page - 1) * pageSize + index + 1 },
     { id: "id", header: "Test", label: "Test", cell: (row) => <span className="font-medium">{row.rehearsalId}</span> },
-    { id: "status", header: "Result", label: "Result", sort: sortFor("status"), cell: (row) => <Badge color={row.status === "PASSED" ? "emerald" : row.status === "FAILED" ? "red" : "amber"}>{statusLabel(row.status)}</Badge> },
+    { id: "status", header: "Result", label: "Result", sort: sortFor("status"), cell: (row) => <Badge color={statusColor(row.status)}>{statusLabel(row.status)}</Badge> },
     { id: "checks", header: "Checks", label: "Checks", cell: (row) => (row.checkCount > 0 ? `${row.checkCount - row.failedCount} of ${row.checkCount} passed` : "—") },
     { id: "error", header: "Problem", label: "Problem", cell: (row) => (row.errorCode ? <span className="font-mono text-xs">{row.errorCode}</span> : "—") },
     { id: "by", header: tr("Requested by"), label: tr("Requested by"), sort: sortFor("requestedBy"), cell: (row) => row.requestedBy },

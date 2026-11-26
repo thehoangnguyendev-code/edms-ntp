@@ -244,7 +244,7 @@ public class TrainingExamService {
                 write(answers), got, max, percent, assessmentId, signature, attemptId);
         store.auditActivity(actor, activity, "TRAINING_EXAM_SUBMITTED", null, result, p.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt.get("attempt_no"),
                 List.of(TrainingStore.change("Participant", null, p.get("full_name")), TrainingStore.change("Attempt", null, attempt.get("attempt_no")),
-                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.words(String.valueOf(result)))));
+                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.resultWords(String.valueOf(result)))));
         return mine(actor, participantId);
     }
 

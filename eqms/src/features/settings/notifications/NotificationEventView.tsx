@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, {
   useCallback,
   useEffect,
@@ -84,6 +85,7 @@ import {
   DeviceSwitch,
   EmailPreviewFrame,
 } from "./components/EmailPreviewFrame";
+import { useVietnameseWording } from "./components/useVietnameseWording";
 import { sameHtml } from "./sameHtml";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import {
@@ -92,7 +94,7 @@ import {
   isChangedByOthers,
 } from "./changedByOthers";
 import { IconInfoCircle, IconPencilMinus } from "@tabler/icons-react";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 /** The two parts of the screen: what the notification says (and how it looks), and to whom it is sent. The placeholders belong to the first. */
 const TABS: TabItem[] = [
@@ -181,7 +183,7 @@ export const NotificationEventView: React.FC<{
   const [error, setError] = useState("");
   const [form, setForm] = useState<Form>(EMPTY);
   const [saved, setSaved] = useState<Form>(EMPTY);
-  // the icon: chosen here, saved with Publish (it is not wording). Its colour follows the priority.
+  // the icon: chosen here, saved with Save (it is not wording). Its colour follows the priority.
   const [appearance, setAppearance] = useState<Appearance>({ icon: null });
   const [savedAppearance, setSavedAppearance] = useState<Appearance>({ icon: null });
   const [saving, setSaving] = useState(false);
@@ -189,6 +191,9 @@ export const NotificationEventView: React.FC<{
   const [changedByOthers, setChangedByOthers] = useState(false);
   const [active, setActive] = useState<Field>(isEmail ? "body" : "title");
   const [tab, setTab] = useState<"content" | "delivery">("content");
+  // the language of the wording and of the preview; the Vietnamese wording is read when its tab is opened for the first time
+  const [language, setLanguage] = useState<"en" | "vi">("en");
+  const [viOpened, setViOpened] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewSubject, setPreviewSubject] = useState("");
   const [mobile, setMobile] = useState(false);
@@ -283,10 +288,30 @@ export const NotificationEventView: React.FC<{
     appearance.icon !== savedAppearance.icon;
   const dirtyDelivery = deliveryDirty(savedDelivery, delivery);
   const dirty = dirtyInApp || dirtyEmail || dirtyAppearance || dirtyDelivery;
+  const vietnamese = useVietnameseWording({ eventCode, channel: isEmail ? "EMAIL" : "IN_APP", english: saved, opened: viOpened, readOnly });
+  const showVietnamese = language === "vi";
+  // what the preview shows: the Vietnamese draft, or the English wording where a Vietnamese reader receives English
+  const previewsVietnamese = showVietnamese && vietnamese.translatable;
+  const shownTitle = previewsVietnamese ? vietnamese.shown.title : form.title;
+  const shownSummary = previewsVietnamese ? vietnamese.shown.summary : form.summary;
   const { go, modal: leaveModal } = useLeaveGuard(
-    dirty,
+    dirty || vietnamese.dirty,
     isEmail ? tr("Edit Email Notification") : tr("Edit In-App Notification"),
     tr("another page"),
+  );
+
+  const languageTabs = (
+    <TabNav
+      tabs={[
+        { id: "en", label: "English" },
+        { id: "vi", label: "Tiếng Việt", dot: vietnamese.dirty, dotLabel: tr("Unsaved changes") },
+      ]}
+      activeTab={language}
+      onChange={(id) => { setLanguage(id as "en" | "vi"); if (id === "vi") setViOpened(true); }}
+      variant="pill"
+      ariaLabel={tr("Wording language")}
+      className="w-56"
+    />
   );
 
   const insert = (token: string) => {
@@ -364,6 +389,16 @@ export const NotificationEventView: React.FC<{
       showToast({ type: "error", title: tr("Cannot save"), message: issue });
       return;
     }
+    // the Vietnamese wording is checked before anything is published, so that English is not published and Vietnamese then refused
+    const translating = vietnamese.dirty || (language === "vi" && vietnamese.outdated);
+    const translationIssue = translating ? vietnamese.problem(form) : null;
+    if (translationIssue) {
+      setTab("content");
+      setLanguage("vi");
+      showToast({ type: "error", title: tr("Cannot save"), message: translationIssue });
+      return;
+    }
+    const englishPublished = isEmail ? dirtyEmail : dirtyInApp;
     setSaving(true);
     // the time the notification had when it was opened goes with the first change only: that change moves the time, and the changes after it are this person's own
     let opened: string | undefined = detail.updatedAt;
@@ -402,10 +437,20 @@ export const NotificationEventView: React.FC<{
       if (dirtyAppearance) {
         await notificationPolicyApi.updateAppearance(eventCode, appearance.icon, once());
       }
+      // last: it belongs to the English version that is now in use
+      if (translating) {
+        try {
+          await vietnamese.publish(englishPublished);
+        } catch (e) {
+          showToast({ type: "error", title: tr("Vietnamese wording not saved"), message: getApiErrorMessage(e, "The wording could not be saved.") });
+          if (dirty) await load();
+          return;
+        }
+      }
       showToast({
         type: "success",
         title: "Saved",
-        message: tr("The change is published and recorded in the Audit Trail."),
+        message: tr("The change is saved and recorded in the Audit Trail."),
       });
       await load();
     } catch (e) {
@@ -446,7 +491,7 @@ export const NotificationEventView: React.FC<{
       showToast({
         type: "success",
         title: tr("Test email sent"),
-        message: `The published email was sent to ${testTo.trim()}.`,
+        message: `The saved email was sent to ${testTo.trim()}.`,
       });
       setTesting(false);
     } catch (e) {
@@ -580,8 +625,8 @@ export const NotificationEventView: React.FC<{
           onClick={() => setTesting(true)}
           title={
             emailHasWording
-              ? tr("Send the published email to an address")
-              : tr("Write and publish the email first")
+              ? tr("Send the saved email to an address")
+              : tr("Write and save the email first")
           }
         >
           {tr("Send Test")}
@@ -607,8 +652,9 @@ export const NotificationEventView: React.FC<{
           <Button
             size="sm"
             variant="outline-emerald"
-            disabled={!dirty || saving}
+            disabled={(!dirty && !vietnamese.dirty) || saving}
             onClick={() => {
+              vietnamese.discard();
               setForm(saved);
               setAppearance(savedAppearance);
               setDelivery(savedDelivery);
@@ -620,10 +666,10 @@ export const NotificationEventView: React.FC<{
             size="sm"
             variant="outline-emerald"
             className="whitespace-nowrap"
-            disabled={!dirty || saving}
+            disabled={(!dirty && !vietnamese.dirty && !(language === "vi" && vietnamese.outdated)) || saving}
             onClick={() => void save()}
           >
-            {saving ? "Saving…" : "Publish"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </>
       ) : null}
@@ -665,7 +711,7 @@ export const NotificationEventView: React.FC<{
           tabs={TABS}
           activeTab={tab}
           onChange={(id) => setTab(id as "content" | "delivery")}
-          ariaLabel="Notification sections"
+          ariaLabel={__ariaTr("Notification sections")}
           layoutId="notification-event-tabs"
         />
 
@@ -691,7 +737,7 @@ export const NotificationEventView: React.FC<{
                         <ReadOnlyField value={detail.eventCode} />
                       </FormField>
                       <FormField label={tr("Module")}>
-                        <ReadOnlyField value={moduleLabel(detail.module)} />
+                        <ReadOnlyField value={tr(moduleLabel(detail.module))} />
                       </FormField>
                       <FormField label={tr("Status")}>
                         <ReadOnlyField value={channelStatus} />
@@ -729,8 +775,8 @@ export const NotificationEventView: React.FC<{
                       <p className="mt-3 text-xs text-slate-500">
                         {tr("Priority: how important this notification is. People see it on the Notifications page and can filter by it.")}
                         {delivery.priority === defaultPriority
-                          ? ` It is the default (${priorityLabel(defaultPriority)}).`
-                          : ` The default is ${priorityLabel(defaultPriority)}; choose it to go back.`}{" "}
+                          ? ` ${trFormat("It is the default ({priority}).", { priority: tr(priorityLabel(defaultPriority)) })}`
+                          : ` ${trFormat("The default is {priority}; choose it to go back.", { priority: tr(priorityLabel(defaultPriority)) })}`}{" "}
                         {tr("A change applies to notifications sent from now on.")}
                       </p>
                     ) : null}
@@ -742,8 +788,10 @@ export const NotificationEventView: React.FC<{
                         className="flex-1"
                         title={tr("In-App Wording")}
                         icon={<IconPencilMinus className="h-4 w-4" />}
+                        headerRight={languageTabs}
                       >
-                        <div className="space-y-4">
+                        {showVietnamese ? vietnamese.editor : null}
+                        <div className={showVietnamese ? "hidden" : "space-y-4"}>
                           <FormField
                             label={FIELD_LABEL.title}
                             htmlFor="wf-title"
@@ -788,8 +836,10 @@ export const NotificationEventView: React.FC<{
                       className="flex-1"
                       title={tr("Email Wording")}
                       icon={<Mail className="h-4 w-4" />}
+                      headerRight={languageTabs}
                     >
-                      <div className="space-y-4">
+                      {showVietnamese ? vietnamese.editor : null}
+                      <div className={showVietnamese ? "hidden" : "space-y-4"}>
                         <FormField
                           label={FIELD_LABEL.subject}
                           htmlFor="wf-subject"
@@ -871,10 +921,10 @@ export const NotificationEventView: React.FC<{
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">
-                              {fill(form.title, samples) || "Title"}
+                              {fill(shownTitle, samples) || tr("Title")}
                             </p>
                             <p className="mt-0.5 whitespace-pre-line text-xs text-slate-600 [overflow-wrap:anywhere]">
-                              {fill(form.summary, samples) || "Message"}
+                              {fill(shownSummary, samples) || tr("Message")}
                             </p>
                             <p className="mt-1 text-xs text-slate-400">
                               {tr("2 minutes ago")}
@@ -883,16 +933,19 @@ export const NotificationEventView: React.FC<{
                           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                         </div>
                       ) : null}
+                      {showVietnamese && !vietnamese.translatable ? (
+                        <p className="text-xs text-slate-500">{tr("A Vietnamese reader receives the English wording shown here.")}</p>
+                      ) : null}
                       {hasEmail ? (
                         <div className="space-y-2">
                           <p className="min-w-0 truncate text-xs text-slate-600">
                             <span className="font-semibold">
                               {tr("Email subject:")}
                             </span>{" "}
-                            {previewSubject || "…"}
+                            {(previewsVietnamese ? vietnamese.previewSubject : previewSubject) || "…"}
                           </p>
                           <EmailPreviewFrame
-                            html={previewHtml}
+                            html={previewsVietnamese ? vietnamese.previewHtml : previewHtml}
                             mobile={mobile}
                           />
                         </div>
@@ -941,7 +994,7 @@ export const NotificationEventView: React.FC<{
       </div>
 
       {/* under the actions, as the lists of a document: the placeholders, only while the first tab is open (only its wording uses them) */}
-      {tab === "content" && canManage ? (
+      {tab === "content" && language === "en" && canManage ? (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <TabNav
             tabs={[
@@ -953,7 +1006,7 @@ export const NotificationEventView: React.FC<{
             ]}
             activeTab="placeholders"
             onChange={() => undefined}
-            ariaLabel="Lists"
+            ariaLabel={__ariaTr("Lists")}
             layoutId="notification-event-lists"
           />
           <div className="p-4 md:p-5">
@@ -976,7 +1029,7 @@ export const NotificationEventView: React.FC<{
         onClose={() => setTesting(false)}
         onConfirm={() => void sendTest()}
         title={tr("Send a test email")}
-        description={tr("The published email is sent with example values, so you can see it in a real inbox. Nothing is recorded as a notification.")}
+        description={tr("The saved email is sent with example values, so you can see it in a real inbox. Nothing is recorded as a notification.")}
         confirmText="Send test"
         isLoading={sendingTest}
         confirmDisabled={

@@ -107,24 +107,24 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
     if (searching) {
       return groups.flatMap((group) => group.items.map((item) => ({
         sectionKey: group.key,
-        sectionLabel: group.label,
+        sectionLabel: tr(group.label),
         groupKey: group.key,
-        groupLabel: group.label,
+        groupLabel: tr(group.label),
         item,
         remember: true,
         optionId: `${listId}-${group.key}-${item.id}`,
       })));
     }
     const recentRows: Row[] = recent.map((entry) => ({
-      sectionKey: 'recent', sectionLabel: 'Recent', groupKey: entry.groupKey, groupLabel: entry.groupLabel, item: entry.item,
+      sectionKey: 'recent', sectionLabel: tr('Recent'), groupKey: entry.groupKey, groupLabel: tr(entry.groupLabel), item: entry.item,
       remember: true, optionId: `${listId}-recent-${entry.groupKey}-${entry.item.id}`,
     }));
     const attentionRows: Row[] = quick.attention.map((place) => ({
-      sectionKey: 'attention', sectionLabel: 'Needs attention', groupKey: 'attention', groupLabel: 'Needs attention',
+      sectionKey: 'attention', sectionLabel: tr('Needs attention'), groupKey: 'attention', groupLabel: tr('Needs attention'),
       item: { id: place.id, title: place.title }, path: place.path, count: place.count, remember: false, optionId: `${listId}-attention-${place.id}`,
     }));
     const goToRows: Row[] = quick.goTo.map((place) => ({
-      sectionKey: 'goto', sectionLabel: 'Go to', groupKey: 'goto', groupLabel: 'Go to',
+      sectionKey: 'goto', sectionLabel: tr('Go to'), groupKey: 'goto', groupLabel: tr('Go to'),
       item: { id: place.id, title: place.title }, path: place.path, remember: false, optionId: `${listId}-goto-${place.id}`,
     }));
     return [...attentionRows, ...recentRows, ...goToRows];
@@ -309,7 +309,8 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
                   const isActive = index === active;
                   const badge = row.item.badge ? statusLabel(row.groupKey, row.item.badge) : null;
                   const color = badge ? getStatusBadgeColor(badge) : undefined;
-                  const subtitle = row.sectionKey === 'recent' ? `${row.groupLabel}${row.item.subtitle ? ' · ' : ''}${row.item.subtitle ?? ''}` : row.item.subtitle;
+                  const rawSubtitle = row.sectionKey === 'recent' ? `${row.groupLabel}${row.item.subtitle ? ' · ' : ''}${row.item.subtitle ?? ''}` : row.item.subtitle;
+                  const subtitle = rawSubtitle?.split(' > ').map((part) => tr(part)).join(' > ');
                   return (
                     <div
                       key={row.optionId}
@@ -326,7 +327,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
                           {row.item.code && <code className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-800">{row.item.code}</code>}
-                          <span className="block min-w-0 truncate text-sm font-semibold text-slate-900">{row.item.title}</span>
+                          <span className="block min-w-0 truncate text-sm font-semibold text-slate-900">{tr(row.item.title)}</span>
                         </span>
                         {subtitle && <span className="mt-0.5 block truncate text-xs text-slate-500">{subtitle}</span>}
                       </span>

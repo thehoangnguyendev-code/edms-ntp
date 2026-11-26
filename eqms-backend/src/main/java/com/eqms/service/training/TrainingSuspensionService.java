@@ -91,7 +91,7 @@ public class TrainingSuspensionService {
             Map<String, Object> original = store.activity((UUID) row.get("activity_id")).orElse(activity);
             store.auditActivity(actor, original, "TRAINING_WORK_SUSPENSION_CLEARED", "OPEN", "CLEARED",
                     participant.get("full_name") + " passed (" + activity.get("training_number") + "). The suspension ends because the retraining was passed.",
-                java.util.List.of(com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name")), com.eqms.util.AuditChanges.of("Reason",null,"Retraining was passed")));
+                java.util.List.of(com.eqms.util.AuditChanges.of("Participant",null,participant.get("full_name")), com.eqms.util.AuditChanges.of("Reason",null,"Qualified after retraining")));
         }
     }
 

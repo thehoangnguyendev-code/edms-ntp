@@ -14,10 +14,11 @@ import { useTableDragScroll } from "@/hooks/useTableDragScroll";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingError, trainingMatrixApi, type TrainingMatrixRow, type TrainingMatrixVersionRef } from "@/services/api/trainingActivities";
-import { day } from "../shared/trainingLabels";
+import { day, localized } from "../shared/trainingLabels";
 import { tr, trFormat } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
-const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" };
+const STATUS_LABEL: Record<string, string> = localized({ DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" });
 const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicText ? r.topicText : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
@@ -58,7 +59,7 @@ export function TrainingMatrixVersionsPanel({ matrixId, currentVersionId }: { ma
         </button>
       ),
     },
-    { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={v.status === "EFFECTIVE" ? "emerald" : v.status === "OBSOLETED" ? "slate" : "amber"}>{STATUS_LABEL[v.status]}</Badge> },
+    { id: "status", header: "Status", sort: sorted("status"), cell: (v) => <Badge color={statusColor(v.status)}>{STATUS_LABEL[v.status]}</Badge> },
     { id: "reason", header: tr("What changed"), sort: sorted("changeReason"), cell: (v) => <div className="max-w-80 whitespace-normal">{v.changeReason || "—"}</div> },
     { id: "prepared", header: tr("Prepared by"), sort: sorted("preparedBy"), cell: (v) => v.preparedByName ?? "—" },
     { id: "approved", header: tr("Approved by"), sort: sorted("approvedBy"), cell: (v) => v.approvedByName ?? "—" },

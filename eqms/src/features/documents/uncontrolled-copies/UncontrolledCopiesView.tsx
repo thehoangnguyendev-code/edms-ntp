@@ -449,7 +449,7 @@ export const UncontrolledCopiesView: React.FC<{
         <Badge
           color={getStatusBadgeColor(copy.status, copy.statusCode) ?? "slate"}
         >
-          {copy.status}
+          {tr(copy.status)}
         </Badge>
       ),
     },

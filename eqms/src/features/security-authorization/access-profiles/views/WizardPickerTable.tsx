@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -111,8 +112,8 @@ export function WizardPickerTable<T>({
   const pageSomeSelected = !pageAllSelected && rows.some((row) => selectedIds.has(getId(row)));
   const selection: DataTableSelection<T> = {
     visible: true,
-    header: <Checkbox aria-label={`Select every ${noun} of this page`} checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={() => onToggleMany(rows, !pageAllSelected)} />,
-    cell: (row) => <span onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select ${noun}`} checked={selectedIds.has(getId(row))} onChange={() => onToggle(row)} /></span>,
+    header: <Checkbox aria-label={__ariaTrFormat("Select every {v1} of this page", { v1: noun })} checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={() => onToggleMany(rows, !pageAllSelected)} />,
+    cell: (row) => <span onClick={(event) => event.stopPropagation()}><Checkbox aria-label={__ariaTrFormat("Select {v1}", { v1: noun })} checked={selectedIds.has(getId(row))} onChange={() => onToggle(row)} /></span>,
     cellClassName: "w-10",
   };
   const offset = (page - 1) * limit;

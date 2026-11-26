@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useState } from "react";
 import { IconAlignCenter, IconAlignLeft, IconAlignRight, IconBold, IconItalic, IconUnderline } from "@tabler/icons-react";
 import { FormField, Input } from "@/components/ui/form/ResponsiveForm";
@@ -150,7 +151,7 @@ export function ReportTextStyleFields({
     if (size) size.onChange(next); else set({ size: next });
   };
   return (
-    <div className="space-y-3" role="group" aria-label={`${label} style`}>
+    <div className="space-y-3" role="group" aria-label={__ariaTrFormat("{v1} style", { v1: label })}>
       {!leading && <SectionLabel>{title}</SectionLabel>}
       <div className="flex flex-wrap items-center gap-2">
         {leading}

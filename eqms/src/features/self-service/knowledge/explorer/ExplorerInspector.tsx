@@ -12,6 +12,7 @@ import { FileIcon, FolderIcon, useFolderColor, useFolderLabel, useTypeIcon } fro
 import { Folder } from "@/components/ui/folder-component";
 import { pluralize, typeBadgeColor, type FolderEntry } from "./explorerModel";
 import { useLanguage } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 export type InspectorTarget =
   | { type: "doc"; item: KnowledgePortalDocument }
@@ -98,7 +99,7 @@ export const ExplorerInspector: React.FC<ExplorerInspectorProps> = ({
                 <Title title={doc.documentName} subtitle={`${doc.documentNumber}${doc.revisionNumber ? ` · ${doc.revisionNumber}` : ""}`} />
                 <div className="flex flex-wrap gap-1.5">
                   <Badge color={typeBadgeColor(doc.documentType)} size="sm">{doc.documentType || "Document"}</Badge>
-                  <Badge semantic="success" size="sm">{t("knowledge.effective", "Effective")}</Badge>
+                  <Badge color={statusColor("EFFECTIVE")} semantic="success" size="sm">{t("knowledge.effective", "Effective")}</Badge>
                   {item.featured && <Badge semantic="warning" size="sm">{t("knowledge.featured", "Featured")}</Badge>}
                 </div>
                 <Card>

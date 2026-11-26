@@ -122,7 +122,6 @@ public final class NotificationDefaultChannels {
             "training.requirement_rejected",
             "training.results_due_today",
             "training.results_late",
-            "training.returned",
             "training.review_close_due",
             "training.review_open_due",
             "training.review_ready",

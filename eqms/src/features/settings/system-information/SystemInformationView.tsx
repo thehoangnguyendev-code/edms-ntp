@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { AppWindow, Coffee, Database, GitBranch, HardDrive, Layers, Route, Server, ShieldCheck, Zap } from "lucide-react";
@@ -13,7 +14,7 @@ import { systemInfoApi, type SystemInfoResponse } from "@/services/api/systemInf
 import { formatDateTime } from "@/utils/format";
 import metadata from "../../../../metadata.json";
 import packageJson from "../../../../package.json";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 /* ------------------------------------------------------------------ */
 /*  Brand logo marks (inline SVG — crisp, offline, CSP-safe)          */
@@ -166,7 +167,7 @@ const TechTile: React.FC<{
     </div>
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm font-medium text-slate-900">{name}</p>
-      <p className="truncate text-2xs font-medium uppercase tracking-wide text-slate-500">{category}</p>
+      <p className="truncate text-2xs font-medium uppercase tracking-wide text-slate-500">{tr(category)}</p>
     </div>
     <Badge color="slate" size="sm">{version}</Badge>
   </div>
@@ -233,7 +234,7 @@ export const SystemInformationView: React.FC = () => {
       { title: tr("Schema migration"), accent: "#8b5cf6", value: `v${db.schemaMigrationVersion}`, footValue: db.appliedMigrations, footLabel: "applied migrations" },
       { title: "Database", accent: "#f59e0b", value: stripRange(db.productVersion).split(" ")[0], footValue: db.product, footLabel: "engine" },
     ];
-  }, [server, db]);
+  }, [server, db, getCatalogLanguage()]);
 
   const panel = (() => {
     if (tab === "application") {
@@ -340,7 +341,7 @@ export const SystemInformationView: React.FC = () => {
           activeTab={tab}
           onChange={(id) => setTab(id as TabId)}
           variant="underline"
-          ariaLabel="System details"
+          ariaLabel={__ariaTr("System details")}
           tabIdPrefix={TAB_PREFIX}
           panelIdPrefix={PANEL_PREFIX}
           className="max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-32px),transparent)]"

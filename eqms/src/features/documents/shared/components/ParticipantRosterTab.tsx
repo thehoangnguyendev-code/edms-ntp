@@ -389,12 +389,12 @@ export const ParticipantRosterTab: React.FC<ParticipantRosterTabProps> = ({
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span>{tr("Review mode:")}</span>
                     <Badge color={parallelReviewEnabled ? "blue" : "emerald"} size="sm">
-                        {parallelReviewEnabled ? "Parallel" : "Sequential"}
+                        {parallelReviewEnabled ? tr("Parallel") : tr("Sequential")}
                     </Badge>
                     <span>
                         {parallelReviewEnabled
-                            ? "— any Reviewer may act in any order"
-                            : "— Reviewers must act one at a time, in the order below"}
+                            ? tr("— any Reviewer may act in any order")
+                            : tr("— Reviewers must act one at a time, in the order below")}
                     </span>
                 </div>
             )}

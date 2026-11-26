@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Eye, Mail, Pencil } from "lucide-react";
@@ -44,7 +45,7 @@ import {
   notificationAdministrationApi,
   type MessageEvent,
 } from "@/services/api/notificationAdministration";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type Field = "subject" | "content";
 
@@ -387,7 +388,7 @@ export const EmailMessageEditView: React.FC = () => {
                   <ReadOnlyField value={template.type} />
                 </FormField>
                 <FormField label={tr("Sent")}>
-                  <ReadOnlyField value={`${template.usageCount} time(s)`} />
+                  <ReadOnlyField value={trFormat("{count} time(s)", { count: template.usageCount })} />
                 </FormField>
                 <FormField label={tr("Updated")}>
                   <ReadOnlyField
@@ -437,7 +438,7 @@ export const EmailMessageEditView: React.FC = () => {
                 <TokenTextField
                   id="em-subject"
                   ref={subjectRef}
-                  ariaLabel="Email subject"
+                  ariaLabel={__ariaTr("Email subject")}
                   value={subject}
                   onChange={setSubject}
                   maxLength={200}
@@ -448,7 +449,7 @@ export const EmailMessageEditView: React.FC = () => {
               <FormField label={tr("Email message")}>
                 <RichTextEditor
                   ref={contentRef}
-                  ariaLabel="Email message"
+                  ariaLabel={__ariaTr("Email message")}
                   value={content}
                   onChange={onContentChange}
                   disabled={!canManage}

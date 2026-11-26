@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React from "react";
 import { ChevronRight, MoreVertical } from "lucide-react";
 import { cn } from "@/components/ui/utils";
@@ -72,7 +73,7 @@ const buildRevisionColumns = <T extends RevisionRow>(options: RevisionColumnOpti
             onPointerEnter={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
             onPointerDown={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
             onFocus={() => !isExpanded && preloadExpandedDocumentDetails({ revisionId: item.id })}
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} revision ${[(item as any).documentNumber, (item as any).revisionNumber].filter(Boolean).join(" ")}`}
+            aria-label={__ariaTrFormat("{v1} revision {v2}", { v1: isExpanded ? __ariaTr("Collapse") : __ariaTr("Expand"), v2: [(item as any).documentNumber, (item as any).revisionNumber].filter(Boolean).join(" ") })}
             aria-expanded={isExpanded}
             className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-lg hover:bg-slate-200 transition-colors mx-auto"
           >

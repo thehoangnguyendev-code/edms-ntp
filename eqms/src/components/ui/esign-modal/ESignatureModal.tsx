@@ -145,14 +145,14 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
     const nextErrors: Partial<Record<'username' | 'password' | 'reason', string>> = {};
 
     if (!username.trim()) {
-      nextErrors.username = 'Username is required to complete the electronic signature.';
+      nextErrors.username = tr('Username is required to complete the electronic signature.');
     }
 
     if (!effectiveReason) {
-      nextErrors.reason = 'A signing reason is required for compliance.';
+      nextErrors.reason = tr('A signing reason is required for compliance.');
     }
     if (!password) {
-      nextErrors.password = 'Password is required to complete the electronic signature.';
+      nextErrors.password = tr('Password is required to complete the electronic signature.');
     }
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
@@ -189,17 +189,17 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
         responseData?.error?.message ||
         responseData?.message ||
         (error as Error)?.message ||
-        'Unable to verify electronic signature.';
+        tr('Unable to verify electronic signature.');
       const normalized = String(message).toLowerCase();
 
       const nextFieldErrors: Partial<Record<'username' | 'password' | 'reason', string>> = {};
       if (normalized.includes('current user') || normalized.includes('username')) {
-        nextFieldErrors.username = 'Enter the username of the currently signed-in account.';
+        nextFieldErrors.username = tr('Enter the username of the currently signed-in account.');
       } else if (normalized.includes('attempt') && normalized.includes('remaining')) {
         // A wrong password counts toward the account lockout; the person is told how many tries are left, so the server's words are shown as they are.
         nextFieldErrors.password = message;
       } else if (normalized.includes('invalid signature credentials') || normalized.includes('password') || normalized.includes('credential')) {
-        nextFieldErrors.password = 'Electronic signature authentication failed. Please verify your username and password and try again.';
+        nextFieldErrors.password = tr('Electronic signature authentication failed. Please verify your username and password and try again.');
       } else if (normalized.includes('reason')) {
         nextFieldErrors.reason = message;
       } else {
@@ -265,7 +265,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                   transition={{ duration: 0.15 }}
                   className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm rounded-none sm:rounded-xl"
                 >
-                  <Loading size="lg" text="Processing signature..." />
+                  <Loading size="lg" text={tr("Processing signature...")} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -301,7 +301,7 @@ export const ESignatureModal: React.FC<ESignatureModalProps> = ({
                 {effectiveMeaningDisplayName && (
                   <div className="flex items-baseline gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-3">
                     <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">{tr("Meaning")}</span>
-                    <span className="text-xs sm:text-sm font-medium text-slate-900 wrap-break-word min-w-0">{effectiveMeaningDisplayName}</span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-900 wrap-break-word min-w-0">{tr(effectiveMeaningDisplayName)}</span>
                   </div>
                 )}
 

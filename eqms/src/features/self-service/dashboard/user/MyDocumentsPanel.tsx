@@ -4,7 +4,7 @@ import { BreakdownPanel } from '../shared/BreakdownPanel';
 import { statusSlices, type RankedCount } from '../shared/dashboardMetrics';
 import { DOCUMENT_STATUS, DOCUMENT_STATUS_ORDER } from '../shared/documentStatus';
 import { useDashboardResource } from '../shared/useDashboardResource';
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 /**
  * Documents the current user authored, per lifecycle status. Every figure is the total the document list
@@ -29,13 +29,13 @@ export const MyDocumentsPanel: React.FC<{ className?: string }> = ({ className }
     <BreakdownPanel
       className={className}
       title={tr("My documents by status")}
-      idleSubtitle="Documents you authored, per lifecycle status"
-      subtitle={(total) => `${total.toLocaleString()} ${total === 1 ? 'document' : 'documents'} authored by you`}
+      idleSubtitle={tr("Documents you authored, per lifecycle status")}
+      subtitle={(total) => trFormat("{total} documents authored by you", { total: total.toLocaleString() })}
       resource={mine}
-      valueLabel="My documents"
-      centerCaption="Mine"
-      chartLabel="my documents by status"
-      emptyLabel="You have not authored any document yet"
+      valueLabel={tr("My documents")}
+      centerCaption={tr("Mine")}
+      chartLabel={tr("my documents by status")}
+      emptyLabel={tr("You have not authored any document yet")}
       errorMessage={tr("Your documents could not be loaded.")}
       idPrefix="my-documents"
       defaultView="bar"

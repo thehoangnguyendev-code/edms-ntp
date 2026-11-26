@@ -3,7 +3,7 @@ import { trainingWorkPositionApi } from "@/services/api/trainingActivities";
 import { EditableField, InfoField, FieldGroup } from "../components/ProfileSectionCard";
 import { formatDate } from "@/utils/format";
 import type { User } from "../../types";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 interface EmploymentTabProps {
   user: User;
@@ -46,7 +46,7 @@ export const EmploymentTab: React.FC<EmploymentTabProps> = ({
     if (!draft.businessUnit || !draft.department) return base;
     if (positionOptions.length === 0) return base;
     return [...base, ...positionOptions];
-  }, [draft.businessUnit, draft.department, positionOptions]);
+  }, [draft.businessUnit, draft.department, positionOptions, getCatalogLanguage()]);
 
   return (
     <div>

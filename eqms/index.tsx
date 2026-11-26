@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { UnsavedChangesPopGuard } from './src/components/navigation/UnsavedChangesPopGuard';
 import App from './src/app/App';
 import { AppProviders } from './src/contexts';
+import { RedrawOnLanguage } from './src/i18n';
 import { PwaBranding } from './src/components/branding/PwaBranding';
 import { ReadonlyFocusIndicator } from './src/components/ui/form/ReadonlyFocusIndicator';
 
@@ -41,10 +42,17 @@ const router = createBrowserRouter([
     path: '*',
     element: (
       <AppProviders>
-        <PwaBranding />
-        <ReadonlyFocusIndicator />
-        <UnsavedChangesPopGuard />
-        <App />
+        {/* a language switch draws all of this again but keeps it mounted */}
+        <RedrawOnLanguage
+          render={() => (
+            <>
+              <PwaBranding />
+              <ReadonlyFocusIndicator />
+              <UnsavedChangesPopGuard />
+              <App />
+            </>
+          )}
+        />
       </AppProviders>
     ),
   },

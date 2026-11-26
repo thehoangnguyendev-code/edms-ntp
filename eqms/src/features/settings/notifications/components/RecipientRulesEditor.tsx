@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React from 'react';
 import { X } from 'lucide-react';
 import type { RecipientRule } from '@/services/api/notificationPolicy';
@@ -30,7 +31,7 @@ export const RecipientRulesEditor: React.FC<Props> = ({ kinds, value, onChange, 
           <span key={`${rule.type}-${rule.value ?? ''}-${index}`} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 py-1 pl-3 pr-1.5 text-sm text-emerald-800">
             <span className="min-w-0 truncate">{labelOf(rule)}</span>
             {disabled ? null : (
-              <button type="button" aria-label={`Remove ${labelOf(rule)}`} className="rounded-full p-0.5 text-emerald-700 hover:bg-emerald-100" onClick={() => onChange(value.filter((_, i) => i !== index))}>
+              <button type="button" aria-label={__ariaTrFormat("Remove {v1}", { v1: labelOf(rule) })} className="rounded-full p-0.5 text-emerald-700 hover:bg-emerald-100" onClick={() => onChange(value.filter((_, i) => i !== index))}>
                 <X className="h-3.5 w-3.5" />
               </button>
             )}

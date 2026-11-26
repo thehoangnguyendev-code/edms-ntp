@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 ﻿import React, { useState, useEffect } from 'react';
 import { GeneralConfig } from '../types';
 import { Select } from '@/components/ui/select/Select';
@@ -168,7 +169,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
       onChange={selectTab}
       changed={changedTabs}
       onReset={savedConfig ? (tab) => onChange(revertGeneralTab(config, savedConfig, tab)) : undefined}
-      ariaLabel="General configuration sections"
+      ariaLabel={__ariaTr("General configuration sections")}
       idPrefix="general"
     >
         {activeTab === 'branding' && (

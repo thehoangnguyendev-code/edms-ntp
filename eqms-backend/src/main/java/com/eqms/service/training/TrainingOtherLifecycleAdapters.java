@@ -95,7 +95,10 @@ public class TrainingOtherLifecycleAdapters {
                 if (me.equals(d.get("created_by"))) relations.add("CREATOR");
                 if (me.equals(d.get("updated_by"))) relations.add("UPDATER");
                 if (me.equals(d.get("submitted_by"))) relations.add("SUBMITTER");
-                if (access.has(actor, "training.assessment.design", "training.assessment.approve")) relations.add("DESIGNER_OR_APPROVER");
+                // May manage this assessment: every one for manage_all, or the one this person created for manage (the rule of the permissions, see TrainingAssessmentLibraryService)
+                boolean canManage = access.has(actor, "training.assessment.manage_all") || (access.has(actor, "training.assessment.manage") && me.equals(d.get("created_by")));
+                if (canManage) relations.add("CAN_MANAGE");
+                if (canManage || access.has(actor, "training.assessment.approve")) relations.add("DESIGNER_OR_APPROVER");
                 return new Facts(null, relations);
             }
         };

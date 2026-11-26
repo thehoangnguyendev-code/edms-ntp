@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChartConfiguration, Plugin } from 'chart.js';
 import { Chart } from 'chart.js';
@@ -196,7 +197,7 @@ const GrowthPanel = ({ snapshots }: { snapshots: UsageSnapshot[] }) => {
           <h3 className="text-sm font-semibold text-slate-900">{tr("What grew")}</h3>
           <p className="text-xs text-slate-500">{formatDate(oldest.measuredAt)} → {formatDate(newest.measuredAt)} · {signedSize(total)}</p>
         </div>
-        <TabNav tabs={PARTS} activeTab={part} onChange={(id) => setPart(id as 'byDomain' | 'byFileType')} variant="pill" ariaLabel="Group the growth by" className="!w-auto" />
+        <TabNav tabs={PARTS} activeTab={part} onChange={(id) => setPart(id as 'byDomain' | 'byFileType')} variant="pill" ariaLabel={__ariaTr("Group the growth by")} className="!w-auto" />
       </div>
       {rows.length === 0 ? (
         <p className="px-4 py-6 text-sm text-slate-500 md:px-5">{tr("Nothing grew in this period.")}</p>
@@ -358,8 +359,8 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 px-4 pt-4 md:px-5">
-            <TabNav tabs={RANGES} activeTab={range} onChange={setRange} variant="pill" ariaLabel="Period" className="!w-auto" />
-            <TabNav tabs={VIEWS} activeTab={view} onChange={setView} variant="pill" ariaLabel="View" className="!w-auto" />
+            <TabNav tabs={RANGES} activeTab={range} onChange={setRange} variant="pill" ariaLabel={__ariaTr("Period")} className="!w-auto" />
+            <TabNav tabs={VIEWS} activeTab={view} onChange={setView} variant="pill" ariaLabel={__ariaTr("View")} className="!w-auto" />
             <Button type="button" variant="outline-emerald" size="sm" className="gap-1.5" onClick={() => downloadCsv(period)}>
               <IconDownload className="h-4 w-4" />
               CSV
@@ -369,7 +370,7 @@ export function StorageUsagePanel({ policy }: { policy: StoragePolicyController 
             {view === 'table' ? (
               <MeasurementsTable snapshots={period} />
             ) : history ? (
-              <div className="h-60 w-full"><ChartCanvas config={history} ariaLabel="Object-version size over the chosen period" /></div>
+              <div className="h-60 w-full"><ChartCanvas config={history} ariaLabel={__ariaTr("Object-version size over the chosen period")} /></div>
             ) : (
               <p className="py-10 text-center text-sm text-slate-500">{tr("The history appears after a second measurement in this period.")}</p>
             )}

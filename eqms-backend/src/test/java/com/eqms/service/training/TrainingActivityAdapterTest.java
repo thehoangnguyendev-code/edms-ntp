@@ -154,7 +154,7 @@ class TrainingActivityAdapterTest {
             "SUBMIT_FOR_APPROVAL", Set.of("PLANNED"),
             "SUPPLEMENTARY", Set.of("COMPLETED"));
     private static final List<String> ACTIONS = List.of("UPDATE", "ADD_SESSION", "ADD_PARTICIPANTS", "CONFIRM_LIST", "NOTIFY", "CANCEL", "REOPEN_CONTENT", "SUPPLEMENTARY",
-            "SUBMIT_FOR_APPROVAL", "CONTENT_APPROVE_FIRST", "CONTENT_REJECT", "CONTENT_APPROVE", "SEND_ATTENDANCE_LIST", "FINISH", "CONFIRM_COMPLETION", "RETURN_FOR_CORRECTION");
+            "SUBMIT_FOR_APPROVAL", "CONTENT_APPROVE_FIRST", "CONTENT_REJECT", "CONTENT_APPROVE", "SEND_ATTENDANCE_LIST", "FINISH", "CONFIRM_COMPLETION");
 
     /** The rule the owner approved, written once. */
     private static boolean expected(String action, String state, Set<String> perms, Set<String> rel, boolean inScope) {
@@ -173,7 +173,6 @@ class TrainingActivityAdapterTest {
                 // the trainer, whatever the permissions and the department
                 return state.equals("IN_PROGRESS") && rel.contains("SENDER");
             case "CONFIRM_COMPLETION":
-            case "RETURN_FOR_CORRECTION":
                 return state.equals("PENDING_QA_CONFIRMATION") && perms.contains("training.activity.close") && inScope && !rel.contains("LIST_PREPARER");
             default:
                 throw new IllegalArgumentException(action);
@@ -214,9 +213,12 @@ class TrainingActivityAdapterTest {
         var defaults = WorkflowActionDefaultPolicyRegistry.allTraining().stream().filter(d -> d.workflowKey().equals("TRAINING_ACTIVITY")).toList();
         // 26 rows were seeded by V811; V842 retired the two SUPPLEMENTARY rows that start from IN_PROGRESS and PENDING_QA_CONFIRMATION (only a Completed activity gets a supplementary training) and V843 the two
         // CONTENT_REVIEW rows (one approver signs the content); V844 retired CONTENT_APPROVE from Planned and Notified and REOPEN_CONTENT from Planned (3 rows, the registry has 19) and added
-        // 7 rows for the course through Pending Approval, and V845 retired ADD_SESSION from Notified (nothing of the plan is edited once the people are notified), so the registry has 25
-        assertThat(defaults).hasSize(25);
-        assertThat(defaults.stream().map(d -> d.policy().actionCode())).doesNotContain("CONTENT_REVIEW");
+        // 7 rows for the course through Pending Approval, and V845 retired ADD_SESSION from Notified (nothing of the plan is edited once the people are notified), so the registry had 25; V859 retired
+        // RETURN_FOR_CORRECTION (QA no longer returns the results, owner decision 2026-11-26), so it has 24
+        assertThat(defaults).hasSize(24);
+        assertThat(defaults.stream().map(d -> d.policy().actionCode())).doesNotContain("CONTENT_REVIEW", "RETURN_FOR_CORRECTION");
+        String returnRetired = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/db/migration/V859__retire_return_for_correction.sql")).replaceAll("\\s+", " ");
+        assertThat(returnRetired).contains("action_code = 'RETURN_FOR_CORRECTION'").contains("event_code = 'training.returned'");
         String review = java.nio.file.Files.readString(java.nio.file.Path.of(RETIRED_REVIEW)).replaceAll("\s+", " ");
         assertThat(review).contains("action_code = 'CONTENT_REVIEW'").contains("from_status IN ('PLANNED', 'NOTIFIED')").doesNotContain("'CONTENT_APPROVE'")
                 .contains("step_code = 'CONTENT_REVIEW'").contains("status = 'PENDING'");

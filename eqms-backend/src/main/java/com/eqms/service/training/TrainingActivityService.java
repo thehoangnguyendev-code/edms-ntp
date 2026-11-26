@@ -111,8 +111,13 @@ public class TrainingActivityService {
      * More filters of the list. Dates are ISO yyyy-MM-dd and a malformed one is refused; the scheduled range matches an activity that has a session in it.
      * An unknown method or reason matches nothing; it is never turned into SQL.
      */
-    public record ListFilters(String method, String kindReason, Boolean onPaper, String scheduledFrom, String scheduledTo, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+    public record ListFilters(String method, String kindReason, Boolean onPaper, String scheduledFrom, String scheduledTo, String dueFrom, String dueTo, String createdFrom, String createdTo, boolean waitingForMe) {
         public static final ListFilters NONE = new ListFilters(null, null, null, null, null, null, null, null, null);
+        /** Only the activities that wait for the person who asks. */
+        public static final ListFilters WAITING = new ListFilters(null, null, null, null, null, null, null, null, null, true);
+        public ListFilters(String method, String kindReason, Boolean onPaper, String scheduledFrom, String scheduledTo, String dueFrom, String dueTo, String createdFrom, String createdTo) {
+            this(method, kindReason, onPaper, scheduledFrom, scheduledTo, dueFrom, dueTo, createdFrom, createdTo, false);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -162,6 +167,7 @@ public class TrainingActivityService {
             where.append(" and (lower(t.training_number) like ? escape '\\' or lower(training_activity_topics(t.id)) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
+        if (extra.waitingForMe()) { where.append(" and ").append(TrainingWaiting.activity("t.id")); args.add(actor.getId()); args.add(actor.getId()); }
         if (status != null && !status.isBlank()) { where.append(" and t.status = ?"); args.add(status); }
         if (kind != null && !kind.isBlank()) { where.append(" and t.kind = ?"); args.add(kind); }
         if (departmentId != null) { where.append(" and t.organizer_department_id = ?"); args.add(departmentId); }
@@ -630,7 +636,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
     private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
         return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_ACTIVITY", (UUID) row.get("id"), caps,
-                Map.of(), Map.ofEntries(Map.entry("edit", "UPDATE"), Map.entry("planSessions", "ADD_SESSION"), Map.entry("addParticipants", "ADD_PARTICIPANTS"), Map.entry("confirmList", "CONFIRM_LIST"), Map.entry("notify", "NOTIFY"), Map.entry("startTraining", "START_TRAINING"), Map.entry("sendAttendanceList", "SEND_ATTENDANCE_LIST"), Map.entry("finishTraining", "FINISH"), Map.entry("confirmCompletion", "CONFIRM_COMPLETION"), Map.entry("returnForCorrection", "RETURN_FOR_CORRECTION"), Map.entry("reopenContent", "REOPEN_CONTENT"), Map.entry("submitForApproval", "SUBMIT_FOR_APPROVAL"), Map.entry("cancel", "CANCEL"), Map.entry("addSupplementary", "SUPPLEMENTARY")));
+                Map.of(), Map.ofEntries(Map.entry("edit", "UPDATE"), Map.entry("planSessions", "ADD_SESSION"), Map.entry("addParticipants", "ADD_PARTICIPANTS"), Map.entry("confirmList", "CONFIRM_LIST"), Map.entry("notify", "NOTIFY"), Map.entry("startTraining", "START_TRAINING"), Map.entry("sendAttendanceList", "SEND_ATTENDANCE_LIST"), Map.entry("finishTraining", "FINISH"), Map.entry("confirmCompletion", "CONFIRM_COMPLETION"), Map.entry("reopenContent", "REOPEN_CONTENT"), Map.entry("submitForApproval", "SUBMIT_FOR_APPROVAL"), Map.entry("cancel", "CANCEL"), Map.entry("addSupplementary", "SUPPLEMENTARY")));
     }
 
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> activity) {
@@ -695,7 +701,6 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         // The assessment of the library is chosen, like a file is uploaded, until the content is approved.
         caps.put("chooseAssessment", organize && "PLANNED".equals(status) && !"EXTERNAL".equals(activity.get("kind")) && !contentLocked((UUID) activity.get("id")));
         caps.put("reopenContent", organize && !"EXTERNAL".equals(activity.get("kind")) && ("PENDING_APPROVAL".equals(status) || ("NOTIFIED".equals(status) && contentLocked((UUID) activity.get("id")))));
-        caps.put("returnForCorrection", "PENDING_QA_CONFIRMATION".equals(status) && access.has(actor, "training.activity.close") && access.inScope(actor, department));
         // Cancel (DEC-TRAINING-2026-11-25-3): not for the training of a revision of Document Control (the revision waits for it; Document Control cancels a revision only while it is a Draft), and not once a person passed
         boolean ofRevision = activity.get("revision_id") != null;
         boolean mayCancel = access.has(actor, "training.activity.cancel") && access.inOwnDepartment(actor, department);
@@ -783,8 +788,14 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         return out;
     }
 
+    /** The assessment of the impact of a new or revised document on the training matrix (SOP.0003 5.3.1); asked of the participants' notice, not of the activity itself. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrainingImpactService impactGate;
+
     private List<String> notifyBlockers(UUID id, int people, boolean listDone) {
         List<String> out = new ArrayList<>();
+        String impact = impactGate == null ? null : impactGate.notifyBlocker(id);
+        if (impact != null) out.add(impact);
         Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id=? and status='PLANNED'", Integer.class, id);
         if (sessions == null || sessions == 0) out.add("TRAINING_SESSION_REQUIRED");
         else {
@@ -1400,6 +1411,9 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         boolean externalActivity = isExternal(id);
         // a training with content is notified once both approvers have signed (Pending Approval); an external one has none and is notified from Planned
         requireStatus(activity, externalActivity ? "PLANNED" : "PENDING_APPROVAL");
+        // SOP.0003 5.3.1: the impact of a new or revised document on the matrix is assessed, and the matrix updated, before the training is implemented
+        String impactBlocker = impactGate == null ? null : impactGate.notifyBlocker(id);
+        if (impactBlocker != null) throw new ResponseStatusException(HttpStatus.CONFLICT, impactBlocker);
         if (activity.get("list_prepared_by") == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_LIST_NOT_CONFIRMED");
         if (externalActivity && blankToNull((String) activity.get("training_unit_name")) == null) throw new IllegalArgumentException("TRAINING_UNIT_REQUIRED");
         if (!externalActivity && !confirmed(id, "CONTENT_APPROVED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_NOT_APPROVED");
@@ -1957,7 +1971,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         else suspensions.clearOnPass(actor, activity, participant);
         store.auditActivity(actor, activity, "TRAINING_ASSESSMENT_RECORDED", null, result, participant.get("full_name") + ": " + percent + "% (pass mark " + pass + "%), attempt " + attempt,
                 List.of(TrainingStore.change("Participant", null, participant.get("full_name")), TrainingStore.change("Attempt", null, attempt),
-                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.words(result))));
+                        TrainingStore.change("Score", null, percent + "%"), TrainingStore.change("Pass Mark", null, pass + "%"), TrainingStore.change("Result", null, TrainingStore.resultWords(result))));
         return get(actor, (UUID) activity.get("id"));
     }
 
@@ -2887,28 +2901,6 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         String kinds = String.join(" and ", given.stream().map(c -> "CONTENT_REVIEWED".equals(c.get("kind")) ? "review" : "approval").toList());
         transition(actor, activity, "PLANNED", "TRAINING_CONTENT_REOPENED", "Content taken back to edit" + (kinds.isEmpty() ? "" : " (" + kinds + " no longer count)") + "; approve and notify again. Reason: " + request.reason().trim());
         store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "CONTENT_REOPENED", Map.of("reason", request.reason().trim()), actor.getId());
-        return get(actor, id);
-    }
-
-    /**
-     * QA returns the results to the organizer for correction instead of confirming them. Nothing has been written to a personal record yet (that happens only when QA confirms),
-     * so no record changes; the activity goes back to In Progress, the organizer corrects and sends it again. Only the person designated for the confirmation may return it.
-     */
-    @Transactional
-    public Map<String, Object> returnForCorrection(UserAccount actor, UUID id, CommandRequest request) {
-        return shadow.around(actor, TYPE, id, "RETURN_FOR_CORRECTION", true, () -> returnForCorrectionInner(actor, id, request));
-    }
-
-    private Map<String, Object> returnForCorrectionInner(UserAccount actor, UUID id, CommandRequest request) {
-        Map<String, Object> activity = store.activityForUpdate(id).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        requireVersion(activity, request == null ? null : request.version());
-        requireStatus(activity, "PENDING_QA_CONFIRMATION");
-        approvals.requireCanSign(actor, TrainingApprovalService.activity(activity), "ACTIVITY_COMPLETE", keptApart(activity, "ACTIVITY_COMPLETE"));
-        if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        sign(actor, activity, "TRAINING_RETURNED_FOR_CORRECTION", request);
-        transition(actor, activity, "IN_PROGRESS", "TRAINING_RETURNED_FOR_CORRECTION", "QA returned the results for correction. Reason: " + request.reason().trim());
-        tell("TRAINING_RETURNED", actor, organizersOf(activity), "Training: QA returned the results", actor.getFullName() + " returned the results of " + label(activity)
-                + " for correction. Reason: \"" + request.reason().trim() + "\". Please correct them and send them to QA again.", id);
         return get(actor, id);
     }
 

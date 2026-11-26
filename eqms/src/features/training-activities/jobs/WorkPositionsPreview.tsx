@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/drawer";
@@ -56,7 +57,7 @@ export function WorkPositionsPreview({ assignmentId, personId, personName, posit
         {shown.map((position) => <Badge key={position.id} color="slate" className="max-w-full whitespace-normal break-words">{position.name}{position.carried ? " (held before)" : ""}</Badge>)}
         {!positions && fallback && <span className="max-w-56 truncate text-xs text-slate-700" title={fallback}>{fallback}</span>}
         {positions?.length === 0 && <span className="text-slate-400">—</span>}
-        {(remaining > 0 || (!positions && Boolean(fallback))) && <button type="button" onClick={() => { setSearch(""); setPage(1); setResults([]); setHasMore(false); setOpen(true); }} className="rounded-md px-1 py-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500" aria-label={`View all work positions for ${personName}`}>{positions ? `+${remaining}` : "View positions"}</button>}
+        {(remaining > 0 || (!positions && Boolean(fallback))) && <button type="button" onClick={() => { setSearch(""); setPage(1); setResults([]); setHasMore(false); setOpen(true); }} className="rounded-md px-1 py-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500" aria-label={__ariaTrFormat("View all work positions for {v1}", { v1: personName })}>{positions ? `+${remaining}` : "View positions"}</button>}
       </div>
       <Drawer open={open} onClose={() => setOpen(false)} title={tr("Work Positions")} subtitle={positions ? `${personName} · ${count} positions` : personName} bodyClassName="flex flex-col overflow-hidden p-0 md:p-0">
         <div className="shrink-0 border-b border-slate-200 bg-white p-4">

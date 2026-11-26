@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import React, { lazy, Suspense } from 'react';
 import { IconDatabase, IconChartBar, IconFileText, IconArchive, IconStack2 } from '@tabler/icons-react';
@@ -81,7 +82,7 @@ export const IntegrationsTabs: React.FC<IntegrationsTabsProps> = ({
         else if (tab === 'storage') onIntegrationsChange(JSON.parse(JSON.stringify(saved.integrations)));
         else if (tab === 'onlyoffice' && saved.general?.backupSettings?.onlyOffice) onOnlyOfficeChange(JSON.parse(JSON.stringify(saved.general.backupSettings.onlyOffice)));
       }}
-      ariaLabel="Integration sections"
+      ariaLabel={__ariaTr("Integration sections")}
       idPrefix="integrations"
     >
       <Suspense fallback={<Loading />}>

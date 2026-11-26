@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput";
 import { Select } from "@/components/ui/select/Select";
 import { Button } from "@/components/ui/button/Button";
@@ -159,7 +160,7 @@ export function PageBackgroundEditor({
                           colors: draft.colors.filter((_, i) => i !== index), stops: stops.filter((_, i) => i !== index),
                         });
                       }}
-                      aria-label={`Remove color ${index + 1}`}
+                      aria-label={__ariaTrFormat("Remove color {v1}", { v1: index + 1 })}
                     >
                       <IconTrash className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -170,7 +171,7 @@ export function PageBackgroundEditor({
           </div>}
           {gradient && <div className="space-y-3 sm:space-y-4"><AnimatePresence initial={false}>{draft.colors.map((color, index) => <motion.div key={ids.current[index]} {...rowMotion} layout={!reduceMotion} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 sm:flex-nowrap">
             <span className="w-16 shrink-0">{tr("Color")} {index + 1}</span><Slider label={`Color ${index + 1} position`} min={index ? stops[index - 1] : 0} max={index < stops.length - 1 ? stops[index + 1] : 100} value={stops[index]} onChange={(value) => patch({ stops: stops.map((stop, i) => i === index ? value : stop) })} className="min-w-[5rem] flex-1" /><span className="w-10 text-right tabular-nums">{stops[index]}%</span>
-            <div className="ml-auto flex gap-1"><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} left`} aria-label={`Move color ${index + 1} left`} disabled={index === 0} onClick={() => reorder(index, index - 1)}><IconArrowLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} right`} aria-label={`Move color ${index + 1} right`} disabled={index === draft.colors.length - 1} onClick={() => reorder(index, index + 1)}><IconArrowRight className="h-4 w-4" /></Button></div>
+            <div className="ml-auto flex gap-1"><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} left`} aria-label={__ariaTrFormat("Move color {v1} left", { v1: index + 1 })} disabled={index === 0} onClick={() => reorder(index, index - 1)}><IconArrowLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon-sm" className="h-9 w-9 md:h-9 md:w-9" title={`Move color ${index + 1} right`} aria-label={__ariaTrFormat("Move color {v1} right", { v1: index + 1 })} disabled={index === draft.colors.length - 1} onClick={() => reorder(index, index + 1)}><IconArrowRight className="h-4 w-4" /></Button></div>
           </motion.div>)}</AnimatePresence></div>}
           {gradient && draft.colors.length < 5 && (
             <Button
@@ -207,7 +208,7 @@ export function PageBackgroundEditor({
             </label>
           )}
           {draft.mode !== 'video' && <div
-            aria-label={`${title} background preview`}
+            aria-label={__ariaTrFormat("{v1} background preview", { v1: title })}
             className="h-20 rounded-lg border border-slate-200"
             style={{ background: pageBackgroundCss(draft) }}
           />}
@@ -216,7 +217,7 @@ export function PageBackgroundEditor({
       {draft.mode === "default" && (
         <div className="space-y-1.5">
           <div
-            aria-label={`${title} background preview`}
+            aria-label={__ariaTrFormat("{v1} background preview", { v1: title })}
             className="h-20 rounded-lg border border-slate-200 bg-white"
             style={{ background: DEFAULT_PAGE_BACKGROUND_COLOR }}
           />

@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { observeOverlayPosition } from "@/utils/scroll";
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -415,7 +416,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('year')}
-              aria-label={`Select year, currently ${viewDate.getFullYear()}`}
+              aria-label={__ariaTrFormat("Select year, currently {v1}", { v1: viewDate.getFullYear() })}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
               id={`${pickerId}-month-heading`}
             >
@@ -592,7 +593,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('month')}
-              aria-label={`Select month, currently ${tr(MONTH_NAMES[month])}`}
+              aria-label={__ariaTrFormat("Select month, currently {v1}", { v1: tr(MONTH_NAMES[month]) })}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
             >
               {tr(MONTH_NAMES[month])}
@@ -600,7 +601,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('year')}
-              aria-label={`Select year, currently ${year}`}
+              aria-label={__ariaTrFormat("Select year, currently {v1}", { v1: year })}
               className="font-semibold text-slate-900 text-sm hover:bg-slate-100 px-1.5 py-0.5 rounded transition-colors"
             >
               {year}

@@ -27,7 +27,7 @@ import { ReadonlyField, ReadonlyGrid, TrainingDetailLayout } from "../shared/Tra
 import { TrainingCopiesPanel } from "../shared/TrainingCopiesPanel";
 import { REQUIREMENT_STATUS_LABEL } from "./TrainingRequirementListView";
 import { useTrainingBack } from "../shared/useTrainingBack";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 const LINE_LABEL: Record<string, string> = { PLANNED: "Planned", POSTPONED: "Postponed", IN_PROGRESS: "In Progress", DONE: "Done", OVERDUE: "Overdue" };
 const LINE_COLOR: Record<string, "blue" | "amber" | "emerald" | "red"> = { PLANNED: "blue", POSTPONED: "amber", IN_PROGRESS: "amber", DONE: "emerald", OVERDUE: "red" };
@@ -148,7 +148,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [req, mode]);
+  }, [req, mode, getCatalogLanguage()]);
 
   if (!req) {
     return (

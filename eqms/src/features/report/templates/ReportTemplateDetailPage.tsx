@@ -33,7 +33,7 @@ import {
   reportError,
   type ReportTemplate,
 } from "@/services/api/reportTemplates";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type FieldRow = ReportTemplate["fields"][number];
 type ScopeRow = NonNullable<ReportTemplate["roleScopes"]>[number];
@@ -184,7 +184,7 @@ export function ReportTemplateDetailPage({
     if (can("viewAuditTrail") && template?.auditEntityId)
       list.push({ id: "audit", label: tr("Audit Trail") });
     return list;
-  }, [can, inAdministration, template]);
+  }, [can, inAdministration, template, getCatalogLanguage()]);
   const shownTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab
     : "general";
@@ -207,8 +207,7 @@ export function ReportTemplateDetailPage({
               className="whitespace-nowrap touch-manipulation"
               onClick={parent.onClick}
             >
-              Back
-            </Button>
+              {tr("Back")}</Button>
             {template &&
               inAdministration &&
               (can("disable") || can("enable")) && (
@@ -232,8 +231,7 @@ export function ReportTemplateDetailPage({
                 className="whitespace-nowrap touch-manipulation"
                 onClick={() => setAction("discard")}
               >
-                Discard Revision
-              </Button>
+                {tr("Discard Revision")}</Button>
             )}
             {template && inAdministration && can("upgrade") && (
               <Button
@@ -242,8 +240,7 @@ export function ReportTemplateDetailPage({
                 className="whitespace-nowrap touch-manipulation"
                 onClick={() => setUpgrading(true)}
               >
-                Upgrade Report Template
-              </Button>
+                {tr("Upgrade Report Template")}</Button>
             )}
             {template && inAdministration && can("edit") && (
               <Button
@@ -271,8 +268,7 @@ export function ReportTemplateDetailPage({
                   )
                 }
               >
-                Create Report
-              </Button>
+                {tr("Create Report")}</Button>
             )}
           </>
         }
@@ -490,8 +486,7 @@ export function ReportTemplateDetailPage({
               className="whitespace-nowrap touch-manipulation"
               onClick={parent.onClick}
             >
-              Back
-            </Button>
+              {tr("Back")}</Button>
             {!inAdministration && can("createReport") && (
               <Button
                 size="sm"
@@ -503,8 +498,7 @@ export function ReportTemplateDetailPage({
                   )
                 }
               >
-                Create Report
-              </Button>
+                {tr("Create Report")}</Button>
             )}
           </div>
           {inAdministration && shownTab === "general" && can("viewRevisions") && (

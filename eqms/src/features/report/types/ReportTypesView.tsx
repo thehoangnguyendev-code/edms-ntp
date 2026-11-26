@@ -28,6 +28,7 @@ import { DateRangePicker } from "@/components/ui/datetime-picker/DateRangePicker
 import { displayDateTime } from "@/utils/format";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type StatusFilter = "All" | "Enabled" | "Disabled";
 const SERVER_STATUS: Record<StatusFilter, "ALL" | "ENABLED" | "DISABLED"> = { All: "ALL", Enabled: "ENABLED", Disabled: "DISABLED" };
@@ -145,7 +146,7 @@ export const ReportTypesView: React.FC = () => {
       header: tr("Report Type Status"),
       label: tr("Report Type Status"),
       sort: sortOf("status"),
-      cell: (item) => (item.enabled ? <Badge color="emerald" size="sm">{tr("Enabled")}</Badge> : <Badge color="slate" size="sm">{tr("Disabled")}</Badge>),
+      cell: (item) => (item.enabled ? <Badge color="emerald" size="sm">{tr("Enabled")}</Badge> : <Badge color={statusColor("DISABLED")} size="sm">{tr("Disabled")}</Badge>),
     },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", sort: sortOf("updatedAt"), cell: (item) => when(item.updatedAt) },
   ];

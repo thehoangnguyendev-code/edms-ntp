@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useState, type ReactNode } from "react";
 import { MoreVertical } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -41,7 +42,7 @@ export function TrainingAttendanceRow({ name, avatar, meta, notes, status, actio
           {moreActions ? (
             <button
               type="button"
-              aria-label={`More actions for ${name}`}
+              aria-label={__ariaTrFormat("More actions for {v1}", { v1: name })}
               aria-expanded={expanded}
               onClick={() => setExpanded((v) => !v)}
               className="grid h-10 w-10 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500"

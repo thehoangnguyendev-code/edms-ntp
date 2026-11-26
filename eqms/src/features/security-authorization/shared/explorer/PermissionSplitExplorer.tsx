@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { Check, LayoutGrid, List, Lock, Search, X } from "lucide-react";
 import { cn } from "@/components/ui/utils";
@@ -251,7 +252,7 @@ export const PermissionSplitExplorer: React.FC<
                   {locked && <Lock className="h-3 w-3 shrink-0 text-slate-400" />}
                 </span>
                 <span className="block break-all text-2xs text-slate-500 sm:text-xs">{permission.id}</span>
-                {permission.description && <span className="mt-1 line-clamp-2 block text-xs text-slate-600">{permission.description}</span>}
+                {permission.description && <span className="mt-1 line-clamp-2 text-xs text-slate-600">{permission.description}</span>}
               </span>
             </button>
           );
@@ -304,7 +305,7 @@ export const PermissionSplitExplorer: React.FC<
               </button>
             )}
             </div>
-            <TabNav tabs={VIEW_TABS} activeTab={view} onChange={chooseView} variant="pill" ariaLabel="How the permissions are shown" className="!w-auto" />
+            <TabNav tabs={VIEW_TABS} activeTab={view} onChange={chooseView} variant="pill" ariaLabel={__ariaTr("How the permissions are shown")} className="!w-auto" />
             </div>
           </div>
         </div>

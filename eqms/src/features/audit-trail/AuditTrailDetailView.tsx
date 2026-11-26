@@ -176,7 +176,7 @@ export const AuditTrailDetailView: React.FC<{
       .then((response) => { if (alive) setDetailRecord(response); })
       .catch((error) => {
         if (!alive) return;
-        setDetailError(error instanceof Error ? error.message : "Unable to load audit trail detail.");
+        setDetailError(error instanceof Error ? error.message : tr("Unable to load audit trail detail."));
         setDetailRecord(null);
       })
       .finally(() => { if (alive) setIsLoadingDetail(false); });
@@ -198,7 +198,7 @@ export const AuditTrailDetailView: React.FC<{
   const r = (detailRecord ?? record) as AuditTrailDetailRecord | null;
   const isSigned = Boolean(r && (r.electronicSignatureApplied || r.signatureId));
   const changes = r?.changes || [];
-  const entityLabel = r ? buildEntityLabel(r) : "Audit Record";
+  const entityLabel = r ? buildEntityLabel(r) : tr("Audit Record");
   const description = r?.description?.trim() ?? "";
   // The reason is what a person typed. The server keeps it apart as `userReason`; a signature always carries the reason its signer typed.
   // The stored reason/comment of anything else is the system's own text ("Document draft updated | Co-authors=0, ...") and is never shown.
@@ -493,7 +493,7 @@ export const AuditTrailDetailView: React.FC<{
               </FormSection>
             )}
 
-            <FormSection title={isSigned ? "Signature and user" : "User"} contentClassName="p-0">
+            <FormSection title={isSigned ? tr("Signature and user") : "User"} contentClassName="p-0">
               <dl className="space-y-3 px-4 py-4 md:px-5">
                 {isSigned && reason && (
                   <DetailItem label={tr("Reason")} value={<span className="whitespace-pre-wrap">{reason}</span>} />

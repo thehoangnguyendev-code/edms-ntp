@@ -1,3 +1,4 @@
+import { tr as __ariaTr, trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useState } from "react";
 import { UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,7 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
       <section className="order-2 min-w-0 space-y-2.5" aria-label={tr("People who may share")}>
         <h3 className="text-sm font-semibold text-slate-900">{tr("People who may share")}</h3>
         <ShareScrollList<SharingDelegate>
-          ariaLabel="People who may share"
+          ariaLabel={__ariaTr("People who may share")}
           fetchPage={fetchDelegates}
           getKey={(d) => d.id}
           searchPlaceholder={tr("Search the people who may share")}
@@ -130,7 +131,7 @@ export const ShareDelegatesTab: React.FC<ShareDelegatesTabProps> = ({ node, acti
                 <span className="block truncate text-sm font-medium text-slate-900">{d.fullName}</span>
                 <p className="truncate text-2xs text-slate-500">{[d.employeeCode, d.position].filter(Boolean).join(" · ")}</p>
               </div>
-              <Button variant="ghost" size="icon-sm" aria-label={`Remove ${d.fullName}`} onClick={() => setRemoveTarget(d)} className="shrink-0 text-slate-500 hover:text-red-600">
+              <Button variant="ghost" size="icon-sm" aria-label={__ariaTrFormat("Remove {v1}", { v1: d.fullName })} onClick={() => setRemoveTarget(d)} className="shrink-0 text-slate-500 hover:text-red-600">
                 <UserMinus className="h-4 w-4" />
               </Button>
             </div>

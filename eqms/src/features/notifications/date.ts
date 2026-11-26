@@ -1,3 +1,5 @@
+import { tr, trFormat } from '@/i18n';
+
 const pad2 = (value: number) => value.toString().padStart(2, '0');
 
 const parseNotificationDate = (value?: string | null): Date | null => {
@@ -57,10 +59,10 @@ export const formatNotificationRelativeTime = (value?: string | null): string =>
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return tr('Just now');
+  if (diffMins < 60) return trFormat('{count}m ago', { count: diffMins });
+  if (diffHours < 24) return trFormat('{count}h ago', { count: diffHours });
+  if (diffDays < 7) return trFormat('{count}d ago', { count: diffDays });
   return formatShortDate(date);
 };
 
@@ -77,10 +79,10 @@ export const formatNotificationRelativeTimeWithClock = (value?: string | null): 
   const diffDays = Math.floor(diffMs / 86400000);
   const clock = formatClockTime(date);
 
-  if (diffMins < 1) return `Just now • ${clock}`;
-  if (diffMins < 60) return `${diffMins}m ago • ${clock}`;
-  if (diffHours < 24) return `${diffHours}h ago • ${clock}`;
-  if (diffDays < 7) return `${diffDays}d ago • ${clock}`;
+  if (diffMins < 1) return `${tr('Just now')} • ${clock}`;
+  if (diffMins < 60) return `${trFormat('{count}m ago', { count: diffMins })} • ${clock}`;
+  if (diffHours < 24) return `${trFormat('{count}h ago', { count: diffHours })} • ${clock}`;
+  if (diffDays < 7) return `${trFormat('{count}d ago', { count: diffDays })} • ${clock}`;
   return `${formatShortDate(date)} • ${clock}`;
 };
 

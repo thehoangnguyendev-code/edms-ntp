@@ -13,10 +13,15 @@ import org.junit.jupiter.api.Test;
  */
 class TrainingOtherLifecyclesMatrixTest {
     private static final String MIGRATION = "src/main/resources/db/migration/V812__training_other_lifecycles_in_workflow_authorization.sql";
+    /** The assessment library was changed after V812: four steps are decided by the relation CAN_MANAGE (view, manage, manage_all, approve). */
+    private static final String ASSESSMENT_MIGRATION = "src/main/resources/db/migration/V860__training_assessment_view_manage_manage_all.sql";
+    private static final Set<String> ASSESSMENT_CHANGED = Set.of("UPDATE|DRAFT", "DELETE|DRAFT", "SUBMIT|DRAFT", "UPGRADE_REVISION|EFFECTIVE");
 
     private static int cells(String workflow, String type, List<String> states, List<String> perms, List<String> relations, List<String> actions, Set<String> unscoped, PolicyMatrixHarness.Rule rule) throws Exception {
-        PolicyMatrixHarness.assertMigrationHasThePolicies(MIGRATION, workflow, type, (int) PolicyMatrixHarness.defaultsOf(workflow).size());
-        int n = PolicyMatrixHarness.run("TRAINING", workflow, type, MIGRATION, states, perms, relations, actions, unscoped, rule);
+        boolean assessment = workflow.equals("TRAINING_ASSESSMENT");
+        PolicyMatrixHarness.assertMigrationHasThePolicies(MIGRATION, workflow, type, (int) PolicyMatrixHarness.defaultsOf(workflow).size(), assessment ? ASSESSMENT_CHANGED : Set.of(), assessment ? ASSESSMENT_MIGRATION : "");
+        String migrations = assessment ? MIGRATION + ";" + ASSESSMENT_MIGRATION : MIGRATION;
+        int n = PolicyMatrixHarness.run("TRAINING", workflow, type, migrations, states, perms, relations, actions, unscoped, rule);
         assertThat(n).isEqualTo(states.size() * (1 << perms.size()) * (1 << relations.size()) * 2 * actions.size());
         return n;
     }
@@ -42,15 +47,16 @@ class TrainingOtherLifecyclesMatrixTest {
 
     @Test
     void theAssessmentLibrary() throws Exception {
+        // Who may manage ONE assessment is one relation worked out by the adapter (manage_all, or manage and the person created it); only the approval needs a permission of its own.
         cells("TRAINING_ASSESSMENT", "TRAINING_ASSESSMENT", List.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED"),
-                List.of("training.assessment.design", "training.assessment.approve"), List.of("CREATOR", "UPDATER", "SUBMITTER", "DESIGNER_OR_APPROVER"),
+                List.of("training.assessment.approve"), List.of("CREATOR", "UPDATER", "SUBMITTER", "CAN_MANAGE", "DESIGNER_OR_APPROVER"),
                 List.of("UPDATE", "DELETE", "SUBMIT", "APPROVE", "RETURN_TO_DRAFT", "UPGRADE_REVISION"), Set.of("UPDATE", "DELETE", "SUBMIT", "APPROVE", "RETURN_TO_DRAFT", "UPGRADE_REVISION"),
                 (action, state, perms, rel, inScope) -> {
                     switch (action) {
-                        case "UPDATE": case "DELETE": case "SUBMIT": return state.equals("DRAFT") && perms.contains("training.assessment.design");
+                        case "UPDATE": case "DELETE": case "SUBMIT": return state.equals("DRAFT") && rel.contains("CAN_MANAGE");
                         case "APPROVE": return state.equals("PENDING_APPROVAL") && perms.contains("training.assessment.approve") && !rel.contains("CREATOR") && !rel.contains("UPDATER") && !rel.contains("SUBMITTER");
                         case "RETURN_TO_DRAFT": return state.equals("PENDING_APPROVAL") && rel.contains("DESIGNER_OR_APPROVER");
-                        default: return state.equals("EFFECTIVE") && perms.contains("training.assessment.design");
+                        default: return state.equals("EFFECTIVE") && rel.contains("CAN_MANAGE");
                     }
                 });
     }

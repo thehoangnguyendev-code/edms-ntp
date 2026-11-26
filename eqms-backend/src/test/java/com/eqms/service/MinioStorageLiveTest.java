@@ -2,14 +2,12 @@ package com.eqms.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import io.minio.errors.ErrorResponseException;
 import io.minio.errors.MinioException;
-import io.minio.messages.Item;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -90,17 +88,13 @@ class MinioStorageLiveTest {
         storage.testConnection(storageConfig);
 
         // 5. Enforcement: an object in the locked records bucket cannot be removed, and its bytes are still there.
-        Item existing = null;
-        for (var result : client.listObjects(ListObjectsArgs.builder().bucket(RECORDS).prefix("verification/").recursive(true).includeVersions(true).build())) {
-            existing = result.get();
-            break;
-        }
-        assumeTrue(existing != null, "no earlier verification object in the records bucket to test removal against");
-        Item locked = existing;
+        String lockedKey = "documents/" + run + "/locked.pdf";
+        var locked = storage.store(storageConfig, lockedKey, new ByteArrayInputStream(CLEAN_PDF), "application/pdf");
+        assertEquals(RECORDS, locked.bucket());
         assertNotNull(locked.versionId());
         assertThrows(MinioException.class, () -> client.removeObject(RemoveObjectArgs.builder()
-                .bucket(RECORDS).object(locked.objectName()).versionId(locked.versionId()).build()));
-        assertTrue(client.statObject(StatObjectArgs.builder().bucket(RECORDS).object(locked.objectName()).build()).size() > 0);
+                .bucket(RECORDS).object(lockedKey).versionId(locked.versionId()).build()));
+        assertTrue(client.statObject(StatObjectArgs.builder().bucket(RECORDS).object(lockedKey).build()).size() > 0);
     }
 
     private static void assumeReachable(String host, int port) {

@@ -3,6 +3,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { trainingError, trainingReviewsApi, type TrainingPersonnelReviewSummary } from "@/services/api/trainingActivities";
 import { useDateRange, useDepartmentNameOptions } from "../shared/useListFilters";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 /**
  * The list of training reviews: the filters, the dates, the search, the sort and the paging, all done by the server. It is the counterpart of `useDocumentServerTable`
@@ -25,6 +26,7 @@ export function usePersonnelReviewServerTable() {
       }),
     [],
   );
+  const waiting = useWaitingForMe("training-personnel-reviews", () => table.setCurrentPage(1));
   const extraParams = useMemo(
     () => ({
       status: statusFilter || undefined,
@@ -42,7 +44,7 @@ export function usePersonnelReviewServerTable() {
     fetcher,
     defaultSortBy: "createdAt",
     defaultSortDirection: "desc",
-    extraParams,
+    extraParams: { ...extraParams, ...waiting.params },
     initialItemsPerPage: 10,
   });
 
@@ -62,6 +64,7 @@ export function usePersonnelReviewServerTable() {
   const hasActiveFilters = Boolean(statusFilter || kindFilter || departmentFilter || eventRange.isSet || openedRange.isSet || table.searchQuery);
 
   return {
+    waitingNode: waiting.node,
     searchQuery: table.searchQuery,
     setSearchQuery,
     statusFilter,

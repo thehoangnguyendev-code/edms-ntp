@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   IconCheck,
@@ -104,10 +105,10 @@ const Avatar: React.FC<{ item: AuditTimelineItem; size: number }> = ({ item, siz
 /** The two things a person can do with a record from the timeline, as in the menu of the table row. */
 const Actions: React.FC<Pick<MarkProps, "item" | "onOpenDetails" | "onExport">> = ({ item, onOpenDetails, onExport }) => (
   <span className="aud-act">
-    <button type="button" aria-label={`View details of ${item.verb} by ${item.who}`} title={tr("View Details")} onClick={() => onOpenDetails(item.record)}>
+    <button type="button" aria-label={__ariaTrFormat("View details of {v1} by {v2}", { v1: item.verb, v2: item.who })} title={tr("View Details")} onClick={() => onOpenDetails(item.record)}>
       <IconInfoCircle size={16} />
     </button>
-    <button type="button" aria-label={`Export ${item.verb} by ${item.who}`} title={tr("Export")} onClick={() => onExport(item.record)}>
+    <button type="button" aria-label={__ariaTrFormat("Export {v1} by {v2}", { v1: item.verb, v2: item.who })} title={tr("Export")} onClick={() => onExport(item.record)}>
       <IconDownload size={16} />
     </button>
   </span>
@@ -402,7 +403,7 @@ export const AuditTimeline: React.FC<AuditTimelineProps> = ({ records, style, to
         </span>
         {hasMore ? (
           <button type="button" className="font-medium text-emerald-700 hover:underline disabled:opacity-60" disabled={isLoading} onClick={onLoadMore}>
-            {isLoading ? "Loading…" : "Load older records"}
+            {isLoading ? "Loading…" : tr("Load older records")}
           </button>
         ) : (
           <span>{tr("That is every record.")}</span>

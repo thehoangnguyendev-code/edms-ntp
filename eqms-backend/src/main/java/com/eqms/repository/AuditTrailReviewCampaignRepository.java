@@ -24,9 +24,12 @@ public interface AuditTrailReviewCampaignRepository extends JpaRepository<AuditT
                     OR LOWER(COALESCE(campaign.description, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
                     OR LOWER(COALESCE(reviewer.fullName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
               AND (:status IS NULL OR campaign.status = :status)
+              AND (:waiting = FALSE OR (reviewer.id = :reviewerId AND campaign.status = 'IN_PROGRESS'))
             """)
     Page<AuditTrailReviewCampaign> search(
             @Param("search") String search,
             @Param("status") String status,
+            @Param("waiting") boolean waiting,
+            @Param("reviewerId") UUID reviewerId,
             Pageable pageable);
 }

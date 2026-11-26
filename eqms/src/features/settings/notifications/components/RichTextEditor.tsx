@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -123,7 +124,7 @@ const Swatches: React.FC<{ label: string; colours: string[]; onPick: (colour: st
           <button
             type="button"
             role="menuitem"
-            aria-label={`Remove ${label.toLowerCase()}`}
+            aria-label={__ariaTrFormat("Remove {v1}", { v1: label.toLowerCase() })}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               onPick(null);

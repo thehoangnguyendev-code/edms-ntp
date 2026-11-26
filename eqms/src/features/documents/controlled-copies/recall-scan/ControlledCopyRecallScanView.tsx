@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Trash2, Undo2 } from "lucide-react";
 import { ROUTES } from "@/app/routes.constants";
@@ -41,7 +42,8 @@ import { formatDateTime } from "@/utils/format";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { IconForms, IconTrash, IconX } from "@tabler/icons-react";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr, trFormat, trPlural } from "@/i18n";
+import { tr, trFormat, trPlural, getCatalogLanguage } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const QR_LABEL: Record<RecallQrStatus, string> = {
   DECODED: "Code read",
@@ -559,7 +561,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                     event.stopPropagation();
                     setPreviewItem(item);
                   }}
-                  aria-label={`Preview ${item.fileName}`}
+                  aria-label={__ariaTrFormat("Preview {v1}", { v1: item.fileName })}
                   className="shrink-0 text-emerald-700 hover:text-emerald-800"
                 >
                   <Eye className="h-4 w-4" />
@@ -664,7 +666,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isCommitted, sortConfig, openRecord],
+    [isCommitted, sortConfig, openRecord, getCatalogLanguage()],
   );
 
   const startMatch = (item: RecallItem) => {
@@ -774,7 +776,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                         variant="outline"
                         className="text-red-600"
                         disabled={Boolean(busy)}
-                        aria-label={`Discard ${draft.batchNumber}`}
+                        aria-label={__ariaTrFormat("Discard {v1}", { v1: draft.batchNumber })}
                         onClick={() => setDiscardTarget({ id: draft.id, number: draft.batchNumber })}
                       >
                         {tr("Discard")}
@@ -808,7 +810,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <span className="text-sm font-semibold text-slate-900">{batch.batchNumber}</span>
-            <Badge color={isCommitted ? "emerald" : "amber"} size="sm">{isCommitted ? "Committed" : "Draft"}</Badge>
+            <Badge color={statusColor(isCommitted ? "COMPLETED" : "DRAFT")} size="sm">{isCommitted ? "Committed" : "Draft"}</Badge>
             {isDraft ? (
               <>
                 <GroupBadge group="READY" active={group} color="emerald" onSelect={setGroup}>{batch.readyItems} {tr("ready")}</GroupBadge>
@@ -934,7 +936,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
                             <p className="mt-0.5 text-2xs text-slate-500">{formatBytes(item.fileSize)}</p>
                           </div>
                           {item.previewAvailable && (
-                            <Button size="icon-sm" variant="ghost" className="shrink-0 text-emerald-700" aria-label={`Preview ${item.fileName}`} onClick={() => setPreviewItem(item)}>
+                            <Button size="icon-sm" variant="ghost" className="shrink-0 text-emerald-700" aria-label={__ariaTrFormat("Preview {v1}", { v1: item.fileName })} onClick={() => setPreviewItem(item)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                           )}

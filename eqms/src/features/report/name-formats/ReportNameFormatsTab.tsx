@@ -27,6 +27,7 @@ import { ExpandedReportNameFormatRow } from "./ExpandedReportNameFormatRow";
 import { displayDateTime } from "@/utils/format";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 type StatusFilter = "All" | "Active" | "Inactive";
 /** What the server calls each status filter. */
@@ -184,7 +185,7 @@ export const ReportNameFormatsTab: React.FC = () => {
       header: "Status",
       label: "Status",
       sort: sortOf("status"),
-      cell: (item) => (item.active ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color="slate" size="sm">{tr("Inactive")}</Badge>),
+      cell: (item) => (item.active ? <Badge color="emerald" size="sm">{tr("Active")}</Badge> : <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>),
     },
     { id: "modifiedDate", header: tr("Modified Date"), label: tr("Modified Date"), cellClassName: "text-slate-600", sort: sortOf("updatedAt"), cell: (item) => when(item.updatedAt) },
   ];

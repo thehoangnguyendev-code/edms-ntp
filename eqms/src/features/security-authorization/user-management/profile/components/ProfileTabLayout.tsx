@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import React, { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -75,7 +76,7 @@ export const ProfileTabLayout: React.FC<ProfileTabLayoutProps> = ({
             onChange={(id) => onTabChange(id as ProfileTabId)}
             variant={isWide ? "vertical" : "underline"}
             compactVertical={compactNav}
-            ariaLabel="User record sections"
+            ariaLabel={__ariaTr("User record sections")}
           />
         </div>
       </aside>

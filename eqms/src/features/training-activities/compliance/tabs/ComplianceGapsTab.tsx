@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { TrainingPersonName } from "../../shared/TrainingPersonName";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,11 +19,13 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingComplianceApi, trainingError, type TrainingGap, type TrainingGapTrainings, type TrainingPlannedSession } from "@/services/api/trainingActivities";
-import { day, saveBlob } from "@/features/training-activities/shared/trainingLabels";
+import { day, localized, saveBlob } from "@/features/training-activities/shared/trainingLabels";
 import { tr, trFormat } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
+import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_LABEL: Record<string, string> = { MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" };
-const STATUS_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", DUE: "amber", OK: "emerald" };
+const STATUS_LABEL: Record<string, string> = localized({ MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" });
+const STATUS_COLOR = statusColors("MISSING", "DUE", "OK") as Record<string, BadgeColor>;
 /** One total of the gaps with its colour bar on the left, the same figure style as the Summary tab. */
 function GapStat({ value, label, tone }: { value: number; label: string; tone: "red" | "amber" | "slate" }) {
   const bar = { red: "border-red-600", amber: "border-amber-500", slate: "border-slate-300" }[tone];
@@ -153,7 +156,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
   const selection = canOrganize ? {
     visible: true,
     header: <Checkbox checked={allShown} onChange={toggleAll} aria-label={tr("Select the lines shown that are not done")} />,
-    cell: (g: TrainingGap) => (g.status === "OK" ? null : <Checkbox checked={Boolean(picked[rowKey(g)])} onChange={() => toggle(g)} aria-label={`Select ${g.fullName}: ${g.title}`} />),
+    cell: (g: TrainingGap) => (g.status === "OK" ? null : <Checkbox checked={Boolean(picked[rowKey(g)])} onChange={() => toggle(g)} aria-label={__ariaTrFormat("Select {v1}: {v2}", { v1: g.fullName, v2: g.title })} />),
   } : undefined;
 
   return (

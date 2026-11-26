@@ -42,6 +42,7 @@ import {
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const DECISIONS: {
   value: AccessReviewItem["decision"];
@@ -74,11 +75,7 @@ const textareaClass =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors placeholder:text-slate-400 resize-none";
 
 const statusBadge = (status: AccessReviewCampaignSummary["status"]) =>
-  status === "COMPLETED"
-    ? "emerald"
-    : status === "CANCELLED"
-      ? "slate"
-      : "blue";
+  statusColor(status);
 
 const userStatusBadge = (status?: string | null) => {
   switch (status?.toUpperCase()) {
@@ -327,7 +324,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
     try {
       setDetail(await settingsApi.cancelAccessReview(detail.campaign.id));
       await load();
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: tr("Campaign cancelled") });
       setCancelConfirmOpen(false);
     } catch (e: any) {
       showToast({
@@ -456,7 +453,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
         <div className="flex flex-wrap gap-1">
           {item.superAdmin && <Badge color="purple" size="sm">{tr("Super Admin")}</Badge>}
           {!item.superAdmin && item.permissionCount === 0 && <Badge color="slate" size="sm">{tr("No Permissions")}</Badge>}
-          {item.inactive && <Badge color="amber" size="sm">{tr("Inactive")}</Badge>}
+          {item.inactive && <Badge color={statusColor("INACTIVE")} size="sm">{tr("Inactive")}</Badge>}
           {!item.superAdmin && item.permissionCount !== 0 && !item.inactive && <span className="text-slate-400">—</span>}
         </div>
       ),
@@ -625,7 +622,7 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
                   }
                   className="whitespace-nowrap"
                 >
-                  {completing ? "Completing…" : "Complete & Sign"}
+                  {completing ? "Completing…" : tr("Complete & Sign")}
                 </Button>
               </>
             )}

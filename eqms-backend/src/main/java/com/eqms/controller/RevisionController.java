@@ -91,6 +91,7 @@ public class RevisionController {
             @RequestParam(required = false) String validTo,
             @RequestParam(defaultValue = "false") boolean ownedByMe,
             @RequestParam(defaultValue = "false") boolean pending,
+            @RequestParam(defaultValue = "false") boolean waitingForMe,
             @RequestParam(defaultValue = "revisionName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection,
             @RequestParam(defaultValue = "1") int page,
@@ -100,7 +101,7 @@ public class RevisionController {
                 search, ids, status, documentType, businessUnit, department, authorId, author,
                 relatedDocument, correlatedDocument, isTemplate, trainingNumber,
                 createdFrom, createdTo, effectiveFrom, effectiveTo, validFrom, validTo,
-                ownedByMe, pending, sortBy, sortDirection, page, limit
+                ownedByMe, pending, sortBy, sortDirection, page, limit, waitingForMe
         ));
     }
 

@@ -117,7 +117,7 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       isOpen
       onClose={() => setShowing(undefined)}
       title={showing.evidence.originalName}
-      confirmText="Close"
+      confirmText={tr("Close")}
       showCancel={false}
       size="2xl"
       className="max-w-5xl backdrop-blur-none"
@@ -138,8 +138,8 @@ export function TrainingScannedTestsModal({ personId, activityId, onClose }: { p
       isOpen
       // While a file is open on top, the list stays as it is: Escape or Close closes the file only.
       onClose={() => { if (!showing) onClose(); }}
-      title={`Scanned tests${heading ? `: ${heading.trainingNumber}` : ""}`}
-      confirmText="Close"
+      title={`${tr("Scanned tests")}${heading ? `: ${heading.trainingNumber}` : ""}`}
+      confirmText={tr("Close")}
       showCancel={false}
       size="2xl"
       className="max-w-5xl"

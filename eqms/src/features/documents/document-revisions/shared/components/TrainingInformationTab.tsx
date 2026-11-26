@@ -200,7 +200,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
               <Input type="text" value={shownNumber ?? ""} disabled readOnly />
             </FormField>
             <FormField label={tr("Training Status")}>
-              <Input type="text" value={shownStatus} disabled readOnly />
+              <Input type="text" value={tr(shownStatus)} disabled readOnly />
             </FormField>
             {fetchedLink?.mode === "COVERED" ? (
               <FormField label={tr("Covered by the training of")}>

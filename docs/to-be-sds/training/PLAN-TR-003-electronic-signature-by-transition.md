@@ -16,7 +16,6 @@ This page records what the system does; it is not an approval by Quality.
 | (In progress, no change of state) Send the attendance list to QA (SOP.0003 5.3.6, APD.0117) | the organizer | `TRAINING_ATTENDANCE_SENT` (new, V646) | not a step |
 | In progress -> Pending QA Confirmation (send the results to QA) | the organizer | `TRAINING_SUBMITTED_FOR_CONFIRMATION` (new, V645) | not signed |
 | Pending QA Confirmation -> Completed | QA (not the person who prepared the list) | `TRAINING_COMPLETED` | signed |
-| Pending QA Confirmation -> In progress (return for correction) | QA, with a reason | `TRAINING_RETURNED_FOR_CORRECTION` | signed |
 | any open state -> Cancelled | the organizer, with a reason | `TRAINING_ACTIVITY_CANCELLED` | signed only after the notice; now always |
 
 Steps that are not changes of state but were already signed and stay so: the attendee list confirmed, the content reviewed, the content approved, the self-reading confirmed and verified,

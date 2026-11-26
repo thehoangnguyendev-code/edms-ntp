@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +35,8 @@ import { auditTrailReview as auditTrailReviewBreadcrumb } from "@/components/ui/
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr } from "@/i18n";
+import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
+import { statusColor } from "@/components/ui/badge/statusColors";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -43,11 +46,7 @@ const STATUS_OPTIONS = [
 ];
 
 const statusBadge = (status: AuditTrailReviewCampaignSummary["status"]) =>
-  status === "COMPLETED"
-    ? "emerald"
-    : status === "CANCELLED"
-      ? "slate"
-      : "blue";
+  statusColor(status);
 
 const ddmmyyyyToIso = (value: string): string | undefined => {
   const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -140,6 +139,7 @@ export const AuditTrailReviewView: React.FC = () => {
     useState<AuditTrailReviewCampaignSummary | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
+  const waiting = useWaitingForMe("audit-trail-review", () => setCurrentPage(1));
   const load = useCallback(async () => {
     if (!canView) {
       setCampaigns([]);
@@ -149,6 +149,7 @@ export const AuditTrailReviewView: React.FC = () => {
     setLoading(true);
     try {
       const response = await auditTrailApi.listReviewCampaignsPaged({
+        ...waiting.params,
         page: currentPage,
         limit: itemsPerPage,
         search: searchQuery || undefined,
@@ -179,7 +180,7 @@ export const AuditTrailReviewView: React.FC = () => {
     sortBy,
     sortDirection,
     status,
-  ]);
+  , waiting.params]);
 
   useEffect(() => {
     void load();
@@ -253,7 +254,7 @@ export const AuditTrailReviewView: React.FC = () => {
     setCancelling(true);
     try {
       await auditTrailApi.cancelReviewCampaign(cancelTarget.id);
-      showToast({ type: "success", message: "Campaign cancelled" });
+      showToast({ type: "success", message: tr("Campaign cancelled") });
       setCancelTarget(null);
       void load();
     } catch (error: any) {
@@ -295,6 +296,7 @@ export const AuditTrailReviewView: React.FC = () => {
       ) : (
         <section className="flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col px-4 pt-4 md:p-5">
+            {waiting.node && <div className="mb-3">{waiting.node}</div>}
             <div className="-mx-1.5 mb-[-0.375rem] px-1.5 pb-1.5">
               <div className="mb-4 flex w-full flex-col gap-1.5 md:hidden">
                 <label className={labelClass}>{tr("Search")}</label>
@@ -541,7 +543,7 @@ export const AuditTrailReviewView: React.FC = () => {
                               ref={getRef(campaign.id)}
                               onClick={(event) => toggle(campaign.id, event)}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100"
-                              aria-label={`Actions for ${campaign.name}`}
+                              aria-label={__ariaTrFormat("Actions for {v1}", { v1: campaign.name })}
                             >
                               <MoreVertical className="h-4 w-4 text-slate-600" />
                             </button>

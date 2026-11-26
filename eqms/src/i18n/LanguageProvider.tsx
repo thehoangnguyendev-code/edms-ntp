@@ -132,20 +132,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     tLabel: (english) => translateLabel(language, english),
   }), [language, setLanguage]);
 
-  // A new prop on every root child makes the whole subtree render again when the language changes, so `tr` copy updates
-  // without unmounting the page and losing what the person has typed. `AppProviders` renders several children (the
-  // branding, the guards and the app), so handling only one element left the app tree untouched and only the
-  // context consumers (sidebar, header) changed language.
-  const content = useMemo(
-    () =>
-      React.Children.map(children, (child) =>
-        React.isValidElement(child)
-          ? React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { 'data-language': language })
-          : child,
-      ),
-    [children, language],
-  );
-  return <LanguageContext.Provider value={value}>{content}</LanguageContext.Provider>;
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+};
+
+/**
+ * Draws the application again when the language changes, WITHOUT unmounting it: what a person has typed, ticked or opened stays.
+ * `render` is called on every switch, so the elements are new and React renders the whole tree under them, including the copy drawn
+ * with `tr()`, which does not consume the context itself. Never put a `key` of the language around screens: that mounts them again.
+ */
+export const RedrawOnLanguage: React.FC<{ render: () => React.ReactNode }> = ({ render }) => {
+  useContext(LanguageContext);
+  return <>{render()}</>;
 };
 
 /** The current interface language and its translation helpers. */

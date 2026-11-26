@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "framer-motion";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
@@ -141,7 +142,7 @@ export const LoginCarousel: React.FC<{ carousel: LoginCarouselConfig }> = ({ car
                   key={i}
                   type="button"
                   onClick={() => go(i)}
-                  aria-label={`Slide ${i + 1} of ${count}`}
+                  aria-label={__ariaTrFormat("Slide {v1} of {v2}", { v1: i + 1, v2: count })}
                   aria-current={i === current ? "true" : undefined}
                   className="group flex h-6 max-w-[64px] flex-1 items-center focus:outline-none"
                 >
@@ -161,7 +162,7 @@ export const LoginCarousel: React.FC<{ carousel: LoginCarouselConfig }> = ({ car
               ))}
             </div>
             <span className="hidden text-[13px] tabular-nums text-white/75 xl:block" aria-hidden="true">{two(current + 1)} / {two(count)}</span>
-            <button type="button" className={glassButton} onClick={() => setUserPaused((v) => !v)} aria-label={userPaused ? "Play slideshow" : "Pause slideshow"}>
+            <button type="button" className={glassButton} onClick={() => setUserPaused((v) => !v)} aria-label={userPaused ? tr("Play slideshow") : tr("Pause slideshow")}>
               {userPaused ? <Play className="size-4" aria-hidden="true" /> : <Pause className="size-4" aria-hidden="true" />}
             </button>
             <button type="button" className={glassButton} onClick={previous} aria-label={tr("Previous slide")}><ChevronLeft className="size-5" aria-hidden="true" /></button>

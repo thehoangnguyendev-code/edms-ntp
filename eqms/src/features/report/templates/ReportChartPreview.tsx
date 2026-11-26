@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { reportError, reportTemplatesApi, type ReportChart } from "@/services/api/reportTemplates";
@@ -47,7 +48,7 @@ export function ReportChartPreview({ chart, fieldName, font }: { chart: ReportCh
   }, [key]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4" aria-label={`Sample of ${chart.title || "chart"}`}>
+    <div className="rounded-xl border border-slate-200 bg-white p-4" aria-label={__ariaTrFormat("Sample of {v1}", { v1: chart.title || tr("chart") })}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-slate-800">{chart.title || tr("Untitled chart")}</p>
         <span className="text-2xs font-medium uppercase tracking-wide text-slate-400">{tr("Sample data")}</span>

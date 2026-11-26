@@ -1749,7 +1749,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           ) || "-",
       },
     ];
-  }, [auditTrail, approvers, document.signatures, reviewers]);
+  }, [auditTrail, approvers, document.signatures, reviewers, getCatalogLanguage()]);
 
   const subTabs = [
     { id: "revisions" as SubTabType, label: tr("Document Revisions") },

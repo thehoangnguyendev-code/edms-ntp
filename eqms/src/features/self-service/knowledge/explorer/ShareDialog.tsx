@@ -1,4 +1,5 @@
-import { tr } from "@/i18n";
+import { tr as __ariaTr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { UserX } from "lucide-react";
 import { SectionLoading } from "@/components/ui/loading/Loading";
@@ -96,7 +97,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
     const items: TabItem[] = [{ id: "people", label: "People" }, { id: "links", label: "Links" }];
     if (node?.canManageDelegates) items.push({ id: "delegates", label: tr("Who may share") });
     return items;
-  }, [node?.canManageDelegates]);
+  }, [node?.canManageDelegates, getCatalogLanguage()]);
 
   const shareable = !!node?.shareable;
   const onChanged = (access: SharingAccess) => {
@@ -140,7 +141,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({ target, onClose }) => 
               setOpened((current) => (current.includes(id as TabId) ? current : [...current, id as TabId]));
             }}
             variant="simple-underline"
-            ariaLabel="Sharing"
+            ariaLabel={__ariaTr("Sharing")}
           />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">

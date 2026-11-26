@@ -1,3 +1,4 @@
+import { tr as __ariaTr } from "@/i18n";
 ﻿import React from 'react';
 import { SecurityConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
@@ -82,7 +83,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
       onChange={selectTab}
       changed={changed}
       onReset={(tab) => (tab === 'network-access' ? onNetworkReset?.() : savedConfig && onChange(revertFields(config, savedConfig, FIELDS[tab])))}
-      ariaLabel="Security sections"
+      ariaLabel={__ariaTr("Security sections")}
       idPrefix="security"
     >
       {activeTab === 'password-rules' && (

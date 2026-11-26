@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { extractApiMessage } from "../shared/utils";
 import type { SchoolItem, SchoolOwnership, SchoolType } from "./types";
 import { SCHOOL_OWNERSHIP_OPTIONS, SCHOOL_TYPE_OPTIONS } from "./types";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type SchoolEditorData = Pick<SchoolPayload, "name" | "abbreviation" | "type" | "ownership" | "isActive" | "governingBody" | "countryOfOriginName">;
 
@@ -64,7 +64,7 @@ export const EducationSchoolEditorView: React.FC = () => {
       ? [currentValue, ...governingBodies]
       : governingBodies;
     return [{ label: tr("Unspecified"), value: "" }, ...values.map((value) => ({ label: value, value }))];
-  }, [form.governingBody, governingBodies]);
+  }, [form.governingBody, governingBodies, getCatalogLanguage()]);
 
   const update = <K extends keyof SchoolEditorData>(key: K, value: SchoolEditorData[K]) => setForm((current) => ({ ...current, [key]: value }));
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.

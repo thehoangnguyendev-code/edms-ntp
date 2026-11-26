@@ -81,7 +81,7 @@ export function TrainingExamPage() {
       {mine && done && (
         <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5" aria-label={tr("Result")}>
           <div className="flex flex-wrap items-center gap-3">
-            <Badge color={mine.result === "PASSED" ? "emerald" : mine.result === "FAILED" ? "red" : "amber"}>{mine.result === "PASSED" ? "Passed" : mine.result === "FAILED" ? tr("Not passed") : done.status === "EXPIRED" ? "Time ran out" : "Waiting"}</Badge>
+            <Badge color={mine.result === "PASSED" ? "emerald" : mine.result === "FAILED" ? "red" : "amber"}>{mine.result === "PASSED" ? tr("Qualified") : mine.result === "FAILED" ? tr("Not qualified") : done.status === "EXPIRED" ? "Time ran out" : "Waiting"}</Badge>
             {done.status === "SUBMITTED" && <span className="text-2xl font-semibold text-slate-900">{done.percent}%</span>}
           </div>
           {done.status === "SUBMITTED" ? (

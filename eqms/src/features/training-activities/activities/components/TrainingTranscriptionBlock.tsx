@@ -1,3 +1,4 @@
+import { trFormat as __ariaTrFormat } from "@/i18n";
 import { sessionStarted } from "@/services/api/trainingActivities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
@@ -13,10 +14,11 @@ import { TablePagination } from "@/components/ui/table/TablePagination";
 import { trainingError, type TrainingTranscriptionLine, trainingFilesApi, trainingTranscriptionApi, type TrainingActivityDetail, type TrainingPaperEvidence, type TrainingSession, type TrainingTranscription } from "@/services/api/trainingActivities";
 import { Input, Textarea } from "../../shared/TrainingFields";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
-import { day, statusChange } from "../../shared/trainingLabels";
+import { day, localized, statusChange } from "../../shared/trainingLabels";
 import { LedgerAction, LedgerEmpty, LedgerList, LedgerNote, LedgerRow, LedgerToolbar } from "./workspace/ledger";
 import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
 import { tr } from "@/i18n";
+import { statusColors } from "@/components/ui/badge/statusColors";
 
 const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "n", header: "No.", cell: (_l, i) => i + 1 },
@@ -26,8 +28,8 @@ const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "why", header: tr("Reason / remarks"), cell: (l) => <div className="max-w-64 whitespace-normal">{l.absenceReason ?? l.remarks ?? "—"}</div> },
 ];
 
-const STATUS_LABEL = { ENTERED: "Waiting to be checked", VERIFIED: "Verified", REJECTED: "Rejected" } as const;
-const STATUS_COLOR = { ENTERED: "amber", VERIFIED: "emerald", REJECTED: "red" } as const;
+const STATUS_LABEL = localized({ ENTERED: "Waiting to be checked", VERIFIED: "Verified", REJECTED: "Rejected" });
+const STATUS_COLOR = statusColors("ENTERED", "VERIFIED", "REJECTED");
 
 type Row = { state: string; got: string; max: string; reason: string };
 
@@ -298,16 +300,16 @@ function EnterDialog({ session, people, evidence, busy, onClose, onSave }: {
             return (
               <div key={p.id} className="grid grid-cols-1 items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-12">
                 <div className="md:col-span-3"><div className="text-xs text-slate-500">{i + 1}</div><div className="text-sm font-medium text-slate-900">{p.name}</div></div>
-                <div className="md:col-span-3"><Select value={r.state} options={[{ value: "ATTENDED", label: "Attended" }, { value: "ABSENT", label: "Absent" }]} aria-label={`Attendance of ${p.name}`} onChange={(v) => set(p.id, { state: v })} /></div>
+                <div className="md:col-span-3"><Select value={r.state} options={[{ value: "ATTENDED", label: "Attended" }, { value: "ABSENT", label: "Absent" }]} aria-label={__ariaTrFormat("Attendance of {v1}", { v1: p.name })} onChange={(v) => set(p.id, { state: v })} /></div>
                 {r.state === "ABSENT"
-                  ? <div className="md:col-span-6"><Input placeholder={tr("Reason for the absence")} aria-label={`Reason of ${p.name}`} value={r.reason} onChange={(e) => set(p.id, { reason: e.target.value })} /></div>
+                  ? <div className="md:col-span-6"><Input placeholder={tr("Reason for the absence")} aria-label={__ariaTrFormat("Reason of {v1}", { v1: p.name })} value={r.reason} onChange={(e) => set(p.id, { reason: e.target.value })} /></div>
                   : scored && p.noAssessment
                     ? <div className="text-sm text-slate-500 md:col-span-6">{tr("Takes no assessment")}</div>
                     : scored && (
                     <div className="flex items-center gap-2 md:col-span-6">
-                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Score")} aria-label={`Score of ${p.name}`} value={r.got} onChange={(e) => set(p.id, { got: e.target.value })} />
+                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Score")} aria-label={__ariaTrFormat("Score of {v1}", { v1: p.name })} value={r.got} onChange={(e) => set(p.id, { got: e.target.value })} />
                       <span className="text-slate-400">/</span>
-                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Maximum")} aria-label={`Maximum score for ${p.name}`} value={r.max} onChange={(e) => set(p.id, { max: e.target.value })} />
+                      <Input type="number" inputMode="decimal" min={0} step="0.01" placeholder={tr("Maximum")} aria-label={__ariaTrFormat("Maximum score for {v1}", { v1: p.name })} value={r.max} onChange={(e) => set(p.id, { max: e.target.value })} />
                     </div>
                   )}
               </div>

@@ -1,5 +1,6 @@
 import type { BadgeColor } from '@/components/ui/badge/Badge';
 import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { priorityColor } from "@/components/ui/badge/statusColors";
 
 /** A module is written "DOCUMENT_CONTROL" by most events and "Document Control" by a few; both read the same. */
 export const moduleKey = (module: string) => module.trim().toUpperCase().replace(/ /g, '_');
@@ -24,12 +25,7 @@ export const MODULE_OPTIONS = [
   ...Object.entries(MODULE_LABEL).map(([value, label]) => ({ label, value })),
 ];
 
-export const PRIORITY_COLOR: Record<string, BadgeColor> = {
-  LOW: 'emerald',
-  MEDIUM: 'amber',
-  HIGH: 'red',
-  CRITICAL: 'red',
-};
+export const PRIORITY_COLOR = Object.fromEntries((["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const).map((code) => [code, priorityColor(code)])) as Record<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL", BadgeColor> as Record<string, BadgeColor>;
 
 export const priorityLabel = (priority: string) => priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
 

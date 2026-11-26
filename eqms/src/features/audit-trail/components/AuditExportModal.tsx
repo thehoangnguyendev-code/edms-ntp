@@ -25,9 +25,9 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
   const { showToast } = useToast();
 
   const exportOptions: { format: ExportFormat; label: string; desc: string; icon: React.ReactNode }[] = [
-    { format: "json", label: tr("Export as JSON"), desc: "Structured data format", icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "pdf", label: tr("Export as PDF"), desc: "Printable document format", icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
-    { format: "txt", label: tr("Export as TXT"), desc: "Plain text format", icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "json", label: tr("Export as JSON"), desc: tr("Structured data format"), icon: <FileJson className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "json" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "pdf", label: tr("Export as PDF"), desc: tr("Printable document format"), icon: <FileText className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "pdf" ? "text-emerald-600" : "text-slate-500")} /> },
+    { format: "txt", label: tr("Export as TXT"), desc: tr("Plain text format"), icon: <FileType className={cn("h-4 w-4 flex-shrink-0", selectedFormat === "txt" ? "text-emerald-600" : "text-slate-500")} /> },
   ];
 
   const doExport = async (format: ExportFormat) => {
