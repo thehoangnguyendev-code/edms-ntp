@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,80 +8,67 @@ vi.mock("@/services/api/documents", () => ({ documentApi: api }));
 import { RequiredTrainingsField, type PickedTraining } from "../RequiredTrainingsField";
 
 const docs = [
-  { id: "d1", documentNumber: "SOP.0003", documentName: "Training" },
+  { id: "d1", documentNumber: "SOP.0003", documentName: "Personnel training" },
   { id: "d2", documentNumber: "SOP.0010", documentName: "Hygiene" },
 ];
 
-const Harness = ({ initial = [] as PickedTraining[], onValue }: { initial?: PickedTraining[]; onValue?: (v: PickedTraining[]) => void }) => {
+const Harness = ({ initial = [] as PickedTraining[], onValue, showChosen }: { initial?: PickedTraining[]; onValue?: (v: PickedTraining[]) => void; showChosen?: boolean }) => {
   const [value, setValue] = useState(initial);
-  return <RequiredTrainingsField value={value} onChange={(next) => { setValue(next); onValue?.(next); }} />;
+  return <RequiredTrainingsField value={value} showChosen={showChosen} onChange={(next) => { setValue(next); onValue?.(next); }} />;
 };
 
-beforeEach(() => api.getDocumentsPage.mockReset().mockResolvedValue({ data: docs }));
-afterEach(cleanup);
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} unobserve() {} });
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), onchange: null, dispatchEvent: vi.fn() }));
+  api.getDocumentsPage.mockReset().mockResolvedValue({ data: docs, pagination: { page: 1, limit: 10, total: 25, totalPages: 3 } });
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("RequiredTrainingsField", () => {
-  it("moves a SOP from the available list to the chosen list with the arrow, and back", async () => {
+  it("asks the server for SOPs in effect, one page at a time, and ticks and unticks one", async () => {
     const onValue = vi.fn();
     render(<Harness onValue={onValue} />);
 
-    fireEvent.click(await screen.findByText("Training"));
-    fireEvent.click(screen.getByRole("button", { name: "Move to selected" }));
-    expect(onValue).toHaveBeenLastCalledWith([{ kind: "DOCUMENT", id: "d1", code: "SOP.0003", title: "Training" }]);
-    expect(screen.getByText("Selected Trainings (1)")).toBeTruthy();
+    const box = await screen.findByRole("checkbox", { name: /Personnel training/ });
+    expect(api.getDocumentsPage).toHaveBeenCalledWith(expect.objectContaining({ status: "EFFECTIVE", page: 1, limit: 10 }));
+    fireEvent.click(box);
+    expect(onValue).toHaveBeenLastCalledWith([expect.objectContaining({ kind: "DOCUMENT", id: "d1", code: "SOP.0003" })]);
+    fireEvent.click(box);
+    expect(onValue).toHaveBeenLastCalledWith([]);
 
-    fireEvent.click(within(screen.getByRole("listbox", { name: "Selected trainings" })).getByText("Training"));
-    fireEvent.click(screen.getByRole("button", { name: "Move to available" }));
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    await waitFor(() => expect(api.getDocumentsPage).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })));
+  });
+
+  it("offers the typed text as a Training Topic", async () => {
+    const onValue = vi.fn();
+    render(<Harness onValue={onValue} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Search a SOP, or type a Training Topic..."), { target: { value: "Gowning" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Gowning/ }));
+    expect(onValue).toHaveBeenLastCalledWith([{ kind: "TOPIC", id: "Gowning", code: "", title: "Gowning" }]);
+  });
+
+  it("shows a chosen SOP that is not on the shown page, and removes it", async () => {
+    const onValue = vi.fn();
+    render(<Harness showChosen onValue={onValue} initial={[{ kind: "DOCUMENT", id: "d99", code: "SOP.0099", title: "Cleaning" }]} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remove SOP.0099 — Cleaning" }));
     expect(onValue).toHaveBeenLastCalledWith([]);
   });
 
-  it("moves one with a double click, and offers the typed text as a Training Topic", async () => {
-    const onValue = vi.fn();
-    render(<Harness onValue={onValue} />);
-    await screen.findByText("Hygiene");
-
-    fireEvent.change(screen.getByLabelText("Search available trainings"), { target: { value: "Gowning" } });
-    const topic = await screen.findByText("Gowning");
-    fireEvent.doubleClick(topic);
-
-    await waitFor(() => expect(onValue).toHaveBeenLastCalledWith([{ kind: "TOPIC", id: "Gowning", code: "", title: "Gowning" }]));
-  });
-
-  it("moves a training by dragging it to the other list, and back", async () => {
-    const onValue = vi.fn();
-    render(<Harness onValue={onValue} />);
-    const store: Record<string, string> = {};
-    const dataTransfer = { setData: (k: string, v: string) => { store[k] = v; }, getData: (k: string) => store[k] ?? "", effectAllowed: "", dropEffect: "" };
-
-    fireEvent.dragStart((await screen.findByText("Training")).closest("[role=option]")!, { dataTransfer });
-    fireEvent.drop(screen.getByRole("listbox", { name: "Selected trainings" }), { dataTransfer });
-    expect(onValue).toHaveBeenLastCalledWith([expect.objectContaining({ id: "d1" })]);
-
-    fireEvent.dragStart(within(screen.getByRole("listbox", { name: "Selected trainings" })).getByText("Training").closest("[role=option]")!, { dataTransfer });
-    fireEvent.drop(screen.getByRole("listbox", { name: "Available trainings" }), { dataTransfer });
-    expect(onValue).toHaveBeenLastCalledWith([]);
-  });
-
-  it("does not offer a SOP that is already chosen", async () => {
-    render(<Harness initial={[{ kind: "DOCUMENT", id: "d1", code: "SOP.0003", title: "Training" }]} />);
-    await screen.findByText("Hygiene");
-
-    expect(within(screen.getByRole("listbox", { name: "Available trainings" })).queryByText("Training")).toBeNull();
-  });
-
-  it("asks only for the SOPs that are in effect", async () => {
+  it("says when the SOPs could not be loaded", async () => {
+    api.getDocumentsPage.mockRejectedValue(new Error("down"));
     render(<Harness />);
-    await screen.findByText("Hygiene");
-
-    expect(api.getDocumentsPage).toHaveBeenCalledWith(expect.objectContaining({ status: "EFFECTIVE" }));
+    expect(await screen.findByText(/The list of SOPs could not be loaded/)).toBeTruthy();
   });
 
   it("only lists what is chosen when it cannot be edited", () => {
     render(<RequiredTrainingsField disabled value={[{ kind: "TOPIC", id: "Gowning", code: "", title: "Gowning" }]} onChange={vi.fn()} />);
 
     expect(screen.getByText("Gowning")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Move to selected" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Remove/ })).toBeNull();
     expect(api.getDocumentsPage).not.toHaveBeenCalled();
   });
 });
-

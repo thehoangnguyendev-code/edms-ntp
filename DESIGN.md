@@ -26,6 +26,9 @@ Mỗi màn có 4 wireframe, người dùng chọn một.
 | (Đã gỡ 2026-11-20) New / Edit Object Access Rule, nhiều module | E mở rộng | Thêm ô Module ở đầu (Document Control mặc định); module khác có thêm Object Type, Applies to (Every record / Records in a status / Department) và Value; các ô phụ thuộc nhau và bị xoá khi đổi ô trước; Actions lấy từ object type. Danh sách có cột và bộ lọc Module. |
 | Record visibility trên Access Profile (3 bộ chọn: Document Control, Training Management, Reports) | Thẻ radio | FormSection "<Module>: record visibility" + RadioGroup variant card (mỗi mức một thẻ, tiêu đề + một câu mô tả); mức đến từ Shared Permission Set bị khóa kèm câu giải thích; nằm đầu tab Permissions và bước Permissions của Wizard. Component: `DocumentControlVisibilityPicker`, `ModuleVisibilityPicker`. |
 
+## New Job Assignment, ba bước (2026-11-26)
+Chọn phương án A trong 4 wireframe. Stepper, rồi lưới: nội dung bên trái, cột phải 22rem cố định từ `xl` (dưới `xl` xếp xuống dưới). Bước 1: thẻ Employee, thẻ Work Positions (tìm, lọc bộ phận, danh sách tick nhóm theo bộ phận), thẻ "This Work Position" khi người đó đang giữ vị trí. Bước 2: một danh sách tick (Training Topic gõ vào ô tìm, SOP hiệu lực phân trang phía máy chủ). Bước 3: các thẻ xem lại, mỗi thẻ có nút Edit. Cột phải: Summary và Training check (bước 3 chỉ Training check). Cạnh nút Next/Create ghi vì sao đang khóa. Job Assignment Details (tab Matrix Check) dùng cùng danh sách tick (`RequiredTrainingsField`), thêm hàng chip các mục đã chọn ở trên; khi không sửa được chỉ còn hàng chip.
+
 ## Quy tắc rút ra
 - Vùng nội dung ở 1280px chỉ khoảng 900px (có thanh bên): hàng 5 ô và lưới 2 cột trong thẻ hẹp chỉ dùng từ `2xl`; dưới đó xếp một cột.
 - Danh sách chọn record (Simulator) rộng hết khung, không nằm trong cột hẹp.

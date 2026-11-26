@@ -13,10 +13,7 @@ vi.mock("@/services/api/trainingActivities", async (importOriginal) => ({
   trainingWorkPositionApi: { of: api.of },
   trainingJobsApi: { eligibility: api.eligibility, create: api.create },
 }));
-vi.mock("../RequiredTrainingsField", () => ({
-  pickedIds: (list: { kind: string; id: string; title: string }[]) => ({ topics: list.filter((p) => p.kind === "TOPIC").map((p) => p.title), documentIds: list.filter((p) => p.kind === "DOCUMENT").map((p) => p.id) }),
-  RequiredTrainingsField: ({ onChange }: { onChange: (v: unknown[]) => void }) => <button onClick={() => onChange([{ kind: "TOPIC", id: "Gowning", code: "", title: "Gowning" }])}>pick-topic</button>,
-}));
+vi.mock("@/services/api/documents", () => ({ documentApi: { getDocumentsPage: async () => ({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } }) } }));
 vi.mock("@/components/ui/page/PageHeader", () => ({ PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) => <header><h1>{title}</h1>{actions}</header> }));
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async (importOriginal) => ({ ...(await importOriginal<object>()), useNavigate: () => navigate }));
@@ -42,29 +39,52 @@ describe("TrainingJobCreatePage", () => {
   it("is a page with the three steps, and cannot go on before an employee and a Work Position are chosen", async () => {
     renderPage();
 
-    expect(screen.getByText("Step 1 of 3: Employee and Work Positions")).toBeTruthy();
+    expect(screen.getByText("Choose an employee and a Work Position")).toBeTruthy();
     expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
     await waitFor(() => expect(api.people).toHaveBeenCalled());
   });
 
   it("creates the draft from the last step with what was chosen and opens it", async () => {
     renderPage();
-    const select = (label: string) => screen.getByText(label);
-    expect(select("Employee")).toBeTruthy();
+    expect(screen.getAllByText("Employee").length).toBeGreaterThan(0);
     // the chosen values come from the selects; set them through the page's own controls
     fireEvent.click(screen.getAllByRole("combobox")[0]);
     fireEvent.click(await screen.findByText("Trainee Test 1 (E1)"));
-    fireEvent.doubleClick(await screen.findByText("QA Officer (Quality Assurance)"));
-    expect(screen.getByText("Selected Work Positions (1)")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("checkbox", { name: /QA Officer/ }));
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(await screen.findByText(/Training check: complete/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
 
-    fireEvent.click(await screen.findByText("pick-topic"));
+    fireEvent.change(await screen.findByPlaceholderText("Search a SOP, or type a Training Topic..."), { target: { value: "Gowning" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Gowning/ }));
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
-    expect(await screen.findByText("Step 3 of 3: Review and Create")).toBeTruthy();
+    expect(await screen.findByText("Other Trainings Required")).toBeTruthy();
     expect(await screen.findByText(/Training check: complete/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Create Draft/ }));
     await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ personUserId: "p1", positionIds: ["r1"], requiredTopics: ["Gowning"], requiredDocumentIds: [] })));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/training-management/job-assignments/job1", { replace: true }));
+  });
+
+  it("asks for the reason when a held Work Position is replaced, and sends what is replaced", async () => {
+    api.of.mockResolvedValue({ roles: [{ jobRoleId: "r0", positionName: "QC Analyst", source: "JOB_ASSIGNMENT" }] });
+    renderPage();
+    fireEvent.click(screen.getAllByRole("combobox")[0]);
+    fireEvent.click(await screen.findByText("Trainee Test 1 (E1)"));
+    fireEvent.click(await screen.findByRole("checkbox", { name: /QA Officer/ }));
+    fireEvent.click(await screen.findByText("Replaces one held"));
+    expect(screen.getByText("Enter the reason for the change")).toBeTruthy();
+    expect((screen.getByRole("button", { name: /Next/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("says when the training check could not be made and tries again", async () => {
+    api.eligibility.mockRejectedValueOnce(new Error("down"));
+    renderPage();
+    fireEvent.click(screen.getAllByRole("combobox")[0]);
+    fireEvent.click(await screen.findByText("Trainee Test 1 (E1)"));
+    fireEvent.click(await screen.findByRole("checkbox", { name: /QA Officer/ }));
+    expect(await screen.findByText("The training check could not be made.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(/Training check: complete/)).toBeTruthy();
   });
 });

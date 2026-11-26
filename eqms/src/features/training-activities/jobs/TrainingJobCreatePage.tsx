@@ -1,26 +1,26 @@
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDebounce } from "@/hooks/useDebounce";
-import { IconArrowLeft, IconArrowRight, IconCheck } from "@tabler/icons-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { BookOpen, Briefcase, ClipboardCheck, Repeat, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
+import { FormSection } from "@/components/ui/form/FormSection";
 import { Select } from "@/components/ui/select/Select";
 import { RadioGroup } from "@/components/ui/radio";
+import { Badge } from "@/components/ui/badge/Badge";
 import { WorkflowStepper } from "@/components/ui/workflow-stepper/WorkflowStepper";
 import { useToast } from "@/components/ui/toast/Toast";
 import { Input } from "../shared/TrainingFields";
-import { TransferPicker } from "../shared/TransferPicker";
 import { ReadonlyField, ReadonlyGrid } from "../shared/TrainingDetailLayout";
-import {
-  RequiredTrainingsField,
-  pickedIds,
-  type PickedTraining,
-} from "./RequiredTrainingsField";
+import { RequiredTrainingsField, pickedIds, trainingKey, trainingLabel, type PickedTraining } from "./RequiredTrainingsField";
+import { Chips, JobAssignmentSummary, TrainingCheck, type CheckState } from "./JobAssignmentSummary";
+import { WorkPositionChecklist } from "./WorkPositionChecklist";
 import {
   type TrainingEligibility,
+  type TrainingPerson,
   type TrainingPosition,
   trainingActivitiesApi,
   trainingError,
@@ -30,7 +30,6 @@ import {
 } from "@/services/api/trainingActivities";
 import { trainingBreadcrumbs } from "../shared/trainingLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
-import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr, trFormat } from "@/i18n";
 
 const STEPS = [
@@ -38,7 +37,11 @@ const STEPS = [
   "Other Trainings",
   "Review and Create",
 ];
+const STEP_ICONS = [UserRound, BookOpen, ClipboardCheck];
 const JOBS_ROUTE = "/training-management/job-assignments";
+
+// A card whose description is guidance that must be read whole: the text wraps beside the badge or button instead of being cut or pushing it down.
+const LONG_HEADER = "[&>div:first-child_p]:whitespace-normal [&>div:first-child>div:first-child]:flex-1 [&>div:first-child>div:first-child]:basis-0";
 
 type Held = { jobRoleId: string; positionName: string };
 
@@ -55,6 +58,8 @@ export function TrainingJobCreatePage() {
   const [positions, setPositions] = useState<TrainingPosition[]>([]);
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [personId, setPersonId] = useState("");
+  // The chosen person is kept apart from the search results: a later search must not lose what the summary shows.
+  const [found, setFound] = useState<Record<string, TrainingPerson>>({});
   // One assignment can give several Work Positions: they are listed, and each is checked against the matrix of its department.
   const [positionIds, setPositionIds] = useState<string[]>([]);
   // The Work Positions that the person holds through a signed job assignment: a later Work Position replaces one of them or is added to them.
@@ -65,6 +70,8 @@ export function TrainingJobCreatePage() {
   const [required, setRequired] = useState<PickedTraining[]>([]);
   // The check is made at once: what the matrix requires for the Work Positions and what is chosen, against the training records of the person.
   const [check, setCheck] = useState<TrainingEligibility>();
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [checkAttempt, setCheckAttempt] = useState(0);
 
   useEffect(() => {
     trainingMatrixApi
@@ -79,6 +86,7 @@ export function TrainingJobCreatePage() {
       value: p.id,
     }));
     setPeople(mapped);
+    setFound((known) => ({ ...known, ...Object.fromEntries(list.map((p) => [p.id, p])) }));
     return mapped;
   }, []);
   useEffect(() => {
@@ -104,6 +112,7 @@ export function TrainingJobCreatePage() {
   }, [personId]);
   useEffect(() => {
     setCheck(undefined);
+    setCheckFailed(false);
     if (!personId || positionIds.length === 0) return;
     let live = true;
     const ids = pickedIds(required);
@@ -113,12 +122,12 @@ export function TrainingJobCreatePage() {
         if (live) setCheck(c);
       })
       .catch(() => {
-        if (live) setCheck(undefined);
+        if (live) setCheckFailed(true);
       });
     return () => {
       live = false;
     };
-  }, [personId, positionIds, required]);
+  }, [personId, positionIds, required, checkAttempt]);
 
   const positionTitle = (p: TrainingPosition) =>
     `${p.name} (${p.departmentName})`;
@@ -126,29 +135,9 @@ export function TrainingJobCreatePage() {
     const role = positions.find((p) => p.id === id);
     return role ? positionTitle(role) : id;
   };
-  const [positionQuery, setPositionQuery] = useState("");
-
   // Leaving with a change that was not saved asks first (Back, the breadcrumb, the sidebar, a reload); the move after the job assignment is created is not a leave.
   const { isDirty } = useFormDirty({ personId, positionIds, mode, replaces, changeReason, required });
   const { go, confirmLeave, modal: leaveModal } = useLeaveGuard(isDirty, "New Job Assignment", "the previous page");
-  const debouncedPositionQuery = useDebounce(positionQuery, SEARCH_DEBOUNCE_MS);
-  const selectedPositions = useMemo(
-    () =>
-      positionIds
-        .map((id) => positions.find((p) => p.id === id))
-        .filter((p): p is TrainingPosition => Boolean(p)),
-    [positionIds, positions],
-  );
-  const availablePositions = useMemo(() => {
-    const q = debouncedPositionQuery.trim().toLowerCase();
-    return positions.filter(
-      (p) =>
-        p.departmentId &&
-        !held.some((h) => h.jobRoleId === p.id) &&
-        !positionIds.includes(p.id) &&
-        (!q || positionTitle(p).toLowerCase().includes(q)),
-    );
-  }, [positions, held, positionIds, debouncedPositionQuery]);
   const personLabel = people.find((p) => p.value === personId)?.label ?? "";
   const replacing = held.length > 0 && mode === "CHANGE";
   const stepOneReady =
@@ -193,47 +182,33 @@ export function TrainingJobCreatePage() {
     }
   };
 
-  const checkBox = useMemo(() => {
-    if (!check) return null;
-    const missing = check.matrixMissing || (check.missingCount ?? 0) > 0;
-    return (
-      <div
-        role="status"
-        className={`rounded-lg border px-3 py-2 text-sm ${missing ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}
-      >
-        {check.matrixMissing ? (
-          tr("The department has no effective matrix: an exception is needed to go ahead.")
-        ) : (check.missingCount ?? 0) === 0 ? (
-          trFormat("Training check: complete ({count} required).", { count: check.items.length })
-        ) : (
-          <>
-            <p className="font-medium">
-                {trFormat("Not trained yet ({missing} of {total}).", { missing: check.missingCount, total: check.items.length })}
-              {tr("The assignment cannot be signed until they are done, or an exception is approved:")}
-            </p>
-            <ul className="mt-1 list-disc pl-5">
-              {check.items
-                .filter((i) => !i.lastDone)
-                .map((i) => (
-                  <li key={`${i.code}|${i.title}`}>
-                    {i.code ? `${i.code} — ` : ""}
-                    {i.title}
-                    {i.source === "CHOSEN"
-                      ? " (chosen)"
-                      : i.source === "FACTORY"
-                        ? " (all employees)"
-                        : ""}
-                  </li>
-                ))}
-            </ul>
-          </>
-        )}
-      </div>
-    );
-  }, [check]);
-
   const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
   const previous = () => setStep((s) => Math.max(0, s - 1));
+  const person = found[personId];
+  const checkState: CheckState = !personId || positionIds.length === 0 ? "idle" : checkFailed ? "error" : check ? "ready" : "loading";
+  const retryCheck = () => setCheckAttempt((a) => a + 1);
+  const togglePosition = (id: string) =>
+    setPositionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const positionChips = positionIds.map((id) => ({ id, label: positionLabel(id) }));
+  const trainingChips = required.map((p) => ({ id: trainingKey(p), label: trainingLabel(p) }));
+  const removeTraining = (key: string) => setRequired((list) => list.filter((p) => trainingKey(p) !== key));
+  const typeLabel =
+    held.length === 0
+      ? tr("Initial")
+      : mode === "CHANGE"
+        ? tr("Change: replaces a Work Position held")
+        : tr("Change: added to the Work Positions held");
+  const blockedBy =
+    step !== 0 && step !== STEPS.length - 1
+      ? ""
+      : !personId || positionIds.length === 0
+        ? tr("Choose an employee and a Work Position")
+        : !stepOneReady
+          ? tr("Enter the reason for the change")
+          : "";
+  const editButton = (target: number) => (
+    <Button size="sm" variant="outline" onClick={() => setStep(target)}>{tr("Edit")}</Button>
+  );
 
   return (
     <div className="w-full space-y-4 md:space-y-6">
@@ -258,213 +233,175 @@ export function TrainingJobCreatePage() {
       <WorkflowStepper
         steps={STEPS}
         currentStepIndex={step}
+        icons={STEP_ICONS}
         onStepClick={(index) => {
           if (index <= furthest) setStep(index);
         }}
       />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-3 md:px-5">
-          <h2 className="text-sm font-semibold text-slate-800 sm:text-base">
-            {trFormat("Step {current} of {total}: {name}", { current: step + 1, total: STEPS.length, name: tr(STEPS[step]) })}
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-            {step === 0 &&
-              "Choose the employee and the Work Positions that are given. Each Work Position is checked against the matrix of its department."}
-            {step === 1 &&
-              "Besides the matrix of the Work Positions: move the SOPs, or type a Training Topic, that the person must have completed first. This step is optional."}
-            {step === 2 &&
-              "Check what will be created. A draft is created; the matrix training of the person is checked again before it can be sent."}
-          </p>
-        </div>
-        <div className="p-4 md:p-5">
-          {step === 0 && (
-            <div className="grid gap-4">
-              <div className="max-w-3xl">
-                <FormField label={tr("Employee")} required>
-                  <Select
-                    value={personId}
-                    onChange={setPersonId}
-                    options={people}
-                    onSearch={searchPeople}
-                    placeholder={tr("Search by name")}
-                  />
-                </FormField>
-              </div>
-              <FormField
-                label={tr("Work Positions")}
-                required
-                hint={tr("One form can give several Work Positions. Move one with a double click or by dragging it to the other list.")}
-              >
-                <TransferPicker<TrainingPosition>
-                  noun="work positions"
-                  available={availablePositions}
-                  selected={selectedPositions}
-                  getKey={(p) => p.id}
-                  getTitle={positionTitle}
-                  onAdd={(items) =>
-                    setPositionIds([
-                      ...positionIds,
-                      ...items
-                        .map((p) => p.id)
-                        .filter((id) => !positionIds.includes(id)),
-                    ])
-                  }
-                  onRemove={(keys) =>
-                    setPositionIds(
-                      positionIds.filter((id) => !keys.includes(id)),
-                    )
-                  }
-                  query={positionQuery}
-                  onQueryChange={setPositionQuery}
-                  availableSearchPlaceholder="Search by Work Position or department..."
-                />
-              </FormField>
-              {held.length > 0 && (
-                <>
-                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    {tr("This person holds:")}{" "}
-                    {held.map((h) => h.positionName).join(", ")}.
-                  </p>
-                  <FormField label={tr("This Work Position")} required>
-                    <RadioGroup
-                      name="job-mode"
-                      layout="horizontal"
-                      value={mode}
-                      onChange={(v) => setMode(v as "CHANGE" | "ADDITIONAL")}
-                      options={[
-                        {
-                          label: tr("Is added to the ones held"),
-                          value: "ADDITIONAL",
-                        },
-                        { label: tr("Replaces one held"), value: "CHANGE" },
-                      ]}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18 }}
+          className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start"
+        >
+          <div className="min-w-0 space-y-4">
+            {step === 0 && (
+              <>
+                {/* FormSection clips its content: the open list of the employee select is drawn in a portal, so nothing is lost. */}
+                <FormSection title={tr("Employee")} icon={<UserRound className="h-4 w-4" />}>
+                  <FormField label={tr("Employee")} required>
+                    <Select
+                      value={personId}
+                      onChange={setPersonId}
+                      options={people}
+                      onSearch={searchPeople}
+                      placeholder={tr("Search by name")}
                     />
                   </FormField>
-                  {mode === "CHANGE" && (
-                    <>
-                      {held.length > 1 && (
-                        <FormField label={tr("Work Position to replace")} required>
-                          <Select
-                            value={replaces || held[0].jobRoleId}
-                            onChange={setReplaces}
-                            options={held.map((h) => ({
-                              label: h.positionName,
-                              value: h.jobRoleId,
-                            }))}
-                          />
-                        </FormField>
-                      )}
-                      <FormField label={tr("Reason for the change")} required>
-                        <Input
-                          value={changeReason}
-                          maxLength={500}
-                          onChange={(e) => setChangeReason(e.target.value)}
-                        />
-                      </FormField>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {step === 1 && (
-            <RequiredTrainingsField value={required} onChange={setRequired} />
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <ReadonlyGrid>
-                <ReadonlyField label={tr("Employee")} value={personLabel} />
-                <ReadonlyField
-                  label={tr("Type")}
-                  value={
-                    held.length === 0
-                      ? "Initial"
-                      : mode === "CHANGE"
-                        ? tr("Change: replaces a Work Position held")
-                        : tr("Change: added to the Work Positions held")
-                  }
-                />
-                <ReadonlyField
-                  label={tr("Work Positions")}
-                  wide
-                  value={positionIds.map(positionLabel).join(", ")}
-                />
-                {replacing && (
-                  <ReadonlyField
-                    label={tr("Reason for the change")}
-                    wide
-                    value={changeReason}
+                </FormSection>
+                <FormSection
+                  title={tr("Work Positions")}
+                  icon={<Briefcase className="h-4 w-4" />}
+                  description={tr("Choose the employee and the Work Positions that are given. Each Work Position is checked against the matrix of its department.")}
+                  className={LONG_HEADER}
+                  headerRight={<Badge color={positionIds.length ? "emerald" : "slate"}>{trFormat("{count} selected", { count: positionIds.length })}</Badge>}
+                >
+                  <WorkPositionChecklist
+                    positions={positions}
+                    selectedIds={positionIds}
+                    excludedIds={held.map((h) => h.jobRoleId)}
+                    onToggle={togglePosition}
                   />
+                </FormSection>
+                {held.length > 0 && (
+                  <FormSection title={tr("This Work Position")} icon={<Repeat className="h-4 w-4" />}>
+                    <div className="space-y-4">
+                      <RadioGroup
+                        name="job-mode"
+                        layout="horizontal"
+                        variant="card"
+                        value={mode}
+                        onChange={(v) => setMode(v as "CHANGE" | "ADDITIONAL")}
+                        options={[
+                          { label: tr("Is added to the ones held"), value: "ADDITIONAL" },
+                          { label: tr("Replaces one held"), value: "CHANGE" },
+                        ]}
+                      />
+                      {mode === "CHANGE" && (
+                        <>
+                          {held.length > 1 && (
+                            <FormField label={tr("Work Position to replace")} required>
+                              <Select
+                                value={replaces || held[0].jobRoleId}
+                                onChange={setReplaces}
+                                options={held.map((h) => ({ label: h.positionName, value: h.jobRoleId }))}
+                              />
+                            </FormField>
+                          )}
+                          <FormField label={tr("Reason for the change")} required>
+                            <Input value={changeReason} maxLength={500} onChange={(e) => setChangeReason(e.target.value)} />
+                          </FormField>
+                        </>
+                      )}
+                    </div>
+                  </FormSection>
                 )}
-                <ReadonlyField
-                  label={tr("Other Trainings Required")}
-                  wide
-                  value={
-                    required.length === 0
-                      ? tr("None: only the training that the matrix requires is checked")
-                      : required
-                          .map(
-                            (p) =>
-                              `${p.kind === "TOPIC" ? tr("Training Topic") : "SOP"}: ${p.title}`,
-                          )
-                          .join("; ")
-                  }
-                />
-              </ReadonlyGrid>
-              {checkBox}
-            </div>
+              </>
+            )}
+
+            {step === 1 && (
+              <FormSection
+                title={tr("Other Trainings")}
+                icon={<BookOpen className="h-4 w-4" />}
+                description={tr("Besides the matrix of the Work Positions: tick the SOPs, or type a Training Topic, that the person must have completed first. This step is optional.")}
+                className={LONG_HEADER}
+                headerRight={<Badge color={required.length ? "emerald" : "slate"}>{trFormat("{count} selected", { count: required.length })}</Badge>}
+              >
+                <RequiredTrainingsField value={required} onChange={setRequired} />
+              </FormSection>
+            )}
+
+            {step === 2 && (
+              <>
+                <FormSection
+                  title={tr("Employee")}
+                  icon={<UserRound className="h-4 w-4" />}
+                  description={tr("Check what will be created. A draft is created; the matrix training of the person is checked again before it can be sent.")}
+                  className={LONG_HEADER}
+                  headerRight={editButton(0)}
+                >
+                  <ReadonlyGrid>
+                    <ReadonlyField label={tr("Employee")} value={personLabel} />
+                    <ReadonlyField label={tr("Type")} value={typeLabel} />
+                    {replacing && <ReadonlyField label={tr("Reason for the change")} wide value={changeReason} />}
+                  </ReadonlyGrid>
+                </FormSection>
+                <FormSection title={tr("Work Positions")} icon={<Briefcase className="h-4 w-4" />} headerRight={editButton(0)}>
+                  <Chips items={positionChips} empty={tr("No Work Position selected")} />
+                </FormSection>
+                <FormSection title={tr("Other Trainings Required")} icon={<BookOpen className="h-4 w-4" />} headerRight={editButton(1)}>
+                  <Chips items={trainingChips} empty={tr("None: only the training that the matrix requires is checked")} />
+                </FormSection>
+              </>
+            )}
+          </div>
+
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-4" aria-label={tr("Summary")}>
+            {step === 2 ? (
+              <FormSection title={tr("Training check")} icon={<ClipboardCheck className="h-4 w-4" />}>
+                <TrainingCheck state={checkState} check={check} onRetry={retryCheck} />
+              </FormSection>
+            ) : (
+              <JobAssignmentSummary
+                person={person}
+                held={held.map((h) => h.positionName)}
+                positions={positionChips}
+                trainings={trainingChips}
+                onRemovePosition={togglePosition}
+                onRemoveTraining={removeTraining}
+                checkState={checkState}
+                check={check}
+                onRetry={retryCheck}
+              />
+            )}
+          </aside>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => confirmLeave(goBack)} size="sm" variant="outline-emerald">
+            {tr("Cancel")}
+          </Button>
+          {step > 0 && (
+            <Button onClick={previous} size="sm" variant="outline-emerald">
+              {tr("Back:")} {tr(STEPS[step - 1])}
+            </Button>
           )}
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 md:gap-3">
-        <Button
-          onClick={() => confirmLeave(goBack)}
-          size="sm"
-          variant="outline-emerald"
-          className="whitespace-nowrap"
-        >
-          {tr("Cancel")}
-        </Button>
-        {step > 0 && (
-          <Button
-            onClick={previous}
-            size="sm"
-            variant="outline-emerald"
-            className="whitespace-nowrap"
-          >
-            <IconArrowLeft className="mr-2 h-4 w-4" />
-            {tr("Previous")}
-          </Button>
-        )}
-        {step < STEPS.length - 1 && (
-          <Button
-            onClick={next}
-            size="sm"
-            variant="outline-emerald"
-            disabled={step === 0 && !stepOneReady}
-            className="whitespace-nowrap"
-          >
-            {tr("Next")}
-          </Button>
-        )}
-        {step === STEPS.length - 1 && (
-          <Button
-            onClick={() => void create()}
-            size="sm"
-            loading={busy}
-            loadingText="Creating..."
-            disabled={!stepOneReady}
-            variant="outline-emerald"
-            className="whitespace-nowrap"
-          >
-            <IconCheck className="mr-2 h-4 w-4" />
-            {tr("Create Draft")}
-          </Button>
-        )}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          {blockedBy && <span className="text-xs text-slate-500">{blockedBy}</span>}
+          {step < STEPS.length - 1 ? (
+            <Button onClick={next} size="sm" variant="default" disabled={step === 0 && !stepOneReady}>
+              {tr("Next:")} {tr(STEPS[step + 1])}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => void create()}
+              size="sm"
+              variant="default"
+              loading={busy}
+              loadingText={tr("Creating...")}
+              disabled={!stepOneReady}
+            >
+              {tr("Create Draft")}
+            </Button>
+          )}
+        </div>
       </div>
       {leaveModal}
     </div>

@@ -4,7 +4,7 @@ import { MultiSelect } from "@/components/ui/select/MultiSelect";
 import { Popover } from "@/components/ui/popover/Popover";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { trainingActivitiesApi } from "@/services/api/trainingActivities";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 /** A person as a job assignment writes them: the name and the position (Position of the user), for example "Doan Thu Ha (Head of QC)". */
 export const personTitle = (p: { fullName: string; position?: string | null }) => (p.position ? `${p.fullName} (${p.position})` : p.fullName);
@@ -25,7 +25,7 @@ function ChosenTags({ names, label }: { names: string[]; label: string }) {
         <Popover
           title={label}
           placement="top"
-          triggerAriaLabel={`View ${names.length - 2} more`}
+            triggerAriaLabel={trFormat("View {count} more", { count: names.length - 2 })}
           trigger={<span className="text-[10px] font-medium">+{names.length - 2}</span>}
           triggerClassName="inline-flex items-center rounded-lg bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-slate-500 hover:bg-slate-300"
           contentClassName="min-w-[180px] max-w-[280px]"
