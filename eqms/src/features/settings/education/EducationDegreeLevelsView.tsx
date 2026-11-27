@@ -411,7 +411,7 @@ const DegreeLevelModal: React.FC<DegreeLevelModalProps> = ({ isOpen, onClose, it
   };
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} Degree Level`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={isEdit ? tr("Edit Degree Level") : tr("New Degree Level")} isLoading={isSaving} size="lg">
       <div className="space-y-4">
         <div>
           <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Name")}<span className="text-red-500 ml-1">*</span></label>

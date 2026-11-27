@@ -6,6 +6,7 @@ import {
   type NotificationSummaryCounts,
 } from '@/features/notifications/types';
 import { subscribeNotificationsChanged } from '@/features/notifications/events';
+import { getCatalogLanguage } from '@/i18n';
 
 const ENDPOINT = '/notifications';
 const SUMMARY_CACHE_TTL_MS = 5000;
@@ -70,6 +71,8 @@ export interface GetNotificationsParams {
   sortDirection?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  /** The language the person is reading now: the API renders the stored notification in that language. */
+  language?: string;
 }
 
 export interface NotificationPreferences {
@@ -108,7 +111,7 @@ subscribeNotificationsChanged(invalidateSummary);
 
 export const notificationApi = {
   getNotifications: async (params?: GetNotificationsParams) => {
-    const query = buildQueryString(params);
+    const query = buildQueryString({ ...params, language: params?.language ?? getCatalogLanguage() });
     const response = await api.get<PaginatedResponse<Notification>>(
       query ? `${ENDPOINT}?${query}` : ENDPOINT,
     );

@@ -1,4 +1,4 @@
-﻿﻿import React, { useCallback, useRef, useEffect, useState } from 'react';
+﻿﻿import React, { useCallback, useRef, useEffect, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +21,7 @@ import { moduleDisplayName } from '@/utils/moduleDisplay';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useNotificationDock } from './NotificationDockContext';
 import { useNotificationEntrance } from './useNotificationEntrance';
+import { TabNav, type TabItem } from '@/components/ui/tabs';
 import { tr, trFormat, useLanguage } from "@/i18n";
 
 interface NotificationsDropdownProps {
@@ -123,7 +124,7 @@ const NotificationItem: React.FC<{
         </span>
         {notification.body && <span className="mt-0.5 line-clamp-2 text-xs font-normal leading-relaxed text-slate-600">{notification.body}</span>}
         {urgent && (
-          <span className="mt-1.5 inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-2xs font-semibold text-red-700">
+          <span className="sr-only">
             {notification.priority === 'critical' ? tr('Critical') : tr('High priority')}
           </span>
         )}
@@ -251,11 +252,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const isDock = variant === 'dock';
   const isScreen = variant === 'screen';
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tabPrefix = useId();
 
   // Only the unread number is worth a glance; the totals of the other tabs run into thousands and only crowd the row.
-  const tabs: { id: NotificationTab; label: string; badge: number }[] = [
-    { id: 'all', label: tr('All'), badge: 0 },
-    { id: 'unread', label: tr('Unread'), badge: counts.unread },
+  const tabs: TabItem[] = [
+    { id: 'all', label: tr('All') },
+    { id: 'unread', label: tr('Unread'), count: counts.unread || undefined },
   ];
 
   useNotificationEntrance(scrollRef, notifications.map((n) => n.id), loaded);
@@ -265,7 +267,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     .filter(({ items }) => items.length > 0);
 
   const iconButton = cn('grid shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-emerald-600 disabled:pointer-events-none disabled:opacity-40', isScreen ? 'h-11 w-11' : 'h-8 w-8');
-  const pinLabel = pin?.disabled ? (pin.disabledReason ?? 'Pin to the side') : pin?.pinned ? tr('Unpin notifications') : tr('Pin notifications to the side');
+  const pinLabel = pin?.disabled ? (pin.disabledReason ?? tr('Pin to the side')) : pin?.pinned ? tr('Unpin notifications') : tr('Pin notifications to the side');
   const PinIcon = pin?.pinned ? PinOff : Pin;
 
   return (
@@ -278,7 +280,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         )}
         <div className="min-w-0 flex-1">
           <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold leading-tight tracking-tight text-slate-900 outline-none">{tr("Notifications")}</h3>
-          <p className="text-xs text-slate-500">{counts.unread > 0 ? trFormat('{count} unread', { count: counts.unread }) : tr('All caught up')}</p>
         </div>
         {pin && (
           <button
@@ -298,34 +299,29 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         </button>
       </div>
 
-      <div role="tablist" aria-label={tr("Show")} className="mx-4 my-3 grid shrink-0 grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-medium">
-        {tabs.map((item) => {
-          const active = tab === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onTabChange(item.id)}
-              className={cn(
-                'flex items-center justify-center gap-1 rounded-lg py-1.5 transition-colors',
-                active ? 'bg-white font-semibold text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900',
-              )}
-            >
-              {item.label}
-              {item.badge > 0 && <span className="grid h-4 min-w-[16px] place-items-center rounded-full bg-emerald-600 px-1 text-2xs font-bold text-white">{item.badge > 99 ? '99+' : item.badge}</span>}
-            </button>
-          );
-        })}
+      <div className="min-w-0 shrink-0 px-4 py-3">
+        <TabNav
+          tabs={tabs}
+          activeTab={tab}
+          onChange={(id) => onTabChange(id as NotificationTab)}
+          variant="pill"
+          fullWidth
+          className="min-w-0"
+          ariaLabel={tr("Show")}
+          tabIdPrefix={`${tabPrefix}-tab`}
+          panelIdPrefix={`${tabPrefix}-panel`}
+        />
       </div>
 
       <div
         ref={scrollRef}
         role="tabpanel"
+        id={`${tabPrefix}-panel-${tab}`}
+        aria-labelledby={`${tabPrefix}-tab-${tab}`}
+        aria-busy={!loaded}
         className={cn(
           'overflow-y-auto overscroll-contain bg-white scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300',
-          isDock || isScreen ? 'min-h-0 flex-1' : 'max-h-[420px]',
+          isDock || isScreen ? 'min-h-0 flex-1' : 'h-[min(420px,calc(100dvh-14rem))] min-h-0',
         )}
       >
         {!loaded ? (
@@ -339,7 +335,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         ) : (
           groups.map(({ group, items }) => (
             <section key={group} aria-label={tr(GROUP_LABEL[group])}>
-              <h4 className="bg-slate-50 px-4 py-1.5 text-2xs font-semibold uppercase tracking-wider text-slate-500">{tr(GROUP_LABEL[group])}</h4>
+              <h4 className="sticky top-0 z-10 border-y border-emerald-100 bg-emerald-50 px-4 py-2 text-2xs font-semibold uppercase tracking-wider text-emerald-800">{tr(GROUP_LABEL[group])}</h4>
               <div className="divide-y divide-slate-300">
                 {items.map((notification) => (
                   <NotificationItem
@@ -609,7 +605,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
           variant="ghost"
           size="icon"
           onClick={isDocked ? dock.requestFocus : onToggle}
-          aria-label={isDocked ? tr('Notifications (pinned to the side)') : 'Notifications'}
+          aria-label={isDocked ? tr('Notifications (pinned to the side)') : tr('Notifications')}
           aria-pressed={isDocked ? true : undefined}
           className="relative text-slate-600 hover:bg-transparent hover:text-emerald-600 transition-colors"
         >

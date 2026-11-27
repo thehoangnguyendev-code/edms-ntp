@@ -43,9 +43,9 @@ class TableExcelExportControllerTest {
     @Test void notificationsExportEveryPageAndForwardTheWholeQueryNotClientPagination() throws Exception {
         var row=mock(NotificationResponse.class);
         when(row.title()).thenReturn("Thông báo");
-        when(notifications.list(eq("personal"),eq("term"),isNull(),eq("Document Control"),isNull(),eq("unread"),isNull(),isNull(),isNull(),eq("2026-11-01"),isNull(),eq("createdAt"),eq("asc"),eq(1),eq(500)))
+        when(notifications.list(eq("personal"),eq("term"),isNull(),eq("Document Control"),isNull(),eq("unread"),isNull(),isNull(),isNull(),eq("2026-11-01"),isNull(),eq("createdAt"),eq("asc"),eq(1),eq(500),isNull()))
                 .thenReturn(new PageResponse<>(Collections.nCopies(500,row),new PaginationResponse(1,500,501,2)));
-        when(notifications.list(eq("personal"),eq("term"),isNull(),eq("Document Control"),isNull(),eq("unread"),isNull(),isNull(),isNull(),eq("2026-11-01"),isNull(),eq("createdAt"),eq("asc"),eq(2),eq(500)))
+        when(notifications.list(eq("personal"),eq("term"),isNull(),eq("Document Control"),isNull(),eq("unread"),isNull(),isNull(),isNull(),eq("2026-11-01"),isNull(),eq("createdAt"),eq("asc"),eq(2),eq(500),isNull()))
                 .thenReturn(new PageResponse<>(List.of(row),new PaginationResponse(2,500,501,2)));
         var result=controller.export("notifications",Map.of("scope","personal","search","term","module","Document Control","status","unread","dateFrom","2026-11-01","sortDirection","asc","page","9","limit","10"));
         var output=new ByteArrayOutputStream(); result.getBody().writeTo(output);
@@ -53,7 +53,7 @@ class TableExcelExportControllerTest {
             assertThat(book.getSheetAt(0).getLastRowNum()).isEqualTo(501);
             assertThat(book.getSheetAt(0).getRow(501).getCell(1).getStringCellValue()).isEqualTo("Thông báo");
         }
-        verify(notifications,times(2)).list(anyString(),anyString(),isNull(),anyString(),isNull(),anyString(),isNull(),isNull(),isNull(),anyString(),isNull(),anyString(),anyString(),anyInt(),eq(500));
+        verify(notifications,times(2)).list(anyString(),anyString(),isNull(),anyString(),isNull(),anyString(),isNull(),isNull(),isNull(),anyString(),isNull(),anyString(),anyString(),anyInt(),eq(500),isNull());
     }
     @Test void usersCannotBeExportedWithoutTheSameViewPermissionAsTheRegister() {
         assertThatThrownBy(()->controller.export("users",Map.of())).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);

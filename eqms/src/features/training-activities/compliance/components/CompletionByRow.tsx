@@ -83,7 +83,7 @@ export function CompletionByRow({ columns, summary }: { columns: CompletionColum
   const numbered = new Map(rows.map((f) => [f.column.rowId, ++no]));
   return (
     <>
-      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
         <TableMarkup.Root className="w-full border-separate border-spacing-0 text-sm">
           <TableMarkup.Head>
             <TableMarkup.Row className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">

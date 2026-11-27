@@ -152,7 +152,7 @@ public class TableExcelExportController {
                 int page=1; boolean more;
                 do {
                     var result=notifications.list(q.getOrDefault("scope","all"),search,q.get("type"),q.get("module"),q.get("priority"),status,q.get("sender"),
-                            q.get("relatedNumber"),q.get("relatedTitle"),q.get("dateFrom"),q.get("dateTo"),q.getOrDefault("sortBy","createdAt"),direction,page++,500);
+                            q.get("relatedNumber"),q.get("relatedTitle"),q.get("dateFrom"),q.get("dateTo"),q.getOrDefault("sortBy","createdAt"),direction,page++,500,null);
                     for(var r:result.data()) w.row(r.title(),r.description(),r.module(),r.priority(),r.status(),r.type(),r.sender()==null?null:r.sender().fullName(),
                             r.relatedItem()==null?null:r.relatedItem().documentNumber(),r.relatedItem()==null?null:r.relatedItem().title(),r.createdAt(),r.readAt());
                     more=page<=result.pagination().totalPages();

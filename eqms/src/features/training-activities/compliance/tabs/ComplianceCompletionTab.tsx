@@ -10,7 +10,9 @@ import { Progress } from "@/components/ui/progress/Progress";
 import { Select } from "@/components/ui/select/Select";
 import { usePrintAction, type RegisterPrint } from "../usePrintAction";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
-import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import type { ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
+import { ComplianceFilterFields } from "../components/ComplianceFilterFields";
 import { trainingComplianceApi, trainingError, type CompletionCell, type CompletionColumn, type CompletionPerson, type CompletionPosition, type CompletionState, type MatrixCompletion } from "@/services/api/trainingActivities";
 import { saveBlob } from "../../shared/trainingLabels";
 import { CompletionCellDrawer } from "../components/CompletionCellDrawer";
@@ -135,26 +137,19 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter, regist
         <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">{tr("The effective matrix has no Work Position yet.")}</p>
       ) : (
         <>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="w-full sm:w-64"><Select label={departmentFilter.label} value={departmentFilter.value} options={departmentFilter.options} onChange={(v) => departmentFilter.onChange(String(v))} /></div>
-            <div className="w-full sm:w-72"><Select label={tr("Work Position")} value={positionId} options={positions.map((p) => ({ label: `${p.name} (${p.peopleCount})`, value: p.id }))} onChange={(v) => choosePosition(String(v))} enableSearch /></div>
+          <div className="grid min-w-0 grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <Select label={departmentFilter.label} value={departmentFilter.value} options={departmentFilter.options} onChange={(v) => departmentFilter.onChange(String(v))} className="min-w-0" triggerClassName="h-11 md:h-9" />
+            <Select label={tr("Work Position")} value={positionId} options={positions.map((p) => ({ label: `${p.name} (${p.peopleCount})`, value: p.id }))} onChange={(v) => choosePosition(String(v))} enableSearch className="min-w-0" triggerClassName="h-11 md:h-9" />
+            <div className="min-w-0 sm:col-span-2 xl:col-span-1 xl:min-w-72 [&_button]:min-h-11 md:[&_button]:min-h-9 [&_[aria-selected=false]]:text-slate-600">{viewSwitch}</div>
           </div>
-          <div className="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-between">
-            {view === "people" ? <CompletionKey /> : <span />}
-            <div className="w-full md:w-auto md:min-w-72">{viewSwitch}</div>
-          </div>
-          <ReportListToolbar
+          <ComplianceFilterFields
             searchPlaceholder={tr("Search employee…")}
             search={search}
             onSearch={(v) => { setSearch(v); setPage(1); }}
             filters={filters}
-            dates={[]}
-            hasActiveFilters={Boolean(search || (view === "people" && (status || gapsOnly)))}
-            onClear={() => { setSearch(""); setStatus(""); setGapsOnly(false); setPage(1); }}
-            framed={false}
-            flush
-            bare
-          >
+            actions={<ClearFiltersButton className="h-11 md:h-9" onClearSearch={() => setSearch("")} onClear={() => { setSearch(""); setStatus(""); setGapsOnly(false); setPage(1); }} />}
+          />
+          {view === "people" && <CompletionKey />}
             {view === "rows" ? (
               <CompletionByRow columns={columnsInView} summary={result?.summary} />
             ) : (<div className="space-y-3">
@@ -197,7 +192,6 @@ export function ComplianceCompletionTab({ departmentId, departmentFilter, regist
               {result && result.pagination.total > 0 && <p className="px-1 text-xs text-slate-500">{result.summary ? `${trFormat("{count} people", { count: result.summary.people })} · ${trFormat("{ready} ready", { ready: result.summary.ready })} · ${trFormat("{count} with a gap", { count: result.summary.withGap })} · ` : ""}{trFormat("{loaded} of {total} people loaded", { loaded: people.length, total: result.pagination.total })}{people.length < result.pagination.total ? tr("; more load as you scroll") : ""}</p>}
             </div>
             </div>)}
-          </ReportListToolbar>
         </>
       )}
       {picked && <CompletionCellDrawer departmentId={departmentId} personId={picked.person.personId} rowId={picked.column.rowId} onClose={() => setPicked(undefined)} />}

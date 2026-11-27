@@ -455,7 +455,7 @@ public class GlobalSearchService {
     // ---- The notifications of the person
 
     private Found notifications(String q) {
-        PageResponse<NotificationResponse> page = notificationService.list("all", q, null, null, null, null, null, null, null, null, null, "createdAt", "desc", 1, CANDIDATES);
+        PageResponse<NotificationResponse> page = notificationService.list("all", q, null, null, null, null, null, null, null, null, null, "createdAt", "desc", 1, CANDIDATES, null);
         return found(page.data().stream()
                 .map(n -> new Item(String.valueOf(n.id()), n.relatedItem() == null ? null : n.relatedItem().documentNumber(), n.title(), n.description(), null, n.actionUrl())).toList(),
                 page.pagination().total(), q);

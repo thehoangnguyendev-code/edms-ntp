@@ -180,7 +180,7 @@ class GlobalSearchServiceTest {
         when(n.id()).thenReturn(java.util.UUID.randomUUID());
         when(n.title()).thenReturn("Review requested");
         when(n.actionUrl()).thenReturn("/documents/revisions/review/r1");
-        when(notifications.list(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        when(notifications.list(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .thenReturn(new PageResponse<>(List.of(n), new PaginationResponse(1, 5, 1, 1)));
         GlobalSearchResponse response = service.search("review");
         assertEquals("/documents/revisions/review/r1", group(response, "notifications").items().get(0).path());

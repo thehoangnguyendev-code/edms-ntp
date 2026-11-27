@@ -73,9 +73,10 @@ public class NotificationController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String language
     ) {
-        return ResponseEntity.ok(notificationService.list(scope, search, type, module, priority, status, sender, relatedNumber, relatedTitle, dateFrom, dateTo, sortBy, sortDirection, page, limit));
+            return ResponseEntity.ok(notificationService.list(scope, search, type, module, priority, status, sender, relatedNumber, relatedTitle, dateFrom, dateTo, sortBy, sortDirection, page, limit, language));
     }
 
     @GetMapping("/summary")

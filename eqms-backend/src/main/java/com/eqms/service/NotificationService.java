@@ -71,6 +71,11 @@ public class NotificationService {
     /** The icon a person chose for a kind of notification; absent in a context without the notification policies. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.eqms.repository.NotificationPolicyRepository policyRepository;
+    /** The wording stored for an event, so the displayed title and message follow the language the person is reading now. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.eqms.repository.NotificationTemplateVersionRepository templateVersions;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationTranslationService translations;
 
     public NotificationService(
             UserNotificationRepository notificationRepository,
@@ -104,7 +109,8 @@ public class NotificationService {
             String sortBy,
             String sortDirection,
             int page,
-            int limit
+            int limit,
+            String language
     ) {
         UserAccount currentUser = currentUserService.requireCurrentUser();
         Specification<UserNotification> specification = buildSpecification(
@@ -128,7 +134,7 @@ public class NotificationService {
         );
         Page<UserNotification> result = notificationRepository.findAll(specification, pageable);
         java.util.Map<String, String> icons = iconsOf(result.getContent().stream().map(UserNotification::getType).collect(java.util.stream.Collectors.toSet()));
-        List<NotificationResponse> data = result.getContent().stream().map(n -> toResponse(n, icons)).toList();
+        List<NotificationResponse> data = result.getContent().stream().map(n -> toResponse(n, icons, language)).toList();
         return new PageResponse<>(
                 data,
                 new PaginationResponse(
@@ -588,7 +594,7 @@ public class NotificationService {
     }
 
     private NotificationResponse toResponse(UserNotification notification) {
-        return toResponse(notification, iconsOf(java.util.Collections.singleton(notification.getType())));
+        return toResponse(notification, iconsOf(java.util.Collections.singleton(notification.getType())), null);
     }
 
     /** The icon chosen for each kind (the event code is the type of the notification); a kind with none chosen is not in the map. */
@@ -608,15 +614,16 @@ public class NotificationService {
         return icons;
     }
 
-    private NotificationResponse toResponse(UserNotification notification, java.util.Map<String, String> icons) {
+    private NotificationResponse toResponse(UserNotification notification, java.util.Map<String, String> icons, String language) {
         String icon = icons.get(notification.getType());
+        String[] wording = wordingFor(notification, language);
         return new NotificationResponse(
                 notification.getId(),
                 notification.getType(),
                 notification.getScope(),
                 // a message written with a code in it (a workflow role, an error code) is shown with the words of that code
-                com.eqms.util.DisplayLabels.prose(notification.getTitle()),
-                com.eqms.util.DisplayLabels.prose(notification.getMessage()),
+                com.eqms.util.DisplayLabels.prose(wording[0]),
+                com.eqms.util.DisplayLabels.prose(wording[1]),
                 notification.getModule(),
                 notification.getModuleKey(),
                 notification.getPriority(),
@@ -636,6 +643,50 @@ public class NotificationService {
                 notification.getMetadata(),
                 icon
         );
+    }
+
+    /**
+     * The title and message in the language the person is reading now. A notification of an event is rendered again from its active wording and the values kept with it;
+     * an older notification, or one without a template, keeps the words it was written with. A failure never stops the list.
+     */
+    private String[] wordingFor(UserNotification notification, String language) {
+        String title = notification.getTitle();
+        String message = notification.getMessage();
+        if (!StringUtils.hasText(language) || templateVersions == null || policyRepository == null || notification.getType() == null) {
+            return new String[]{title, message};
+        }
+        try {
+            var policy = policyRepository.findByEventCode(notification.getType()).orElse(null);
+            if (policy == null) return new String[]{title, message};
+            var english = templateVersions.findFirstByPolicy_IdAndChannelAndStatusOrderByVersionNumberDesc(
+                    policy.getId(), com.eqms.entity.NotificationTemplateVersion.CHANNEL_IN_APP,
+                    com.eqms.entity.NotificationTemplateVersion.STATUS_ACTIVE).orElse(null);
+            if (english == null) return new String[]{title, message};
+            var wording = translations == null ? english : translations.forLanguage(english, language);
+            Map<String, String> values = new java.util.HashMap<>();
+            JsonNode metadata = notification.getMetadata();
+            if (metadata != null && metadata.isObject()) {
+                metadata.fields().forEachRemaining(entry -> {
+                    if (!entry.getValue().isNull()) values.put(entry.getKey(), entry.getValue().asText(""));
+                });
+            }
+            String renderedTitle = renderWording(wording.getTitle(), values);
+            String renderedMessage = renderWording(wording.getSummary(), values);
+            return new String[]{StringUtils.hasText(renderedTitle) ? renderedTitle : title,
+                    StringUtils.hasText(renderedMessage) ? renderedMessage : message};
+        } catch (RuntimeException ignored) {
+            return new String[]{title, message};
+        }
+    }
+
+    private static String renderWording(String text, Map<String, String> values) {
+        if (!StringUtils.hasText(text)) return text;
+        String result = text;
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            result = result.replace("{{" + entry.getKey() + "}}", entry.getValue());
+            result = result.replace("{" + entry.getKey() + "}", entry.getValue());
+        }
+        return result;
     }
 
     private NotificationUserResponse toUserResponse(UserAccount user) {

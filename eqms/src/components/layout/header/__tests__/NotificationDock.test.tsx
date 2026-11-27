@@ -165,6 +165,32 @@ describe('Pinning the notification list to the side', () => {
 });
 
 describe('The tabs of the notification list are filters of the server', () => {
+  it('keeps the frame, controls and list region mounted while the new tab loads and becomes empty', async () => {
+    render(<Layout />);
+    fireEvent.click(bell());
+    await screen.findByText('Notice 1');
+    const frame = screen.getByRole('dialog', { name: 'Notifications' });
+    const list = within(frame).getByRole('tabpanel');
+    const heading = within(frame).getByRole('heading', { name: 'Notifications' });
+    const footer = within(frame).getByRole('button', { name: 'View all' });
+    let resolveList!: (answer: ReturnType<typeof page>) => void;
+    api.getNotifications.mockImplementationOnce(() => new Promise((resolve) => { resolveList = resolve; }));
+
+    fireEvent.click(within(frame).getByRole('tab', { name: /^Unread/ }));
+    await waitFor(() => expect(list).toHaveAttribute('aria-busy', 'true'));
+    expect(screen.getByRole('dialog', { name: 'Notifications' })).toBe(frame);
+    expect(within(frame).getByRole('heading', { name: 'Notifications' })).toBe(heading);
+    expect(within(frame).getByRole('button', { name: 'View all' })).toBe(footer);
+    expect(within(frame).getByRole('button', { name: 'Notification settings' })).toBeEnabled();
+    expect(within(frame).queryByText('Notice 1')).toBeNull();
+
+    await act(async () => resolveList(page(0)));
+    await within(frame).findByText('Nothing unread');
+    expect(within(frame).getByRole('tabpanel')).toBe(list);
+    expect(list).toHaveAttribute('aria-busy', 'false');
+    expect(within(frame).getByRole('button', { name: 'View all' })).toBe(footer);
+  });
+
   it('asks the server for the unread ones instead of cutting the eight that were loaded, and offers All and Unread only', async () => {
     render(<Layout />);
     fireEvent.click(bell());

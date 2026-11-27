@@ -615,7 +615,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ isOpen, onClose, item, isEdit
   const sectionTitleClass = "text-xs font-semibold text-slate-500 uppercase tracking-wider pt-2 first:pt-0";
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={`${isEdit ? "Edit" : "New"} School`} isLoading={isSaving} size="lg">
+    <FormModal isOpen={isOpen} onClose={onClose} dirty={dirty} onConfirm={handleSubmit} title={isEdit ? tr("Edit School") : tr("New School")} isLoading={isSaving} size="lg">
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
         <p className={sectionTitleClass}>{tr("Basic Information")}</p>
         <div>

@@ -790,7 +790,7 @@ const SubTypeModal: React.FC<SubTypeModalProps> = ({
       dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "Add New"} Sub-Type`}
+      title={isEdit ? tr("Edit Sub-Type") : tr("New Sub-Type")}
       isLoading={isSaving}
       size="lg"
     >

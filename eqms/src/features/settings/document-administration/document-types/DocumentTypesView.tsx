@@ -659,7 +659,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
       dirty={dirty}
       onClose={onClose}
       onConfirm={handleSubmit}
-      title={`${isEdit ? "Edit" : "New"} Document Type`}
+      title={isEdit ? tr("Edit Document Type") : tr("New Document Type")}
       isLoading={isSaving}
       size="lg"
     >

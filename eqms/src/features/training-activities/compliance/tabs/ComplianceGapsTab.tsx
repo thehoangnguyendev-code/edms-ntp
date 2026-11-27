@@ -10,14 +10,16 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { TablePagination } from "@/components/ui/table/TablePagination";
-import { Select } from "@/components/ui/select/Select";
+import { Info } from "lucide-react";
+import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
+import { ComplianceFilterFields } from "../components/ComplianceFilterFields";
 import { usePrintAction, type RegisterPrint } from "../usePrintAction";
 import { TrainingChips } from "../components/TrainingChips";
 import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
-import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
+import type { ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
 import { trainingActivitiesApi, trainingComplianceApi, trainingError, type TrainingGap, type TrainingGapTrainings, type TrainingPlannedSession } from "@/services/api/trainingActivities";
 import { day, localized, saveBlob } from "@/features/training-activities/shared/trainingLabels";
 import { tr, trFormat } from "@/i18n";
@@ -26,13 +28,13 @@ import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 const STATUS_LABEL: Record<string, string> = localized({ MISSING: "Not trained", UPDATE_NEEDED: "New revision not trained", DUE: "Annual training due", OK: "Trained" });
 const STATUS_COLOR = statusColors("MISSING", "UPDATE_NEEDED", "DUE", "OK") as Record<string, BadgeColor>;
-/** One total of the gaps with its colour bar on the left, the same figure style as the Summary tab. */
+/** A compact total; values and severity still come from the existing server summary. */
 function GapStat({ value, label, tone }: { value: number; label: string; tone: "red" | "amber" | "slate" }) {
-  const bar = { red: "border-red-600", amber: "border-amber-500", slate: "border-slate-300" }[tone];
+  const color = { red: "text-red-700", amber: "text-amber-700", slate: "text-slate-900" }[tone];
   return (
-    <div className={`min-w-0 border-l-[3px] pl-3 ${bar}`}>
-      <div className="text-2xl font-semibold leading-none tabular-nums text-slate-900 md:text-3xl">{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{label}</div>
+    <div className="flex min-w-0 items-baseline gap-2">
+      <span className={`shrink-0 text-xl font-semibold tabular-nums ${color}`}>{value}</span>
+      <span className="text-xs text-slate-600">{label}</span>
     </div>
   );
 }
@@ -162,31 +164,51 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
 
   return (
     <div className="space-y-4">
-      <div className="w-full lg:w-72"><Select label={departmentFilter.label} value={departmentFilter.value} options={departmentFilter.options} onChange={(v) => departmentFilter.onChange(String(v))} /></div>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      <div className="space-y-4 md:space-y-5">
       {trainings && trainings.data.length > 0 && (
-        <>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
-            <GapStat value={trainings.data.length} label={tr("Required training with a gap")} tone="slate" />
-            <GapStat value={totalMissing} label={tr("not trained")} tone={totalMissing > 0 ? "red" : "slate"} />
-            <GapStat value={totalUpdate} label={tr("new revision not trained")} tone={totalUpdate > 0 ? "amber" : "slate"} />
-            <GapStat value={totalDue} label={tr("annual training due")} tone={totalDue > 0 ? "amber" : "slate"} />
-          </div>
-          <TrainingChips
-            ariaLabel={tr("Required training with a gap")}
-            allLabel={tr("All required trainings")}
-            allCount={trainings.data.length}
-            selectedId={rowId}
-            onSelect={chooseTraining}
-            items={trainings.data.map((t) => ({ id: t.id, name: `${t.code ? `${t.code} ` : ""}${t.title}`, count: t.people, tone: t.missing > 0 ? "bad" : "warn" }))}
-          />
-        </>
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <GapStat value={trainings.data.length} label={tr("Required training with a gap")} tone="slate" />
+          <GapStat value={totalMissing} label={tr("not trained")} tone={totalMissing > 0 ? "red" : "slate"} />
+          <GapStat value={totalUpdate} label={tr("new revision not trained")} tone={totalUpdate > 0 ? "amber" : "slate"} />
+          <GapStat value={totalDue} label={tr("annual training due")} tone={totalDue > 0 ? "amber" : "slate"} />
+        </div>
       )}
+      <ComplianceFilterFields
+        departmentFilter={departmentFilter}
+        searchPlaceholder={tr("Search employee or training…")}
+        search={table.searchQuery}
+        onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
+        filters={filters}
+      />
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        {trainings && trainings.data.length > 0 && (
+          <div className="min-w-0 flex-1 [&_button]:min-h-11 md:[&_button]:min-h-0">
+            <TrainingChips
+              ariaLabel={tr("Required training with a gap")}
+              allLabel={tr("All required trainings")}
+              allCount={trainings.data.length}
+              selectedId={rowId}
+              onSelect={chooseTraining}
+              items={trainings.data.map((t) => ({ id: t.id, name: `${t.code ? `${t.code} ` : ""}${t.title}`, count: t.people, tone: t.missing > 0 ? "bad" : "warn" }))}
+            />
+          </div>
+        )}
+        <div className="flex shrink-0 items-center gap-2 sm:ml-auto [&_button]:min-h-11 md:[&_button]:min-h-9">
+          <ClearFiltersButton className="h-11 md:h-9" onClearSearch={() => table.setSearchQuery("")} onClear={() => { setStatus(""); setFresh(""); table.setSearchQuery(""); table.setCurrentPage(1); }} />
+          {control}
+        </div>
+      </div>
       {trainingNow && <p className="text-sm text-slate-500">{trFormat("{count} people have a gap", { count: trainingNow.people })}</p>}
-      <p className="text-xs text-slate-600">
-              <Badge color="blue">{tr("New employee")}</Badge> {tr("started in the last days that Training Properties allows.")} <Badge color="amber">{tr("No Work Position")}</Badge> {tr("has no Work Position yet: only the trainings for all employees apply until a job assignment gives one.")}
-      </p>
+      <details className="group text-xs text-slate-600">
+        <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:min-h-9 [&::-webkit-details-marker]:hidden">
+          <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {tr("New employee")} / {tr("No Work Position")}
+        </summary>
+        <div className="mt-2 space-y-2 rounded-lg bg-slate-50 p-3 leading-relaxed">
+          <p><Badge color="blue">{tr("New employee")}</Badge> {tr("started in the last days that Training Properties allows.")}</p>
+          <p><Badge color="amber">{tr("No Work Position")}</Badge> {tr("has no Work Position yet: only the trainings for all employees apply until a job assignment gives one.")}</p>
+        </div>
+      </details>
       {canOrganize && chosen.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
                 <span>{trFormat("{count} lines chosen", { count: chosen.length })}{sameTraining ? "" : tr(". Choose people who miss the same training to add them to a training.")}</span>
@@ -196,18 +218,6 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
           </span>
         </div>
       )}
-      <ReportListToolbar
-        searchPlaceholder={tr("Search employee or training…")}
-        search={table.searchQuery}
-        onSearch={(v) => { table.setSearchQuery(v); table.setCurrentPage(1); }}
-        filters={filters}
-        dates={[]}
-        hasActiveFilters={Boolean(status || fresh || table.searchQuery)}
-        onClear={() => { setStatus(""); setFresh(""); table.setSearchQuery(""); table.setCurrentPage(1); }}
-        customControl={control}
-        framed={false}
-        flush
-      >
         <DataTable
           rows={table.items}
           getRowKey={(g) => rowKey(g)}
@@ -223,8 +233,6 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
             ) : undefined
           }
         />
-      </ReportListToolbar>
-      </div>
 
       <FormModal isOpen={adding} onClose={() => setAdding(false)} onConfirm={() => setAdding(false)} confirmText="Close" size="xl" title={chosen[0] ? `Add to a training: ${chosen[0].title}` : "Add to a training"}
         description={`${new Set(chosen.map((g) => g.pid)).size} people miss this training. Add them to a planned training (the list is not confirmed yet), or start a new training for them. Quality Assurance gives the training number of the initial and periodic training.`}>

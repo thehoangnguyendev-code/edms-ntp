@@ -64,6 +64,17 @@ public class NotificationTranslationService {
         if (english == null || english.getId() == null || recipientId == null) return english;
         try {
             if (!preferences.findById(recipientId).map(p -> VIETNAMESE.equalsIgnoreCase(p.getLanguage())).orElse(false)) return english;
+            return forLanguage(english, VIETNAMESE);
+        } catch (RuntimeException failure) {
+            org.slf4j.LoggerFactory.getLogger(NotificationTranslationService.class).warn("The translation of version {} was not read; the English wording is sent", english.getId(), failure);
+            return english;
+        }
+    }
+
+    /** The wording of one language for a stored English version; English itself when the language is not Vietnamese or no translation exists. */
+    public NotificationTemplateVersion forLanguage(NotificationTemplateVersion english, String language) {
+        if (english == null || english.getId() == null || !VIETNAMESE.equalsIgnoreCase(language)) return english;
+        try {
             Map<String, Object> row = jdbc.queryForList("select title, summary, subject, body, action_label from notification_template_translations where base_version_id = ? and language = ? and status = 'ACTIVE'",
                     english.getId(), VIETNAMESE).stream().findFirst().orElse(null);
             if (row == null) return english;
@@ -81,7 +92,7 @@ public class NotificationTranslationService {
             translated.setActionUrlTemplate(english.getActionUrlTemplate());
             return translated;
         } catch (RuntimeException failure) {
-            org.slf4j.LoggerFactory.getLogger(NotificationTranslationService.class).warn("The translation of version {} was not read; the English wording is sent", english.getId(), failure);
+            org.slf4j.LoggerFactory.getLogger(NotificationTranslationService.class).warn("The translation of version {} was not read; the English wording is used", english.getId(), failure);
             return english;
         }
     }
