@@ -65,7 +65,7 @@ Ký hiệu: **QL** = người có `training.job_assignment.manage` trong bộ ph
 | **Quay lại** | Về danh sách (hỏi nếu có thay đổi chưa lưu) | Mọi người xem được | Luôn hiện | Bất cứ lúc nào |
 | **Lưu bản nháp** | Lưu nội dung đã sửa | QL | Trạng thái **Bản nháp**. **Mờ** cho tới khi bạn sửa gì đó | Sau khi sửa, trước khi ký |
 | **Yêu cầu ngoại lệ** | Xin giao việc dù nhân viên **chưa đủ đào tạo** theo ma trận (hoặc bộ phận chưa có ma trận hiệu lực). Nhập lý do và chọn người duyệt | QL | **Bản nháp**, và ngoại lệ **chưa được duyệt** | Khi Ma trận chưa đủ mà phải giao ngay |
-| **Hoàn tất phê duyệt** | Người duyệt ký xác nhận ngoại lệ | **Chỉ người được chọn** làm người duyệt ngoại lệ (không phải người đề nghị, không phải nhân viên) | **Bản nháp**, và đang có một yêu cầu ngoại lệ gán cho bạn | Sau khi có yêu cầu ngoại lệ |
+| **Hoàn tất phê duyệt** | Người duyệt ký xác nhận ngoại lệ | **Chỉ người được chọn** làm người duyệt, có quyền `training.job_assignment.exception.approve`, **không phải người tạo phân công**, không phải nhân viên | **Bản nháp**, và đang có một yêu cầu ngoại lệ gán cho bạn | Sau khi có yêu cầu ngoại lệ |
 | **Ký và gửi** | Người giao việc ký, chuyển sang **Chờ nhân viên chấp nhận**, nhân viên nhận thông báo | QL, **không phải chính nhân viên đó** | **Bản nháp**. **Mờ** khi còn thay đổi chưa lưu | Khi nội dung xong. Máy chủ chặn nếu chưa có nhiệm vụ nào, hoặc ma trận chưa đủ mà chưa có ngoại lệ được duyệt |
 | **Chấp nhận** | Nhân viên ký nhận. Phân công thành **Hiệu lực** và vị trí của người được ghi cho ma trận | **Chỉ NV** | **Chờ nhân viên chấp nhận** | Sau khi đọc phân công |
 | **In để ký** | In bản giấy APD.0024 để hai bên ký tay | QL | **Bản nháp** hoặc **Chờ nhân viên chấp nhận** (cùng điều kiện với nút Huỷ) | Khi ký trên giấy. Có hỏi lý do in |
@@ -228,6 +228,22 @@ Hai bước ký tách hai người để người chuẩn bị không tự duy�
 1. **Chữ ký mẫu (5.3.9):** SOP yêu cầu duyệt trước khi áp dụng chữ ký mới; hệ thống áp dụng ngay khi tải lên (xem mục 5). Bước duyệt là việc ngoài hệ thống hay làm trong hệ thống?
 2. **Chuyển địa điểm (5.3.11):** hệ thống chưa mô hình nhiều cơ sở, mới đáp ứng **một phần**.
 3. **Gửi file mềm hồ sơ cho đơn vị quản lý (5.3.10):** hệ thống tạo tệp, **không tự gửi**; việc gửi do người làm.
+
+## 11b. Kiểm phân quyền nút của Phân công công việc (2026-11-27, DEV)
+
+**Cách kiểm:** đọc chính sách trong cơ sở dữ liệu DEV; đăng nhập 4 tài khoản, đọc nút máy chủ trả về cho 2 phân công **Bản nháp**, rồi gọi thẳng API bằng dữ liệu cố ý sai (không thể làm thay đổi bản ghi).
+
+| Tài khoản | Nút máy chủ cho thấy | Gọi thẳng API |
+|---|---|---|
+| `admin`, `approver.test1`, `user.a.test` (có đủ quyền đào tạo, mọi bộ phận) | Lưu, Yêu cầu ngoại lệ, Ký và gửi, Huỷ | Được qua cổng quyền (bị chặn vì dữ liệu sai). Duyệt ngoại lệ: **403** vì không được chỉ định |
+| `dco.test1` (chỉ quyền xem, là **người được giao** của một bản nháp) | Không nút nào | Mọi hành động **403**. Xem được phân công của mình; phân công bộ phận khác **403** |
+
+**Chưa kiểm khi chạy:** trạng thái Chờ chấp nhận, Hiệu lực; người được chỉ định duyệt ngoại lệ; người có quyền chỉ trong một bộ phận; các màn khác ngoài Phân công.
+
+**Điểm tìm thấy (đọc từ mã, chưa tái hiện trên DEV vì chưa có dữ liệu):**
+1. **Nút "Yêu cầu ngoại lệ" vẫn hiện sau khi ngoại lệ đã được duyệt.** Máy chủ tính điều kiện "chưa được duyệt" nhưng kết quả của bộ máy chính sách **ghi đè** lên nó (`TrainingJobAssignmentService.withEngine`), và chính sách không biết điều kiện này. Máy chủ cũng không chặn: yêu cầu lại sẽ **xoá phê duyệt đã ký** (cột người duyệt và chữ ký của phân công bị đặt lại; chữ ký điện tử và Audit Trail vẫn còn).
+2. **Người được giao mà có quyền quản lý vẫn sửa, huỷ, yêu cầu ngoại lệ cho phân công của chính mình.** Chính sách chỉ cấm họ ở "Ký và gửi" và "Duyệt ngoại lệ". Cần QA quyết định.
+3. **"In để ký"** hiển thị theo chính sách của nút Huỷ, còn máy chủ kiểm quyền quản lý trực tiếp, không qua chính sách. Hiện trùng nhau; đổi chính sách Huỷ thì hai bên có thể lệch.
 
 ## 12. Gợi ý thứ tự test cho QA
 

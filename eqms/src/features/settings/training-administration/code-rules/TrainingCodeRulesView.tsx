@@ -37,13 +37,13 @@ const NOTE: Record<TrainingCodeRule["entity"], string> = {
 
 const ENTITY_OPTIONS = [
   { label: "All", value: "" },
-  { label: tr("Training Requirement"), value: "REQUIREMENT" },
-  { label: tr("Training Matrix"), value: "MATRIX" },
-  { label: tr("Training Assessment"), value: "ASSESSMENT" },
+  { get label() { return tr("Training Requirement"); }, value: "REQUIREMENT" },
+  { get label() { return tr("Training Matrix"); }, value: "MATRIX" },
+  { get label() { return tr("Training Assessment"); }, value: "ASSESSMENT" },
 ];
 const CHANGED_OPTIONS = [
   { label: "All", value: "" },
-  { label: tr("Default Rule"), value: "DEFAULT" },
+  { get label() { return tr("Default Rule"); }, value: "DEFAULT" },
   { label: "Changed", value: "CHANGED" },
 ];
 

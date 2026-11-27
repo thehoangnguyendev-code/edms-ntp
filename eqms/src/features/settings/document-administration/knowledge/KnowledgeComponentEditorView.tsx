@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -78,7 +79,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
   const { go, modal: leaveModal } = useLeaveGuard(dirty, "Knowledge Category Component", "the previous page");
   const goBack = () => {
     if (navState?.returnTo) go(navState.returnTo, { state: { draft: navState.draft } });
-    else go(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS);
+    else navigateBack(go, location.state, ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_COMPONENTS);
   };
 
   const sourceLabel = sources.find((s) => s.value === sourceField)?.label;
@@ -156,7 +157,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
               <div>
                 <label className={labelClass}>{tr("Source Field")}</label>
                 <input className={CONTROL_STATE_CLASSES.readonlyField} value={component?.sourceLabel ?? ""} disabled readOnly />
-                <p className="text-xs text-slate-500 mt-1.5">{tr("The source field of a component cannot be changed.")}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("The source field of a component cannot be changed.")}</p>
               </div>
             )}
           </div>
@@ -167,7 +168,7 @@ export const KnowledgeComponentEditorView: React.FC = () => {
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
             />
             {isNew && sourceField && (
-              <p className="text-xs text-slate-500 mt-1.5">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {sources.find((s) => s.value === sourceField)?.determinatorEligible
                   ? `"${sourceLabel}" can be used both as a Knowledge Base determinator and as a level.`
                   : `"${sourceLabel}" can be used as a level only.`}

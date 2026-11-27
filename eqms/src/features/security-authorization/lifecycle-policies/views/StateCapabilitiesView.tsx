@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
@@ -61,20 +62,20 @@ export const StateCapabilitiesView: React.FC<{ embedded?: boolean }> = ({ embedd
   const [deleteTarget, setDeleteTarget] = useState<LifecycleStatePolicy | null>(null);
 
   // Server-side query state.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("StateCapabilitiesView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [capabilityFilter, setCapabilityFilter] = useState("ALL");
-  const [scopeFilter, setScopeFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [activeFilter, setActiveFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("capability");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [capabilityFilter, setCapabilityFilter] = useViewState("StateCapabilitiesView.capabilityFilter", "ALL");
+  const [scopeFilter, setScopeFilter] = useViewState("StateCapabilitiesView.scopeFilter", "ALL");
+  const [typeFilter, setTypeFilter] = useViewState("StateCapabilitiesView.typeFilter", "ALL");
+  const [activeFilter, setActiveFilter] = useViewState("StateCapabilitiesView.activeFilter", "ALL");
+  const [createdFrom, setCreatedFrom] = useViewState("StateCapabilitiesView.createdFrom", "");
+  const [createdTo, setCreatedTo] = useViewState("StateCapabilitiesView.createdTo", "");
+  const [updatedFrom, setUpdatedFrom] = useViewState("StateCapabilitiesView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("StateCapabilitiesView.updatedTo", "");
+  const [sortKey, setSortKey] = useViewState("StateCapabilitiesView.sortKey", "capability");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("StateCapabilitiesView.sortDir", "asc");
+  const [currentPage, setCurrentPage] = useViewState("StateCapabilitiesView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("StateCapabilitiesView.itemsPerPage", 10);
 
   const [options, setOptions] = useState<LifecycleStatePolicyOptions | null>(null);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);

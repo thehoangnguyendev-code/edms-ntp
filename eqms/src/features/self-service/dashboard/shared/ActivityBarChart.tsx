@@ -1,4 +1,4 @@
-import { trFormat as __ariaTrFormat } from "@/i18n";
+import { trFormat as __ariaTrFormat, getCatalogLanguage } from "@/i18n";
 import React, { memo, useMemo } from 'react';
 import type { ChartConfiguration } from 'chart.js';
 import { ChartCanvas, barValueLabels, emphasize } from '@/components/ui/chart';
@@ -83,7 +83,7 @@ const ActivityBarChartBase: React.FC<ActivityBarChartProps> = ({ data, color, va
       },
       plugins: showValues ? [barValueLabels as never] : [],
     };
-  }, [data, color, colors, valueLabel, titleFor, shortLabel, tickEvery, showValues]);
+  }, [data, color, colors, valueLabel, titleFor, shortLabel, tickEvery, showValues, getCatalogLanguage()]);
 
   return (
     <LazyMount style={{ height }} className="px-2 pb-3 pt-2" placeholder={<div className="h-full animate-pulse rounded-lg bg-slate-50" aria-hidden />}>

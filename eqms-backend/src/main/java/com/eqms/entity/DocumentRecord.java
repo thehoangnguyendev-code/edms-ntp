@@ -111,6 +111,18 @@ public class DocumentRecord {
     @Column(name = "next_revision_configured_at")
     private java.time.Instant nextRevisionConfiguredAt;
 
+    /** The Author who was last asked to upload the first revision of this new document (notification document.author_assigned). */
+    @Column(name = "author_upload_notified_user_id")
+    private java.util.UUID authorUploadNotifiedUserId;
+
+    public java.util.UUID getAuthorUploadNotifiedUserId() {
+        return authorUploadNotifiedUserId;
+    }
+
+    public void setAuthorUploadNotifiedUserId(java.util.UUID authorUploadNotifiedUserId) {
+        this.authorUploadNotifiedUserId = authorUploadNotifiedUserId;
+    }
+
     @Column(name = "periodic_review_cycle")
     private Integer periodicReviewCycle;
 

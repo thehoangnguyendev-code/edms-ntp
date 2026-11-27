@@ -1,4 +1,4 @@
-import { tr as __ariaTr } from "@/i18n";
+import { tr as __ariaTr, getCatalogLanguage } from "@/i18n";
 import React, {
   useState,
   useEffect,
@@ -367,7 +367,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(
         }
         return applyNavigationLabels(filterNavByPermissions(QUALITY_NAV_CONFIG, user?.permissions ?? []), navigationLabels);
       },
-      [user?.permissions, authorizedNavigationIds, navigationLabels],
+      [user?.permissions, authorizedNavigationIds, navigationLabels, getCatalogLanguage()],
     );
 
     // Only the labels change with the language: ids, paths and permissions stay exactly as the server decided.

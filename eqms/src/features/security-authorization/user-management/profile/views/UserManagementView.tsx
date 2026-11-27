@@ -55,7 +55,7 @@ import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives
 import { CustomColumnDrawer, useStickyPinnedColumns, useTableColumnPreferences } from "@/components/ui/table";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBranding } from "@/components/branding/BrandLogo";
-import { useLanguage, tr } from "@/i18n";
+import { useLanguage, tr, getCatalogLanguage } from "@/i18n";
 import { statusColor } from "@/components/ui/badge/statusColors";
 
 // --- Main Component ---
@@ -136,7 +136,7 @@ export const UserManagementView: React.FC = () => {
   const customizableColumns = useMemo(() => [
     { id: "expand", label: "Expand", visible: true, order: 0, locked: true, pinned: true },
     ...DEFAULT_COLUMNS.map((column) => ({ ...column, order: column.order + 1, pinned: column.id === "no" ? true : column.pinned })),
-  ], []);
+  ], [getCatalogLanguage()]);
   const { columns, saveColumns, resetColumns } = useTableColumnPreferences("users.list", customizableColumns);
   // Pinning applies only to the desktop table; on mobile the table keeps its native touch scrolling.
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -274,13 +274,14 @@ export const UserManagementView: React.FC = () => {
     closeDropdown();
   };
 
-  const confirmSuspend = (reason: string, suspendedUntil: string, signatureToken: string) => {
+  const confirmSuspend = (reason: string, suspendedUntil: string, signatureToken: string, suspensionKind?: "LONG_LEAVE" | "OTHER") => {
     suspendUser(
       suspendModal.userId,
       suspendModal.userName,
       reason,
       suspendedUntil,
       signatureToken,
+      suspensionKind,
     );
     setSuspendModal({ isOpen: false, userId: "", userName: "" });
   };

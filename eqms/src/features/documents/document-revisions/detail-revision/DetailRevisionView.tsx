@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useViewState } from "@/hooks/useViewState";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/components/ui/utils";
 import { TabNav } from "@/components/ui/tabs/TabNav";
@@ -193,7 +194,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   initialTab = "general",
 }) => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { navigateTo, isNavigating: isRouteNavigating } =
     useNavigateWithLoading();
   const state = location.state as {
@@ -227,9 +228,7 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
   // authoritative so an older in-flight preview cannot clear or overwrite it.
   const previewRequestSequenceRef = useRef(0);
 
-  const [activeTab, setActiveTab] = useState<TabType>(
-    urlTab || initialTab || "general",
-  );
+  const [activeTab, setActiveTab] = useViewState<TabType>("DetailRevisionView.activeTab", urlTab || initialTab || "general", Boolean(urlTab));
 
   // Comments and edit history are tied to the PDF review workspace.  Keep its
   // action and panel out of non-document tabs so header and footer actions do
@@ -1198,7 +1197,12 @@ export const DetailRevisionView: React.FC<DetailRevisionViewProps> = ({
         <TabNav
           tabs={tabs}
           activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as TabType)}
+          onChange={(id) => {
+            setActiveTab(id as TabType);
+            const params = new URLSearchParams(searchParams);
+            params.set("tab", id);
+            setSearchParams(params, { replace: true });
+          }}
           layoutId="revision-detail-main-tab"
         />
 

@@ -442,7 +442,7 @@ public class RevisionBusinessRulesTest {
     }
 
     @Test
-    public void rejectApproval_shouldSendNotification_toWorkflowCoordinators() {
+    public void rejectApproval_shouldNotifyOnlyTheAuthor_throughTheRegistryEvent() {
         UUID revisionId = UUID.randomUUID();
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(revisionId);
@@ -458,17 +458,16 @@ public class RevisionBusinessRulesTest {
         participant.setUser(currentUser);
         participant.setActionStatus("PENDING");
 
-        UserAccount coordinator = new UserAccount();
-        coordinator.setId(UUID.randomUUID());
-        coordinator.setUsername("coordinator");
+        UserAccount author = new UserAccount();
+        author.setId(UUID.randomUUID());
+        author.setUsername("author");
+        revision.setAuthor(author);
 
         when(currentUserService.requireCurrentUser()).thenReturn(currentUser);
         lenient().when(revisionRepository.findById(revisionId)).thenReturn(Optional.of(revision));
         lenient().when(revisionRepository.findByIdForUpdate(revisionId)).thenReturn(Optional.of(revision));
         when(revisionWorkflowParticipantRepository.findByRevision_IdAndParticipantTypeAndUser_Id(revisionId, "APPROVER", currentUser.getId()))
                 .thenReturn(Optional.of(participant));
-        when(userAccountRepository.findAllByStatus(UserStatus.Active)).thenReturn(List.of(coordinator));
-        when(permissionEvaluationService.hasPermission(coordinator, "documents.workspace.manage")).thenReturn(true);
 
         RevisionStatusDefinition draftStatus = new RevisionStatusDefinition();
         draftStatus.setCode("DRAFT");
@@ -476,7 +475,9 @@ public class RevisionBusinessRulesTest {
 
         revisionService.rejectApproval(revisionId, new RevisionWorkflowActionRequest("reject reason", "comment", "valid_token"));
 
-        verify(emailNotificationService).sendDocumentWorkflowNotification(eq("document-approval-rejected"), anyCollection(), anyMap());
+        // DEC-DOC-2026-11-27-06: one registry notice, to the Author (and Co-Authors) only; not the old template, not the coordinators.
+        verify(emailNotificationService).sendDocumentWorkflowEvent(eq(List.of(author)), anyMap());
+        verify(emailNotificationService, never()).sendDocumentWorkflowNotification(eq("document-approval-rejected"), anyCollection(), anyMap());
     }
 
     @Test

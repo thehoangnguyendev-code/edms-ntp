@@ -15,6 +15,13 @@ class ModuleKeysTest {
         assertThat(ModuleKeys.same("DOCUMENT_CONTROL", "documents")).isTrue();
         assertThat(ModuleKeys.same("Backup & Restore", "BACKUP_RESTORE")).isTrue();
         assertThat(ModuleKeys.same("training", "documents")).isFalse();
+        // a sub-menu is part of the level-1 menu it is under
+        assertThat(ModuleKeys.same("CONTROLLED_COPIES", "documents")).isTrue();
+        assertThat(ModuleKeys.same("ACCESS_REVIEW", "security")).isTrue();
+        assertThat(ModuleKeys.same("KNOWLEDGE", "self_service")).isTrue();
+        assertThat(ModuleKeys.same("System", "system-admin")).isTrue();
+        assertThat(DisplayLabels.module("SYSTEM")).isEqualTo("System Administration");
+        assertThat(ModuleKeys.menuNameSql("x.module")).contains("then 'System Administration'", "else coalesce(x.module, '') end)");
         assertThat(ModuleKeys.same(null, "")).isTrue();
         assertThat(ModuleKeys.same(null, "documents")).isFalse();
     }

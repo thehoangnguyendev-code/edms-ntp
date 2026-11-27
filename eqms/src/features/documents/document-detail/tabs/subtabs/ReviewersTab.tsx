@@ -10,7 +10,7 @@ import { metadataApi } from "@/services/api/metadata";
 import { Reviewer } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, useLanguage } from "@/i18n";
 
 interface AppUser {
     id: string;
@@ -38,6 +38,7 @@ interface UserSelectionModalProps {
 }
 
 const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose, onConfirm, existingIds }) => {
+    const { tLabel } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [selectedUsersById, setSelectedUsersById] = useState<Record<string, AppUser>>({});
@@ -112,9 +113,9 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             isOpen={isOpen}
             onClose={onClose}
             onConfirm={handleSave}
-            title={tr("Setup Reviewers")}
-            description={tr("Select users who will review this document.")}
-            confirmText={`${tr("Update Reviewers")} (${selectedIds.length})`}
+            title={tLabel("Setup Reviewers")}
+            description={tLabel("Select users who will review this document.")}
+            confirmText={`${tLabel("Update Reviewers")} (${selectedIds.length})`}
             confirmDisabled={selectedIds.length === 0}
             size="lg"
         >

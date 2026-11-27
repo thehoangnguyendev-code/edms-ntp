@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { AlertModal } from "@/components/ui/modal/AlertModal";
@@ -42,11 +43,11 @@ export const AccessProfileAssignedUsersTab: React.FC<{
   const [assignedMeta, setAssignedMeta] = useState<Map<string, UserRow>>(new Map());
   const [original, setOriginal] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AccessProfileAssignedUsersTab.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [searchResults, setSearchResults] = useState<UserRow[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("AccessProfileAssignedUsersTab.page", 1);
   const [limit, setLimit] = useState(10);
   const [rowsPage, setRowsPage] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);

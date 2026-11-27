@@ -9,9 +9,9 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 type View = "test" | "key" | "both";
 
 const TABS: TabItem[] = [
-  { id: "test", label: tr("Test Paper") },
-  { id: "key", label: tr("Answer Key") },
-  { id: "both", label: tr("Side by Side") },
+  { id: "test", get label() { return tr("Test Paper"); } },
+  { id: "key", get label() { return tr("Answer Key"); } },
+  { id: "both", get label() { return tr("Side by Side"); } },
 ];
 /** A phone is too narrow for two pages beside each other: it has the two papers as tabs, without Side by Side. */
 const PHONE_TABS = TABS.filter((t) => t.id !== "both");

@@ -29,7 +29,7 @@ const COLUMNS: FlatColumn<DashboardPendingWorkflowAction>[] = [
   { key: 'document', header: 'Document', render: (task) => <NameCell name={task.documentName} caption={`${task.documentNumber} · Revision ${task.revisionNumber}`} /> },
   { key: 'task', header: 'Task', className: 'w-28', render: (task) => <Badge color={TASK_LABEL[task.taskType].color} size="sm">{TASK_LABEL[task.taskType].label}</Badge> },
   { key: 'status', header: 'Status', className: 'w-40 whitespace-nowrap', render: (task) => STATUS_LABEL[task.status] ?? task.status },
-  { key: 'created', header: tr('Revision created'), className: 'w-40 whitespace-nowrap', render: (task) => <span title={formatDate(task.createdAt)}>{formatAge(ageInDays(task.createdAt))}</span> },
+  { key: 'created', get header() { return tr('Revision created'); }, className: 'w-40 whitespace-nowrap', render: (task) => <span title={formatDate(task.createdAt)}>{formatAge(ageInDays(task.createdAt))}</span> },
 ];
 
 interface PendingWorkPanelProps {

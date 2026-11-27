@@ -124,7 +124,7 @@ public class ControlledCopyReportMetadataProvider implements ReportMetadataProvi
         ReportQueryKit.and(sql, args, visibility.controlledCopies(actor, "cc"));
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (cc.controlled_copy_number ilike ? escape '\\' or cc.document_number ilike ? escape '\\' or cc.document_title ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(cc.controlled_copy_number) like eqms_fold(?) escape '\\' or eqms_fold(cc.document_number) like eqms_fold(?) escape '\\' or eqms_fold(cc.document_title) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             args.add(term); args.add(term); args.add(term);
         }

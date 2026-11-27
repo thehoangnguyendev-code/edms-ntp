@@ -1182,14 +1182,14 @@ public class ControlledCopyService {
                 Join<ControlledCopyDistributionBatch, UserAccount> requestedBy = root.join("requestedBy", JoinType.LEFT);
                 Join<ControlledCopyDistributionBatch, UserAccount> distributedBy = root.join("distributedBy", JoinType.LEFT);
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("batchNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentTitle")), pattern),
-                        cb.like(cb.lower(root.get("revisionNumber")), pattern),
-                        cb.like(cb.lower(root.get("distributionList")), pattern),
-                        cb.like(cb.lower(root.get("location")), pattern),
-                        cb.like(cb.lower(requestedBy.get("fullName")), pattern),
-                        cb.like(cb.lower(distributedBy.get("fullName")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("batchNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentTitle"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("revisionNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("distributionList"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("location"), pattern),
+                        com.eqms.util.SearchText.like(cb, requestedBy.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, distributedBy.get("fullName"), pattern)
                 ));
             }
             if (StringUtils.hasText(status) && !"all".equalsIgnoreCase(status.trim())) {
@@ -2723,7 +2723,7 @@ public class ControlledCopyService {
     }
 
     private boolean contains(String value, String pattern) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(pattern);
+        return com.eqms.util.SearchText.containsFolded(value, pattern);
     }
 
     /** The CONTENT of the copy (issued PDF, evidence files): the recipient and the view-everything holders. */
@@ -2931,20 +2931,20 @@ public class ControlledCopyService {
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("controlledCopyNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentTitle")), pattern),
-                        cb.like(cb.lower(root.get("revisionNumber")), pattern),
-                        cb.like(cb.lower(root.get("distributionList")), pattern),
-                        cb.like(cb.lower(root.get("location")), pattern),
-                        cb.like(cb.lower(root.get("recipientName")), pattern),
-                        cb.like(cb.lower(root.get("departmentName")), pattern),
-                        cb.like(cb.lower(requestedByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(printedByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(distributedByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(recalledByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(destroyedByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(documentJoin.get("documentName")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("controlledCopyNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentTitle"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("revisionNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("distributionList"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("location"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("recipientName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("departmentName"), pattern),
+                        com.eqms.util.SearchText.like(cb, requestedByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, printedByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, distributedByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, recalledByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, destroyedByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, documentJoin.get("documentName"), pattern)
                 ));
             }
 
@@ -4930,6 +4930,14 @@ public class ControlledCopyService {
             }
             if (copy.getPrintedBy() != null) {
                 recipients.add(copy.getPrintedBy());
+            }
+
+            // DEC-DOC-2026-11-27-11: for these actions the people told are the holder of the copy (below) and the person who asked for it, nobody else who touched it.
+            if (java.util.Set.of("RECALL", "DESTROY", "CANCEL", "OBSOLETE").contains(normalize(action).toUpperCase(Locale.ROOT))) {
+                recipients = new ArrayList<>();
+                if (copy.getRequestedBy() != null) {
+                    recipients.add(copy.getRequestedBy());
+                }
             }
 
             // CANCEL is only ever possible while a copy is still Ready for Distribution (see

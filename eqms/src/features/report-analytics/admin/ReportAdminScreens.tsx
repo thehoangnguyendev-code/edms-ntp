@@ -126,7 +126,7 @@ export const ReportRetentionView: React.FC = () => {
 const DELIVERY_STATUS = {
   SENT: { label: "Sent", color: "emerald" },
   FAILED: { label: "Failed", color: "red" },
-  SKIPPED_NOT_AUTHORIZED: { label: tr("Skipped: not authorized"), color: "amber" },
+  SKIPPED_NOT_AUTHORIZED: { get label() { return tr("Skipped: not authorized"); }, color: "amber" },
 } as const;
 const DELIVERY_EVENT = { REPORT_READY: "Report ready", REPORT_SCHEDULE_SUSPENDED: "Schedule suspended" } as const;
 

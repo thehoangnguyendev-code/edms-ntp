@@ -109,9 +109,9 @@ public class AuditTrailReportMetadataProvider implements ReportMetadataProvider 
         if (search.length() > 200) throw new IllegalArgumentException("REPORT_SEARCH_TOO_LONG");
         if (!search.isBlank()) {
             String term = "%" + search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            sql.append(" and (al.entity_type ilike ? escape '\\' or al.action_type ilike ? escape '\\' or al.comment ilike ? escape '\\'"
-                    + " or al.entity_name ilike ? escape '\\' or al.entity_code ilike ? escape '\\' or al.document_number ilike ? escape '\\'"
-                    + " or coalesce(al.user_full_name, u.full_name) ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(al.entity_type) like eqms_fold(?) escape '\\' or eqms_fold(al.action_type) like eqms_fold(?) escape '\\' or eqms_fold(al.comment) like eqms_fold(?) escape '\\'"
+                    + " or eqms_fold(al.entity_name) like eqms_fold(?) escape '\\' or eqms_fold(al.entity_code) like eqms_fold(?) escape '\\' or eqms_fold(al.document_number) like eqms_fold(?) escape '\\'"
+                    + " or eqms_fold(coalesce(al.user_full_name, u.full_name)) like eqms_fold(?) escape '\\')");
             for (int i = 0; i < 7; i++) args.add(term);
         }
         for (String field : List.of("module", "action")) {

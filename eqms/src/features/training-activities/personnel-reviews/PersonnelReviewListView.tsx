@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePortalDropdown } from "@/hooks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { TablePagination } from "@/components/ui/table/TablePagination";
 import { DataTable, useCustomColumnLayout, type DataTableAction, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
-import { FullPageLoading, SectionLoading } from "@/components/ui/loading/Loading";
 import { PortalDropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown";
 import type { PortalDropdownMenuProps } from "@/components/ui/dropdown/PortalDropdownMenu";
 import { IconCircleOff, IconInfoCircle, IconPlus, IconX } from "@tabler/icons-react";
@@ -17,11 +16,13 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { useToast } from "@/components/ui/toast/Toast";
 import { ReportListToolbar, type ReportSelectFilter } from "@/features/report/shared/ReportListToolbar";
-import { trainingError, trainingReviewsApi, type TrainingPersonnelReviewSummary, type TrainingReviewSuggestion } from "@/services/api/trainingActivities";
+import { trainingError, trainingPersonnelEventsApi, trainingReviewsApi, type TrainingPersonnelReviewSummary } from "@/services/api/trainingActivities";
 import { Textarea } from "../shared/TrainingFields";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { day, trainingBreadcrumbs, TRAINING_PAGES, when } from "../shared/trainingLabels";
 import { resettingDates } from "../shared/useListFilters";
+import { PersonnelAlertsTab } from "./PersonnelAlertsTab";
+import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
 import { NewPersonnelReviewModal, emptyReviewForm, type NewReviewForm } from "./NewPersonnelReviewModal";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_COLOR, REVIEW_STATUS_FILTER_LABEL, REVIEW_STATUS_LABEL } from "./personnelReviewLabels";
 import { usePersonnelReviewServerTable } from "./usePersonnelReviewServerTable";
@@ -59,6 +60,7 @@ const RowMenu: React.FC<RowMenuProps> = ({ onView, onCancel, canCancel, isOpen, 
  */
 export const PersonnelReviewListView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { showToast } = useToast();
   const canManage = hasPermission("training.job_assignment.manage");
@@ -67,7 +69,11 @@ export const PersonnelReviewListView: React.FC = () => {
   const [newReviewKey, setNewReviewKey] = useState(0);
   const [newReviewForm, setNewReviewForm] = useState<NewReviewForm>(emptyReviewForm);
   const [newReviewPeople, setNewReviewPeople] = useState<{ label: string; value: string }[]>([]);
-  const [suggestions, setSuggestions] = useState<TrainingReviewSuggestion[]>([]);
+  // Only an initial visit chooses Alerts automatically; Back restores the tab in the URL.
+  const [alertCount, setAlertCount] = useState<number>();
+  const selectedTab = searchParams.get("tab");
+  const tab = selectedTab === "reviews" || selectedTab === "alerts" ? selectedTab : alertCount && alertCount > 0 ? "alerts" : "reviews";
+  useEffect(() => { trainingPersonnelEventsApi.count().then(setAlertCount).catch(() => undefined); }, []);
   const [cancelling, setCancelling] = useState<TrainingPersonnelReviewSummary>();
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelSaving, setIsCancelSaving] = useState(false);
@@ -96,15 +102,12 @@ export const PersonnelReviewListView: React.FC = () => {
     handleSort,
     clearFilters,
     hasActiveFilters,
-    waitingNode,
+    closerFilter,
+    setCloserFilter,
+    closerOptions,
   } = usePersonnelReviewServerTable();
 
-  useEffect(() => {
-    if (canManage) trainingReviewsApi.suggestions().then(setSuggestions).catch(() => setSuggestions([]));
-  }, [canManage]);
-
-  const isInitialLoading = isLoading && reviews.length === 0;
-  const isTableLoading = isLoading && reviews.length > 0;
+  const tabs: TabItem[] = [{ id: "alerts", label: tr("Alerts"), count: alertCount }, { id: "reviews", label: tr("Reviews"), count: totalItems }];
 
   const openNewReview = (form: NewReviewForm, people: { label: string; value: string }[] = []) => {
     setNewReviewForm(form);
@@ -112,14 +115,13 @@ export const PersonnelReviewListView: React.FC = () => {
     setNewReviewKey((key) => key + 1);
     setIsNewReviewOpen(true);
   };
-  // A new employee found in the user profiles opens the dialog already filled in.
-  const startReviewFor = (suggestion: TrainingReviewSuggestion) =>
-    openNewReview(
-      { ...emptyReviewForm, kind: "NEW_HIRE", personId: suggestion.id, eventDate: suggestion.startDate.slice(0, 10) },
-      [{ label: `${suggestion.fullName}${suggestion.employeeCode ? ` (${suggestion.employeeCode})` : ""}`, value: suggestion.id }],
-    );
-
-  const navigateToReview = (reviewId: string) => navigate(`/training-management/personnel-reviews/${reviewId}`);
+  const navigateToReview = (reviewId: string) => {
+    const returnParams = new URLSearchParams(searchParams);
+    returnParams.set("tab", tab);
+    navigate(`/training-management/personnel-reviews/${reviewId}`, {
+      state: { from: `/training-management/personnel-reviews?${returnParams}` },
+    });
+  };
 
   // Cancelling an open review needs a reason that stays on record; the server checks the permission and the person again.
   const handleCancelReview = async () => {
@@ -151,7 +153,7 @@ export const PersonnelReviewListView: React.FC = () => {
     { id: "eventDate", header: tr("Event Date"), label: tr("Event Date"), sort: { direction: sortConfig.key === "eventDate" ? sortConfig.direction : undefined, onSort: () => handleSort("eventDate") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (review) => day(review.eventDate) },
     { id: "department", header: "Department", label: "Department", sort: { direction: sortConfig.key === "department" ? sortConfig.direction : undefined, onSort: () => handleSort("department") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.department || "-" },
     { id: "status", header: "Status", label: "Status", sort: { direction: sortConfig.key === "status" ? sortConfig.direction : undefined, onSort: () => handleSort("status") }, cell: (review) => (review.status === "OPEN" && review.openItems === 0 ? <Badge color="blue" size="sm">{tr("Ready to close")}</Badge> : <Badge color={REVIEW_STATUS_COLOR[review.status]} size="sm">{REVIEW_STATUS_LABEL[review.status]}</Badge>) },
-    { id: "closer", header: "Closer", label: "Closer", cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => (review.status === "OPEN" ? review.closerName || "-" : "-") },
+    { id: "closer", header: "Closer", label: "Closer", cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => (review.status === "OPEN" ? review.closerName || "-" : review.status === "CLOSED" ? review.closedByName || "-" : "-") },
     { id: "openItems", header: tr("Items to do"), label: tr("Items to do"), sort: { direction: sortConfig.key === "openItems" ? sortConfig.direction : undefined, onSort: () => handleSort("openItems") }, cell: (review) => (review.status === "OPEN" ? review.openItems : "-") },
     { id: "openedBy", header: "Opened By", label: "Opened By", sort: { direction: sortConfig.key === "createdBy" ? sortConfig.direction : undefined, onSort: () => handleSort("createdBy") }, cellClassName: "text-slate-700 whitespace-nowrap", cell: (review) => review.createdByName || "-" },
     { id: "created", header: "Created", label: "Created", sort: { direction: sortConfig.key === "createdAt" ? sortConfig.direction : undefined, onSort: () => handleSort("createdAt") }, cellClassName: "text-slate-600 whitespace-nowrap", cell: (review) => when(review.createdAt) },
@@ -185,42 +187,67 @@ export const PersonnelReviewListView: React.FC = () => {
     { id: "kind", label: "Event", value: kindFilter, options: [{ label: "All", value: "" }, ...Object.entries(REVIEW_KIND_LABEL).map(([value, label]) => ({ label, value }))], onChange: setKindFilter },
     { id: "status", label: "Status", value: statusFilter, options: [{ label: "All", value: "" }, ...Object.entries(REVIEW_STATUS_FILTER_LABEL).map(([value, label]) => ({ label, value }))], onChange: setStatusFilter },
     { id: "department", label: "Department", value: departmentFilter, options: [{ label: "All", value: "" }, ...departmentOptions], onChange: setDepartmentFilter },
+    { id: "closer", label: "Closer", value: closerFilter, options: [{ label: "All", value: "" }, ...closerOptions], onChange: setCloserFilter },
   ];
 
   return (
-    <div className="flex flex-col h-full gap-4 md:gap-6">
-      {isInitialLoading && <FullPageLoading text="Loading reviews..." />}
-
+    <div className="flex min-w-0 flex-col gap-4 md:gap-6">
       <PageHeader
         title={TRAINING_PAGES.reviews.title}
         breadcrumbItems={trainingBreadcrumbs(navigate, "reviews")}
         actions={
           canManage ? (
-            <Button onClick={() => openNewReview(emptyReviewForm)} size="sm" className="whitespace-nowrap gap-2">
-              <IconPlus className="h-4 w-4" />
-              {tr("New Review")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => openNewReview(emptyReviewForm)} size="sm" className="whitespace-nowrap gap-2">
+                <IconPlus className="h-4 w-4" />
+                {tr("New Review")}
+              </Button>
+            </div>
           ) : undefined
         }
       />
 
-      {suggestions.length > 0 && (
-        <section aria-label={tr("New employees without a review")} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-900">
-            {trFormat("{count} new employees started in the last 60 days and have no initial training review.", { count: suggestions.length })}
-          </p>
-          <p className="mt-1 text-xs text-amber-800">{tr("The start date comes from the user profile. This is a reminder, not a rule: open the review when it applies.")}</p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.id}>
-                <Button size="sm" variant="outline" onClick={() => startReviewFor(suggestion)}>
-                        {suggestion.fullName} · {tr("started")} {day(suggestion.startDate)} · {tr("Open review")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <TabNav tabs={tabs} activeTab={tab} onChange={(id) => {
+          const params = new URLSearchParams(searchParams);
+          params.set("tab", id);
+          setSearchParams(params, { replace: true });
+        }} variant="underline" ariaLabel={tr("Training reviews")} tabIdPrefix="reviews-tab" panelIdPrefix="reviews-panel" />
+        <div id={`reviews-panel-${tab}`} role="tabpanel" aria-labelledby={`reviews-tab-${tab}`} className="min-w-0">
+          {tab === "alerts" && <PersonnelAlertsTab canManage={canManage} onOpenReview={openNewReview} onCount={setAlertCount} />}
+          {tab === "reviews" && (
+            <>
+              {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+              <ReportListToolbar
+                framed={false}
+                searchPlaceholder={tr("Search employee…")}
+                search={searchQuery}
+                onSearch={setSearchQuery}
+                filters={filters}
+                dates={resettingDates([eventRange.filter, openedRange.filter], () => setCurrentPage(1))}
+                hasActiveFilters={hasActiveFilters}
+                onClear={clearFilters}
+                customControl={reviewControl}
+              >
+                <DataTable
+                  rows={reviews}
+                  getRowKey={(review) => review.id}
+                  columns={reviewLayout.columns}
+                  columnLayout={reviewLayout}
+                  action={reviewsAction}
+                  isLoading={isLoading}
+                  emptyState={<TableEmptyState title={tr("No Reviews Found")} description={tr("Open a review when a new employee joins, a person returns after a long absence, or a person transfers.")} />}
+                  pagination={
+                    totalItems > 0 ? (
+                      <TablePagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+                    ) : undefined
+                  }
+                />
+              </ReportListToolbar>
+            </>
+          )}
+        </div>
+      </div>
 
       <FormModal
         isOpen={!!cancelling}
@@ -240,57 +267,6 @@ export const PersonnelReviewListView: React.FC = () => {
       </FormModal>
 
       <NewPersonnelReviewModal key={newReviewKey} isOpen={isNewReviewOpen} onClose={() => setIsNewReviewOpen(false)} initialForm={newReviewForm} initialPeople={newReviewPeople} />
-
-      {waitingNode}
-      <ReportListToolbar
-        searchPlaceholder={tr("Search employee…")}
-        search={searchQuery}
-        onSearch={setSearchQuery}
-        filters={filters}
-        dates={resettingDates([eventRange.filter, openedRange.filter], () => setCurrentPage(1))}
-        hasActiveFilters={hasActiveFilters}
-        onClear={clearFilters}
-        customControl={reviewControl}
-      >
-        <div className="flex-1 flex flex-col relative">
-          {isTableLoading && (
-            <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-[4px] flex items-center justify-center transition-all duration-300 rounded-xl">
-              <SectionLoading text="Searching..." minHeight="150px" />
-            </div>
-          )}
-
-          <DataTable
-            rows={reviews}
-            getRowKey={(review) => review.id}
-            columns={reviewLayout.columns}
-            columnLayout={reviewLayout}
-            action={reviewsAction}
-            isLoading={isLoading}
-            emptyState={
-              <TableEmptyState
-                title={error ? tr("Unable to load reviews") : tr("No Reviews Found")}
-                description={error || tr("Open a review when a new employee joins, a person returns after a long absence, or a person transfers.")}
-              />
-            }
-            pagination={
-              totalItems > 0 ? (
-                <div className="border-t border-slate-200">
-                  <TablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    isLoading={isTableLoading}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={setItemsPerPage}
-                    itemsPerPageOptions={[10, 20, 50]}
-                  />
-                </div>
-              ) : undefined
-            }
-          />
-        </div>
-      </ReportListToolbar>
     </div>
   );
 };

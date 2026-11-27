@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { AnimatePresence, motion } from "framer-motion";
 import { EXPAND_CONTENT_MOTION, useExpandTransition } from "@/components/ui/table/expandMotion";
@@ -223,7 +224,7 @@ export function TrainingAssessmentDetailPage({
   // A new assessment has no record yet, so the server gives the stepper of a new one; a saved one carries its own.
   const newWorkflow = useServerWorkflow(isNew ? "training:ASSESSMENT" : null, () => trainingWorkflowApi.newRecord("ASSESSMENT"));
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useViewState("TrainingAssessmentDetailPage.tab", "overview");
   const [head, setHead] = useState<{
     name: string;
     kind: AssessmentKind;
@@ -1170,7 +1171,7 @@ export function TrainingAssessmentDetailPage({
                 </FormField>
               )}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="!mt-1.5 text-xs text-slate-500">
               {checklist
                 ? tr("A checklist has no score: each line is ticked Correct or Incorrect, and the person passes only when every line is as the key says.")
                 : tr("Changing the Total Score shares it among the questions, in proportion to their points (see the tab Questions); changing the points of a question changes the total. An essay is marked by hand on the paper and the total score is typed in the Results step.")}{" "}

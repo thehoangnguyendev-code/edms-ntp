@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { downloadTableExport } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
@@ -226,7 +227,13 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
   </PortalDropdownMenu>
 );
 
-export const AuditTrailView: React.FC = () => {
+/**
+ * The All Records screen. With {@code userId} it is the same screen for one account (the Audit Trail tab of the User Profile): the user is fixed and not offered as a
+ * filter, the address of the page is not touched, and the choices it keeps are its own, not those of the Audit Trail menu.
+ */
+export const AuditTrailView: React.FC<{ userId?: string }> = ({ userId }) => {
+  const embedded = Boolean(userId);
+  const viewKey = (name: string) => (userId ? `UserProfileAudit.${userId}.${name}` : `AuditTrailView.${name}`);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -245,26 +252,27 @@ export const AuditTrailView: React.FC = () => {
     { label: string; value: string }[]
   >([{ label: "All", value: "" }]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState(viewKey("searchQuery"), "");
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [actionFilter, setActionFilter] = useState<string>("All");
-  const [userFilter, setUserFilter] = useState("");
+  const [actionFilter, setActionFilter] = useViewState<string>(viewKey("actionFilter"), "All");
+  const [chosenUser, setUserFilter] = useViewState(viewKey("userFilter"), "");
+  const userFilter = userId ?? chosenUser;
   /** One object whose whole history is shown (from the link on a record's detail); the code is the words the chip shows. */
-  const [entityFilter, setEntityFilter] = useState<{ id: string; code: string } | null>(null);
-  const [eSignatureFilter, setESignatureFilter] = useState<
+  const [entityFilter, setEntityFilter] = useViewState<{ id: string; code: string } | null>(viewKey("entityFilter"), null);
+  const [eSignatureFilter, setESignatureFilter] = useViewState<
     "All" | "Yes" | "No"
-  >("All");
+  >(viewKey("eSignatureFilter"), "All");
   const defaultDateRange = useMemo(() => getDefaultAuditTrailDateRange(), []);
-  const [dateFrom, setDateFrom] = useState(defaultDateRange.startDate);
-  const [dateTo, setDateTo] = useState(defaultDateRange.endDate);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [dateFrom, setDateFrom] = useViewState(viewKey("dateFrom"), defaultDateRange.startDate);
+  const [dateTo, setDateTo] = useViewState(viewKey("dateTo"), defaultDateRange.endDate);
+  const [currentPage, setCurrentPage] = useViewState(viewKey("currentPage"), 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState(viewKey("itemsPerPage"), 10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{
+  const [sortConfig, setSortConfig] = useViewState<{
     key: "timestamp" | "user" | "module" | "action" | "entityId";
     direction: "asc" | "desc";
-  }>({ key: "timestamp", direction: "desc" });
+  }>(viewKey("sortConfig"), { key: "timestamp", direction: "desc" });
   const pendingPageResetRef = useRef(false);
 
   const {
@@ -281,6 +289,7 @@ export const AuditTrailView: React.FC = () => {
   );
 
   useLayoutEffect(() => {
+    if (embedded) return;
     const defaults = getDefaultAuditTrailDateRange();
     setSearchQuery(searchParams.get("search") ?? "");
     setActionFilter(searchParams.get("action") ?? "All");
@@ -300,7 +309,7 @@ export const AuditTrailView: React.FC = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (searchQuery !== debouncedSearchQuery) return;
+    if (embedded || searchQuery !== debouncedSearchQuery) return;
     const params = new URLSearchParams();
     if (debouncedSearchQuery.trim()) params.set("search", debouncedSearchQuery.trim());
     if (actionFilter !== "All") params.set("action", actionFilter);
@@ -357,6 +366,7 @@ export const AuditTrailView: React.FC = () => {
   }, [location.key]);
 
   useEffect(() => {
+    if (embedded) return;
     let alive = true;
     setIsUserOptionsLoading(true);
 
@@ -381,7 +391,7 @@ export const AuditTrailView: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
+  useViewFilterChange(() => {
     if (currentPage !== 1) {
       pendingPageResetRef.current = true;
       setCurrentPage(1);
@@ -481,24 +491,33 @@ export const AuditTrailView: React.FC = () => {
 
   return (
     <div className="flex h-full flex-col gap-4 md:gap-6">
-      {(isNavigating || isInitialLoading) && (
+      {(isNavigating || (isInitialLoading && !embedded)) && (
         <FullPageLoading text="Loading..." />
       )}
 
-      <PageHeader
-        title={tr("All Records")}
-        breadcrumbItems={auditTrail(navigate)}
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsBulkExportESignOpen(true)}
-          >
+      {embedded ? (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setIsBulkExportESignOpen(true)}>
             <Download className="mr-2 h-4 w-4" />
             {tr("Export")}
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title={tr("All Records")}
+          breadcrumbItems={auditTrail(navigate)}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBulkExportESignOpen(true)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {tr("Export")}
+            </Button>
+          }
+        />
+      )}
 
       {loadError && !isLoading && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -562,14 +581,14 @@ export const AuditTrailView: React.FC = () => {
       options: actionOptions,
       onChange: (value) => setActionFilter(String(value)),
     },
-    {
+    ...(embedded ? [] : [{
       id: "userFilter",
       label: "User",
       value: String(userFilter),
       options: userOptions,
-      onChange: (value) => setUserFilter(String(value)),
+      onChange: (value: string | number) => setUserFilter(String(value)),
       loading: isUserOptionsLoading,
-    },
+    }]),
     {
       id: "eSignatureFilter",
       label: tr("E-Signature"),
@@ -639,17 +658,19 @@ export const AuditTrailView: React.FC = () => {
               />
             </div>
 
-            <div className="w-full">
-              <Select
-                label={tr("User")}
-                value={userFilter}
-                onChange={(value) => setUserFilter(String(value))}
-                options={userOptions}
-                placeholder={tr("All")}
-                isLoading={isUserOptionsLoading}
-                loadingText="Loading users..."
-              />
-            </div>
+            {!embedded && (
+              <div className="w-full">
+                <Select
+                  label={tr("User")}
+                  value={userFilter}
+                  onChange={(value) => setUserFilter(String(value))}
+                  options={userOptions}
+                  placeholder={tr("All")}
+                  isLoading={isUserOptionsLoading}
+                  loadingText="Loading users..."
+                />
+              </div>
+            )}
 
             <div className="w-full">
               <Select
@@ -1047,7 +1068,7 @@ export const AuditTrailView: React.FC = () => {
           </div>
         </FilterAccordionItem>
 
-        <FilterAccordionItem
+        {!embedded && <FilterAccordionItem
           label={tr("User")}
           isExpanded={expandedSections.has("user")}
           onToggle={() => toggleSection("user")}
@@ -1071,7 +1092,7 @@ export const AuditTrailView: React.FC = () => {
               ))
             )}
           </div>
-        </FilterAccordionItem>
+        </FilterAccordionItem>}
 
         <FilterAccordionItem
           label={tr("E-Signature")}

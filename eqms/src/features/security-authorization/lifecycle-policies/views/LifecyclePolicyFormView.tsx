@@ -207,7 +207,7 @@ function initTransitionForm(
 const POLICY_LAYOUT_TABS: readonly TabItem[] = [
   { id: "sentence", label: "Sentence", icon: TextCursorInput },
   { id: "steps", label: "Steps", icon: ListOrdered },
-      { id: "matrix", label: tr("Matrix"), icon: Grid3x3 },
+      { id: "matrix", get label() { return tr("Matrix"); }, icon: Grid3x3 },
   { id: "templates", label: "Templates", icon: LayoutTemplate },
 ];
 const POLICY_LAYOUT_KEY = "eqms.policy-form.layout";
@@ -994,7 +994,7 @@ const PolicyRelationsSection: React.FC<{
           options={relationOptions}
           enableSearch
         />
-        <p className="text-xs text-slate-500">{tr("An actor who holds any of these relations on the record is refused, even with the permission (for example the author of a version cannot approve it).")}</p>
+        <p className="-mt-2.5 text-xs text-slate-500">{tr("An actor who holds any of these relations on the record is refused, even with the permission (for example the author of a version cannot approve it).")}</p>
         <div>
           <Button
             size="sm"

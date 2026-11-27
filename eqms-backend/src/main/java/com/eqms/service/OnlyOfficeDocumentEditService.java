@@ -167,6 +167,10 @@ public class OnlyOfficeDocumentEditService {
             customization.set("review", review);
         }
         if (mode == EditMode.VIEW) {
+            // Without this the viewer shows the text as it was BEFORE the tracked changes. A reviewer or approver must see the changes (DEC-DOC-2026-11-27-04).
+            String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
+            boolean working = "DRAFT".equals(status) || "PENDING_REVIEW".equals(status) || "PENDING_APPROVAL".equals(status);
+            customization.putObject("review").put("reviewDisplay", working ? "markup" : "final");
             // Which parts of OnlyOffice's toolbar the read-only viewer shows is an admin setting
             // (Settings > Configuration > OnlyOffice > Document viewer toolbar).
             applyViewerOptions(customization, configurationService.getViewerOptions());
@@ -247,6 +251,107 @@ public class OnlyOfficeDocumentEditService {
         rootConfig.set("editorConfig", editorConfigNode);
         rootConfig.put("token", signConfig(rootConfig, config.jwtSecret()));
         return rootConfig;
+    }
+
+    /**
+     * The stored-file viewer of a comparison: the same read-only config (no edit, comment, download or print, same watermark) with the tracked changes shown as markup.
+     */
+    public ObjectNode buildComparisonViewConfig(String purpose, UUID fileId, String sha256, UUID baselineId, String fileName, UserAccount currentUser) {
+        ObjectNode rootConfig = buildStoredFileViewConfig(purpose, fileId, sha256, fileName, currentUser);
+        // The viewer's fetch has to say which revision the comparison is against.
+        ObjectNode document = (ObjectNode) rootConfig.get("document");
+        // ... and which comparison was announced, so a file saved in between is refused instead of shown under the old title.
+        document.put("url", document.get("url").asText() + "&baseline=" + baselineId + "&comparison=" + sha256);
+        ObjectNode customization = (ObjectNode) rootConfig.get("editorConfig").get("customization");
+        customization.putObject("review").put("reviewDisplay", "markup");
+        rootConfig.remove("token");
+        rootConfig.put("token", signConfig(rootConfig, configurationService.getEffectiveConfiguration().jwtSecret()));
+        return rootConfig;
+    }
+
+    /**
+     * One pane of the side-by-side comparison: the read-only stored-file viewer of one revision. Its key is made of the purpose, that revision and its content, so the two
+     * panes and the editing session never share a Document Server session. {@code query} says to the fetch which content is expected.
+     */
+    public ObjectNode buildSidePaneConfig(String purpose, UUID revisionId, String sha256, String query, boolean showMarkup, String fileName, UserAccount currentUser) {
+        ObjectNode rootConfig = buildStoredFileViewConfig(purpose, revisionId, sha256, fileName, currentUser);
+        ObjectNode document = (ObjectNode) rootConfig.get("document");
+        document.put("url", document.get("url").asText() + query);
+        ObjectNode customization = (ObjectNode) rootConfig.get("editorConfig").get("customization");
+        customization.putObject("review").put("reviewDisplay", showMarkup ? "markup" : "final");
+        // Fit to width: panes of equal width then show the same page at the same size.
+        customization.put("zoom", -2);
+        customization.put("compactToolbar", true);
+        customization.put("hideRightMenu", true);
+        rootConfig.remove("token");
+        rootConfig.put("token", signConfig(rootConfig, configurationService.getEffectiveConfiguration().jwtSecret()));
+        return rootConfig;
+    }
+
+    /**
+     * Asks the Document Server's builder service to write, as a Word file, what {@code currentFile} changed against {@code baseFile} (tracked changes on top of the base).
+     * The script and both files are fetched through the same short-lived {@code /onlyoffice/local-file} tokens the PDF conversion uses.
+     */
+    public byte[] compareDocuments(java.nio.file.Path baseFile, java.nio.file.Path currentFile) {
+        OnlyOfficeConfigurationService.OnlyOfficeConfiguration config = configurationService.getEffectiveConfiguration();
+        if (!config.enabled() || !StringUtils.hasText(config.jwtSecret()) || !StringUtils.hasText(config.documentServerUrl())) {
+            throw new IllegalStateException("OnlyOffice Document Server is not configured");
+        }
+        java.nio.file.Path script = null;
+        try {
+            String fileUrl = config.callbackBaseUrl() + "/onlyoffice/local-file?token=";
+            script = java.nio.file.Files.createTempFile(baseFile.getParent(), "compare-", ".docbuilder");
+            java.nio.file.Files.writeString(script, String.join("\n",
+                    "builder.OpenFile(\"" + fileUrl + mintLocalFileToken(baseFile, config.jwtSecret()) + "\");",
+                    "var file = builderJS.OpenTmpFile(\"" + fileUrl + mintLocalFileToken(currentFile, config.jwtSecret()) + "\");",
+                    "AscCommonWord.CompareDocuments(Api, file);",
+                    "file.Close();",
+                    "builder.SaveFile(\"docx\", \"comparison.docx\");",
+                    "builder.CloseFile();", ""));
+
+            ObjectNode requestBody = objectMapper.createObjectNode();
+            requestBody.put("async", false);
+            requestBody.put("key", UUID.randomUUID().toString());
+            requestBody.put("url", fileUrl + mintLocalFileToken(script, config.jwtSecret()));
+            ObjectNode headerPayload = objectMapper.createObjectNode();
+            headerPayload.set("payload", requestBody.deepCopy());
+            requestBody.put("token", signConfig(requestBody, config.jwtSecret()));
+
+            HttpRequest request = HttpRequest.newBuilder(URI.create(trimTrailingSlash(config.documentServerUrl()) + "/docbuilder"))
+                    .timeout(Duration.ofMinutes(3))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .header("Authorization", "Bearer " + signConfig(headerPayload, config.jwtSecret()))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                throw new java.io.IOException("OnlyOffice document builder returned HTTP " + response.statusCode());
+            }
+            JsonNode result = objectMapper.readTree(response.body());
+            String resultUrl = result.path("urls").path("comparison.docx").asText(null);
+            if (result.path("error").asInt(0) != 0 || !StringUtils.hasText(resultUrl)) {
+                throw new java.io.IOException("OnlyOffice document builder reported error " + result.path("error").asInt());
+            }
+            byte[] comparison = downloadCallbackFile(resultUrl);
+            if (comparison.length == 0) {
+                throw new java.io.IOException("OnlyOffice document builder returned an empty file");
+            }
+            return comparison;
+        } catch (java.io.IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException("Failed to compare the documents via OnlyOffice", ex);
+        } finally {
+            if (script != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(script);
+                } catch (java.io.IOException ignored) {
+                    // a left-over temporary script holds only expiring tokens
+                }
+            }
+        }
     }
 
     /**
@@ -352,6 +457,13 @@ public class OnlyOfficeDocumentEditService {
             throw new IllegalStateException("OnlyOffice access token does not match this revision");
         }
         return UUID.fromString(claims.getSubject());
+    }
+
+    /** When the editing session of an access token already verified by {@link #verifyAccessToken} was opened (to the second). */
+    public Instant accessTokenIssuedAt(String token) {
+        SecretKey key = Keys.hmacShaKeyFor(configurationService.getEffectiveConfiguration().jwtSecret().getBytes(StandardCharsets.UTF_8));
+        Date issuedAt = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload().getIssuedAt();
+        return issuedAt == null ? Instant.EPOCH : issuedAt.toInstant();
     }
 
     /** Downloads the edited file OnlyOffice reports as ready in its save-callback payload. */

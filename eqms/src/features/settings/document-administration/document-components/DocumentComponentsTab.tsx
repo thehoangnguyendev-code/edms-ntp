@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -47,7 +48,7 @@ export const DocumentComponentsTab: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<DocumentComponentItem | null>(null);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+  const [statusFilter, setStatusFilter] = useViewState<"All" | "Active" | "Inactive">("DocumentComponentsTab.statusFilter", "All");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status"]));
   const { showToast } = useToast();
 

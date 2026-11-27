@@ -181,7 +181,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-600"><IconKey className="h-5 w-5" /></span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">{tr("JWT secret")}</p>
-            <p className="text-2xs text-slate-500 md:text-xs">
+            <p className="mt-1.5 text-xs text-slate-500">
               {hasStoredJwtSecret || onlyOfficeConfig.jwtSecretConfigured ? tr('A secret is saved.') : tr('No secret is saved.')}
               {secretChangedAt ? ` Last changed ${formatDateTime(secretChangedAt)}.` : ''}
             </p>
@@ -284,7 +284,7 @@ export const OnlyOfficeTab: React.FC<OnlyOfficeTabProps> = ({
                 placeholder="http://localhost:8082"
               />
               {renderFieldError('documentServerUrl')}
-              <p className="mt-1 text-xs text-slate-500">{tr("Matches the frontend's VITE_ONLYOFFICE_URL -- the address the browser loads the editor script from.")}</p>
+              <p className="mt-1.5 text-xs text-slate-500">{tr("Matches the frontend's VITE_ONLYOFFICE_URL -- the address the browser loads the editor script from.")}</p>
             </div>
             {secretCard}
             {unsaved && (

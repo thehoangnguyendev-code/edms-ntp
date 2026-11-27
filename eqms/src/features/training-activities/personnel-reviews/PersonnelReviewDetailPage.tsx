@@ -1,7 +1,8 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useCallback, useEffect, useState } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useNavigate, useParams } from "react-router-dom";
-import { FilePlus2, ScanSearch } from "lucide-react";
+import { ScanSearch } from "lucide-react";
 import { IconPencilMinus } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
 import { Button } from "@/components/ui/button/Button";
@@ -15,7 +16,7 @@ import { SectionLoading } from "@/components/ui/loading/Loading";
 import { useToast } from "@/components/ui/toast/Toast";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { AuditTrailTab } from "@/features/documents/shared/components/AuditTrailTab";
-import { trainingActivitiesApi, trainingError, trainingReviewsApi, type TrainingGap, type TrainingPersonMatrixGaps, type TrainingPersonnelReview, type TrainingReviewItem } from "@/services/api/trainingActivities";
+import { trainingError, trainingReviewsApi, type TrainingPersonnelReview, type TrainingReviewItem } from "@/services/api/trainingActivities";
 import { Textarea } from "../shared/TrainingFields";
 import { TrainingScannedTestsModal } from "../shared/TrainingScannedTestsModal";
 import { day, trainingBreadcrumbs, when, statusChange } from "../shared/trainingLabels";
@@ -26,12 +27,12 @@ import { trFormat, tr } from "@/i18n";
 import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL } from "./personnelReviewLabels";
 import { useTrainingBack } from "../shared/useTrainingBack";
 import { useTrainingRowMenu } from "../shared/useTrainingRowMenu";
+import { ClassDialog, JobRolesDialog, RetrainingDialog } from "./ReviewDialogs";
 
 const ITEM_STATUS = { PENDING: "Pending", DONE: "Done", NOT_NEEDED: "Not needed" } as const;
 const ITEM_COLOR = { PENDING: "amber", DONE: "emerald", NOT_NEEDED: "slate" } as const;
 const EVENT_DATE_LABEL: Record<string, string> = { NEW_HIRE: "Start Date", ABSENCE_RETURN: "Return Date", DEPT_TRANSFER: "Transfer Date", LOCATION_TRANSFER: "Transfer Date" };
-const GAP_LABEL: Record<string, string> = { MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" };
-const GAP_COLOR: Record<string, "red" | "amber" | "emerald"> = { MISSING: "red", DUE: "amber", OK: "emerald" };
+const GROUP_LABEL: Record<string, string> = { FACTORY_GENERAL: "Whole factory", DEPARTMENT_GENERAL: "Whole department", SOP: "Procedures of the position" };
 
 /** One training review of a person: the facts, the checklist of the SOP, and the signature that closes it. */
 export function PersonnelReviewDetailPage() {
@@ -40,11 +41,11 @@ export function PersonnelReviewDetailPage() {
   const goBack = useTrainingBack("/training-management/personnel-reviews");
   const { showToast } = useToast();
   const [review, setReview] = useState<TrainingPersonnelReview>();
-  const [gaps, setGaps] = useState<TrainingPersonMatrixGaps>();
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useViewState("PersonnelReviewDetailPage.tab", "overview");
   const [editing, setEditing] = useState<TrainingReviewItem>();
   const [scans, setScans] = useState<string>();
+  const [dialog, setDialog] = useState<"roles" | "retrain" | "class" | "">("");
   const [signing, setSigning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [changingCloser, setChangingCloser] = useState(false);
@@ -55,8 +56,6 @@ export function PersonnelReviewDetailPage() {
 
   const refetch = useCallback(() => { trainingReviewsApi.get(reviewId).then(setReview).catch((e) => setError(trainingError(e))); }, [reviewId]);
   useEffect(refetch, [refetch]);
-  // The gaps follow the record of the person, which changes when a training is completed elsewhere.
-  useEffect(() => { trainingReviewsApi.matrixGaps(reviewId).then(setGaps).catch(() => setGaps(undefined)); }, [reviewId, review?.items]);
   useEntityChanged(["TRAINING"], refetch);
   const run = useCallback(async (action: () => Promise<TrainingPersonnelReview>, done: string) => {
     setBusy(true);
@@ -72,25 +71,11 @@ export function PersonnelReviewDetailPage() {
     }
   }, [showToast]);
 
-  // Creates the training activity the item asks for, links it, and opens it to add the session and the list.
-  const startTraining = async (item: TrainingReviewItem) => {
-    setBusy(true);
-    try {
-      const next = await trainingReviewsApi.createTraining(reviewId, item.itemCode);
-      setReview(next);
-      navigate(`/training-management/activities/${next.createdActivityId}/edit`);
-    } catch (e) {
-      showToast({ type: "error", title: tr("The training was not created"), message: trainingError(e) });
-    } finally {
-      setBusy(false);
-    }
-  };
   const rows = (review?.items ?? []).map((item) => ({ ...item, id: item.itemCode }));
   const rowMenu = useTrainingRowMenu(rows, (i) => {
     const edit = Boolean(review?.capabilities.editItems);
     return [
       ...(edit ? [{ label: "Update", icon: <IconPencilMinus className="h-4 w-4" />, onClick: () => setEditing(i) }] : []),
-      ...(edit && i.canLink && !i.activityId && i.status === "PENDING" && !busy ? [{ label: "Create training", icon: <FilePlus2 className="h-4 w-4" />, onClick: () => void startTraining(i) }] : []),
       ...(i.activityId ? [{ label: "View scanned tests", icon: <ScanSearch className="h-4 w-4" />, onClick: () => setScans(i.activityId ?? undefined) }] : []),
     ];
   });
@@ -106,12 +91,22 @@ export function PersonnelReviewDetailPage() {
     );
   }
   const caps = review.capabilities;
-  const tabs: TabItem[] = [{ id: "overview", label: tr("General Information") }, { id: "checklist", label: "Checklist", count: review.items.length }, { id: "gaps", label: tr("Matrix Gaps"), count: gaps ? gaps.missing + gaps.due : undefined }, { id: "audit", label: tr("Audit Trail") }];
+  const tabs: TabItem[] = [{ id: "overview", label: tr("General Information") }, { id: "checklist", label: "Checklist", count: review.items.length }, { id: "audit", label: tr("Audit Trail") }];
   const columns: DataTableColumn<(typeof rows)[number]>[] = [
     { id: "no", header: "No.", locked: true, cell: (_i, n) => n + 1 },
-    { id: "item", header: "To do", cell: (i) => <div className="max-w-80 whitespace-normal"><div className="font-medium text-slate-900">{tr(i.label)}</div><div className="text-xs text-slate-500">{tr(i.hint)}</div></div> },
+    { id: "item", header: "To do", cell: (i) => <div className="max-w-80 whitespace-normal"><div className="font-medium text-slate-900">{tr(i.label)}</div>{i.hint && <div className="text-xs text-slate-500">{tr(i.hint)}</div>}{i.rowGroup && <div className="text-xs text-slate-400">{tr(GROUP_LABEL[i.rowGroup] ?? i.rowGroup)}</div>}</div> },
     { id: "status", header: "State", cell: (i) => <Badge color={ITEM_COLOR[i.status]}>{ITEM_STATUS[i.status]}</Badge> },
-    { id: "activity", header: "Training", cell: (i) => (i.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${i.activityId}`)}>{i.trainingNumber}</button> : i.canLink ? <span className="text-slate-400">{tr("not linked")}</span> : "—") },
+    { id: "activity", header: "Training", cell: (i) => (i.activityId ? <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => navigate(`/training-management/activities/${i.activityId}`)}>{i.trainingNumber}</button> : i.checkType === "TRAINING" ? <span className="text-slate-400">{tr("not linked")}</span> : "—") },
+    {
+      id: "lastTrained",
+      header: tr("Last trained"),
+      cell: (i) => (i.checkType !== "TRAINING" ? "—" : (
+        <div className="whitespace-nowrap">
+          <div>{day(i.lastDone)}</div>
+          {(i.requirementStatus === "UPDATE_NEEDED" || i.requirementStatus === "DUE") && <Badge color="amber" size="sm">{tr(i.requirementStatus === "DUE" ? "Annual training due" : "New revision not trained")}</Badge>}
+        </div>
+      )),
+    },
     {
       id: "system",
       header: tr("System check"),
@@ -136,13 +131,23 @@ export function PersonnelReviewDetailPage() {
       {caps.close && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setSigning(true)}>{tr("Close review")}</Button>}
       {caps.changeCloser && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setNewCloserId(""); void searchClosers(""); setChangingCloser(true); }}>{tr("Change Closer")}</Button>}
       {caps.cancel && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => { setReason(""); setCancelling(true); }}>{tr("Cancel")}</Button>}
+      {/* the commands of the checklist show on its tab only */}
+      {tab === "checklist" && caps.editItems && (
+        <>
+          {review.kind === "ABSENCE_RETURN" && <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("retrain")}>{tr("Choose training to repeat")}</Button>}
+          {review.kind !== "ABSENCE_RETURN" && review.items.some((i) => i.checkType === "TRAINING" && i.status === "PENDING" && !i.activityId) && (
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("class")}>{tr("Arrange training")}</Button>
+          )}
+          <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("roles")}>{tr("Change Job Role")}</Button>
+        </>
+      )}
     </>
   );
 
   return (
     <>
       <TrainingDetailLayout title={title} breadcrumbItems={crumbs} onBack={goBack} workflow={review.workflow}
-        tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
+        tabs={tabs} activeTab={tab} onTab={setTab} tabLayoutId="training-review-detail-tab" footer={footer} repeatFooterInHeader afterFooter={<TrainingPersonRelatedCard personId={review.personUserId} />}>
         {review.readyToClose && (
           <p role="status" className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">
             {tr("Every item is settled.")} {review.closerName ? trFormat("{name} must check the review and sign to close it.", { name: review.closerName }) : tr("A person who may close the review must check it and sign.")}
@@ -179,54 +184,20 @@ export function PersonnelReviewDetailPage() {
         )}
         {tab === "checklist" && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{tr("Each item is done by people, not by the system. Mark it done, or not needed with the reason, and link the training that was organised. The review is closed by someone other than the employee, with a signature, when no item is pending.")}</p>
-            <TabBlock title={tr("Checklist of the SOP")}>
+            <p className="text-sm text-slate-600">{tr("The training lines come from the matrix and are done when a training record exists; the specimen signature, job assignment and record handover are done when the system finds them. Only the other lines are marked by a person. Set a line aside with the reason when it is not needed. The review is closed by someone other than the employee, with a signature, when no line is pending.")}</p>
+            <TabBlock title={tr("Checklist")}>
               <DataTable rows={rows} getRowKey={(i) => i.id} columns={columns} action={rowMenu.action} />
             </TabBlock>
             {rowMenu.node}
-          </div>
-        )}
-        {tab === "gaps" && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              {trFormat("What the effective matrix of the department asks for the position of {name}, and where the person stands. Use it to decide the additional training (SOP.0003 5.3.11). It shows the record; the decision stays with the head of department and the assigned employee.", { name: review.fullName })}
-            </p>
-            {gaps === undefined ? <SectionLoading text="Loading the matrix…" /> : gaps.required === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 text-sm text-slate-600">
-                {tr("Nothing to compare: the person has no position set for training, or the department has no effective matrix yet.")}
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-                  <span className="text-slate-600">{tr("Work Position:")} <span className="font-medium text-slate-900">{gaps.positionName ?? "—"}</span></span>
-                  <span className="text-slate-600">{tr("Trained:")} <span className="font-semibold text-slate-900">{gaps.done}</span> {tr("of")} {gaps.required}</span>
-                  <span className="text-slate-600">{tr("Not trained:")} <span className="font-semibold text-red-700">{gaps.missing}</span></span>
-                  <span className="text-slate-600">{tr("Annual training due:")} <span className="font-semibold text-amber-700">{gaps.due}</span></span>
-                </div>
-                <TabBlock title={tr("Training of the matrix")}>
-                  <DataTable
-                    rows={gaps.gaps}
-                    getRowKey={(g, i) => `${g.code ?? ""}|${g.title}|${i}`}
-                    columns={[
-                      { id: "rowNo", header: "No.", locked: true, cell: (_g, i) => i + 1 },
-                      { id: "topic", header: tr("Required training"), cell: (g) => <div className="max-w-96 whitespace-normal">{g.code ? `${g.code} — ` : ""}{g.title}</div> },
-                      { id: "annual", header: "Annual", cell: (g) => (g.annualRequired ? tr("Yes") : tr("No")) },
-                      { id: "last", header: tr("Last trained"), cell: (g) => day(g.lastDone) },
-                      { id: "status", header: "Status", cell: (g) => <Badge color={GAP_COLOR[g.status]}>{GAP_LABEL[g.status]}</Badge> },
-                    ] as DataTableColumn<TrainingGap>[]}
-                  />
-                </TabBlock>
-              </>
-            )}
-            <div>
-              <Button size="sm" variant="default" onClick={() => navigate(`/training-management/records?search=${encodeURIComponent(review.employeeCode ?? review.fullName)}`)}>{tr("Open The Training Records Of This Person")}</Button>
-            </div>
           </div>
         )}
         {tab === "audit" && <AuditTrailTab entityId={review.id} entityType="TRAINING_PERSONNEL_REVIEW" />}
       </TrainingDetailLayout>
 
       {scans && <TrainingScannedTestsModal personId={review.personUserId} activityId={scans} onClose={() => setScans(undefined)} />}
+      {dialog === "roles" && <JobRolesDialog review={review} busy={busy} onClose={() => setDialog("")} onSave={async (ids) => { if (await run(() => trainingReviewsApi.setJobRoles(review.id, ids), tr("Job Roles saved"))) setDialog(""); }} />}
+      {dialog === "retrain" && <RetrainingDialog review={review} busy={busy} onClose={() => setDialog("")} onSave={async (keys) => { if (await run(() => trainingReviewsApi.setRetraining(review.id, keys), tr("Training to repeat saved"))) setDialog(""); }} />}
+      {dialog === "class" && <ClassDialog review={review} busy={busy} onClose={() => setDialog("")} onChanged={(next) => { setReview(next); setDialog(""); showToast({ type: "success", title: tr("Initial training class"), message: "" }); }} />}
       {editing && <ItemDialog item={editing} personName={review.fullName} busy={busy} onClose={() => setEditing(undefined)}
         onSave={async (body) => { if (await run(() => trainingReviewsApi.item(review.id, editing.itemCode, body), "Item updated")) setEditing(undefined); }} />}
       <FormModal isOpen={changingCloser} onClose={() => setChangingCloser(false)}
@@ -251,21 +222,11 @@ export function PersonnelReviewDetailPage() {
 function ItemDialog({ item, personName, busy, onClose, onSave }: { item: TrainingReviewItem; personName: string; busy: boolean; onClose: () => void; onSave: (body: { status: string; activityId?: string | null; note?: string | null }) => void }) {
   const [status, setStatus] = useState<string>(item.status);
   const [note, setNote] = useState(item.note ?? "");
-  const [activityId, setActivityId] = useState(item.activityId ?? "");
-  const [options, setOptions] = useState<{ label: string; value: string }[]>(item.activityId && item.trainingNumber ? [{ label: `${item.trainingNumber} — ${item.trainingTopics ?? ""}`, value: item.activityId }] : []);
-  const search = useCallback(async (query: string) => {
-    const page = await trainingActivitiesApi.list({ search: query, limit: 20, page: 1 }).catch(() => ({ data: [] }));
-    const mapped = page.data.map((a) => ({ label: `${a.trainingNumber} — ${a.trainingTopics}`, value: a.id }));
-    setOptions(mapped);
-    return mapped;
-  }, []);
-  useEffect(() => { if (item.canLink) void search(""); }, [item.canLink, search]);
   return (
-    <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status, activityId: item.canLink ? activityId || null : null, note: note.trim() || null })} title={tr(item.label)} description={`${trFormat("For {name}.", { name: personName })} ${tr(item.hint)}`}
+    <FormModal isOpen onClose={onClose} onConfirm={() => onSave({ status, note: note.trim() || null })} title={tr(item.label)} description={`${trFormat("For {name}.", { name: personName })} ${item.hint ? tr(item.hint) : ""}`}
       confirmText="Save" isLoading={busy} confirmDisabled={status === "NOT_NEEDED" && !note.trim()} size="xl">
       <div className="grid gap-4">
-        <FormField label={tr("State")} required><Select value={status} enableSearch={false} onChange={setStatus} options={Object.entries(ITEM_STATUS).map(([value, label]) => ({ value, label }))} /></FormField>
-        {item.canLink && <FormField label={tr("Training organised for it (the employee must be on its list)")}><Select value={activityId} onChange={setActivityId} options={options} onSearch={search} placeholder={tr("Search a training by number or title")} /></FormField>}
+        <FormField label={tr("State")} required><Select value={status} enableSearch={false} onChange={setStatus} options={Object.entries(ITEM_STATUS).filter(([value]) => value !== "DONE" || item.canMarkDone !== false).map(([value, label]) => ({ value, label }))} /></FormField>
         <FormField label={status === "NOT_NEEDED" ? tr("Reason it is not needed") : "Description"} required={status === "NOT_NEEDED"}><Textarea rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></FormField>
       </div>
     </FormModal>

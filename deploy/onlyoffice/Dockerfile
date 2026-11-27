@@ -20,3 +20,11 @@ RUN PLUGINS=/var/www/onlyoffice/documentserver/sdkjs-plugins \
     && rm -f "$DRAWIO_PAGE.gz" \
     && ! grep -q 'onlyoffice.github.io' "$DRAWIO_PAGE" \
     && chown -R ds:ds "$PLUGINS"
+
+# EQMS side-by-side comparison: a script that reports and moves the vertical scroll position of the editor when the EQMS page asks (see eqms-scroll-bridge.js). It uses
+# internal names of this version: the build fails if the editor page cannot be patched. nginx serves this page with gzip_static off, so its pre-compressed copy is not used.
+COPY eqms-scroll-bridge.js /var/www/onlyoffice/documentserver/web-apps/apps/documenteditor/main/eqms-scroll-bridge.js
+RUN PAGE=/var/www/onlyoffice/documentserver/web-apps/apps/documenteditor/main/index.html \
+    && sed -i 's#</body>#<script src="eqms-scroll-bridge.js?v=1"></script></body>#' "$PAGE" \
+    && grep -q 'eqms-scroll-bridge.js' "$PAGE" \
+    && chown ds:ds "$(dirname "$PAGE")/eqms-scroll-bridge.js" "$PAGE"

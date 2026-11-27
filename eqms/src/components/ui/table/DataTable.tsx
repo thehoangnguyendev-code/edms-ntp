@@ -119,6 +119,15 @@ const ACTION_HEADER_CLASS =
 const ACTION_CELL_CLASS =
   "sticky right-0 z-10 bg-white border-b border-slate-200 py-3 px-4 text-center whitespace-nowrap before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] group-hover:bg-slate-50 transition-colors";
 
+/** The row-number column: "No." or "STT" in any table. Its heading and cells are always centred, whatever a screen passed. */
+const ROW_NUMBER_IDS = new Set(["no", "stt", "index", "rowno", "row-no", "row_number", "row-number", "rownumber"]);
+const isRowNumberColumn = <T,>(column: DataTableColumn<T>) => {
+  const label = String(column.label ?? (typeof column.header === "string" ? column.header : "")).trim().toLowerCase();
+  return ROW_NUMBER_IDS.has(column.id.toLowerCase()) || label === "no" || label === "no." || label === "stt" || label === "#";
+};
+const numberColumnClass = <T,>(column: DataTableColumn<T>, classes?: string) =>
+  isRowNumberColumn(column) ? cn((classes ?? "").replace(/\btext-(left|right|center)\b/g, ""), "text-center") : classes;
+
 /** The detail row of a table whose `expandedRow.render` returns only the content: the row, its cell and the opening motion. */
 function ExpandedRowShell({ colSpan, children }: { colSpan: number; children: React.ReactNode }) {
   const transition = useExpandTransition();
@@ -167,7 +176,7 @@ export function useCustomColumnLayout<T>(
         pinned: false,
         locked: column.locked,
       })),
-    [columns],
+    [columns, getCatalogLanguage()],
   );
 
   const { columns: saved, saveColumns, resetColumns, changes } = useTableColumnPreferences(tableKey, defaults);
@@ -282,7 +291,10 @@ function DataTableRow<T>({ rowKey, row, index, columns, visibleSelection, select
           data-table-col={column.id}
           className={cn(
             CELL_CLASS,
-            typeof column.cellClassName === "function" ? column.cellClassName(row, index) : column.cellClassName,
+            numberColumnClass(
+              column,
+              typeof column.cellClassName === "function" ? column.cellClassName(row, index) : column.cellClassName,
+            ),
           )}
         >
           {column.cell(row, index)}
@@ -429,11 +441,11 @@ function DataTableBase<T>({
                       HEADER_CELL_CLASS,
                       column.sort &&
                         "cursor-pointer hover:bg-slate-100 transition-colors group",
-                      column.headerClassName,
+                      numberColumnClass(column, column.headerClassName),
                     )}
                   >
                     {column.sort ? (
-                      <div className="flex items-center justify-between gap-2 w-full">
+                      <div className={cn("flex items-center gap-2 w-full", isRowNumberColumn(column) ? "justify-center" : "justify-between")}>
                         <span className="truncate">{headerText(column.header)}</span>
                         <div className="flex flex-col text-slate-500 flex-shrink-0 group-hover:text-slate-700 transition-colors">
                           <ChevronUp

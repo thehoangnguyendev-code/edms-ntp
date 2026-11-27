@@ -57,6 +57,36 @@ public class OnlyOfficeController {
         this.trainingFiles = trainingFiles;
     }
 
+    private com.eqms.service.RevisionComparisonService revisionComparisons;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setRevisionComparisons(com.eqms.service.RevisionComparisonService revisionComparisons) {
+        this.revisionComparisons = revisionComparisons;
+    }
+
+    /** The document server's fetch of the comparison of a revision with the Effective one, to show in the read-only viewer. */
+    @GetMapping("/stored-file/revision-compare/{id}")
+    public ResponseEntity<byte[]> revisionComparison(@PathVariable UUID id, @RequestParam String token, @RequestParam(required = false) UUID baseline, @RequestParam(required = false) String comparison) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken(com.eqms.service.RevisionComparisonService.TOKEN_PURPOSE, id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(revisionComparisons.bytesForViewer(id, baseline, comparison));
+    }
+
+    /** One pane of the side-by-side comparison: the chosen revision (final text) or the revision being worked on. The token names the revision and the pane. */
+    @GetMapping("/stored-file/revision-side-final/{id}")
+    public ResponseEntity<byte[]> sideBySideBaseline(@PathVariable UUID id, @RequestParam String token, @RequestParam String content) throws Exception {
+        return sidePane(com.eqms.service.RevisionComparisonService.PANE_BASELINE_PURPOSE, id, token, content);
+    }
+
+    @GetMapping("/stored-file/revision-side-current/{id}")
+    public ResponseEntity<byte[]> sideBySideCurrent(@PathVariable UUID id, @RequestParam String token, @RequestParam String content) throws Exception {
+        return sidePane(com.eqms.service.RevisionComparisonService.PANE_CURRENT_PURPOSE, id, token, content);
+    }
+
+    private ResponseEntity<byte[]> sidePane(String purpose, UUID id, String token, String content) throws Exception {
+        onlyOfficeDocumentEditService.verifyStoredFileToken(purpose, id, token);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(revisionComparisons.paneBytes(id, purpose, content));
+    }
+
     /** The document server's fetch of a stored training file (a Word file) to show in the read-only viewer. */
     @GetMapping("/stored-file/training-material/{id}")
     public ResponseEntity<byte[]> trainingMaterial(@PathVariable UUID id, @RequestParam String token) throws Exception {

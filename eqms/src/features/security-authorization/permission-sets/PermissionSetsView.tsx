@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { downloadTableExport, type TableExportOptions } from '@/services/api/tableExport';
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -54,7 +55,7 @@ export const PermissionSetsView: React.FC = () => {
   const { compactDesktopFilters = false } = useBranding();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"sets" | "catalog">("sets");
+  const [activeTab, setActiveTab] = useViewState<"sets" | "catalog">("PermissionSetsView.activeTab", "sets");
   const { showToast } = useToast();
   const { requestSignature, signatureModal } = useSecurityESign();
   const { hasPermissionAlias } = usePermissions();

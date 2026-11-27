@@ -115,7 +115,7 @@ public class DocumentReportMetadataProvider implements ReportMetadataProvider {
         ReportQueryKit.and(sql, args, visibility.documents(actor, "d"));
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (d.document_number ilike ? escape '\\' or d.document_name ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(d.document_number) like eqms_fold(?) escape '\\' or eqms_fold(d.document_name) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             args.add(term); args.add(term);
         }

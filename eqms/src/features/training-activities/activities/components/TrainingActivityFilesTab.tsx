@@ -43,6 +43,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { LedgerEmpty, LedgerList, LedgerNote, LedgerRow } from "./workspace/ledger";
 import { TrainingMaterialsReader } from "./TrainingMaterialsReader";
 import { TrainingMaterialsBoard, type MaterialItem, type TrainingMaterialsLayout } from "./TrainingMaterialsBoard";
+import { MaterialLibraryDialog } from "./MaterialLibraryDialog";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { tr } from "@/i18n";
 import { TrainingDocumentSources } from "./TrainingDocumentSources";
@@ -131,6 +132,7 @@ export function TrainingActivityFilesTab({
 }) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<TrainingActivityFiles>();
+  const [library, setLibrary] = useState(false);
   // The documents of Document Control that are the material of a training that comes from a document (the document and every document it lists as related).
   const [sourceDocs, setSourceDocs] = useState<TrainingDocumentSource[]>([]);
   useEffect(() => { trainingDocumentSourcesApi.get(activityId).then((r) => setSourceDocs(r.documents)).catch(() => setSourceDocs([])); }, [activityId]);
@@ -493,7 +495,7 @@ export function TrainingActivityFilesTab({
                     </FormField>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">{tr("A second person checks each scan against the paper.")}</p>
+                <p className="!mt-1.5 text-xs text-slate-500">{tr("A second person checks each scan against the paper.")}</p>
                 <div>
                   <Button
                     size="sm"
@@ -579,6 +581,12 @@ export function TrainingActivityFilesTab({
       {part === "materials" && !reader && (
         <>
           <TrainingDocumentSources documents={sourceDocs} />
+          {canAddMaterial && (
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline-emerald" onClick={() => setLibrary(true)}>{tr("Add from an earlier training")}</Button>
+            </div>
+          )}
+          {library && <MaterialLibraryDialog activityId={activityId} sessionId={target || undefined} onClose={() => setLibrary(false)} onAdded={(next) => { setFiles(next); setLibrary(false); showToast({ type: "success", title: tr("Material added"), message: "" }); }} />}
           <TrainingMaterialsBoard
             layout={materialsLayout}
             items={files.materials.filter((m) => m.purpose === "CONTENT" && inScope(m)).map(toItem)}

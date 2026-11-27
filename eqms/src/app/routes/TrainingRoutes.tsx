@@ -3,6 +3,10 @@ import { Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ROUTES } from '../routes.constants';
 import { LoadingFallback } from './LoadingFallback';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
+import { workflowPermissions } from '@/features/workflow-diagrams/workflowDiagramModel';
+
+const WorkflowDiagramsView = lazy(() => import('@/features/workflow-diagrams/WorkflowDiagramsView').then((m) => ({ default: m.WorkflowDiagramsView })));
+const WorkflowDiagramEditView = lazy(() => import('@/features/workflow-diagrams/WorkflowDiagramEditView').then((m) => ({ default: m.WorkflowDiagramEditView })));
 
 // ==================== LAZY LOADED ====================
 const TrainingActivityListView = lazy(() => import('@/features/training-activities/activities/TrainingActivityListView').then(m => ({ default: m.TrainingActivityListView })));
@@ -77,6 +81,8 @@ export function trainingRoutes() {
       <Route path="participations/:participantId" element={guardedTrainingElement("training.self.view", <TrainingMyParticipationPage />)} />
       <Route path="participations/:participantId/test" element={guardedTrainingElement("training.self.view", <TrainingExamPage />)} />
       <Route path="check-in" element={guardedTrainingElement("training.self.view", <MyTrainingView section="tasks" openCheckIn />)} />
+      <Route path="workflow" element={guardedTrainingElement(workflowPermissions("TRAINING"), <WorkflowDiagramsView key="TRAINING" module="TRAINING" />)} />
+      <Route path="workflow/:diagramId/edit" element={guardedTrainingElement("training.workflow_diagram.manage", <WorkflowDiagramEditView key="TRAINING" module="TRAINING" />)} />
       <Route path="assessments" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentListView />)} />
       <Route path="assessments/new" element={guardedTrainingElement(ASSESSMENT_MANAGE_PERMISSIONS, <TrainingAssessmentDetailPage isNew />)} />
       <Route path="assessments/:assessmentId" element={guardedTrainingElement(ASSESSMENT_PERMISSIONS, <TrainingAssessmentDetailPage />)} />
@@ -91,6 +97,8 @@ export function trainingRoutes() {
       <Route path="job-assignments/new" element={guardedTrainingElement("training.job_assignment.manage", <TrainingJobCreatePage />)} />
       <Route path="job-assignments/:jobId" element={<Suspense fallback={<LoadingFallback />}><TrainingJobDetailPage /></Suspense>} />
       <Route path="personnel-reviews" element={guardedTrainingElement("training.job_assignment.view", <PersonnelReviewListView />)} />
+      {/* the checklists moved to System Administration, Training Administration: the old address still works */}
+      <Route path="personnel-reviews/templates" element={<Navigate to={ROUTES.SETTINGS.TRAINING_ADMINISTRATION.REVIEW_CHECKLISTS} replace />} />
       <Route path="personnel-reviews/:reviewId" element={<Suspense fallback={<LoadingFallback />}><PersonnelReviewDetailPage /></Suspense>} />
       <Route path="specimen-signatures" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenView /></Suspense>} />
       <Route path="specimen-signatures/:specimenId" element={<Suspense fallback={<LoadingFallback />}><TrainingSpecimenDetailPage /></Suspense>} />

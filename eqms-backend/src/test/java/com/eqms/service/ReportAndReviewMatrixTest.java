@@ -52,9 +52,9 @@ class ReportAndReviewMatrixTest {
 
     @Test
     void theCampaignsOfAccessReviewAndOfAuditTrailReview() throws Exception {
-        check("SECURITY_REVIEW", REVIEW, "ACCESS_REVIEW_CAMPAIGN", 3, List.of("IN_PROGRESS", "COMPLETED", "CANCELLED"), List.of("security.access_review.manage"), List.of(),
+        check("SECURITY", REVIEW, "ACCESS_REVIEW_CAMPAIGN", 3, List.of("IN_PROGRESS", "COMPLETED", "CANCELLED"), List.of("security.access_review.manage"), List.of(),
                 List.of("DECIDE_ITEM", "COMPLETE", "CANCEL"), (action, state, perms, rel, inScope) -> state.equals("IN_PROGRESS") && perms.contains("security.access_review.manage"));
-        check("SECURITY_REVIEW", REVIEW, "AUDIT_REVIEW_CAMPAIGN", 3, List.of("IN_PROGRESS", "COMPLETED", "CANCELLED"), List.of("audit.review.manage"), List.of(),
+        check("AUDIT_TRAIL", REVIEW, "AUDIT_REVIEW_CAMPAIGN", 3, List.of("IN_PROGRESS", "COMPLETED", "CANCELLED"), List.of("audit.review.manage"), List.of(),
                 List.of("DECIDE_ITEM", "COMPLETE", "CANCEL"), (action, state, perms, rel, inScope) -> state.equals("IN_PROGRESS") && perms.contains("audit.review.manage"));
     }
 }

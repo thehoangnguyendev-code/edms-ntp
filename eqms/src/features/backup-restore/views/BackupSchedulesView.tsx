@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -23,14 +24,14 @@ const ALL = "ALL";
 const STATUS_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Active", value: "ACTIVE" },
-  { label: tr("Not scheduled"), value: "NOT_SCHEDULED" },
+  { get label() { return tr("Not scheduled"); }, value: "NOT_SCHEDULED" },
 ];
 
 const TYPE_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Full", value: "FULL" },
-  { label: tr("Incremental"), value: "INCREMENTAL" },
-  { label: tr("Pre-change"), value: "PRE_CHANGE" },
+  { get label() { return tr("Incremental"); }, value: "INCREMENTAL" },
+  { get label() { return tr("Pre-change"); }, value: "PRE_CHANGE" },
 ];
 const FREQUENCY_OPTIONS = [
   { label: "All", value: ALL },
@@ -50,14 +51,14 @@ export const BackupSchedulesView: React.FC = () => {
   const [policy, setPolicy] = useState<BackupSchedulePolicy>();
   const [policyError, setPolicyError] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("BackupSchedulesView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState(ALL);
-  const [type, setType] = useState(ALL);
-  const [frequency, setFrequency] = useState(ALL);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "component", direction: "asc" });
+  const [status, setStatus] = useViewState("BackupSchedulesView.status", ALL);
+  const [type, setType] = useViewState("BackupSchedulesView.type", ALL);
+  const [frequency, setFrequency] = useViewState("BackupSchedulesView.frequency", ALL);
+  const [page, setPage] = useViewState("BackupSchedulesView.page", 1);
+  const [pageSize, setPageSize] = useViewState("BackupSchedulesView.pageSize", 10);
+  const [sort, setSort] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("BackupSchedulesView.sort", { key: "component", direction: "asc" });
   const [rows, setRows] = useState<ScheduleRowRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -105,7 +106,7 @@ export const BackupSchedulesView: React.FC = () => {
     };
   }, [debouncedSearch, status, type, frequency, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [debouncedSearch, status, type, frequency, pageSize]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, status, type, frequency, pageSize]);
 
   const clearFilters = () => {
     setSearch("");

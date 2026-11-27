@@ -47,7 +47,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <p className="text-xs text-slate-500 mt-1">{tr("Uses the rules as shown on this screen, including changes not saved yet. Nothing typed here is stored.")}</p>
+          <p className="mt-1.5 text-xs text-slate-500">{tr("Uses the rules as shown on this screen, including changes not saved yet. Nothing typed here is stored.")}</p>
         </div>
         {config.disallowUserInfo && (
           <div>
@@ -61,7 +61,7 @@ export const PasswordPolicyTester: React.FC<{ config: SecurityConfig }> = ({ con
               placeholder={tr("e.g. nguyen.van.a@company.com")}
               className={inputClass}
             />
-            <p className="text-xs text-slate-500 mt-1">{tr("The password may not contain any part (3 characters or more) of this text.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("The password may not contain any part (3 characters or more) of this text.")}</p>
           </div>
         )}
       </div>

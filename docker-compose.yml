@@ -419,6 +419,20 @@ services:
       retries: 12
       start_period: 120s
 
+  # draw.io, the editor of the workflow diagrams (Document Control and Training Management). It stores nothing: the diagram travels between the browser and
+  # the backend. The image is pinned by digest, so a start never changes the editor by itself.
+  drawio:
+    <<: *default-resources
+    image: ${EQMS_DRAWIO_IMAGE:-mirror.gcr.io/jgraph/drawio@sha256:9911eb718f41ad68bd5f348f1c8ae4c54e032580d12b1c0a6bb65982f4e04576}
+    container_name: ${EQMS_CONTAINER_PREFIX:-eqms}-drawio
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${DRAWIO_MEM_LIMIT:-1g}
+    ports:
+      - "127.0.0.1:${DRAWIO_PORT:-8083}:8080"
+
   frontend:
     <<: *default-resources
     build:
@@ -446,6 +460,8 @@ services:
       # from the backend's APP_ONLYOFFICE_DOCUMENT_SERVER_URL, which is the container-to-container
       # (internal Docker network) address the backend uses when building editor configs.
       VITE_ONLYOFFICE_URL: ${VITE_ONLYOFFICE_URL:-http://localhost:8082}
+      # Browser-reachable address of the draw.io editor.
+      VITE_DRAWIO_URL: ${VITE_DRAWIO_URL:-http://localhost:8083}
     ports:
       # Keep the development UI local; production traffic must enter through the approved
       # HTTPS edge/proxy rather than a directly exposed Vite/Nginx application port.

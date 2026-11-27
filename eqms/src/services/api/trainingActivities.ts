@@ -83,7 +83,7 @@ export interface TrainerQualification {
   applies: boolean; qualified: boolean; gmpTrained?: boolean; reasons: string[]; canDecide?: boolean;
   exception?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED"; reason: string; rejectReason?: string | null } | null;
 }
-export interface TrainingSuggestedParticipant { personId: string; fullName: string; employeeCode?: string | null; department?: string | null; positionName?: string | null; topicText: string; reason: "MISSING" | "DUE"; lastDone?: string | null }
+export interface TrainingSuggestedParticipant { personId: string; fullName: string; employeeCode?: string | null; department?: string | null; positionName?: string | null; topicText: string; reason: "MISSING" | "UPDATE_NEEDED" | "DUE"; lastDone?: string | null }
 export type ParticipationRole = "TRAINEE" | "ATTENDEE" | "NAME_ONLY";
 export interface TrainingParticipant {
   avatar?: string | null;
@@ -326,7 +326,7 @@ export interface TrainingMyParticipation {
 }
 export interface TrainingNumberAllocationLogRow {
   activityId: string; trainingNumber: string; createdAt: string; kind: TrainingKind; status: TrainingActivityStatus; trainingTopics: string; documentNumber?: string | null; documentLabel?: string | null;
-  revisionNumber?: string | null; cancelReason?: string | null; departmentName?: string | null; sessions: number; postponements: number;
+  revisionNumber?: string | null; cancelReason?: string | null; departmentName?: string | null; sessions: number; postponements: number; postponeReasons?: string | null;
 }
 /** One form and the pattern of the name of its downloaded file; the variables say what each {NAME} means. */
 export interface TrainingFileNameForm { form: string; label: string; pattern: string; defaultPattern: string; variables: { name: string; meaning: string }[]; example: string }
@@ -383,26 +383,43 @@ export const trainingCodeRulesApi = {
   preview: async (entity: string, pattern: string) => (await apiClient.post<{ example: string }>("/training/code-rules/preview", { entity, pattern })).data,
 };
 
+export interface TrainingReviewTemplate { id: string; kind: string; itemCode: string; title: string; titleVi?: string | null; hint?: string | null; checkType: string; locked: boolean; active: boolean; sortOrder: number; version: number; updatedAt: string; updatedByName?: string | null }
+export const trainingReviewTemplatesApi = {
+  list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingReviewTemplate>>("/training/review-templates", { params })).data,
+  create: async (body: Record<string, unknown>) => (await apiClient.post<TrainingReviewTemplate>("/training/review-templates", body)).data,
+  update: async (id: string, body: Record<string, unknown>) => (await apiClient.put<TrainingReviewTemplate>(`/training/review-templates/${id}`, body)).data,
+};
+
+export interface TrainingMandatoryTopic { id: string; name: string; nameVi?: string | null; keyword: string; active: boolean }
+export const trainingMandatoryTopicsApi = {
+  list: async () => (await apiClient.get<{ data: TrainingMandatoryTopic[] }>("/training/mandatory-topics")).data.data,
+  save: async (id: string | undefined, body: Record<string, unknown>) => (id ? await apiClient.put<TrainingMandatoryTopic>(`/training/mandatory-topics/${id}`, body) : await apiClient.post<TrainingMandatoryTopic>("/training/mandatory-topics", body)).data,
+};
+
 export interface TrainingMatrixSummary {
-  id: string; code: string; departmentId: string; departmentName: string; effectiveVersionId?: string | null; effectiveVersionNo?: number | null; effectiveAt?: string | null;
+  scope?: "DEPARTMENT" | "FACTORY"; id: string; code: string; departmentId: string; departmentName: string; effectiveVersionId?: string | null; effectiveVersionNo?: number | null; effectiveAt?: string | null;
   openVersionId?: string | null; openVersionNo?: number | null; openStatus?: string | null;
 }
 export interface TrainingMatrixVersionRef {
-  id: string; versionNo: number; status: "DRAFT" | "PENDING_APPROVAL" | "EFFECTIVE" | "OBSOLETED"; changeReason?: string | null; rejectReason?: string | null;
+  id: string; versionNo: number; status: "DRAFT" | "PENDING_REVIEW" | "PENDING_APPROVAL" | "EFFECTIVE" | "OBSOLETED"; changeReason?: string | null; rejectReason?: string | null;
   effectiveAt?: string | null; approvedAt?: string | null; preparedByName?: string | null; approvedByName?: string | null; previousId?: string | null;
 }
 export interface TrainingMatrixDetail { id: string; code: string; departmentName: string; versionCount: number; effective?: { id: string; versionNo: number; effectiveAt?: string | null } | null; canManage: boolean }
 export interface TrainingPosition { id: string; code: string; name: string; departmentId?: string | null; departmentName?: string | null; seniorManagement?: boolean }
 export interface TrainingMatrixRow {
   id?: string; rowNo?: number; rowGroup: "FACTORY_GENERAL" | "DEPARTMENT_GENERAL" | "SOP"; /** The training topic as typed (a row of a topic); a row of an SOP has the document. */ topicText?: string | null; documentId?: string | null; annualRequired: boolean; note?: string | null;
-  documentNumber?: string | null; documentName?: string | null; positionIds: string[]; /** The row is for all employees of the department (with or without a Work Position); ticked for every Work Position. */ allEmployees?: boolean; /** Required by Quality Assurance (Training Topics): it cannot be changed or taken out. */ locked?: boolean;
+  documentNumber?: string | null; documentName?: string | null; positionIds: string[]; /** The row is for all employees of the department (with or without a Work Position); ticked for every Work Position. */ allEmployees?: boolean; /** Required by Quality Assurance (Training Topics): it cannot be changed or taken out. */ locked?: boolean; /** Marked by Quality Assurance as the GMP training a trainer must have had. */ gmp?: boolean;
 }
 export interface TrainingMatrixVersion {
+  /** FACTORY: the one factory-wide list, required of everybody. */
+  scope?: "DEPARTMENT" | "FACTORY";
+  /** The effective factory-wide list that applies on top of a department matrix. */
+  factoryRows?: TrainingMatrixRow[];
   /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
   workflow?: WorkflowProgress;
   id: string; matrixId: string; matrixCode: string; departmentId: string; departmentName: string; versionNo: number; status: TrainingMatrixVersionRef["status"];
   changeReason?: string | null; rejectReason?: string | null; version: number; rows: TrainingMatrixRow[]; positions: TrainingPosition[]; approvers: TrainingApproverRow[];
-  capabilities: { edit: boolean; submit: boolean; approve: boolean; reject: boolean; upgrade: boolean };
+  capabilities: { edit: boolean; submit: boolean; review: boolean; approve: boolean; reject: boolean; upgrade: boolean };
 }
 /** What happened to each other matrix when the rows locked by Quality Assurance were applied to all departments. */
 export interface TrainingLockedRowsApplied {
@@ -443,17 +460,19 @@ export const trainingProposalApi = {
 
 export const trainingMatrixApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingMatrixSummary>>("/training/matrices", { params })).data,
-  create: async (departmentId: string) => (await apiClient.post<TrainingMatrixVersion>("/training/matrices", { departmentId })).data,
+  create: async (departmentId: string, factory = false) => (await apiClient.post<TrainingMatrixVersion>("/training/matrices", { departmentId, factory })).data,
   get: async (id: string) => (await apiClient.get<TrainingMatrixDetail>(`/training/matrices/${id}`)).data,
   versions: (id: string) => async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingMatrixVersionRef>>(`/training/matrices/${id}/versions`, { params })).data,
   upgrade: async (id: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrices/${id}/upgrade`)).data,
   version: async (id: string) => (await apiClient.get<TrainingMatrixVersion>(`/training/matrix-versions/${id}`)).data,
   /** The matrix version in the form APD.0011, filled in the Word template that Training Administration enabled, as Word or PDF. */
   exportForm: (versionId: string, format: TrainingFormFormat) => trainingForm(`/training/matrix-versions/${versionId}/export`, format),
-  save: async (id: string, body: { version: number; changeReason?: string; rows: { group: string; topicText?: string | null; documentId?: string | null; annualRequired: boolean; note?: string | null; positionIds: string[]; allEmployees?: boolean; locked?: boolean }[] }) =>
+  save: async (id: string, body: { version: number; changeReason?: string; rows: { group: string; topicText?: string | null; documentId?: string | null; annualRequired: boolean; note?: string | null; positionIds: string[]; allEmployees?: boolean; locked?: boolean; gmp?: boolean }[] }) =>
     (await apiClient.put<TrainingMatrixVersion>(`/training/matrix-versions/${id}`, body)).data,
   eligibleApprovers: async (id: string, search?: string) => (await apiClient.get<TrainingPage<TrainingPerson>>(`/training/matrix-versions/${id}/eligible-approvers`, { params: { search, limit: 50 } })).data,
   submit: async (id: string, version: number, signatureToken: string, approverUserId: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrix-versions/${id}/submit`, { version, signatureToken, approverUserId })).data,
+  /** The reviewer signs and chooses who approves (the third person). */
+  review: async (id: string, version: number, signatureToken: string, approverUserId: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrix-versions/${id}/review`, { version, signatureToken, approverUserId })).data,
   approve: async (id: string, version: number, signatureToken: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrix-versions/${id}/approve`, { version, signatureToken })).data,
   reject: async (id: string, version: number, reason: string) => (await apiClient.post<TrainingMatrixVersion>(`/training/matrix-versions/${id}/reject`, { version, reason })).data,
   /** Quality Assurance applies the rows it locked in this version to the matrices of all the other departments (a draft gets the rows; a matrix with only an effective version gets a new draft). */
@@ -470,15 +489,15 @@ export const trainingMatrixApi = {
 };
 
 export interface TrainingComplianceSummary {
-  required: number; ok: number; missing: number; due: number; people: number; percentTrained: number | null; hasEffectiveMatrix: boolean;
+  required: number; ok: number; missing: number; updateNeeded: number; due: number; people: number; percentTrained: number | null; hasEffectiveMatrix: boolean;
   /** The effective matrix the figures are measured against, and the moment the server counted them. */ matrixVersionNo?: number; matrixEffectiveAt?: string | null; generatedAt?: string;
   /** The same figures for each Work Position of the matrix. */ positions?: TrainingComplianceSummaryPosition[];
-  peopleWithoutPosition: number; overdueActivities: number; dueSoonActivities: number; linesBeyondSopWindow?: number; openReviews?: number; /** New employees, and those of them who still miss a training. */ newEmployees?: number; newEmployeesWithGaps?: number;
+  peopleWithoutPosition: number; /** People whose department is not one of the dictionary: they are in no list of a department. */ peopleWithoutDepartment?: number; overdueActivities: number; dueSoonActivities: number; linesBeyondSopWindow?: number; openReviews?: number; /** New employees, and those of them who still miss a training. */ newEmployees?: number; newEmployeesWithGaps?: number;
 }
-export interface TrainingComplianceSummaryPosition { id: string; name: string; people: number; required: number; ok: number; missing: number; due: number; percentTrained: number | null }
-export interface TrainingGapTraining { id: string; code?: string | null; title: string; people: number; missing: number; due: number }
+export interface TrainingComplianceSummaryPosition { id: string; name: string; people: number; required: number; ok: number; missing: number; updateNeeded: number; due: number; percentTrained: number | null }
+export interface TrainingGapTraining { id: string; code?: string | null; title: string; people: number; missing: number; updateNeeded: number; due: number }
 export interface TrainingGapTrainings { data: TrainingGapTraining[]; matrixVersionNo?: number; matrixEffectiveAt?: string | null; generatedAt?: string }
-export interface TrainingGap { pid: string; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName?: string | null; title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null; status: "MISSING" | "DUE" | "OK"; /** Started in the last days that Training Properties allows. */ isNew?: boolean; /** Holds no Work Position: only the rows for all employees apply. */ noRole?: boolean; allEmployees?: boolean; /** The Department that gives the training. */ unitName?: string | null; tname?: string | null; dnum?: string | null }
+export interface TrainingGap { pid: string; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName?: string | null; title: string; code?: string | null; annualRequired: boolean; lastDone?: string | null; status: "MISSING" | "UPDATE_NEEDED" | "DUE" | "OK"; lastRevision?: string | null; requiredRevision?: string | null; /** Started in the last days that Training Properties allows. */ isNew?: boolean; /** Holds no Work Position: only the rows for all employees apply. */ noRole?: boolean; allEmployees?: boolean; /** The Department that gives the training. */ unitName?: string | null; tname?: string | null; dnum?: string | null }
 /** A session of a planned training activity that covers a training. */
 export interface TrainingPlannedSession { activityId: string; trainingNumber: string; trainingTopics: string; kind: string; status: string; sessionId: string; sessionNo: number; scheduledOn?: string | null; canAdd: boolean; participants: number }
 export interface TrainingScanBatchResult {
@@ -679,29 +698,35 @@ export const trainingBatchExportsApi = {
 
 export interface TrainingPersonnelReviewSummary {
   id: string; reviewNo: number; personUserId: string; fullName: string; avatar?: string | null; employeeCode?: string | null; department?: string | null; kind: "NEW_HIRE" | "ABSENCE_RETURN" | "DEPT_TRANSFER" | "LOCATION_TRANSFER";
-  status: "OPEN" | "CLOSED" | "CANCELLED"; eventDate: string; createdAt: string; createdByName: string; openItems: number; closerName?: string | null;
+  status: "OPEN" | "CLOSED" | "CANCELLED"; eventDate: string; createdAt: string; createdByName: string; openItems: number; closerName?: string | null; closedByName?: string | null;
 }
 export interface TrainingReviewItem {
-  itemCode: string; label: string; hint: string; canLink: boolean; status: "PENDING" | "DONE" | "NOT_NEEDED"; activityId?: string | null; trainingNumber?: string | null; trainingTopics?: string | null;
+  itemCode: string; lastDone?: string | null; requirementStatus?: "MISSING" | "UPDATE_NEEDED" | "DUE" | "OK" | null; label: string; labelVi?: string | null; hint?: string | null; canLink?: boolean; status: "PENDING" | "DONE" | "NOT_NEEDED"; activityId?: string | null; trainingNumber?: string | null; trainingTopics?: string | null;
+  /** TRAINING (a line of the matrix), SPECIMEN, JOB_ASSIGNMENT, HANDOVER, JOB_ROLE (the records answer) or MANUAL (a person marks it). */
+  checkType?: "TRAINING" | "SPECIMEN" | "JOB_ASSIGNMENT" | "HANDOVER" | "JOB_ROLE" | "MANUAL"; canMarkDone?: boolean; rowGroup?: string | null; topicText?: string | null; documentNumber?: string | null; annual?: boolean;
   note?: string | null; doneAt?: string | null; doneByName?: string | null;
   /** What the system already holds for the item (a specimen signature, a job assignment, an export of the record); it never marks the item done. */
   /** Each part is an English sentence with `{name}` places: the screen translates the sentence and fills the values. */
   systemCheck?: { found: boolean; parts: { template: string; values: Record<string, string | number> }[] } | null;
 }
-export interface TrainingPersonMatrixGaps { positionName?: string | null; required: number; missing: number; due: number; done: number; gaps: TrainingGap[] }
 export interface TrainingPersonnelReview extends TrainingPersonnelReviewSummary {
   /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
   workflow?: WorkflowProgress;
   absenceFrom?: string | null; absenceTo?: string | null; absenceOverSixMonths?: boolean; departmentFrom?: string | null; departmentTo?: string | null; note?: string | null; closedAt?: string | null; closedByName?: string | null;
   cancelReason?: string | null; items: TrainingReviewItem[]; closerUserId?: string | null; closerName?: string | null; readyToClose?: boolean;
+  jobRoleIds?: string[]; jobRoles?: { id: string; name: string }[]; assigneeName?: string | null; matrixDepartmentId?: string | null;
   capabilities: { editItems: boolean; close: boolean; changeCloser?: boolean; cancel: boolean };
 }
-export interface TrainingReviewPlan { departmentFrom?: string | null; departmentTo?: string | null; closerUserId?: string | null; closerName?: string | null; absenceRetrainMonths: number; problem?: string | null }
+export interface TrainingReviewRequirement { key: string; title: string; topicText?: string | null; documentNumber?: string | null; annualRequired: boolean; rowGroup: string }
+export interface TrainingReviewClass { activityId: string; trainingNumber: string; trainingTopics: string; createdAt: string; covers?: number; listed?: boolean }
+export interface TrainingReviewClasses { open: TrainingReviewClass[]; earlier: TrainingReviewClass[]; canCreate: boolean }
+export interface TrainingReviewPlan { departmentFrom?: string | null; departmentTo?: string | null; closerUserId?: string | null; closerName?: string | null; absenceRetrainMonths: number; problem?: string | null; departmentId?: string | null }
 export const trainingReviewsApi = {
+  /** The people of the Closer filter. */
+  closers: async () => (await apiClient.get<{ data: { id: string; fullName: string }[] }>("/training/personnel-reviews/closers")).data.data,
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingPersonnelReviewSummary>>("/training/personnel-reviews", { params })).data,
   get: async (id: string) => (await apiClient.get<TrainingPersonnelReview>(`/training/personnel-reviews/${id}`)).data,
-  matrixGaps: async (id: string) => (await apiClient.get<TrainingPersonMatrixGaps>(`/training/personnel-reviews/${id}/matrix-gaps`)).data,
-  create: async (body: { personUserId: string; kind: string; eventDate: string; absenceFrom?: string; absenceTo?: string; departmentTo?: string; note?: string }) =>
+  create: async (body: { personUserId: string; kind: string; eventDate: string; absenceFrom?: string; absenceTo?: string; departmentTo?: string; note?: string; jobRoleIds?: string[]; assigneeUserId?: string }) =>
     (await apiClient.post<TrainingPersonnelReview>("/training/personnel-reviews", body)).data,
   /** What the dialog that opens a review reads from the records: the department of the employee, the head who closes, the months of absence the SOP asks for, and what blocks the review. */
   plan: async (params: { personId: string; kind?: string; departmentTo?: string }) => (await apiClient.get<TrainingReviewPlan>("/training/personnel-reviews/plan", { params })).data,
@@ -710,10 +735,23 @@ export const trainingReviewsApi = {
   item: async (id: string, itemCode: string, body: { status: string; activityId?: string | null; note?: string | null }) => (await apiClient.put<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/items/${itemCode}`, body)).data,
   close: async (id: string, signatureToken: string) => (await apiClient.post<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/close`, { signatureToken })).data,
   cancel: async (id: string, reason: string) => (await apiClient.post<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/cancel`, { reason })).data,
-  createTraining: async (id: string, itemCode: string) => (await apiClient.post<TrainingPersonnelReview & { createdActivityId: string }>(`/training/personnel-reviews/${id}/items/${itemCode}/training`)).data,
-  suggestions: async () => (await apiClient.get<TrainingReviewSuggestion[]>("/training/personnel-reviews/suggestions")).data,
+  setJobRoles: async (id: string, jobRoleIds: string[]) => (await apiClient.put<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/job-roles`, { jobRoleIds })).data,
+  requirements: async (id: string) => (await apiClient.get<TrainingReviewRequirement[]>(`/training/personnel-reviews/${id}/requirements`)).data,
+  setRetraining: async (id: string, keys: string[]) => (await apiClient.put<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/retraining`, { keys })).data,
+  classes: async (id: string) => (await apiClient.get<TrainingReviewClasses>(`/training/personnel-reviews/${id}/classes`)).data,
+  addToClass: async (id: string, activityId: string) => (await apiClient.post<TrainingPersonnelReview>(`/training/personnel-reviews/${id}/classes/${activityId}/add`)).data,
+  createClass: async (id: string, copyFromActivityId?: string) => (await apiClient.post<TrainingPersonnelReview & { createdActivityId: string }>(`/training/personnel-reviews/${id}/classes`, { copyFromActivityId })).data,
 };
-export interface TrainingReviewSuggestion { id: string; fullName: string; employeeCode?: string | null; department?: string | null; startDate: string }
+export interface TrainingPersonnelEvent {
+  id: string; personUserId: string; fullName: string; employeeCode?: string | null; avatar?: string | null; department?: string | null;
+  kind: "NEW_HIRE" | "ABSENCE_RETURN" | "DEPT_TRANSFER" | "POSITION_CHANGE" | "START_DATE_MISSING"; eventDate: string; absenceFrom?: string | null; absenceTo?: string | null;
+  departmentFrom?: string | null; departmentTo?: string | null; positionFrom?: string | null; positionTo?: string | null; status: "OPEN" | "HANDLED" | "DISMISSED"; reviewId?: string | null; closedReason?: string | null; canAct: boolean;
+}
+export const trainingPersonnelEventsApi = {
+  list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingPersonnelEvent>>("/training/personnel-events", { params })).data,
+  count: async () => (await apiClient.get<{ open: number }>("/training/personnel-events/count")).data.open,
+  dismiss: async (id: string, reason: string, signatureToken: string) => (await apiClient.post(`/training/personnel-events/${id}/dismiss`, { reason, signatureToken })).data,
+};
 
 export interface ExamOption { id: string; text: string }
 export interface ExamQuestion { id: string; qNo: number; kind: "SINGLE" | "MULTI" | "TRUE_FALSE"; prompt: string; options: ExamOption[]; points: number; correct?: string[]; image?: string | null }
@@ -730,11 +768,11 @@ export const trainingExamApi = {
 };
 
 export type TrainingPrepItem = "VENUE" | "EQUIPMENT" | "MATERIALS" | "NOTICE";
-export interface TrainingPreparationRow { itemCode: TrainingPrepItem; status: "PENDING" | "DONE" | "NOT_NEEDED"; assignedTo?: string | null; assignedToName?: string | null; note?: string | null; updatedAt?: string | null; updatedByName?: string | null }
+export interface TrainingPreparationRow { itemCode: TrainingPrepItem; status: "PENDING" | "DONE" | "NOT_NEEDED"; assignedTo?: string | null; assignedToName?: string | null; /** The department asked to prepare the line (SOP.0003 5.3.6). */ assignedDepartmentId?: string | null; assignedDepartmentName?: string | null; note?: string | null; updatedAt?: string | null; updatedByName?: string | null }
 export interface TrainingPreparationSession { sessionId: string; sessionNo: number; sessionStatus: string; open: number; items: TrainingPreparationRow[] }
 export const trainingPreparationApi = {
   get: async (activityId: string) => (await apiClient.get<TrainingPreparationSession[]>(`/training/activities/${activityId}/preparation`)).data,
-  update: async (sessionId: string, item: TrainingPrepItem, body: { status: string; assignedTo?: string | null; note?: string | null }) =>
+  update: async (sessionId: string, item: TrainingPrepItem, body: { status: string; assignedTo?: string | null; note?: string | null; assignedDepartmentId?: string | null }) =>
     (await apiClient.put<TrainingPreparationSession[]>(`/training/sessions/${sessionId}/preparation/${item}`, body)).data,
   /** Fills in what the record already answers (room, materials, notice, equipment not needed); a line a person set is never changed. */
   fillIn: async (activityId: string) => (await apiClient.post<TrainingPreparationSession[]>(`/training/activities/${activityId}/preparation/fill-in`, {})).data,
@@ -783,6 +821,8 @@ export interface TrainingImpactRow {
 export interface TrainingImpactPosition { id: string; code?: string | null; name: string; inMatrix: boolean }
 export interface TrainingImpactContext {
   activityId: string; trainingNumber: string; documentNumber?: string | null; documentName?: string | null; revisionNumber?: string | null;
+  /** The department assessing, whether it owns the document, and the related departments that also assess (SOP.0003 5.3.1). */
+  departmentId?: string; ownerDepartment?: boolean; relatedDepartments?: { id: string; name: string; assessed: boolean }[];
   effectiveMatrix?: { id: string; versionNo: number } | null; inEffectiveMatrix: boolean; positionsInMatrix: string[]; positions: { id: string; name: string }[];
   latest: { outcome: string; reason: string; positions: { id: string; name: string }[] | string; assessedAt: string; assessedByName: string }[];
 }
@@ -795,7 +835,7 @@ export const trainingFollowUpApi = {
   /** The Work Positions of the department that the assessment can name, one page at a time: search, sort and paging by the server. */
   impactPositions: async (activityId: string, params: Record<string, string | number | boolean | undefined>) =>
     (await apiClient.get<TrainingPage<TrainingImpactPosition>>(`/training/activities/${activityId}/impact-assessment/positions`, { params })).data,
-  assess: async (activityId: string, body: { outcome: string; reason: string; positionIds: string[]; signatureToken: string }) =>
+  assess: async (activityId: string, body: { outcome: string; reason: string; positionIds: string[]; signatureToken: string; relatedDepartmentIds?: string[] }) =>
     (await apiClient.post<TrainingImpactContext>(`/training/activities/${activityId}/impact-assessment`, body)).data,
 };
 
@@ -866,7 +906,7 @@ export interface MatrixCompletion { summary?: CompletionSummary; hasEffectiveMat
 export interface TrainingJobSummary { id: string; issueNo: number; caseType: "INITIAL" | "CHANGE" | "ADDITIONAL"; status: "DRAFT" | "PENDING_RECEIVER" | "EFFECTIVE" | "OBSOLETED" | "CANCELLED"; createdAt: string; effectiveAt?: string | null; fullName: string; avatar?: string | null; employeeCode?: string | null; positionName: string; positions?: { id: string; name: string; carried: boolean }[]; positionsCount?: number; departmentName: string; actions: { view: boolean; continueDraft: boolean; review: boolean } }
 /** One line of part 4 of APD.0024: the Vietnamese text and the English one under it (italic on the form); a box holds several lines. */
 export interface TrainingJobDuty { sortOrder?: number; responsibility: string; description?: string | null; responsibilityEn?: string | null; descriptionEn?: string | null }
-export interface TrainingEligibilityItem { title: string; code?: string | null; jobRoleName?: string; annualRequired: boolean; lastDone?: string | null; /** The matrix of the department, or a training ticked for this assignment. */ source?: "MATRIX" | "CHOSEN" | "FACTORY" | "ALL_EMPLOYEES" }
+export interface TrainingEligibilityItem { title: string; code?: string | null; jobRoleName?: string; annualRequired: boolean; lastDone?: string | null; status?: "MISSING" | "UPDATE_NEEDED" | "DUE" | "OK"; lastRevision?: string | null; requiredRevision?: string | null; /** The matrix of the department, or a training ticked for this assignment. */ source?: "MATRIX" | "CHOSEN" | "FACTORY" | "ALL_EMPLOYEES" }
 export interface TrainingEligibility { openSuspensions?: number; matrixMissing: boolean; matrixVersionId?: string | null; items: TrainingEligibilityItem[]; complete: boolean; missingCount?: number }
 export interface TrainingJobDetail extends Omit<TrainingJobSummary, "fullName" | "employeeCode" | "positionName"> {
   /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
@@ -913,11 +953,12 @@ export const trainingSpecimenApi = {
   get: async (id: string) => (await apiClient.get<TrainingSpecimen>(`/training/specimen-signatures/${id}`)).data,
   revisions: async (id: string, params: Record<string, string | number | undefined>) => (await apiClient.get<TrainingPage<TrainingSpecimenRevision>>(`/training/specimen-signatures/${id}/revisions`, { params })).data,
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingSpecimen>>("/training/specimen-signatures", { params })).data,
-  upload: async (file: File, file2: File, personId?: string, reason?: string) => {
+  upload: async (file: File, file2: File, personId?: string, reason?: string, headSigned?: boolean) => {
     const form = new FormData();
     form.append("file", file);
     form.append("file2", file2);
     const params: Record<string, string> = {};
+    if (headSigned) params.headSigned = "true";
     if (personId) params.personId = personId;
     if (reason) params.reason = reason;
     return (await apiClient.post<TrainingSpecimen>("/training/specimen-signatures", form, { params, headers: { "Content-Type": "multipart/form-data" } })).data;
@@ -948,18 +989,20 @@ export interface TrainingRequirementLine {
   lineStatus: "PLANNED" | "POSTPONED" | "IN_PROGRESS" | "DONE" | "OVERDUE";
 }
 export interface TrainingRequirementDetail extends Omit<TrainingRequirementSummary, "lineCount"> {
+  /** One requirement for the whole plant (SOP.0003 5.3.2). */
+  plantWide?: boolean; /** The contents SOP.0003 5.3.2 names that no line covers yet. */ missingMandatory?: string[];
   /** The lifecycle stepper of this record, worked out on the server; the screen only draws it. */
   workflow?: WorkflowProgress;
   departmentId: string; version: number; rejectReason?: string | null; createdByName?: string | null; preparedByName?: string | null; reviewedByName?: string | null; approvedByName?: string | null; preparedAt?: string | null; reviewedAt?: string | null; approvedAt?: string | null;
   lines: TrainingRequirementLine[]; approvers: TrainingApproverRow[];
   capabilities: { edit: boolean; submit: boolean; review: boolean; approve: boolean; reject: boolean; postpone: boolean; openActivity: boolean; qaSign: boolean };
 }
-export interface TrainingSuggestion { topicText?: string | null; documentId?: string | null; title: string; code?: string | null }
+export interface TrainingSuggestion { topicText?: string | null; documentId?: string | null; title: string; code?: string | null; /** For the plant-wide requirement: the departments that require it. */ departments?: string | null }
 export const trainingRequirementsApi = {
   list: async (params: Record<string, string | number | boolean | undefined>) => (await apiClient.get<TrainingPage<TrainingRequirementSummary>>("/training/requirements", { params })).data,
   get: async (id: string) => (await apiClient.get<TrainingRequirementDetail>(`/training/requirements/${id}`)).data,
-  create: async (body: { year: number; kind: string; departmentId?: string; dueBy?: string; reviewCompletedOn?: string }) => (await apiClient.post<TrainingRequirementDetail>("/training/requirements", body)).data,
-  suggestions: async (year: number, departmentId?: string) => (await apiClient.get<{ data: TrainingSuggestion[] }>("/training/requirements/suggestions", { params: { year, departmentId } })).data.data,
+  create: async (body: { year: number; kind: string; departmentId?: string; dueBy?: string; reviewCompletedOn?: string; plantWide?: boolean }) => (await apiClient.post<TrainingRequirementDetail>("/training/requirements", body)).data,
+  suggestions: async (year: number, departmentId?: string, plantWide = false) => (await apiClient.get<{ data: TrainingSuggestion[] }>("/training/requirements/suggestions", { params: { year, departmentId, plantWide: plantWide || undefined } })).data.data,
   save: async (id: string, body: { version: number; dueBy?: string; lines: { plannedMonth: string; topicText?: string | null; documentId?: string | null }[] }) => (await apiClient.put<TrainingRequirementDetail>(`/training/requirements/${id}`, body)).data,
   eligibleApprovers: async (id: string, step: "REQUIREMENT_REVIEW" | "REQUIREMENT_APPROVE", search?: string) => (await apiClient.get<TrainingPage<TrainingPerson>>(`/training/requirements/${id}/eligible-approvers`, { params: { step, search, limit: 50 } })).data,
   submit: async (id: string, version: number, signatureToken: string, nextApproverUserId: string) => (await apiClient.post<TrainingRequirementDetail>(`/training/requirements/${id}/submit`, { version, signatureToken, nextApproverUserId })).data,
@@ -1024,6 +1067,9 @@ export const trainingFilesApi = {
     form.append("file", file);
     return (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/materials`, form, { params: { title, purpose, sessionId: sessionId || undefined }, headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e) => { if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100)); } })).data;
   },
+  /** The materials of earlier trainings that can be used again; using one copies it into the activity. */
+  library: async (search?: string) => (await apiClient.get<{ data: { id: string; title: string; originalName?: string | null; sizeBytes?: number | null; linkUrl?: string | null; createdAt: string; trainingNumber: string; trainingTopics: string }[] }>("/training/materials/library", { params: { search: search || undefined } })).data.data,
+  fromLibrary: async (activityId: string, materialId: string, sessionId?: string) => (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/materials/from-library`, { materialId, sessionId: sessionId || undefined })).data,
   addLink: async (activityId: string, title: string, url: string, sessionId?: string) => (await apiClient.post<TrainingActivityFiles>(`/training/activities/${activityId}/material-links`, { title, url, sessionId: sessionId || undefined })).data,
   removeMaterial: async (id: string, reason: string) => (await apiClient.post<TrainingActivityFiles>(`/training/materials/${id}/remove`, { reason })).data,
   viewConfig: async (id: string) => (await apiClient.get<Record<string, unknown>>(`/training/materials/${id}/view-config`, { params: { logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` } })).data,
@@ -1159,12 +1205,27 @@ const ERROR_TEXT: Record<string, string> = {
   TRAINING_EXPORT_BATCH_TOO_LARGE: "A batch holds at most 150 people. Narrow the year.",
   TRAINING_EXPORT_BATCH_CHANGED: "The people of the batch changed since it was prepared. Reject it and prepare it again.",
   TRAINING_SPECIMEN_SECOND_REQUIRED: "The 2nd specimen signature is required (FRM.0007 asks for two).",
+  TRAINING_SPECIMEN_NOT_OWN: "A specimen signature is filed by the person who manages the signatures, not by the employee.",
+  TRAINING_SPECIMEN_HEAD_SIGNATURE_REQUIRED: "Confirm that the paper FRM.0007 is signed by the Head of department.",
   TRAINING_EXAM_MISSING: "Upload the exam first (Training Materials, purpose Exam).",
   TRAINING_EXAM_NOT_PDF: "The exam file must be a PDF or a Word file.",
   TRAINING_EXAM_NOT_A_TEST: "This session is not assessed by a test, so there is no exam to print.",
   TRAINING_REVIEW_ALREADY_OPEN: "An open review of this kind already exists for this person.",
   TRAINING_REVIEW_CLOSED: "This review is closed and cannot be changed.",
   TRAINING_REVIEW_ITEMS_PENDING: "Every item must be done or marked not needed before the review is closed.",
+  TRAINING_MANDATORY_TOPIC_INVALID: "The content needs a name and a keyword (up to 200 and 100 characters).",
+  TRAINING_MANDATORY_TOPIC_EXISTS: "A content with this name already exists.",
+  TRAINING_PERSONNEL_EVENT_CLOSED: "This alert is already closed.",
+  TRAINING_REQUIREMENT_PLANT_EXISTS: "A requirement for the whole plant already exists for this year.",
+  TRAINING_REVIEW_TEMPLATE_INVALID: "The item needs a title of up to 500 characters and a known check.",
+  TRAINING_REVIEW_TEMPLATE_LOCKED: "An item that the SOP names cannot be switched off or given another check.",
+  TRAINING_REVIEW_TEMPLATE_VERSION_CHANGED: "The item was changed by someone else. Open it again.",
+  TRAINING_REVIEW_TEMPLATE_DUPLICATE_CHECK: "This review type already has an item with that check.",
+  TRAINING_REVIEW_CLASS_HAS_NOTHING: "The class teaches nothing that this person still has to learn.",
+  TRAINING_REVIEW_ASSIGNEE_ONLY: "Only the employee assigned to this review can mark the review of the record done.",
+  TRAINING_REVIEW_ASSIGNEE_NOT_ALLOWED: "This person cannot review the record: choose an active employee who may manage job assignments, and not the person reviewed.",
+  TRAINING_REVIEW_ASSIGNEE_REQUIRED: "Choose the employee assigned to review the training record of the person (SOP.0003 5.3.11).",
+  TRAINING_REVIEW_ITEM_NEEDS_RECORD: "This line is answered by a record (a training record, a signature, a job assignment). It cannot be marked done by hand; create the record, or set it aside with a reason.",
   TRAINING_REVIEW_INVALID: "Check the employee, the event and the date.",
   TRAINING_REVIEW_ABSENCE_INVALID: "Enter the period of absence, from a date up to a later date.",
   TRAINING_REVIEW_DATE_FUTURE: "The date cannot be later than today: the event has already happened.",

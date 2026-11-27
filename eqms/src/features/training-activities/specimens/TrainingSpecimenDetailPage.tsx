@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconCheck, IconPhotoShare, IconX } from "@tabler/icons-react";
@@ -21,7 +23,7 @@ export function TrainingSpecimenDetailPage() {
   const navigate = useNavigate();
   const [specimen, setSpecimen] = useState<TrainingSpecimen>();
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useViewState("TrainingSpecimenDetailPage.tab", "overview");
 
   const refetch = useCallback(() => { trainingSpecimenApi.get(specimenId).then(setSpecimen).catch((e) => setError(trainingError(e))); }, [specimenId]);
   useEffect(() => { setSpecimen(undefined); setError(""); refetch(); }, [refetch]);
@@ -52,7 +54,7 @@ export function TrainingSpecimenDetailPage() {
       <TrainingDetailLayout
         title={title}
         breadcrumbItems={crumbs}
-        onBack={() => navigate("/training-management/specimen-signatures")}
+        onBack={() => navigateBack(navigate, null, "/training-management/specimen-signatures")}
         workflow={specimen.workflow}
         tabs={tabs}
         activeTab={tab}

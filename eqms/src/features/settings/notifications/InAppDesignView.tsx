@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Eye } from "lucide-react";
@@ -46,11 +47,11 @@ const MAX_SECONDS = 60;
 const POSITION_OPTIONS: { label: string; value: ToastPlace }[] = [
   { label: "Top Right", value: "top-right" },
   { label: "Top Left", value: "top-left" },
-  { label: tr("Top Center"), value: "top-center" },
+  { get label() { return tr("Top Center"); }, value: "top-center" },
   { label: "Center", value: "center" },
-  { label: tr("Bottom Right"), value: "bottom-right" },
-  { label: tr("Bottom Left"), value: "bottom-left" },
-  { label: tr("Bottom Center"), value: "bottom-center" },
+  { get label() { return tr("Bottom Right"); }, value: "bottom-right" },
+  { get label() { return tr("Bottom Left"); }, value: "bottom-left" },
+  { get label() { return tr("Bottom Center"); }, value: "bottom-center" },
 ];
 
 const toInput = (d: InAppDesign): InAppDesignInput => ({
@@ -179,7 +180,7 @@ export const InAppDesignView: React.FC = () => {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => go(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
+              onClick={() => navigateBack(go, null, `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
             >
               {tr("Back")}
             </Button>
@@ -209,7 +210,7 @@ export const InAppDesignView: React.FC = () => {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => go(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
+              onClick={() => navigateBack(go, null, `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=in-app`)}
             >
               {tr("Back")}
             </Button>
@@ -274,7 +275,7 @@ export const InAppDesignView: React.FC = () => {
                       onChange={(value) => set("toastColor", value)}
                     />
                   </div>
-                  <p className="-mt-2 text-xs text-slate-500">
+                  <p className="!mt-1.5 text-xs text-slate-500">
                     {tr("The border and the time bar of every system message, whatever its kind.")}
                   </p>
                   <div>
@@ -360,7 +361,7 @@ export const InAppDesignView: React.FC = () => {
                       }
                       options={POSITION_OPTIONS}
                     />
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1.5 text-xs text-slate-500">
                       {tr("Where system messages pop up on screen.")}
                     </p>
                   </div>

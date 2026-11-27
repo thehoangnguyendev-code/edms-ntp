@@ -130,6 +130,8 @@ public final class AuditObjectRegistry {
         entry("User Management", 'A', "USER", "USERACCOUNT");
         entry("Work Positions", 'B', "TRAININGJOBROLE");
         entry("Work Positions", 'C', "TRAININGPERSONPOSITION");
+        // The Workflow menu of Document Control and of Training Management (the diagram says which module in its audit comment).
+        entry("Workflow", 'B', "WORKFLOWDIAGRAM");
         entry("Workflow Authorization", 'B', "LIFECYCLESTATEPOLICY", "WORKFLOWACTIONPOLICY");
         // Workflow roles are administered on the Workflow Authorization page (there is no menu called Workflow Role Catalog).
         entry("Workflow Authorization", 'B', "WORKFLOWROLE");

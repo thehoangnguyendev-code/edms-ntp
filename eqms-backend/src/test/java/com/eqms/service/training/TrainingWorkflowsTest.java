@@ -102,10 +102,10 @@ class TrainingWorkflowsTest {
 
     @Test
     void matrixVersionFollowsItsStatus() {
-        assertThat(labels(TrainingWorkflows.matrixVersion("DRAFT"))).containsExactly("Draft", "Pending Approval", "Effective", "Obsoleted");
-        assertThat(TrainingWorkflows.matrixVersion("EFFECTIVE").currentStepIndex()).isEqualTo(2);
+        assertThat(labels(TrainingWorkflows.matrixVersion("DRAFT"))).containsExactly("Draft", "Pending Review", "Pending Approval", "Effective", "Obsoleted");
+        assertThat(TrainingWorkflows.matrixVersion("EFFECTIVE").currentStepIndex()).isEqualTo(3);
         WorkflowProgressResponse obsoleted = TrainingWorkflows.matrixVersion("OBSOLETED");
-        assertThat(obsoleted.currentStepIndex()).isEqualTo(3);
+        assertThat(obsoleted.currentStepIndex()).isEqualTo(4);
         assertThat(ended(obsoleted)).isTrue();
         assertThat(obsoleted.terminalProgressStep()).isEqualTo("Effective");
     }

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -55,16 +56,16 @@ const DECISIONS: {
 ];
 
 const ITEM_COLUMNS: { key: string; label: string; sortable: boolean }[] = [
-  { key: "employeeCode", label: tr("Employee ID"), sortable: true },
+  { key: "employeeCode", get label() { return tr("Employee ID"); }, sortable: true },
   { key: "fullName", label: "User", sortable: true },
   { key: "username", label: "User Name", sortable: true },
   { key: "userStatus", label: "Status", sortable: true },
-  { key: "accessProfiles", label: tr("Access Profiles"), sortable: true },
+  { key: "accessProfiles", get label() { return tr("Access Profiles"); }, sortable: true },
   { key: "permissionCount", label: "Permissions", sortable: true },
-  { key: "lastSignIn", label: tr("Last Sign-in"), sortable: false },
+  { key: "lastSignIn", get label() { return tr("Last Sign-in"); }, sortable: false },
   { key: "mfa", label: "MFA", sortable: false },
-  { key: "timeLimited", label: tr("Time-limited Until"), sortable: false },
-  { key: "sod", label: tr("SoD Conflicts"), sortable: false },
+  { key: "timeLimited", get label() { return tr("Time-limited Until"); }, sortable: false },
+  { key: "sod", get label() { return tr("SoD Conflicts"); }, sortable: false },
   { key: "flags", label: "Flags", sortable: false },
   { key: "decision", label: "Decision", sortable: true },
   { key: "decidedAt", label: "Decided", sortable: true },
@@ -167,12 +168,12 @@ export const AccessReviewCampaignDetailView: React.FC = () => {
   const [itemTotalPages, setItemTotalPages] = useState(1);
   const [itemPage, setItemPage] = useState(1);
   const [itemPageSize, setItemPageSize] = useState(10);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AccessReviewCampaignDetailView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [userStatusFilter, setUserStatusFilter] = useState("ALL");
-  const [decisionFilter, setDecisionFilter] = useState("ALL");
-  const [sortKey, setSortKey] = useState("username");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [userStatusFilter, setUserStatusFilter] = useViewState("AccessReviewCampaignDetailView.userStatusFilter", "ALL");
+  const [decisionFilter, setDecisionFilter] = useViewState("AccessReviewCampaignDetailView.decisionFilter", "ALL");
+  const [sortKey, setSortKey] = useViewState("AccessReviewCampaignDetailView.sortKey", "username");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("AccessReviewCampaignDetailView.sortDir", "asc");
   const [listOptions, setListOptions] = useState<Record<string, AccessReviewListOption[]>>({});
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);

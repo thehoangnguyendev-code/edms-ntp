@@ -443,11 +443,11 @@ public class EmailTemplateService {
             if (StringUtils.hasText(search)) {
                 String like = "%" + search.trim().toLowerCase() + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("name")), like),
-                        cb.like(cb.lower(root.get("subject")), like),
-                        cb.like(cb.lower(root.get("description")), like),
-                        cb.like(cb.lower(root.get("createdBy")), like),
-                        cb.like(cb.lower(root.get("updatedBy")), like)
+                        com.eqms.util.SearchText.like(cb, root.get("name"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("subject"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("description"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("createdBy"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("updatedBy"), like)
                 ));
             }
 
@@ -493,6 +493,8 @@ public class EmailTemplateService {
     /** The same mail as {@link #renderTemplateContent}, for a preview on a screen: the card alone, without the grey page around it. */
     public String renderPreviewContent(EmailTemplate template, Map<String, String> variables) {
         String renderedContent = sanitizeRenderedHtml(renderTemplateText(template.getContent(), variables));
+        renderedContent = com.eqms.util.EmailFrameRenderer.withGreeting(renderedContent, recipientName(variables),
+                renderedContent.contains(com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK));
         return emailDesignService == null
                 ? com.eqms.util.EmailFrameRenderer.render(null, renderedContent, null, true)
                 : emailDesignService.framePreview(renderedContent);
@@ -501,9 +503,21 @@ public class EmailTemplateService {
     public String renderTemplateContent(EmailTemplate template, Map<String, String> variables) {
         String renderedContent = renderTemplateText(template.getContent(), variables);
         renderedContent = sanitizeRenderedHtml(renderedContent);
+        renderedContent = com.eqms.util.EmailFrameRenderer.withGreeting(renderedContent, recipientName(variables),
+                renderedContent.contains(com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK));
         return emailDesignService == null
                 ? com.eqms.util.EmailFrameRenderer.render(null, renderedContent)
                 : emailDesignService.frame(renderedContent);
+    }
+
+    /** The name the mail greets: the person's name, else the address it is written to; never an empty greeting. */
+    private static String recipientName(Map<String, String> variables) {
+        if (variables == null) return "";
+        for (String key : List.of("recipientName", "fullName", "displayName", "recipientEmail", "userEmail")) {
+            String value = variables.get(key);
+            if (value != null && !value.isBlank()) return value;
+        }
+        return "";
     }
 
     public EmailTemplateResponse toResponse(EmailTemplate template) {

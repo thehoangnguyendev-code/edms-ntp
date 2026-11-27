@@ -471,15 +471,15 @@ export const EducationSchoolsView: React.FC = () => {
  *  values (institution_type, governing_body_type, operational_status...) that don't fit a fixed
  *  enum, so the user types them directly. */
 const ENTITY_KIND_OPTIONS = [
-  { label: tr("Unspecified"), value: "" },
-  { label: tr("Institution"), value: "institution" },
-  { label: tr("International Program / Presence"), value: "international_program_or_presence" },
+  { get label() { return tr("Unspecified"); }, value: "" },
+  { get label() { return tr("Institution"); }, value: "institution" },
+  { get label() { return tr("International Program / Presence"); }, value: "international_program_or_presence" },
 ];
 const GOVERNANCE_MODEL_OPTIONS = [
-  { label: tr("Unspecified"), value: "" },
+  { get label() { return tr("Unspecified"); }, value: "" },
   { label: "Public", value: "public" },
   { label: "Private", value: "private" },
-  { label: tr("Foreign / Other"), value: "foreign_or_other" },
+  { get label() { return tr("Foreign / Other"); }, value: "foreign_or_other" },
 ];
 
 type SchoolFormData = {

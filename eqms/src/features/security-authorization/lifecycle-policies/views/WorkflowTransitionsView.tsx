@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
@@ -81,24 +82,24 @@ export const WorkflowTransitionsView = React.forwardRef<WorkflowTransitionsViewH
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("WorkflowTransitionsView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [workflowFilter, setWorkflowFilter] = useState("ALL");
-  const [actionFilter, setActionFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [docTypeFilter, setDocTypeFilter] = useState("ALL");
-  const [activeFilter, setActiveFilter] = useState("ALL");
-  const [systemFilter, setSystemFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useViewState("WorkflowTransitionsView.workflowFilter", "ALL");
+  const [actionFilter, setActionFilter] = useViewState("WorkflowTransitionsView.actionFilter", "ALL");
+  const [statusFilter, setStatusFilter] = useViewState("WorkflowTransitionsView.statusFilter", "ALL");
+  const [docTypeFilter, setDocTypeFilter] = useViewState("WorkflowTransitionsView.docTypeFilter", "ALL");
+  const [activeFilter, setActiveFilter] = useViewState("WorkflowTransitionsView.activeFilter", "ALL");
+  const [systemFilter, setSystemFilter] = useViewState("WorkflowTransitionsView.systemFilter", "ALL");
+  const [createdFrom, setCreatedFrom] = useViewState("WorkflowTransitionsView.createdFrom", "");
+  const [createdTo, setCreatedTo] = useViewState("WorkflowTransitionsView.createdTo", "");
+  const [updatedFrom, setUpdatedFrom] = useViewState("WorkflowTransitionsView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("WorkflowTransitionsView.updatedTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["active"]));
-  const [sortKey, setSortKey] = useState<SortKey>("actionCode");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortKey, setSortKey] = useViewState<SortKey>("WorkflowTransitionsView.sortKey", "actionCode");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("WorkflowTransitionsView.sortDir", "asc");
+  const [currentPage, setCurrentPage] = useViewState("WorkflowTransitionsView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("WorkflowTransitionsView.itemsPerPage", 10);
 
 
   // Alert modals

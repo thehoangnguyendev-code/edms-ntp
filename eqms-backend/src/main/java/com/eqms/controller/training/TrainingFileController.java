@@ -39,6 +39,12 @@ public class TrainingFileController {
     @PostMapping("/activities/{id}/material-links")
     public ResponseEntity<?> addLink(@PathVariable UUID id, @RequestBody LinkRequest request) { return ResponseEntity.ok(fileService.addLink(users.requireCurrentUser(), id, request.title(), request.url(), request.sessionId())); }
 
+    @GetMapping("/materials/library")
+    public ResponseEntity<?> library(@RequestParam(required = false) String search) { return ResponseEntity.ok(java.util.Map.of("data", fileService.library(users.requireCurrentUser(), search))); }
+
+    @PostMapping("/activities/{id}/materials/from-library")
+    public ResponseEntity<?> fromLibrary(@PathVariable UUID id, @RequestBody com.eqms.service.training.TrainingFileService.LibraryCopyRequest request) { return ResponseEntity.ok(fileService.copyFromLibrary(users.requireCurrentUser(), id, request)); }
+
     @GetMapping("/materials/{id}/view-config")
     public ResponseEntity<?> viewConfig(@PathVariable UUID id) { return ResponseEntity.ok(fileService.viewConfigOfMaterial(users.requireCurrentUser(), id)); }
 

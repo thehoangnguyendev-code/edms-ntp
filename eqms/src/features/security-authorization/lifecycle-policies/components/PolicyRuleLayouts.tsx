@@ -144,8 +144,8 @@ const IdentityGrid: React.FC<{ props: PolicyRuleLayoutProps; fields: IdentityFie
             options={options}
             disabled={needsWorkflow || (field === "fromStatus" && options.length === 0)}
           />
-          {needsWorkflow && <p className="mt-1 text-2xs text-slate-400">{tr("Select a workflow first.")}</p>}
-          {field === "fromStatus" && !needsWorkflow && options.length === 0 && <p className="mt-1 text-2xs text-slate-400">{tr("Select an action first.")}</p>}
+          {needsWorkflow && <p className="mt-1.5 text-xs text-slate-500">{tr("Select a workflow first.")}</p>}
+          {field === "fromStatus" && !needsWorkflow && options.length === 0 && <p className="mt-1.5 text-xs text-slate-500">{tr("Select an action first.")}</p>}
         </div>
       );
     })}
@@ -386,12 +386,12 @@ interface WhoTemplate {
 }
 
 const WHO_TEMPLATES: WhoTemplate[] = [
-  { id: "PERMISSION", title: tr("Anyone with the permission"), description: tr("Whoever holds the required permission may do it."), actorType: "PERMISSION" },
-  { id: "OWNER", title: tr("Only the owner"), description: tr("The permission, and being the owner of the record."), actorType: "OWNER" },
-  { id: "AUTHOR", title: tr("Only the author"), description: tr("The permission, and being the author of the record."), actorType: "AUTHOR" },
-  { id: "ASSIGNED_REVIEWER", title: tr("The assigned reviewer"), description: tr("The permission, and being the reviewer named on the record."), actorType: "ASSIGNED_REVIEWER" },
-  { id: "ASSIGNED_APPROVER", title: tr("The assigned approver"), description: tr("The permission, and being the approver named on the record."), actorType: "ASSIGNED_APPROVER" },
-  { id: "RECIPIENT", title: tr("The recipient"), description: tr("The permission, and being the recipient of the record."), actorType: "RECIPIENT" },
+  { id: "PERMISSION", get title() { return tr("Anyone with the permission"); }, get description() { return tr("Whoever holds the required permission may do it."); }, actorType: "PERMISSION" },
+  { id: "OWNER", get title() { return tr("Only the owner"); }, get description() { return tr("The permission, and being the owner of the record."); }, actorType: "OWNER" },
+  { id: "AUTHOR", get title() { return tr("Only the author"); }, get description() { return tr("The permission, and being the author of the record."); }, actorType: "AUTHOR" },
+  { id: "ASSIGNED_REVIEWER", get title() { return tr("The assigned reviewer"); }, get description() { return tr("The permission, and being the reviewer named on the record."); }, actorType: "ASSIGNED_REVIEWER" },
+  { id: "ASSIGNED_APPROVER", get title() { return tr("The assigned approver"); }, get description() { return tr("The permission, and being the approver named on the record."); }, actorType: "ASSIGNED_APPROVER" },
+  { id: "RECIPIENT", get title() { return tr("The recipient"); }, get description() { return tr("The permission, and being the recipient of the record."); }, actorType: "RECIPIENT" },
 ];
 
 const TemplatesLayout: React.FC<{ props: PolicyRuleLayoutProps }> = ({ props }) => {

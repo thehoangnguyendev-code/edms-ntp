@@ -376,7 +376,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
                         placeholder="000000"
                         autoFocus
                       />
-                      <p className="mt-2 text-xs text-slate-500">
+                      <p className="mt-1.5 text-xs text-slate-500">
                         {method === "app"
                           ? tr("Enter the 6-digit code from your authenticator app.")
                           : emailSent

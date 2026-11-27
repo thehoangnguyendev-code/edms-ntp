@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 ﻿import React, { useState, useMemo } from "react";
@@ -44,7 +45,7 @@ export const BusinessUnitsTab = React.forwardRef<
     title: "",
     description: "",
   });
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+  const [statusFilter, setStatusFilter] = useViewState<"All" | "Active" | "Inactive">("BusinessUnitsTab.statusFilter", "All");
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");
   const { openId: openDropdownId, position: dropdownPosition, getRef: getButtonRef, toggle: handleDropdownToggle, close: closeDropdown } = usePortalDropdown();

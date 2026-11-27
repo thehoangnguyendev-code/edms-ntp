@@ -110,7 +110,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
               showToast={showToast}
             />
           </div>
-          <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">
+          <p className="mt-1.5 text-xs text-slate-500 font-normal flex items-center gap-1">
             {tr("Click refresh icon to generate a new temporary password")}
           </p>
         </div>

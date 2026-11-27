@@ -189,7 +189,7 @@ public class KnowledgeShareOversightService {
             List<Predicate> p = new ArrayList<>();
             if (!q.isEmpty()) {
                 String like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-                p.add(cb.or(cb.like(cb.lower(root.get("documentNumber")), like, '\\'), cb.like(cb.lower(root.get("documentName")), like, '\\')));
+                p.add(cb.or(com.eqms.util.SearchText.like(cb, root.get("documentNumber"), like, '\\'), com.eqms.util.SearchText.like(cb, root.get("documentName"), like, '\\')));
             }
             return cb.and(p.toArray(Predicate[]::new));
         };

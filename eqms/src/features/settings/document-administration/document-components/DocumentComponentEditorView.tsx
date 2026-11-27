@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useState } from "react";
@@ -95,7 +96,7 @@ export const DocumentComponentEditorView: React.FC = () => {
       go(navState.returnTo, { state: { draft: navState.draft } });
       return;
     }
-    go(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);
+    navigateBack(go, location.state, ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);
   };
   // The move that follows a successful Save is not a leave.
   const goBackAfterSave = () => navigate(ROUTES.DOCUMENTS.ADMIN.DOCUMENT_COMPONENTS);

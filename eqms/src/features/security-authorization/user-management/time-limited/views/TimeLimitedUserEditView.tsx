@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -87,7 +88,7 @@ export const TimeLimitedUserEditView: React.FC = () => {
     return (
       <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
         <p className="text-sm font-medium text-amber-800">{loadError ?? "Time-limited access grant not found."}</p>
-        <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}>{tr("Back to Time-Limited Users")}</Button>
+        <Button size="sm" variant="outline" onClick={() => navigateBack(navigate, null, ROUTES.SECURITY.TIME_LIMITED_USERS)}>{tr("Back to Time-Limited Users")}</Button>
       </div>
     );
   }

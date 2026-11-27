@@ -488,7 +488,8 @@ public class ControlledCopyObsoleteRaceTest {
         issuer.setEmail("issuer@eqms.com");
         when(userAccountRepository.findById(issuerId)).thenReturn(Optional.of(issuer));
         when(controlledCopyRepository.findById(copyId)).thenReturn(Optional.of(copy));
-        when(emailNotificationService.buildControlledCopyVariables(any(), any(), any(), any(), any(), any()))
+        // Only the holder and the requester are told of a recall (DEC-DOC-2026-11-27-11); this copy has neither, so nothing is built.
+        org.mockito.Mockito.lenient().when(emailNotificationService.buildControlledCopyVariables(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new java.util.HashMap<>());
 
         ControlledCopyFinalizationOutcome result = controlledCopyService.finalizeRecalledCopy(copyId, issuerId, "No longer needed", java.time.Instant.now());

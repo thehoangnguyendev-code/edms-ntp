@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import React, {
   useCallback,
@@ -127,11 +129,11 @@ const EMPTY: Form = {
 };
 
 const FIELD_LABEL: Record<Field, string> = {
-  title: tr("In-app title"),
-  summary: tr("In-app message"),
+  get title() { return tr("In-app title"); },
+  get summary() { return tr("In-app message"); },
   subject: "Email subject",
   body: "Email message",
-  label: tr("Button label"),
+  get label() { return tr("Button label"); },
 };
 
 const formOf = (templates: NotificationTemplateVersion[]): Form => {
@@ -190,7 +192,7 @@ export const NotificationEventView: React.FC<{
   // another administrator saved this notification after it was opened here: the change was refused and the screen offers to reload
   const [changedByOthers, setChangedByOthers] = useState(false);
   const [active, setActive] = useState<Field>(isEmail ? "body" : "title");
-  const [tab, setTab] = useState<"content" | "delivery">("content");
+  const [tab, setTab] = useViewState<"content" | "delivery">("NotificationEventView.tab", "content");
   // the language of the wording and of the preview; the Vietnamese wording is read when its tab is opened for the first time
   const [language, setLanguage] = useState<"en" | "vi">("en");
   const [viOpened, setViOpened] = useState(false);
@@ -520,9 +522,7 @@ export const NotificationEventView: React.FC<{
               size="sm"
               variant="outline-emerald"
               onClick={() =>
-                navigate(
-                  `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=${isEmail ? "email" : "in-app"}`,
-                )
+                navigateBack(navigate, null, `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=${isEmail ? "email" : "in-app"}`)
               }
             >
               {tr("Back")}
@@ -549,7 +549,7 @@ export const NotificationEventView: React.FC<{
               size="sm"
               variant="outline-emerald"
               onClick={() =>
-                navigate(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`)
+                navigateBack(navigate, null, `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`)
               }
             >
               {tr("Back")}
@@ -603,7 +603,7 @@ export const NotificationEventView: React.FC<{
         size="sm"
         variant="outline-emerald"
         className="whitespace-nowrap"
-        onClick={() => go(backPath)}
+        onClick={() => navigateBack(go, null, backPath)}
       >
         {tr("Back")}
       </Button>
@@ -731,7 +731,7 @@ export const NotificationEventView: React.FC<{
                   >
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <FormField label={tr("Event")}>
-                        <ReadOnlyField value={detail.name} />
+                        <ReadOnlyField value={tr(detail.name)} />
                       </FormField>
                       <FormField label={tr("Event Code")}>
                         <ReadOnlyField value={detail.eventCode} />
@@ -772,7 +772,7 @@ export const NotificationEventView: React.FC<{
                       ) : null}
                     </div>
                     {!readOnly ? (
-                      <p className="mt-3 text-xs text-slate-500">
+                      <p className="mt-1.5 text-xs text-slate-500">
                         {tr("Priority: how important this notification is. People see it on the Notifications page and can filter by it.")}
                         {delivery.priority === defaultPriority
                           ? ` ${trFormat("It is the default ({priority}).", { priority: tr(priorityLabel(defaultPriority)) })}`

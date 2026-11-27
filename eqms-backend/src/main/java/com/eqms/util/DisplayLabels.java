@@ -37,21 +37,16 @@ public final class DisplayLabels {
     /** The names of the menus the modules are under (the same names as the screens: utils/moduleDisplay.ts). The keys are the canonical module keys. */
     private static final Map<String, String> MODULE = Map.ofEntries(
             Map.entry("documents", "Document Control"),
-            Map.entry("controlled-copies", "Controlled Copies"),
-            Map.entry("uncontrolled-copies", "Uncontrolled Copies"),
             Map.entry("training", "Training Management"),
             Map.entry("reports", "Reports"),
             Map.entry("audit-trail", "Audit Trail"),
             Map.entry("backup", "Backup & Restore"),
             Map.entry("security", "Security & Authorization"),
-            Map.entry("access-review", "Access Review"),
             Map.entry("settings", "Application Settings"),
             Map.entry("system-admin", "System Administration"),
             Map.entry("notifications", "Notifications"),
             Map.entry("preferences", "Preferences"),
             Map.entry("self_service", "Self-Service"),
-            Map.entry("dashboard", "Dashboard"),
-            Map.entry("knowledge", "Knowledge Base"),
             Map.entry("work-management", "Work Management"),
             Map.entry("system-information", "System Information"));
 

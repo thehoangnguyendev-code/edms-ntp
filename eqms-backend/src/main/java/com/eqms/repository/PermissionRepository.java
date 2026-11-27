@@ -16,11 +16,11 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
 
     @Query("""
         SELECT p FROM Permission p
-        WHERE LOWER(COALESCE(p.name,'')) LIKE LOWER(CONCAT('%',:q,'%'))
-           OR LOWER(COALESCE(p.code,'')) LIKE LOWER(CONCAT('%',:q,'%'))
-           OR LOWER(COALESCE(p.description,'')) LIKE LOWER(CONCAT('%',:q,'%'))
-           OR LOWER(COALESCE(p.moduleKey,'')) LIKE LOWER(CONCAT('%',:q,'%'))
-           OR LOWER(COALESCE(p.groupKey,'')) LIKE LOWER(CONCAT('%',:q,'%'))
+        WHERE cast(function('eqms_fold', COALESCE(p.name,'')) as string) like cast(function('eqms_fold', CONCAT('%',:q,'%')) as string)
+           OR cast(function('eqms_fold', COALESCE(p.code,'')) as string) like cast(function('eqms_fold', CONCAT('%',:q,'%')) as string)
+           OR cast(function('eqms_fold', COALESCE(p.description,'')) as string) like cast(function('eqms_fold', CONCAT('%',:q,'%')) as string)
+           OR cast(function('eqms_fold', COALESCE(p.moduleKey,'')) as string) like cast(function('eqms_fold', CONCAT('%',:q,'%')) as string)
+           OR cast(function('eqms_fold', COALESCE(p.groupKey,'')) as string) like cast(function('eqms_fold', CONCAT('%',:q,'%')) as string)
         ORDER BY p.moduleKey ASC, p.groupKey ASC, p.displayOrder ASC, p.code ASC
         """)
     List<Permission> searchPermissions(@Param("q") String query);

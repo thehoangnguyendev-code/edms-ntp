@@ -87,7 +87,7 @@ const EmployeeIdField: React.FC<EmployeeIdFieldProps> = ({ value, draftValue, is
         />
       </div>
       {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
-      {!error && checking && <p className="text-xs text-slate-400 mt-1.5">{tr("Checking availability...")}</p>}
+      {!error && checking && <p className="mt-1.5 text-xs text-slate-500">{tr("Checking availability...")}</p>}
       {!error && !checking && conflictUser && (
         <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />

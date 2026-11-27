@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { PortalDropdownMenu } from "@/components/ui/dropdown";
@@ -57,14 +58,14 @@ export const PermissionCatalogTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("PermissionCatalogTab.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [moduleFilter, setModuleFilter] = useState("ALL");
+  const [moduleFilter, setModuleFilter] = useViewState("PermissionCatalogTab.moduleFilter", "ALL");
   const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([{ label: "All", value: "ALL" }]);
 
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "code", direction: "asc" });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("PermissionCatalogTab.sortConfig", { key: "code", direction: "asc" });
+  const [currentPage, setCurrentPage] = useViewState("PermissionCatalogTab.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("PermissionCatalogTab.itemsPerPage", 10);
 
   // Module filter options come from the full (unfiltered) catalog once -- cheap, one-time lookup,
   // independent of the paginated table data below.
@@ -99,7 +100,7 @@ export const PermissionCatalogTab: React.FC = () => {
   }, [currentPage, itemsPerPage, debouncedSearch, moduleFilter, sortConfig]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, moduleFilter]);
+  useViewFilterChange(() => { setCurrentPage(1); }, [debouncedSearch, moduleFilter]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));

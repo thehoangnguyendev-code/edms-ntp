@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { formatAuditActionLabel, formatAuditModuleLabel } from "./utils/actionBadge";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -190,7 +191,7 @@ export const AuditTrailDetailView: React.FC<{
       if (onBack) {
         onBack();
       } else {
-        navigate(ROUTES.AUDIT_TRAIL);
+        navigateBack(navigate, null, ROUTES.AUDIT_TRAIL);
       }
     }, 400);
   };

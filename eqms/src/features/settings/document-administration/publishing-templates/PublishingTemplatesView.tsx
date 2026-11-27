@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiErrorMessage } from '@/utils/apiError';
@@ -48,17 +49,17 @@ const STATUS_OPTIONS = [
 
 const PUBLISHING_MODE_OPTIONS = [
   { label: "All", value: "All" },
-  { label: tr("Cover only"), value: "COVER_ONLY" },
-  { label: tr("Cover + Header/Footer"), value: "COVER_HEADER_FOOTER" },
-  { label: tr("Header/Footer only"), value: "HEADER_FOOTER_ONLY" },
+  { get label() { return tr("Cover only"); }, value: "COVER_ONLY" },
+  { get label() { return tr("Cover + Header/Footer"); }, value: "COVER_HEADER_FOOTER" },
+  { get label() { return tr("Header/Footer only"); }, value: "HEADER_FOOTER_ONLY" },
 ];
 
 const tableColumns = [
-  { id: "templateName", label: tr("Template Name"), sortable: true, className: "min-w-[240px]" },
-  { id: "publishingMode", label: tr("Publishing Mode"), sortable: true, className: "min-w-[190px]" },
+  { id: "templateName", get label() { return tr("Template Name"); }, sortable: true, className: "min-w-[240px]" },
+  { id: "publishingMode", get label() { return tr("Publishing Mode"); }, sortable: true, className: "min-w-[190px]" },
   { id: "status", label: "Status", sortable: true, className: "min-w-[130px]" },
-  { id: "components", label: tr("Configured Files"), sortable: false, className: "min-w-[220px]" },
-  { id: "createdBy", label: tr("Created By"), sortable: true, className: "min-w-[160px]" },
+  { id: "components", get label() { return tr("Configured Files"); }, sortable: false, className: "min-w-[220px]" },
+  { id: "createdBy", get label() { return tr("Created By"); }, sortable: true, className: "min-w-[160px]" },
   { id: "updatedAt", label: "Updated", sortable: true, className: "min-w-[180px]" },
   { id: "action", label: "Action", sortable: false, className: "w-20 text-center" },
 ];
@@ -107,15 +108,15 @@ export const PublishingTemplatesView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PublishingTemplateResponse | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [publishingModeFilter, setPublishingModeFilter] = useState("All");
-  const [createdByFilter, setCreatedByFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useViewState("PublishingTemplatesView.searchQuery", "");
+  const [statusFilter, setStatusFilter] = useViewState("PublishingTemplatesView.statusFilter", "All");
+  const [publishingModeFilter, setPublishingModeFilter] = useViewState("PublishingTemplatesView.publishingModeFilter", "All");
+  const [createdByFilter, setCreatedByFilter] = useViewState("PublishingTemplatesView.createdByFilter", "");
+  const [currentPage, setCurrentPage] = useViewState("PublishingTemplatesView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("PublishingTemplatesView.itemsPerPage", DEFAULT_PAGE_SIZE);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "updatedAt", direction: "desc" });
+  const [sortConfig, setSortConfig] = useViewState<SortConfig>("PublishingTemplatesView.sortConfig", { key: "updatedAt", direction: "desc" });
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "publishingMode", "createdBy"]));
 

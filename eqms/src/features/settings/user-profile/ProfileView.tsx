@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
@@ -37,7 +38,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     const navigate = useNavigate();
     const { user: authUser, updateUser: updateAuthUser } = useAuth();
     const { navigationLabelOverrides } = useBranding();
-    const [activeTab, setActiveTab] = useState('account');
+    const [activeTab, setActiveTab] = useViewState("ProfileView.activeTab", 'account');
     const { showToast } = useToast();
     const [avatarPreview, setAvatarPreview] = useState<string>('');
     const [originalAvatarPreview, setOriginalAvatarPreview] = useState<string>('');

@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { MoreVertical } from "lucide-react";
@@ -37,8 +38,8 @@ import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 const ALL = "ALL";
 const STATE_OPTIONS = [
-  { label: tr("Not yet acknowledged"), value: "OPEN" },
-  { label: tr("Acknowledged"), value: "ACKNOWLEDGED" },
+  { get label() { return tr("Not yet acknowledged"); }, value: "OPEN" },
+  { get label() { return tr("Acknowledged"); }, value: "ACKNOWLEDGED" },
   { label: "All", value: "ALL" },
 ];
 const SEVERITY_OPTIONS = [{ label: "All", value: ALL }, ...["CRITICAL", "HIGH", "WARNING", "INFO"].map((value) => ({ label: readableCode(value), value }))];
@@ -47,22 +48,22 @@ const SEVERITY_COLOR = Object.fromEntries((["CRITICAL", "HIGH", "WARNING", "INFO
 
 const TABS: TabItem[] = [
   { id: "alerts", label: "Alerts" },
-  { id: "recipients", label: tr("Recipients") },
+  { id: "recipients", get label() { return tr("Recipients"); } },
   { id: "rules", label: "Rules" },
 ];
 
 /** The alerts the Backup Agent raised. Each can be acknowledged by a person, which records who and when; nothing is deleted. */
 const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
   const { showToast } = useToast();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AlertsTab.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [state, setState] = useState<string>("OPEN");
   const [severity, setSeverity] = useState(ALL);
   const [raisedFrom, setRaisedFrom] = useState("");
   const [raisedTo, setRaisedTo] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "at", direction: "desc" });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useViewState("AlertsTab.page", 1);
+  const [pageSize, setPageSize] = useViewState("AlertsTab.pageSize", 10);
   const [rows, setRows] = useState<BackupAlertRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -111,7 +112,7 @@ const AlertsTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
     };
   }, [debouncedSearch, state, severity, raisedFrom, raisedTo, sort, page, pageSize, reloadKey]);
 
-  useEffect(() => setPage(1), [debouncedSearch, state, severity, raisedFrom, raisedTo, pageSize]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, state, severity, raisedFrom, raisedTo, pageSize]);
 
   const acknowledge = async () => {
     if (!acknowledging) return;

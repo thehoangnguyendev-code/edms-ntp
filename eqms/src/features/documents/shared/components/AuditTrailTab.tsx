@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +26,7 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { AuditTimeline } from "@/features/audit-trail/components/timeline/AuditTimeline";
 import { normalizeTimelineStyle } from "@/features/audit-trail/components/timeline/auditTimelineModel";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 export type { AuditTrailRecord };
 
 interface DropdownMenuProps {
@@ -135,26 +136,26 @@ const DEFAULT_ACTION_OPTIONS = [
   { label: "Publish", value: "Publish" },
   { label: "Login", value: "Login" },
   { label: "Logout", value: "Logout" },
-  { label: tr("Failed Login"), value: "Failed Login" },
-  { label: tr("Export"), value: "Export" },
+  { get label() { return tr("Failed Login"); }, value: "Failed Login" },
+  { get label() { return tr("Export"); }, value: "Export" },
   { label: "Download", value: "Download" },
   { label: "View", value: "View" },
   { label: "Open", value: "Open" },
   { label: "Preview", value: "Preview" },
-  { label: tr("Open Preview"), value: "Open Preview" },
+  { get label() { return tr("Open Preview"); }, value: "Open Preview" },
   { label: "View Page", value: "View Page" },
-  { label: tr("Close Preview"), value: "Close Preview" },
+  { get label() { return tr("Close Preview"); }, value: "Close Preview" },
   { label: "Upload", value: "Upload" },
-  { label: tr("Download Evidence"), value: "Download Evidence" },
-  { label: tr("Add Working Note"), value: "Add Working Note" },
-  { label: tr("Delete Working Note"), value: "Delete Working Note" },
+  { get label() { return tr("Download Evidence"); }, value: "Download Evidence" },
+  { get label() { return tr("Add Working Note"); }, value: "Add Working Note" },
+  { get label() { return tr("Delete Working Note"); }, value: "Delete Working Note" },
   { label: "Cancel", value: "Cancel" },
   { label: "Obsoleted", value: "Obsoleted" },
   { label: "Submit", value: "Submit" },
-  { label: tr("Open Edit Online"), value: "Open Edit Online" },
-  { label: tr("Upload to Office Online"), value: "Upload to Office Online" },
-  { label: tr("Edit Online Synced Back to MinIO"), value: "Edit Online Synced Back to MinIO" },
-  { label: tr("Edit Online Session Closed"), value: "Edit Online Session Closed" },
+  { get label() { return tr("Open Edit Online"); }, value: "Open Edit Online" },
+  { get label() { return tr("Upload to Office Online"); }, value: "Upload to Office Online" },
+  { get label() { return tr("Edit Online Synced Back to MinIO"); }, value: "Edit Online Synced Back to MinIO" },
+  { get label() { return tr("Edit Online Session Closed"); }, value: "Edit Online Session Closed" },
 ];
 
 export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
@@ -177,16 +178,16 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   // The Audit Trail module itself is not this component and stays a table.
   const { auditTabView, auditTabTimelineStyle } = useBranding();
   const timeline = auditTabView === "TIMELINE";
-  const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState<AuditAction | "All">("All");
-  const [userFilter, setUserFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.searchQuery`, "");
+  const [actionFilter, setActionFilter] = useViewState<AuditAction | "All">(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.actionFilter`, "All");
+  const [userFilter, setUserFilter] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.userFilter`, "");
   const [userOptions, setUserOptions] = useState<{ label: string; value: string }[]>([
     { label: "All", value: "" },
   ]);
   const [isUserOptionsLoading, setIsUserOptionsLoading] = useState(false);
-  const [eSignatureFilter, setESignatureFilter] = useState<"All" | "Yes" | "No">("All");
+  const [eSignatureFilter, setESignatureFilter] = useViewState<"All" | "Yes" | "No">(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.eSignatureFilter`, "All");
   // Same server sort keys as the standalone audit register, including batch/child timelines.
-  const [sortConfig, setSortConfig] = useState<{ key: "timestamp" | "user" | "action"; direction: "asc" | "desc" }>({
+  const [sortConfig, setSortConfig] = useViewState<{ key: "timestamp" | "user" | "action"; direction: "asc" | "desc" }>(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.sortConfig`, {
     key: "timestamp",
     direction: "desc",
   });
@@ -198,8 +199,8 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     setCurrentPage(1);
   };
   const defaultAuditTrailDateRange = useMemo(() => getDefaultAuditTrailDateRange(), []);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.${timeline ? "timeline" : "table"}.currentPage`, 1, timeline);
+  const [itemsPerPage, setItemsPerPage] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.itemsPerPage`, 10);
   const [exportingRecord, setExportingRecord] = useState<AuditTrailRecord | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -209,8 +210,8 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
   const scopedEntityId = entityId || documentId;
   // Scoped tabs use the object's existing authorization gate rather than global audit.view.
   const shouldFetchServer = Boolean(scopedEntityId || documentNumber);
-  const [dateFrom, setDateFrom] = useState(() => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.startDate : ""));
-  const [dateTo, setDateTo] = useState(() => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.endDate : ""));
+  const [dateFrom, setDateFrom] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.dateFrom`, () => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.startDate : ""));
+  const [dateTo, setDateTo] = useViewState(`${entityType ?? "DOCUMENT"}:${entityId ?? documentId ?? "local"}:AuditTrailTab.dateTo`, () => (records === undefined && auditEntries === undefined ? defaultAuditTrailDateRange.endDate : ""));
 
   const [internalRecords, setInternalRecords] = useState<AuditTrailRecord[]>([]);
   /** A timeline is read by scrolling: the pages it has loaded so far, older ones added at its end. */
@@ -296,7 +297,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
     sourceRecords,
   ]);
 
-  useEffect(() => {
+  useViewFilterChange(() => {
     setCurrentPage(1);
   }, [debouncedSearchQuery, actionFilter, userFilter, eSignatureFilter, dateFrom, dateTo, itemsPerPage]);
 
@@ -314,7 +315,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({
       }
     });
     return combined;
-  }, [shouldFetchServer, sourceRecords, internalRecords]);
+  }, [shouldFetchServer, sourceRecords, internalRecords, getCatalogLanguage()]);
 
   useEffect(() => {
     let alive = true;

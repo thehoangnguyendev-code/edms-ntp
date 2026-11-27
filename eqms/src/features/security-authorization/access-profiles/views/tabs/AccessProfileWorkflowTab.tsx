@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { MoreVertical, Search } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -34,10 +35,10 @@ export const WorkflowTab: React.FC<{
   const [original, setOriginal] = useState<string[]>([]);
   const [assigned, setAssigned] = useState<string[]>([]);
   const [rows, setRows] = useState<WorkflowRoleRow[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("WorkflowTab.search", "");
   const searchTerm = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "label", direction: "asc" });
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("WorkflowTab.page", 1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

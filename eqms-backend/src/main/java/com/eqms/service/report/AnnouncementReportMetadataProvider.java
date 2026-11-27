@@ -61,7 +61,7 @@ public class AnnouncementReportMetadataProvider implements ReportMetadataProvide
         StringBuilder sql = new StringBuilder("from system_announcements a where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and a.title ilike ? escape '\\'");
+            sql.append(" and eqms_fold(a.title) like eqms_fold(?) escape '\\'");
             args.add(ReportQueryKit.likeTerm(search));
         }
         Map<String, String> equals = new LinkedHashMap<>();

@@ -28,7 +28,7 @@ const GROUPS_SHOWN = 4;
 
 const chartConfig = {
   verified: { label: "Verified", color: OK },
-  unverified: { label: tr("Completed, not verified"), color: WARN },
+  unverified: { get label() { return tr("Completed, not verified"); }, color: WARN },
   failed: { label: "Failed", color: BAD },
 };
 

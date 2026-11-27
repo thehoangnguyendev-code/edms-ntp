@@ -321,10 +321,55 @@ public class TrainingDocumentIntegrationService implements TrainingRevisionHooks
         int days = activity.get("training_period_days") == null ? settings.documentTrainingDaysDefault() : ((Number) activity.get("training_period_days")).intValue();
         LocalDate approvedOn = LocalDate.now(TrainingNumberService.ZONE);
         store.open(activity, approvedOn, approvedOn.plusDays(days), actor);
+        if ("SOP_VERSION".equals(activity.get("kind_reason"))) prepareDepartmentSessions(activity, actor);
         for (UUID revisionId : jdbc.queryForList("select id from document_revisions where training_activity_id = ? and status_code not in ('CLOSED_CANCELLED','OBSOLETED')", UUID.class, id)) {
             recordSignatories(revisionId, id, approvedOn);
         }
         recordSignatories(justApproved, id, approvedOn);
+    }
+
+    /**
+     * A new version of an SOP: the head of each unit trains their own unit (SOP.0003 5.3.6). One session is prepared for each department whose Work Positions the matrix
+     * says must learn the document, and for each related department of the impact assessment, with the Department Head proposed as trainer; the organizer changes them
+     * as needed before the list is confirmed. Nothing is prepared when the document is in the factory-wide list (everybody learns it together) or sessions exist.
+     */
+    private void prepareDepartmentSessions(Map<String, Object> activity, UserAccount actor) {
+        UUID id = (UUID) activity.get("id");
+        Integer sessions = jdbc.queryForObject("select count(*) from training_sessions where activity_id = ?", Integer.class, id);
+        if (sessions == null || sessions > 0) return;
+        List<Map<String, Object>> departments = jdbc.queryForList("""
+            select d.id, d.name, (select u.id from app_users u where u.id = d.department_head_id and u.status = 'Active') as head_id
+              from departments d
+             where not exists (select 1 from training_effective_requirements f where f.factory and f.document_id = ?)
+               and (exists (select 1 from training_effective_requirements r where r.department_id = d.id and r.document_id = ? and (r.all_employees or exists (select 1 from training_matrix_cells c where c.row_id = r.id)))
+                    or exists (select 1 from training_impact_departments t where t.activity_id = ? and t.department_id = d.id))
+             order by (d.id = ?) desc, d.name
+            """, activity.get("document_id"), activity.get("document_id"), id, activity.get("organizer_department_id"));
+        if (departments.isEmpty()) return;
+        UUID createdBy = actor != null ? actor.getId() : (UUID) activity.get("created_by");
+        String title = String.valueOf(activity.get("document_name"));
+        int number = 0;
+        for (Map<String, Object> department : departments) {
+            UUID session = UUID.randomUUID();
+            jdbc.update("insert into training_sessions(id, activity_id, session_no, method, assessment_method, trainer_user_id, created_by) values (?,?,?,'CLASSROOM','TEST',?,?)",
+                    session, id, ++number, department.get("head_id"), createdBy);
+            jdbc.update("insert into training_session_topics(id, session_id, topic_text, document_id, document_revision_id, document_number, revision_number) values (?,?,?,?,?,?,?)",
+                    UUID.randomUUID(), session, title, activity.get("document_id"), activity.get("revision_id"), activity.get("document_number"), activity.get("revision_number"));
+            // the people proposed while the document was prepared go to the session of their department
+            jdbc.update("""
+                insert into training_participants(id, activity_id, session_id, person_user_id, employee_code, full_name, department, position, added_reason, created_by)
+                select gen_random_uuid(), ?, ?, u.id, u.employee_code, u.full_name, u.department, u.position, 'Proposed when the document was prepared', ?
+                  from training_proposed_participants p join app_users u on u.id = p.person_user_id
+                 where p.activity_id = ? and u.status = 'Active' and lower(trim(u.department)) = lower(trim(?))
+                   and u.id is distinct from ?
+                """, id, session, createdBy, id, department.get("name"), department.get("head_id"));
+        }
+        store.event(TrainingStore.OBJECT_ACTIVITY, id, id, "SESSION_ADDED", Map.of("sessionNo", number), actor == null ? null : actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_SESSION_ADDED", null, null,
+                number + " session(s) prepared, one for each department that learns the new version: " + departments.stream().map(d -> String.valueOf(d.get("name"))).collect(java.util.stream.Collectors.joining(", ")),
+                List.of(TrainingStore.change("Sessions Prepared", null, number)));
+        // proposed people of a department without a session stay proposed: the first session added by hand takes them as before
+        jdbc.update("update training_proposed_participants p set applied_at = now() where p.activity_id = ? and p.applied_at is null and exists (select 1 from training_participants x where x.activity_id = p.activity_id and x.person_user_id = p.person_user_id)", id);
     }
 
     /** The statuses of an activity whose Training Number may still be changed by hand: it has not opened, so nothing outside has used the number. */

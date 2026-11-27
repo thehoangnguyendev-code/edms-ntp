@@ -44,11 +44,13 @@ public class TrainingMatrixResourceAdapter extends PolicyBackedAdapter {
     @Override
     protected Facts facts(UserAccount actor, UUID id) {
         Map<String, Object> v = one(jdbc.queryForList(
-                "select m.department_id, v.prepared_by from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where v.id = ?", id));
+                "select m.department_id, v.prepared_by, v.reviewed_by from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where v.id = ?", id));
         if (v == null || actor == null || actor.getId() == null) return null;
         UUID me = actor.getId();
         Set<String> relations = new HashSet<>();
         if (me.equals(v.get("prepared_by"))) relations.add("PREPARER");
+        if (me.equals(v.get("reviewed_by"))) relations.add("REVIEWED_BY");
+        if (pendingAssignees(TYPE, id, "MATRIX_REVIEW").contains(me)) relations.add("REVIEW_ASSIGNEE");
         if (pendingAssignees(TYPE, id, "MATRIX_APPROVE").contains(me)) relations.add("APPROVAL_ASSIGNEE");
         return new Facts((UUID) v.get("department_id"), relations);
     }

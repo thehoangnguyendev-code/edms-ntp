@@ -10,7 +10,7 @@ public final class TrainingWaiting {
     public static final String PARAM = "waitingForMe";
 
     /** The closer is chosen when the review is opened, but the review waits for them only once no item is pending. */
-    static final String NOT_BEFORE_READY = " and (a.object_type <> 'TRAINING_PERSONNEL_REVIEW' or not exists (select 1 from training_personnel_review_items wi where wi.review_id = a.object_id and wi.status = 'PENDING'))";
+    static final String NOT_BEFORE_READY = " and (a.object_type <> 'TRAINING_PERSONNEL_REVIEW' or not exists (select 1 from training_personnel_review_items wi where wi.review_id = a.object_id and training_review_item_state(wi.review_id, wi.item_code) = 'PENDING'))";
 
     private TrainingWaiting() {}
 
@@ -32,7 +32,7 @@ public final class TrainingWaiting {
 
     /** One parameter. */
     static String personnelReview() {
-        return "(r.status = 'OPEN' and not exists (select 1 from training_personnel_review_items wi where wi.review_id = r.id and wi.status = 'PENDING') and "
+        return "(r.status = 'OPEN' and not exists (select 1 from training_personnel_review_items wi where wi.review_id = r.id and training_review_item_state(wi.review_id, wi.item_code) = 'PENDING') and "
                 + assigned("TRAINING_PERSONNEL_REVIEW", "r.id") + ")";
     }
 }

@@ -48,7 +48,7 @@ export const TimeLimitedUserGrantFields: React.FC<TimeLimitedUserGrantFieldsProp
         placeholder={tr("Select the allowed active date and time range")}
         disabled={disabled}
       />
-      <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">{tr("The user can only sign in from Start through End. Outside this window their account is automatically suspended.")}</p>
+      <p className="mt-1.5 text-xs text-slate-500 flex items-center gap-1 font-normal">{tr("The user can only sign in from Start through End. Outside this window their account is automatically suspended.")}</p>
     </div>
     <Checkbox
       checked={notifyEmailOnExpiry}

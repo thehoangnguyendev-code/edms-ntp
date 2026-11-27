@@ -108,7 +108,7 @@ public final class NotificationValueWords {
             Map.entry("Review Completed", "Đã rà soát xong"), Map.entry("Review Rejected", "Từ chối khi rà soát"),
             Map.entry("Approval Completed", "Đã phê duyệt xong"), Map.entry("Approval Rejected", "Từ chối khi phê duyệt"),
             Map.entry("Training Completed", "Đã hoàn thành đào tạo"), Map.entry("Reviewer Replaced", "Đã thay người rà soát"),
-            Map.entry("Approver Replaced", "Đã thay người phê duyệt"), Map.entry("Published", "Đã ban hành"),
+            Map.entry("Approver Replaced", "Đã thay người phê duyệt"), Map.entry("Published", "Đã ban hành"), Map.entry("Revision File Uploaded", "Đã tải tệp revision lên"),
             Map.entry("Distributed", "Đã phân phối"), Map.entry("Printed", "Đã in"), Map.entry("Recalled", "Đã thu hồi"), Map.entry("Cancelled", "Đã huỷ"),
             Map.entry("Replacement Issued", "Đã cấp thay"), Map.entry("Reported Lost", "Đã báo mất"), Map.entry("Reported Damaged", "Đã báo hỏng"),
             Map.entry("Destroyed", "Đã tiêu huỷ"), Map.entry("Obsoleted", "Hết hiệu lực"), Map.entry("Save Changes", "Lưu thay đổi"),

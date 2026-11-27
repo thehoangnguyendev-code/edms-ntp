@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { sessionStarted, sessionNotStarted } from "@/services/api/trainingActivities";
 import { SessionEditDialog } from "./components/SessionEditDialog";
@@ -1867,7 +1868,7 @@ export function TrainingActivityDetailPage({
             { label: title, isActive: true },
           ]}
           onBack={() =>
-            navigate(`/training-management/activities/${activity.id}/conduct`)
+            navigateBack(navigate, { from: `/training-management/activities/${activity.id}/conduct` }, `/training-management/activities/${activity.id}/conduct`)
           }
           trainingNumber={activity.trainingNumber}
           heading={
@@ -2656,7 +2657,7 @@ function ParticipationDialog({
             options={Object.entries(PARTICIPATION_ROLE_LABEL).map(([value, label]) => ({ label, value }))}
           />
         </FormField>
-        <p className="text-xs text-slate-500">{PARTICIPATION_ROLE_HELP[role]}</p>
+        <p className="-mt-2.5 text-xs text-slate-500">{PARTICIPATION_ROLE_HELP[role]}</p>
         {!trainee && (
           <>
             <FormField label={tr("Reason")} required>

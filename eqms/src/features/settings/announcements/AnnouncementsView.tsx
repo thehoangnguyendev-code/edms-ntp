@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -62,7 +63,7 @@ const STATE_BADGE: Record<
   ACTIVE: { color: "emerald", label: "Active" },
   SCHEDULED: { color: "blue", label: "Scheduled" },
   EXPIRED: { color: "slate", label: "Expired" },
-  DISABLED: { color: "amber", label: tr("Switched off") },
+  DISABLED: { color: "amber", get label() { return tr("Switched off"); } },
 };
 const SEVERITY_BADGE = {
   INFO: "blue",
@@ -94,27 +95,27 @@ export const AnnouncementsView: React.FC = () => {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState("AnnouncementsView.searchQuery", "");
   const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [stateFilter, setStateFilter] = useState<StateFilter>("ALL");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("ALL");
-  const [startsFrom, setStartsFrom] = useState("");
-  const [startsTo, setStartsTo] = useState("");
-  const [endsFrom, setEndsFrom] = useState("");
-  const [endsTo, setEndsTo] = useState("");
+  const [stateFilter, setStateFilter] = useViewState<StateFilter>("AnnouncementsView.stateFilter", "ALL");
+  const [severityFilter, setSeverityFilter] = useViewState<SeverityFilter>("AnnouncementsView.severityFilter", "ALL");
+  const [startsFrom, setStartsFrom] = useViewState("AnnouncementsView.startsFrom", "");
+  const [startsTo, setStartsTo] = useViewState("AnnouncementsView.startsTo", "");
+  const [endsFrom, setEndsFrom] = useViewState("AnnouncementsView.endsFrom", "");
+  const [endsTo, setEndsTo] = useViewState("AnnouncementsView.endsTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["state"]),
   );
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useViewState("AnnouncementsView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("AnnouncementsView.itemsPerPage", 10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{
+  const [sortConfig, setSortConfig] = useViewState<{
     key: AnnouncementSortKey;
     direction: "asc" | "desc";
-  }>({ key: "startsAt", direction: "desc" });
+  }>("AnnouncementsView.sortConfig", { key: "startsAt", direction: "desc" });
 
   const [deleting, setDeleting] = useState<Announcement>();
   const [busy, setBusy] = useState(false);
@@ -177,7 +178,7 @@ export const AnnouncementsView: React.FC = () => {
   ]);
 
   // A different search, filter or page size starts again from the first page.
-  useEffect(() => {
+  useViewFilterChange(() => {
     setCurrentPage(1);
   }, [
     debouncedSearch,

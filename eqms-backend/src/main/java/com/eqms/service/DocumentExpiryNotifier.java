@@ -26,17 +26,23 @@ public class DocumentExpiryNotifier {
 
     private final NotificationDispatcher notificationDispatcher;
     private final UserAccountRepository userAccountRepository;
+    private final com.eqms.repository.DocumentRecordRepository documentRepository;
+    private final PermissionEvaluationService permissionEvaluationService;
     private final DocumentExpiryProcessingService processingService;
     private final TransactionTemplate readOnlyTransactionTemplate;
 
     public DocumentExpiryNotifier(
             NotificationDispatcher notificationDispatcher,
             UserAccountRepository userAccountRepository,
+            com.eqms.repository.DocumentRecordRepository documentRepository,
+            PermissionEvaluationService permissionEvaluationService,
             DocumentExpiryProcessingService processingService,
             PlatformTransactionManager transactionManager
     ) {
         this.notificationDispatcher = notificationDispatcher;
         this.userAccountRepository = userAccountRepository;
+        this.documentRepository = documentRepository;
+        this.permissionEvaluationService = permissionEvaluationService;
         this.processingService = processingService;
         this.readOnlyTransactionTemplate = new TransactionTemplate(transactionManager);
         this.readOnlyTransactionTemplate.setReadOnly(true);
@@ -49,9 +55,8 @@ public class DocumentExpiryNotifier {
      */
     public void notifyExpired(UUID documentId, String documentNumber, String documentName, Instant now) {
         Recipients recipients = readOnlyTransactionTemplate.execute(status -> new Recipients(
-                userAccountRepository.findAllByStatus(UserStatus.Active).stream()
-                        .filter(user -> user != null)
-                        .toList(),
+                // The Author and Document Control (DEC-DOC-2026-11-27-10); the holders of copies get their own notice below.
+                interestedPeople(documentId),
                 processingService.copyHolders(documentId)));
         if (recipients == null) {
             return;
@@ -95,6 +100,16 @@ public class DocumentExpiryNotifier {
         org.slf4j.LoggerFactory.getLogger(DocumentExpiryNotifier.class)
                 .error("Expiry notice {} for document {} was not sent: {}", eventCode, documentNumber, outcome.blocked());
         return false;
+    }
+
+    private List<UserAccount> interestedPeople(UUID documentId) {
+        java.util.LinkedHashMap<UUID, UserAccount> people = new java.util.LinkedHashMap<>();
+        documentRepository.findById(documentId).map(com.eqms.entity.DocumentRecord::getAuthor)
+                .filter(author -> author.getStatus() == UserStatus.Active).ifPresent(author -> people.put(author.getId(), author));
+        userAccountRepository.findAllByStatus(UserStatus.Active).stream()
+                .filter(user -> user != null && permissionEvaluationService.hasPermission(user, "documents.workspace.manage"))
+                .forEach(user -> people.putIfAbsent(user.getId(), user));
+        return new java.util.ArrayList<>(people.values());
     }
 
     private record Recipients(List<UserAccount> allActive, List<UserAccount> copyHolders) {

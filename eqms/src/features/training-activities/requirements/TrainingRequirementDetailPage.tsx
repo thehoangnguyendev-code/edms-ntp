@@ -1,4 +1,5 @@
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useViewState } from "@/hooks/useViewState";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEntityChanged } from "@/features/realtime/useEntityChanged";
 import { useParams } from "react-router-dom";
@@ -71,7 +72,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState(mode === "edit" || mode === "track" ? "lines" : "overview");
+  const [tab, setTab] = useViewState("TrainingRequirementDetailPage.tab", mode === "edit" || mode === "track" ? "lines" : "overview");
   const [dialog, setDialog] = useState<Dialog>();
   const [sign, setSign] = useState<SignRequest>();
   const [busy, setBusy] = useState(false);
@@ -221,11 +222,14 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
             <ReadonlyField label={tr("Created Time")} value={when(req.createdAt)} />
             <ReadonlyField label={tr("Opened By")} value={req.createdByName} />
             <ReadonlyField label={tr("Year")} value={String(req.year)} />
-            <ReadonlyField label={tr("Department")} value={req.departmentName} />
+            <ReadonlyField label={tr("Department")} value={req.plantWide ? trFormat("Whole plant (prepared by {department})", { department: req.departmentName }) : req.departmentName} />
             <ReadonlyField label={tr("Due By")} value={day(req.dueBy)} />
             {pending && <ReadonlyField label={tr("Pending With")} value={pending} wide />}
             {req.rejectReason && req.status === "DRAFT" && <ReadonlyField label={tr("Last rejection")} value={req.rejectReason} wide />}
           </ReadonlyGrid>
+        )}
+        {tab === "lines" && (req.missingMandatory?.length ?? 0) > 0 && !["APPROVED"].includes(req.status) && (
+          <p role="status" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{trFormat("SOP.0003 5.3.2 says the annual requirement includes: {list}. No line covers it yet. This is a reminder; it does not stop you.", { list: req.missingMandatory?.map((n) => tr(n)).join(", ") ?? "" })}</p>
         )}
         {tab === "lines" && (caps.edit ? (
           <div className="space-y-3">
@@ -251,7 +255,7 @@ export function TrainingRequirementDetailPage({ mode = "view" }: { mode?: Requir
         {tab === "audit" && <AuditTrailTab entityId={req.id} entityType="TRAINING_REQUIREMENT" />}
       </TrainingDetailLayout>
 
-      {(dialog === "addTopic") && <AddTopicDialog year={req.year} lines={lines} onClose={() => setDialog(undefined)} onAdd={(l) => { setLines([...lines, l]); setDirty(true); setDialog(undefined); }} requirementId={req.id} departmentId={req.departmentId} />}
+      {(dialog === "addTopic") && <AddTopicDialog plantWide={Boolean(req.plantWide)} year={req.year} lines={lines} onClose={() => setDialog(undefined)} onAdd={(l) => { setLines([...lines, l]); setDirty(true); setDialog(undefined); }} requirementId={req.id} departmentId={req.departmentId} />}
       {dialog === "addDocument" && <AddDocumentDialog year={req.year} onClose={() => setDialog(undefined)} onAdd={(l) => { setLines([...lines, l]); setDirty(true); setDialog(undefined); }} />}
       {(dialog === "submit" || dialog === "review") && (
         <NextPersonDialog requirementId={req.id} step={dialog === "submit" ? "REQUIREMENT_REVIEW" : "REQUIREMENT_APPROVE"} busy={busy} onClose={() => setDialog(undefined)}
@@ -302,18 +306,19 @@ function NextPersonDialog({ requirementId, step, busy, onClose, onPick }: { requ
   return (
     <FormModal isOpen onClose={onClose} onConfirm={() => onPick(id)} title={review ? tr("Choose who reviews") : tr("Choose who approves")}
       description={review ? tr("The reviewer is not you. Only people the system found eligible are listed.") : tr("The approver is neither the preparer nor you.")} confirmText={tr("Continue to Signature")} isLoading={busy} confirmDisabled={!id} size="md">
+      {step === "REQUIREMENT_APPROVE" && id && !people.find((p) => p.id === id)?.role && <p role="status" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{tr("SOP.0003 asks the Quality Manager to approve the training requirement. You can choose another person; the choice is recorded.")}</p>}
       {loaded && people.length === 0 ? <p className="text-sm text-amber-700">{tr("No eligible person was found.")}</p> : <Select label={tr("Person")} value={id} onChange={setId} options={people.map((p) => ({ label: `${p.fullName}${p.position ? ` — ${p.position}` : ""}`, value: p.id }))} onSearch={search} placeholder={tr("Search by name")} />}
     </FormModal>
   );
 }
 
-function AddTopicDialog({ year, lines, requirementId, departmentId, onClose, onAdd }: { year: number; lines: DraftLine[]; requirementId: string; departmentId: string; onClose: () => void; onAdd: (l: DraftLine) => void }) {
+function AddTopicDialog({ plantWide, year, lines, requirementId, departmentId, onClose, onAdd }: { plantWide: boolean; year: number; lines: DraftLine[]; requirementId: string; departmentId: string; onClose: () => void; onAdd: (l: DraftLine) => void }) {
   const [suggestions, setSuggestions] = useState<TrainingSuggestion[]>([]);
   const [text, setText] = useState("");
   const [month, setMonth] = useState(`${year}-01-01`);
   useEffect(() => {
-    trainingRequirementsApi.suggestions(year, departmentId).then(setSuggestions).catch(() => setSuggestions([]));
-  }, [year, departmentId, requirementId]);
+    trainingRequirementsApi.suggestions(year, departmentId, plantWide).then(setSuggestions).catch(() => setSuggestions([]));
+  }, [year, departmentId, requirementId, plantWide]);
   const clean = text.trim().replace(/\s+/g, " ");
   const same = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().replace(/\s+/g, " ").toLowerCase() === b.trim().replace(/\s+/g, " ").toLowerCase();
   const fromSuggestion = suggestions.filter((s) => !lines.some((l) => same(s.topicText, l.topicText) || (s.documentId && l.documentId === s.documentId)));

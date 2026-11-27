@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -197,7 +198,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
         breadcrumbItems={isNew ? knowledgeCategoryCreate(go) : knowledgeCategoryEdit(go, hierarchy?.name)}
         actions={
           <>
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => go(ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES)}>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigateBack(go, location.state, ROUTES.DOCUMENTS.ADMIN.KNOWLEDGE_CATEGORIES)}>
               {tr("Back")}
             </Button>
             {canManage && !isNew && hierarchy && !hierarchy.isDefault && (
@@ -241,7 +242,7 @@ export const KnowledgeCategoryEditorView: React.FC = () => {
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 resize-none"
               rows={3} value={description} disabled={!canManage} onChange={(e) => setDescription(e.target.value)}
             />
-            <p className="text-xs text-slate-500 mt-1.5">{tr("The determinator field decides which Knowledge Base a document belongs to (for example, each Business Unit is one Knowledge Base). Only fields with one low-cardinality value per document can be a determinator.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("The determinator field decides which Knowledge Base a document belongs to (for example, each Business Unit is one Knowledge Base). Only fields with one low-cardinality value per document can be a determinator.")}</p>
           </div>
           <div>
             <Checkbox id="knowledge-hierarchy-active" label={tr("Active")} checked={active} onChange={setActive} disabled={!canManage || Boolean(hierarchy?.isDefault)} />

@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
@@ -43,28 +44,28 @@ const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "All", value: "ALL" },
   { label: "Document", value: "DOCUMENT" },
   { label: "Revision", value: "REVISION" },
-  { label: tr("Controlled Copy"), value: "CONTROLLED_COPY" },
-  { label: tr("Controlled Copy Batch"), value: "CONTROLLED_COPY_BATCH" },
-  { label: tr("Report Template (review)"), value: "REPORT_TEMPLATE" },
-  { label: tr("Training Requirement"), value: "TRAINING_REQUIREMENT" },
-  { label: tr("Training Matrix Version"), value: "TRAINING_MATRIX_VERSION" },
-  { label: tr("Training Activity"), value: "TRAINING_ACTIVITY" },
-  { label: tr("Training Participant"), value: "TRAINING_PARTICIPANT" },
-  { label: tr("Training Assessment"), value: "TRAINING_ASSESSMENT" },
-  { label: tr("Training Job Assignment"), value: "TRAINING_JOB_ASSIGNMENT" },
-  { label: tr("Training Personnel Review"), value: "TRAINING_PERSONNEL_REVIEW" },
-  { label: tr("Training Record Export"), value: "TRAINING_RECORD_EXPORT" },
-  { label: tr("Training Record Export Batch"), value: "TRAINING_RECORD_EXPORT_BATCH" },
-  { label: tr("Training Trainer Exception"), value: "TRAINING_TRAINER_EXCEPTION" },
-  { label: tr("Training Suspension"), value: "TRAINING_SUSPENSION" },
-  { label: tr("Training Vendor"), value: "TRAINING_VENDOR" },
-  { label: tr("Training Record"), value: "TRAINING_RECORD" },
-  { label: tr("Report Schedule"), value: "REPORT_SCHEDULE" },
-  { label: tr("Report Run"), value: "REPORT_RUN" },
-  { label: tr("Report File (legal hold)"), value: "REPORT_ARTIFACT" },
-  { label: tr("Access Review Campaign"), value: "ACCESS_REVIEW_CAMPAIGN" },
-  { label: tr("Audit Trail Review Campaign"), value: "AUDIT_REVIEW_CAMPAIGN" },
-  { label: tr("Uncontrolled Copy"), value: "UNCONTROLLED_COPY" },
+  { get label() { return tr("Controlled Copy"); }, value: "CONTROLLED_COPY" },
+  { get label() { return tr("Controlled Copy Batch"); }, value: "CONTROLLED_COPY_BATCH" },
+  { get label() { return tr("Report Template (review)"); }, value: "REPORT_TEMPLATE" },
+  { get label() { return tr("Training Requirement"); }, value: "TRAINING_REQUIREMENT" },
+  { get label() { return tr("Training Matrix Version"); }, value: "TRAINING_MATRIX_VERSION" },
+  { get label() { return tr("Training Activity"); }, value: "TRAINING_ACTIVITY" },
+  { get label() { return tr("Training Participant"); }, value: "TRAINING_PARTICIPANT" },
+  { get label() { return tr("Training Assessment"); }, value: "TRAINING_ASSESSMENT" },
+  { get label() { return tr("Training Job Assignment"); }, value: "TRAINING_JOB_ASSIGNMENT" },
+  { get label() { return tr("Training Personnel Review"); }, value: "TRAINING_PERSONNEL_REVIEW" },
+  { get label() { return tr("Training Record Export"); }, value: "TRAINING_RECORD_EXPORT" },
+  { get label() { return tr("Training Record Export Batch"); }, value: "TRAINING_RECORD_EXPORT_BATCH" },
+  { get label() { return tr("Training Trainer Exception"); }, value: "TRAINING_TRAINER_EXCEPTION" },
+  { get label() { return tr("Training Suspension"); }, value: "TRAINING_SUSPENSION" },
+  { get label() { return tr("Training Vendor"); }, value: "TRAINING_VENDOR" },
+  { get label() { return tr("Training Record"); }, value: "TRAINING_RECORD" },
+  { get label() { return tr("Report Schedule"); }, value: "REPORT_SCHEDULE" },
+  { get label() { return tr("Report Run"); }, value: "REPORT_RUN" },
+  { get label() { return tr("Report File (legal hold)"); }, value: "REPORT_ARTIFACT" },
+  { get label() { return tr("Access Review Campaign"); }, value: "ACCESS_REVIEW_CAMPAIGN" },
+  { get label() { return tr("Audit Trail Review Campaign"); }, value: "AUDIT_REVIEW_CAMPAIGN" },
+  { get label() { return tr("Uncontrolled Copy"); }, value: "UNCONTROLLED_COPY" },
 ];
 
 const STATUS_OPTIONS: SelectOption[] = [
@@ -78,9 +79,9 @@ type SortKey = "resourceType" | "code" | "resolverCode" | "active" | "updatedAt"
 const TABLE_COLS: { id: SortKey | "no" | "resolverConfig"; label: string; sortable: boolean }[] = [
   { id: "no", label: "No.", sortable: false },
   { id: "code", label: "Code", sortable: true },
-  { id: "resourceType", label: tr("Resource Type"), sortable: true },
+  { id: "resourceType", get label() { return tr("Resource Type"); }, sortable: true },
   { id: "resolverCode", label: "Resolver", sortable: true },
-  { id: "resolverConfig", label: tr("Resolver Config"), sortable: false },
+  { id: "resolverConfig", get label() { return tr("Resolver Config"); }, sortable: false },
   { id: "active", label: "Status", sortable: true },
   { id: "updatedAt", label: "Updated", sortable: true },
 ];
@@ -108,20 +109,20 @@ export const RelationDefinitionsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("RelationDefinitionsTab.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [resourceTypeFilter, setResourceTypeFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
+  const [resourceTypeFilter, setResourceTypeFilter] = useViewState("RelationDefinitionsTab.resourceTypeFilter", "ALL");
+  const [statusFilter, setStatusFilter] = useViewState("RelationDefinitionsTab.statusFilter", "ALL");
+  const [updatedFrom, setUpdatedFrom] = useViewState("RelationDefinitionsTab.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("RelationDefinitionsTab.updatedTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedFilterSections, setExpandedFilterSections] = useState<Set<string>>(
     new Set(["resourceType", "status", "updatedDate"]),
   );
 
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "resourceType", direction: "asc" });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("RelationDefinitionsTab.sortConfig", { key: "resourceType", direction: "asc" });
+  const [currentPage, setCurrentPage] = useViewState("RelationDefinitionsTab.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("RelationDefinitionsTab.itemsPerPage", 10);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,7 +150,7 @@ export const RelationDefinitionsTab: React.FC = () => {
   }, [currentPage, itemsPerPage, debouncedSearch, resourceTypeFilter, statusFilter, updatedFrom, updatedTo, sortConfig]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, resourceTypeFilter, statusFilter, updatedFrom, updatedTo]);
+  useViewFilterChange(() => { setCurrentPage(1); }, [debouncedSearch, resourceTypeFilter, statusFilter, updatedFrom, updatedTo]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));

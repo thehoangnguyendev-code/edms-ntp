@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import { useEffect, useMemo, useState } from "react";
@@ -83,7 +85,7 @@ export function ScheduleEditorPage() {
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ draft, reason }, !loading);
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, title, "the list");
-  const back = () => go("/report/scheduled");
+  const back = () => navigateBack(go, null, "/report/scheduled");
   const canSave = canManage && !!draft.name.trim() && !!draft.definitionCode && (create || !!reason.trim());
 
   const save = async () => {
@@ -101,7 +103,7 @@ export function ScheduleEditorPage() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useViewState("ScheduleEditorPage.activeTab", "general");
   // The same tab layout as the Report Template Details and the Document details.
   const tabs = useMemo<TabItem[]>(
     () => [

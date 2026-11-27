@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
@@ -51,7 +52,7 @@ import { navigateBack } from "@/app/navigation/backNavigation";
 import { formatDateTime, formatDateUS } from "@/utils/format";
 import { auditTrailReviewCampaignDetail as breadcrumb } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
-import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
+import { formatAuditActionLabel } from "../utils/actionBadge";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 import { tr, trFormat } from "@/i18n";
 import { statusColor } from "@/components/ui/badge/statusColors";
@@ -184,14 +185,14 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
   const [items, setItems] = useState<AuditTrailReviewItem[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AuditTrailReviewCampaignDetailView.search", "");
   const searchQuery = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [decision, setDecision] = useState("ALL");
-  const [moduleFilter, setModuleFilter] = useState("ALL");
-  const [actionFilter, setActionFilter] = useState("ALL");
-  const [signedFilter, setSignedFilter] = useState<"ALL" | "YES" | "NO">("ALL");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [moduleFilter, setModuleFilter] = useViewState("AuditTrailReviewCampaignDetailView.moduleFilter", "ALL");
+  const [actionFilter, setActionFilter] = useViewState("AuditTrailReviewCampaignDetailView.actionFilter", "ALL");
+  const [signedFilter, setSignedFilter] = useViewState<"ALL" | "YES" | "NO">("AuditTrailReviewCampaignDetailView.signedFilter", "ALL");
+  const [dateFrom, setDateFrom] = useViewState("AuditTrailReviewCampaignDetailView.dateFrom", "");
+  const [dateTo, setDateTo] = useViewState("AuditTrailReviewCampaignDetailView.dateTo", "");
   const [expandedFilters, setExpandedFilters] = useState<Set<string>>(new Set(["Decision"]));
   const toggleFilterSection = (label: string) => setExpandedFilters((previous) => {
     const next = new Set(previous);
@@ -199,10 +200,10 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     return next;
   });
   const [filterOptions, setFilterOptions] = useState<{ modules: string[]; actions: string[] }>({ modules: [], actions: [] });
-  const [sortBy, setSortBy] = useState<SortKey>("timestamp");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useViewState<SortKey>("AuditTrailReviewCampaignDetailView.sortBy", "timestamp");
+  const [sortDirection, setSortDirection] = useViewState<"asc" | "desc">("AuditTrailReviewCampaignDetailView.sortDirection", "asc");
+  const [currentPage, setCurrentPage] = useViewState("AuditTrailReviewCampaignDetailView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("AuditTrailReviewCampaignDetailView.itemsPerPage", 10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -297,7 +298,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
     auditTrailApi.getReviewItemFilterOptions(id).then(setFilterOptions).catch(() => undefined);
   }, [id]);
 
-  const moduleOptions = [ALL_OPTION, ...filterOptions.modules.map((value) => ({ label: formatAuditModuleLabel(value), value }))];
+  const moduleOptions = [ALL_OPTION, ...filterOptions.modules.map((value) => ({ label: value, value }))];
   const actionOptions = [ALL_OPTION, ...filterOptions.actions.map((value) => ({ label: formatAuditActionLabel(value), value }))];
 
   const clearFilters = () => {
@@ -820,7 +821,7 @@ export const AuditTrailReviewCampaignDetailView: React.FC = () => {
                           )}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
-                          {item.module ? formatAuditModuleLabel(item.module) : "—"}
+                          {item.module ? tr(item.module) : "—"}
                         </TableMarkup.Cell>
                         <TableMarkup.Cell className="whitespace-nowrap px-4 py-3 text-xs text-slate-600 sm:text-sm">
                           {item.action ? formatAuditActionLabel(item.action) : "—"}

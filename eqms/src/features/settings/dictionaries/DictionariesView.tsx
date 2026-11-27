@@ -18,11 +18,11 @@ import { useLanguage, tr } from "@/i18n";
 // the "Dictionaries" nav group's child menu items (NavigationService.java is authoritative;
 // navigation.ts mirrors it) -- each dictionary is its own page/menu entry instead of a tab.
 const DICTIONARIES: Dictionary[] = [
-  { id: "business-units", label: tr("Business Units") },
+  { id: "business-units", get label() { return tr("Business Units"); } },
   { id: "departments", label: "Departments" },
   { id: "positions", label: "Positions" },
-  { id: "storage-locations", label: tr("Storage Locations") },
-  { id: "retention-policies", label: tr("Retention Policies") },
+  { id: "storage-locations", get label() { return tr("Storage Locations"); } },
+  { id: "retention-policies", get label() { return tr("Retention Policies"); } },
 ];
 
 /** One page per dictionary category. The Dictionaries sub-routes are separate literal paths

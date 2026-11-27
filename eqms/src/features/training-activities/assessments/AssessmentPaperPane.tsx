@@ -10,8 +10,8 @@ import { tr } from "@/i18n";
 type Paper = "test" | "key";
 
 const TABS: TabItem[] = [
-  { id: "test", label: tr("Test Paper") },
-  { id: "key", label: tr("Answer Key") },
+  { id: "test", get label() { return tr("Test Paper"); } },
+  { id: "key", get label() { return tr("Answer Key"); } },
 ];
 
 /** The paper is made again this long after the last change of the editor (each paper is a conversion by the document server, so not at every key). */

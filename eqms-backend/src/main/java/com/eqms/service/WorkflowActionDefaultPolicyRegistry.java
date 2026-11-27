@@ -247,6 +247,12 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("TRAINING_MATRIX|SUBMIT|DRAFT", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("SUBMIT", "DRAFT", "training.matrix.manage", 100, true,
                 "A person who manages matrices, in the department of the matrix, sends a complete draft version for approval.",
                 List.of(permission("training.matrix.manage")))));
+        m.put("TRAINING_MATRIX|REVIEW|PENDING_REVIEW", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("REVIEW", "PENDING_REVIEW", "training.matrix.manage", 100, true,
+                "The person designated to review, who did not prepare the version, reviews it and sends it for approval.",
+                List.of(permission("training.matrix.manage")))));
+        m.put("TRAINING_MATRIX|REJECT|PENDING_REVIEW", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("REJECT", "PENDING_REVIEW", "training.matrix.manage", 100, true,
+                "The person designated to review sends the version back to Draft with a reason.",
+                List.of(permission("training.matrix.manage")))));
         m.put("TRAINING_MATRIX|APPROVE|PENDING_APPROVAL", new TrainingDefault("TRAINING_MATRIX", "TRAINING_MATRIX_VERSION", new DefaultPolicy("APPROVE", "PENDING_APPROVAL", "training.matrix.approve", 100, true,
                 "The person designated to approve, who did not prepare the version, approves it and it becomes the effective version.",
                 List.of(permission("training.matrix.approve")))));
@@ -484,22 +490,22 @@ public final class WorkflowActionDefaultPolicyRegistry {
         m.put("REPORT_ARTIFACT|RELEASE_HOLD|HELD", new ModuleDefault("REPORT", "REPORT_ARTIFACT", "REPORT_ARTIFACT", new DefaultPolicy("RELEASE_HOLD", "HELD", "", 100, true,
                 "The same person releases the legal hold, with a reason and a signature.",
                 List.of())));
-        m.put("ACCESS_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "security.access_review.manage", 100, true,
+        m.put("ACCESS_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("SECURITY", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "security.access_review.manage", 100, true,
                 "A person who manages access reviews records a decision on an item of an in-progress campaign.",
                 List.of(permission("security.access_review.manage")))));
-        m.put("ACCESS_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "security.access_review.manage", 100, true,
+        m.put("ACCESS_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("SECURITY", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "security.access_review.manage", 100, true,
                 "The same person completes the campaign when no item is pending, with a signature.",
                 List.of(permission("security.access_review.manage")))));
-        m.put("ACCESS_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "security.access_review.manage", 100, true,
+        m.put("ACCESS_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("SECURITY", "ACCESS_REVIEW_CAMPAIGN", "ACCESS_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "security.access_review.manage", 100, true,
                 "The same person cancels an in-progress campaign.",
                 List.of(permission("security.access_review.manage")))));
-        m.put("AUDIT_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "audit.review.manage", 100, true,
+        m.put("AUDIT_REVIEW_CAMPAIGN|DECIDE_ITEM|IN_PROGRESS", new ModuleDefault("AUDIT_TRAIL", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("DECIDE_ITEM", "IN_PROGRESS", "audit.review.manage", 100, true,
                 "A person who manages audit trail reviews records a decision on an item of an in-progress campaign.",
                 List.of(permission("audit.review.manage")))));
-        m.put("AUDIT_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "audit.review.manage", 100, true,
+        m.put("AUDIT_REVIEW_CAMPAIGN|COMPLETE|IN_PROGRESS", new ModuleDefault("AUDIT_TRAIL", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("COMPLETE", "IN_PROGRESS", "audit.review.manage", 100, true,
                 "The same person completes the campaign when no item is pending, with a signature.",
                 List.of(permission("audit.review.manage")))));
-        m.put("AUDIT_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("SECURITY_REVIEW", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "audit.review.manage", 100, true,
+        m.put("AUDIT_REVIEW_CAMPAIGN|CANCEL|IN_PROGRESS", new ModuleDefault("AUDIT_TRAIL", "AUDIT_REVIEW_CAMPAIGN", "AUDIT_REVIEW_CAMPAIGN", new DefaultPolicy("CANCEL", "IN_PROGRESS", "audit.review.manage", 100, true,
                 "The same person cancels an in-progress campaign.",
                 List.of(permission("audit.review.manage")))));
         m.put("UNCONTROLLED_COPY|DISTRIBUTE|READY_FOR_DISTRIBUTION", new ModuleDefault("DOCUMENT_CONTROL", "UNCONTROLLED_COPY", "UNCONTROLLED_COPY", new DefaultPolicy("DISTRIBUTE", "READY_FOR_DISTRIBUTION", "documents.uncontrolled_copy.distribute", 100, true,

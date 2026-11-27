@@ -316,9 +316,51 @@ public class RevisionController {
             @PathVariable UUID id,
             @RequestPart("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(revisionService.uploadRevisionFile(id, file));
+        String editorKey = revisionService.onlyOfficeSessionKey(id);
+        var result = revisionService.uploadRevisionFile(id, file);
+        // Editors still showing the replaced file are closed; whatever they send back is refused.
+        revisionService.dropOnlyOfficeSessions(java.util.List.of(editorKey));
+        return ResponseEntity.ok(result);
     }
 
+
+    private com.eqms.service.RevisionComparisonService revisionComparisons;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setRevisionComparisons(com.eqms.service.RevisionComparisonService revisionComparisons) {
+        this.revisionComparisons = revisionComparisons;
+    }
+
+    /** Replaces the file of a Draft with a copy of the Effective revision's Word file. */
+    @PostMapping("/{id}/source-from-effective")
+    public ResponseEntity<RevisionDetailResponse> useEffectiveSource(@PathVariable UUID id) {
+        String editorKey = revisionService.onlyOfficeSessionKey(id);
+        var result = revisionService.useEffectiveSourceForRevision(id);
+        revisionService.dropOnlyOfficeSessions(java.util.List.of(editorKey));
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/comparison-info")
+    public ResponseEntity<com.eqms.dto.document.RevisionComparisonInfoResponse> getComparisonInfo(@PathVariable UUID id) {
+        return ResponseEntity.ok(revisionComparisons.info(id));
+    }
+
+    @GetMapping("/{id}/comparison-baselines")
+    public ResponseEntity<java.util.List<com.eqms.dto.document.RevisionComparisonBaselineResponse>> getComparisonBaselines(@PathVariable UUID id) {
+        return ResponseEntity.ok(revisionComparisons.baselines(id));
+    }
+
+    @GetMapping("/{id}/onlyoffice/side-by-side-config")
+    public ResponseEntity<com.eqms.dto.document.RevisionSideBySideResponse> getSideBySideConfig(
+            @PathVariable UUID id, @org.springframework.web.bind.annotation.RequestParam(required = false) UUID baselineId) {
+        return ResponseEntity.ok(revisionComparisons.sideBySide(id, baselineId));
+    }
+
+    @GetMapping("/{id}/onlyoffice/compare-config")
+    public ResponseEntity<com.fasterxml.jackson.databind.node.ObjectNode> getComparisonViewConfig(
+            @PathVariable UUID id, @org.springframework.web.bind.annotation.RequestParam(required = false) UUID baselineId) {
+        return ResponseEntity.ok(revisionComparisons.viewConfig(id, baselineId));
+    }
 
     /**
      * Session-authenticated counterpart to Graph's edit-link/review-link endpoints above, for the

@@ -348,7 +348,7 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
 
   return (
     <div className="space-y-3">
-      <div ref={containerRef} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100" style={{ minHeight: 240 }}>
+      <div ref={containerRef} className="relative mx-auto w-full max-w-[600px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100" style={{ minHeight: 240 }}>
         {preview && bgImage && stageWidth > 0 ? (
           <Stage width={stageWidth} height={stageHeight} className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
             <Layer listening={false}>
@@ -503,7 +503,7 @@ export const MarkingPreviewPane: React.FC<MarkingPreviewPaneProps> = (props) => 
       </div>
 
       {error && preview && <p className="text-xs text-red-600">{error}</p>}
-      {preview?.note && <p className="text-2xs text-slate-500">{preview.note}</p>}
+      {preview?.note && <p className="mt-1.5 text-xs text-slate-500">{preview.note}</p>}
     </div>
   );
 };

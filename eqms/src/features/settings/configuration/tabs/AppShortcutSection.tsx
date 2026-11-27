@@ -224,7 +224,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                   APP_SHORT_NAME_MAX,
                 )}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {trFormat("Under the icon, up to {count} characters. Empty uses the display name.", { count: APP_SHORT_NAME_MAX })}
               </p>
             </div>
@@ -238,7 +238,7 @@ export const AppShortcutSection: React.FC<AppShortcutSectionProps> = ({
                   onChange({ ...config, appIconBackground: value })
                 }
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {tr("Behind the logo. Needed for a transparent logo: iOS would show black.")}
               </p>
             </div>

@@ -25,7 +25,7 @@ public class TrainingComplianceReportMetadataProvider implements ReportMetadataP
         column("documentNumber", "Document Number", "x.code");
         column("annual", "Annual", "case when x.annual_required then 'Yes' else 'No' end");
         column("lastDone", "Last Trained On", "x.last_done");
-        column("status", "Status", ReportQueryKit.labelCase("x.status", "MISSING", "Not trained", "DUE", "Annual training due", "OK", "Trained"));
+        column("status", "Status", ReportQueryKit.labelCase("x.status", "MISSING", "Not trained", "UPDATE_NEEDED", "New revision not trained", "DUE", "Annual training due", "OK", "Trained"));
         column("newEmployee", "New Employee", "case when x.is_new then 'Yes' else 'No' end");
     }
     private static void column(String code, String label, String sql) { COLUMNS.put(code, sql); LABELS.put(code, label); }
@@ -39,7 +39,7 @@ public class TrainingComplianceReportMetadataProvider implements ReportMetadataP
     public String code() { return "TRAINING_COMPLIANCE"; }
     public String name() { return "Training Compliance"; }
     public String category() { return "Training"; }
-    public String description() { return "Who is trained on what the effective training matrix of the department requires: trained, annual training due, or not trained."; }
+    public String description() { return "Who is trained on what the effective training matrix of the department requires: trained, annual training due, new revision not trained, or not trained."; }
     public List<String> usePermissions() { return List.of("training.compliance.view"); }
     public List<String> allowedScopes() { return List.of("PERSONAL", "DEPARTMENT", "SYSTEM"); }
     public Map<String, String> columns() { return COLUMNS; }
@@ -70,8 +70,8 @@ public class TrainingComplianceReportMetadataProvider implements ReportMetadataP
                 .append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (x.full_name ilike ? escape '\\' or coalesce(x.employee_code,'') ilike ? escape '\\' or x.title ilike ? escape '\\' or coalesce(x.code,'') ilike ? escape '\\'"
-                    + " or coalesce(x.position_name,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(x.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(x.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(x.title) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(x.code,'')) like eqms_fold(?) escape '\\'"
+                    + " or eqms_fold(coalesce(x.position_name,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 5; i++) args.add(term);
         }

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { DataTable, type DataTableColumn } from "@/components/ui/table/DataTable";
@@ -13,7 +14,7 @@ import { tr } from "@/i18n";
 export function LegacyPeopleTab({ activityId }: { activityId: string }) {
   const [rows, setRows] = useState<TrainingLegacyPerson[]>([]);
   const [status, setStatus] = useState<"FILED" | "VERIFIED" | null | undefined>();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("LegacyPeopleTab.page", 1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

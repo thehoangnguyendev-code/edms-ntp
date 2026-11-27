@@ -19,13 +19,13 @@ public interface AuditTrailReviewItemRepository extends JpaRepository<AuditTrail
             JOIN item.auditLog auditLog
             WHERE item.campaign.id = :campaignId
               AND (:search IS NULL
-                    OR LOWER(COALESCE(auditLog.userFullName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(auditLog.employeeCode, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(auditLog.entityType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(auditLog.action, auditLog.actionType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(auditLog.entityName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+                    OR cast(function('eqms_fold', COALESCE(auditLog.userFullName, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(auditLog.employeeCode, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(auditLog.entityType, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(auditLog.action, auditLog.actionType, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(auditLog.entityName, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string))
               AND (:decision IS NULL OR item.decision = :decision)
-              AND (:module = '' OR auditLog.entityType = :module)
+              AND (:anyModule = true OR auditLog.entityType IN :entityTypes)
               AND (:action = '' OR COALESCE(auditLog.action, auditLog.actionType, '') = :action)
               AND (:signed = 'ALL'
                     OR (:signed = 'YES' AND auditLog.electronicSignatureApplied = true)
@@ -36,7 +36,8 @@ public interface AuditTrailReviewItemRepository extends JpaRepository<AuditTrail
             @Param("campaignId") UUID campaignId,
             @Param("search") String search,
             @Param("decision") String decision,
-            @Param("module") String module,
+            @Param("anyModule") boolean anyModule,
+            @Param("entityTypes") java.util.Collection<String> entityTypes,
             @Param("action") String action,
             @Param("signed") String signed,
             @Param("from") java.time.Instant from,

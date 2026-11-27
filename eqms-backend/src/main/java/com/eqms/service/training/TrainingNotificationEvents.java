@@ -36,6 +36,8 @@ public final class TrainingNotificationEvents {
             new Event("TRAINING_LEGACY_IMPORTED", "Paper Document Imported", "A document was imported from paper and its training evidence must be verified.", "MEDIUM"),
             new Event("TRAINING_MAKEUP_PENDING", "Make-up Training Pending", "Absent people have no make-up training yet.", "MEDIUM"),
             new Event("TRAINING_OVERDUE", "Training Overdue", "A training the person has to attend is overdue.", "HIGH"),
+            new Event("TRAINING_MATRIX_REVIEW_DUE", "Matrix Review Due", "The training matrix of a department is due for its yearly review before the annual training requirement.", "MEDIUM"),
+            new Event("TRAINING_PERSONNEL_EVENT", "Training Review Needed", "A new employee, a return after a long absence, a transfer or a change of position needs a training review.", "HIGH"),
             new Event("TRAINING_PERIODIC_REQUIREMENT_DUE", "Periodic Training Requirement Due", "Periodic training of reviewed documents is not requested.", "MEDIUM"),
             new Event("TRAINING_PREPARATION_ASSIGNED", "Training Preparation Assigned", "The person is asked to prepare the content of a training.", "MEDIUM"),
             new Event("TRAINING_QA_CONFIRM_WAITING", "Results Waiting for QA", "Training results wait for QA to confirm.", "MEDIUM"),

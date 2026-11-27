@@ -6,6 +6,16 @@ import { setCatalogLanguage } from './src/i18n/catalog';
 // the next test, which expects the English fallback.
 beforeEach(() => setCatalogLanguage('en'));
 
+// Each test starts a fresh view session. Persistence across unmount/Back is tested
+// inside a test; an unrelated test must not inherit the previous one's active tab.
+beforeEach(() => {
+  for (const key of Object.keys(window.sessionStorage)) {
+    if (key.startsWith('eqms.navigation.') || (key.startsWith('eqms.list.') && key.includes('.view:'))) {
+      window.sessionStorage.removeItem(key);
+    }
+  }
+});
+
 // No test reaches the CDN of the icon libraries: the newest icons are read from there while the application runs (see remoteIcons.tsx), and a test that wants them
 // stubs fetch itself. Without this a test that opens the icon picker would make a real request.
 const realFetch = globalThis.fetch?.bind(globalThis);

@@ -23,9 +23,9 @@ interface IntegrationStatusCardProps {
 }
 
 const STEP_ICON: Record<IntegrationCheckStep['status'], React.ReactNode> = {
-  OK: <IconCircleCheck className="h-4 w-4 text-emerald-600" aria-label={tr("Passed")} />,
-  FAILED: <IconCircleX className="h-4 w-4 text-red-600" aria-label={tr("Failed")} />,
-  NOT_CHECKED: <IconCircleDashed className="h-4 w-4 text-slate-400" aria-label={tr("Not checked")} />,
+  get OK() { return <IconCircleCheck className="h-4 w-4 text-emerald-600" aria-label={tr("Passed")} />; },
+  get FAILED() { return <IconCircleX className="h-4 w-4 text-red-600" aria-label={tr("Failed")} />; },
+  get NOT_CHECKED() { return <IconCircleDashed className="h-4 w-4 text-slate-400" aria-label={tr("Not checked")} />; },
 };
 
 /** The state of one integration at the top of its tab: what it is, a Test connection button, and what the last test found (it stays after the toast is gone). */

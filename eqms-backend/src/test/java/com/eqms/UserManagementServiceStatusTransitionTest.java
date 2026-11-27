@@ -109,7 +109,7 @@ class UserManagementServiceStatusTransitionTest {
     }
 
     private StatusActionRequest statusRequest(String reason, String date) {
-        return new StatusActionRequest(reason, date, "sig-token");
+        return new StatusActionRequest(reason, date, "sig-token", "OTHER");
     }
 
     private AuthSession activeSession() {
@@ -144,6 +144,15 @@ class UserManagementServiceStatusTransitionTest {
                 eq(actor), eq("REVISION"), eq("SOP.1_1.0.0"), eq(revision.getId()),
                 eq("WORKFLOW_ASSIGNEE_UNAVAILABLE"), eq("PENDING_REVIEW"), eq("PENDING_REVIEW"), any(String.class));
         assertEquals(UserStatus.Suspended, user.getStatus(), "the suspension itself must never be blocked");
+    }
+
+    @Test
+    void suspendUser_refusesAMissingOrUnknownKindOfSuspension() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> userManagementService.suspendUser(userId, new StatusActionRequest("Maternity", null, "sig-token", null), httpRequest()));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> userManagementService.suspendUser(userId, new StatusActionRequest("Maternity", null, "sig-token", "SICK"), httpRequest()));
+        org.junit.jupiter.api.Assertions.assertEquals(com.eqms.entity.UserStatus.Active, user.getStatus());
     }
 
     @Test

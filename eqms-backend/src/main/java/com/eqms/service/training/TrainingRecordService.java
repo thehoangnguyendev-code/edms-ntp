@@ -95,7 +95,7 @@ public class TrainingRecordService {
         }
         if (personId != null) { where.append(" and r.person_user_id = ?"); args.add(personId); }
         if (documentNumber != null && !documentNumber.isBlank()) { where.append(" and lower(r.document_number) = lower(?)"); args.add(documentNumber.trim()); }
-        if (trainingNumber != null && !trainingNumber.isBlank()) { where.append(" and lower(r.training_number) like ? escape '\\'"); args.add("%" + escape(trainingNumber.trim().toLowerCase(Locale.ROOT)) + "%"); }
+        if (trainingNumber != null && !trainingNumber.isBlank()) { where.append(" and eqms_fold(r.training_number) like eqms_fold(?) escape '\\'"); args.add("%" + escape(trainingNumber.trim().toLowerCase(Locale.ROOT)) + "%"); }
         if (!includeVoided) where.append(" and v.id is null");
         TrainingListFilter extra = new TrainingListFilter().equal("r.method", more.get("method")).equal("r.result", more.get("result")).equal("r.source", more.get("source"))
                 .contains(more.get("position"), "r.position").contains(more.get("topic"), "r.topic_text")
@@ -127,7 +127,7 @@ public class TrainingRecordService {
         StringBuilder sql = new StringBuilder(where);
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            sql.append(" and (lower(r.topic_text) like ? escape '\\' or lower(r.training_number) like ? escape '\\' or lower(coalesce(r.document_number,'')) like ? escape '\\' or lower(r.full_name) like ? escape '\\' or lower(coalesce(r.employee_code,'')) like ? escape '\\' or lower(coalesce(r.department,'')) like ? escape '\\' or lower(coalesce(r.position,'')) like ? escape '\\')");
+            sql.append(" and (eqms_fold(r.topic_text) like eqms_fold(?) escape '\\' or eqms_fold(r.training_number) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(r.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.department,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.position,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         int safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -183,7 +183,7 @@ public class TrainingRecordService {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         int safePage = Math.max(page, 1);
         String like = search == null || search.isBlank() ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        String filter = like == null ? "" : " and (lower(a.training_number) like ? escape '\\' or lower(training_activity_topics(a.id)) like ? escape '\\' or lower(coalesce(a.document_number,'')) like ? escape '\\' or lower(coalesce(a.cancel_reason,'')) like ? escape '\\')";
+        String filter = like == null ? "" : " and (eqms_fold(a.training_number) like eqms_fold(?) escape '\\' or eqms_fold(training_activity_topics(a.id)) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(a.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(a.cancel_reason,'')) like eqms_fold(?) escape '\\')";
         List<Object> args = new ArrayList<>(List.of(department, y));
         if (like != null) { args.add(like); args.add(like); args.add(like); args.add(like); }
         TrainingListFilter extra = new TrainingListFilter().equal("a.kind", more.get("kind")).equal("a.status", more.get("status")).equal("a.kind_reason", more.get("kindReason"))
@@ -198,7 +198,8 @@ public class TrainingRecordService {
             select a.id as activity_id, a.training_number, a.created_at, a.kind, a.status, training_activity_topics(a.id) as training_topics, a.document_number, a.revision_number, a.cancel_reason,
                    (select d.name from departments d where d.id = a.organizer_department_id) as department_name,
                    (select count(*) from training_sessions s where s.activity_id = a.id and s.status <> 'CANCELLED') as sessions,
-                   (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements
+                   (select count(*) from training_events e where e.activity_id = a.id and e.event_type = 'SESSION_POSTPONED') as postponements,
+                   (select string_agg(s.postpone_reason, '; ' order by s.session_no) from training_sessions s where s.activity_id = a.id and nullif(trim(s.postpone_reason), '') is not null) as postpone_reasons
               from training_activities a where a.organizer_department_id=? and a.year=?""" + filter
                 + TrainingRows.orderBy(sortBy, sortDirection, Map.of("date", "a.created_at", "number", "a.serial", "kind", "a.kind", "title", "training_activity_topics(a.id)", "document", "a.document_number", "sessions", "sessions", "status", "a.status", "department", "department_name"),
                 "a.serial, a.suffix nulls first") + " limit ? offset ?", pageArgs.toArray());

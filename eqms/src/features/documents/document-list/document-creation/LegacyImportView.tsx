@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -75,7 +76,7 @@ export const LegacyImportView: React.FC = () => {
   // Only surface inline field-level errors after the first failed attempt to sign -- otherwise
   // every required field would show red before the user has even started filling the form.
   const [showValidation, setShowValidation] = useState(false);
-  const [activeTab, setActiveTab] = useState<FormTabId>("document");
+  const [activeTab, setActiveTab] = useViewState<FormTabId>("LegacyImportView.activeTab", "document");
   const [submitting, setSubmitting] = useState(false);
   const [submitStage, setSubmitStage] = useState<string>("");
 

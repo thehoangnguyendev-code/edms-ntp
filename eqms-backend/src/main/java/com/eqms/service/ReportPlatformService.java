@@ -169,7 +169,7 @@ public class ReportPlatformService {
         int safeLimit = Math.min(Math.max(limit, 1), 100); int safePage = Math.max(page, 1);
         String term = "%" + (search == null ? "" : search.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")) + "%";
         String from = " from report_artifacts a join report_runs r on r.id = a.run_id left join app_users u on u.id = r.requester_user_id";
-        String where = " where a.legal_hold = true and (coalesce(r.report_title, r.definition_code) ilike ? or a.generated_filename ilike ?)";
+        String where = " where a.legal_hold = true and (eqms_fold(coalesce(r.report_title, r.definition_code)) like eqms_fold(?) or eqms_fold(a.generated_filename) like eqms_fold(?))";
         long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, term, term);
         String orderColumn = switch (sortBy == null ? "heldAt" : sortBy) {
             case "report" -> "coalesce(r.report_title, r.definition_code)";
@@ -189,7 +189,7 @@ public class ReportPlatformService {
         require(actor, "reports.schedule.manage", "report.module.export");
         int safeLimit = Math.min(Math.max(limit, 1), 100); int safePage = Math.max(page, 1);
         String term = "%" + (search == null ? "" : search.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")) + "%";
-        String where = "where (coalesce(u.full_name,'') ilike ? or coalesce(s.name,'') ilike ?)";
+        String where = "where (eqms_fold(coalesce(u.full_name,'')) like eqms_fold(?) or eqms_fold(coalesce(s.name,'')) like eqms_fold(?))";
         List<Object> args = new ArrayList<>(List.of(term, term));
         if (channel != null && !channel.isBlank()) { where += " and a.channel = ?"; args.add(channel.trim()); }
         if (status != null && !status.isBlank()) { where += " and a.status = ?"; args.add(status.trim()); }
@@ -211,7 +211,7 @@ public class ReportPlatformService {
     public List<Map<String,Object>> recipientCandidates(UserAccount actor, String search) {
         require(actor, "reports.schedule.manage", "report.module.export");
         String term = "%" + (search == null ? "" : search.trim()) + "%";
-        return jdbc.queryForList("select id, full_name as \"fullName\", employee_code as \"employeeCode\", email, department, business_unit as \"businessUnit\" from app_users where status='Active' and (full_name ilike ? or employee_code ilike ? or email ilike ?) order by full_name limit 30", term, term, term).stream().filter(candidate -> users.findById(UUID.fromString(candidate.get("id").toString())).map(this::hasArtifactDownloadPermission).orElse(false)).toList();
+        return jdbc.queryForList("select id, full_name as \"fullName\", employee_code as \"employeeCode\", email, department, business_unit as \"businessUnit\" from app_users where status='Active' and (eqms_fold(full_name) like eqms_fold(?) or eqms_fold(employee_code) like eqms_fold(?) or eqms_fold(email) like eqms_fold(?)) order by full_name limit 30", term, term, term).stream().filter(candidate -> users.findById(UUID.fromString(candidate.get("id").toString())).map(this::hasArtifactDownloadPermission).orElse(false)).toList();
     }
 
     /**
@@ -229,7 +229,7 @@ public class ReportPlatformService {
         if (text.length() > 200) throw new IllegalArgumentException("REPORT_SEARCH_TOO_LONG");
         String like = "%" + text.toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
         StringBuilder where = new StringBuilder(" where" + ELIGIBLE_RECIPIENT
-                + " and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.email,'')) like ? escape '\\')");
+                + " and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.email,'')) like eqms_fold(?) escape '\\')");
         List<Object> args = new ArrayList<>(List.of(like, like, like, like));
         if (businessUnit != null && !businessUnit.isBlank()) { where.append(" and u.business_unit=?"); args.add(businessUnit); }
         if (department != null && !department.isBlank()) { where.append(" and u.department=?"); args.add(department); }
@@ -439,10 +439,10 @@ public class ReportPlatformService {
         if (!all) dataArgs.add(actor.getId());
         dataArgs.addAll(filterArgs);
         dataArgs.add(safeLimit); dataArgs.add(offset);
-        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.full_run as \"fullRun\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", r.requested_format as \"requestedFormat\", a.id as \"artifactId\", a.format as \"artifactFormat\", a.generated_filename as \"artifactFilename\", a.byte_size as \"artifactSize\" from report_runs r left join report_artifacts a on a.run_id=r.id where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
+        List<Map<String, Object>> data = jdbc.queryForList("select r.report_title as \"reportTitle\", r.full_run as \"fullRun\", r.id, r.definition_code as \"definitionCode\", r.definition_version as \"definitionVersion\", (select rv.revision from report_template_revisions rv where rv.definition_code=r.definition_code and rv.definition_version=r.definition_version) as \"revision\", r.status, r.progress, r.reason_code as \"reasonCode\", r.error_message as \"errorMessage\", r.queued_at as \"queuedAt\", r.completed_at as \"completedAt\", r.requested_format as \"requestedFormat\", a.id as \"artifactId\", a.format as \"artifactFormat\", a.generated_filename as \"artifactFilename\", a.byte_size as \"artifactSize\" from report_runs r left join report_artifacts a on a.run_id=r.id where (eqms_fold(r.definition_code) like eqms_fold(?) or eqms_fold(cast(r.id as text)) like eqms_fold(?) or eqms_fold(r.report_title) like eqms_fold(?)) " + where + " order by " + orderColumn + " " + direction + " nulls last, r.id desc limit ? offset ?", dataArgs.toArray());
         List<Object> countArgs = new ArrayList<>(List.of(term, term, term)); if (!all) countArgs.add(actor.getId());
         countArgs.addAll(filterArgs);
-        Long total = jdbc.queryForObject("select count(*) from report_runs r where (r.definition_code ilike ? or cast(r.id as text) ilike ? or r.report_title ilike ?) " + where, Long.class, countArgs.toArray());
+        Long total = jdbc.queryForObject("select count(*) from report_runs r where (eqms_fold(r.definition_code) like eqms_fold(?) or eqms_fold(cast(r.id as text)) like eqms_fold(?) or eqms_fold(r.report_title) like eqms_fold(?)) " + where, Long.class, countArgs.toArray());
         long resolvedTotal = total == null ? 0 : total;
         return Map.of("data", data, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", resolvedTotal, "totalPages", (int) Math.ceil((double) resolvedTotal / safeLimit)));
     }

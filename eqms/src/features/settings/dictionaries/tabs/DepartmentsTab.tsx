@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState, useMemo } from "react";
@@ -53,12 +54,12 @@ export const DepartmentsTab = React.forwardRef<
     title: "",
     description: "",
   });
-  const [businessUnitFilter, setBusinessUnitFilter] = useState<
+  const [businessUnitFilter, setBusinessUnitFilter] = useViewState<
     "All" | BusinessUnit
-  >("All");
-  const [statusFilter, setStatusFilter] = useState<
+  >("DepartmentsTab.businessUnitFilter", "All");
+  const [statusFilter, setStatusFilter] = useViewState<
     "All" | "Active" | "Inactive"
-  >("All");
+  >("DepartmentsTab.statusFilter", "All");
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");
   const {

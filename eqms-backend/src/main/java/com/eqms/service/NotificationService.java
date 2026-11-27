@@ -534,29 +534,29 @@ public class NotificationService {
                 String pattern = "%" + sender.trim().toLowerCase(Locale.ROOT) + "%";
                 var senderJoin = root.join("senderUser", jakarta.persistence.criteria.JoinType.LEFT);
                 predicates.add(cb.or(
-                        cb.like(cb.lower(senderJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(senderJoin.get("username")), pattern),
-                        cb.like(cb.lower(senderJoin.get("employeeCode")), pattern),
-                        cb.like(cb.lower(senderJoin.get("email")), pattern)
+                        com.eqms.util.SearchText.like(cb, senderJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, senderJoin.get("username"), pattern),
+                        com.eqms.util.SearchText.like(cb, senderJoin.get("employeeCode"), pattern),
+                        com.eqms.util.SearchText.like(cb, senderJoin.get("email"), pattern)
                 ));
             }
             if (StringUtils.hasText(relatedNumber) && !"all".equalsIgnoreCase(relatedNumber)) {
                 String pattern = "%" + relatedNumber.trim().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.like(cb.lower(root.get("relatedEntityNumber")), pattern));
+                predicates.add(com.eqms.util.SearchText.like(cb, root.get("relatedEntityNumber"), pattern));
             }
             if (StringUtils.hasText(relatedTitle) && !"all".equalsIgnoreCase(relatedTitle)) {
                 String pattern = "%" + relatedTitle.trim().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.like(cb.lower(root.get("relatedEntityTitle")), pattern));
+                predicates.add(com.eqms.util.SearchText.like(cb, root.get("relatedEntityTitle"), pattern));
             }
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), pattern),
-                        cb.like(cb.lower(root.get("message")), pattern),
-                        cb.like(cb.lower(root.get("module")), pattern),
-                        cb.like(cb.lower(root.get("relatedEntityNumber")), pattern),
-                        cb.like(cb.lower(root.get("relatedEntityTitle")), pattern),
-                        cb.like(cb.lower(root.get("type")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("title"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("message"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("module"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("relatedEntityNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("relatedEntityTitle"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("type"), pattern)
                 ));
             }
             Instant from = parseBoundary(dateFrom, true);

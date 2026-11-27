@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
@@ -32,17 +33,17 @@ const ALL = "ALL";
 const PART_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Database", value: "DATABASE" },
-  { label: tr("Document files"), value: "OBJECT_STORE" },
+  { get label() { return tr("Document files"); }, value: "OBJECT_STORE" },
 ];
 const FILES_OPTIONS = [
   { label: "All", value: ALL },
-  { label: tr("At its own time"), value: "OWN" },
-  { label: tr("With the database"), value: "WITH_DATABASE" },
+  { get label() { return tr("At its own time"); }, value: "OWN" },
+  { get label() { return tr("With the database"); }, value: "WITH_DATABASE" },
 ];
 const APPROVAL_OPTIONS = [
   { label: "All", value: ALL },
   { label: "Approved", value: "APPROVED" },
-  { label: tr("Not approved"), value: "NOT_APPROVED" },
+  { get label() { return tr("Not approved"); }, value: "NOT_APPROVED" },
 ];
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...(["ACTIVE", "DRAFT", "SUPERSEDED", "DISCARDED"] as PolicyStatus[]).map((value) => ({ label: statusLabel(value), value }))];
 
@@ -58,7 +59,7 @@ export const BackupPolicyView: React.FC = () => {
   const [active, setActive] = useState<PolicyVersion | null | undefined>(undefined);
   const [activeError, setActiveError] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("BackupPolicyView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState(ALL);
   const [part, setPart] = useState(ALL);
@@ -71,8 +72,8 @@ export const BackupPolicyView: React.FC = () => {
   const [activatedTo, setActivatedTo] = useState("");
   const [targetOptions, setTargetOptions] = useState([{ label: "All", value: ALL }]);
   const menu = usePortalDropdown();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useViewState("BackupPolicyView.page", 1);
+  const [pageSize, setPageSize] = useViewState("BackupPolicyView.pageSize", 10);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "version", direction: "desc" });
   const [rows, setRows] = useState<PolicyVersion[]>([]);
   const [total, setTotal] = useState(0);
@@ -151,7 +152,7 @@ export const BackupPolicyView: React.FC = () => {
     };
   }, [debouncedSearch, status, part, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [debouncedSearch, status, part, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, pageSize]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, status, part, target, filesSchedule, approval, proposedFrom, proposedTo, activatedFrom, activatedTo, pageSize]);
 
   const sortFor = (key: SortKey) => ({
     direction: sort.key === key ? sort.direction : undefined,

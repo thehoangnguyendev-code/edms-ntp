@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useCallback, useEffect, useState } from "react";
 import { IconArrowUp } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button/Button";
@@ -21,7 +22,7 @@ const INPUT = "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:
 export function TrainingNumberCountersPanel({ canManage }: { canManage: boolean }) {
   const { showToast } = useToast();
   const [rows, setRows] = useState<TrainingNumberCounter[]>([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("TrainingNumberCountersPanel.page", 1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

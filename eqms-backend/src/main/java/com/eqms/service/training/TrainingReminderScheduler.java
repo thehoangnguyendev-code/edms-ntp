@@ -68,6 +68,7 @@ public class TrainingReminderScheduler {
         sent += qaListReminders(today);
         sent += annualRequirementReminders(today);
         sent += periodicRequirementReminders(today);
+        sent += matrixReviewReminders(today);
         sent += impactReminders(today);
         sent += reviewReminders(today);
         sent += resultsReminders(today);
@@ -252,6 +253,31 @@ public class TrainingReminderScheduler {
      * for "the review is done", so the documents whose review date (valid until) falls in the month are taken. In the last three days of the month, those of a department that are in no
      * approved periodic requirement of the year are named to the people who prepare requirements there.
      */
+    /**
+     * SOP.0003 5.3.1: the matrix is reviewed every year and before the annual training requirement is prepared. In the month of Training Properties the heads of the departments whose
+     * matrix was not changed in the last eleven months are reminded, once a week.
+     */
+    private int matrixReviewReminders(LocalDate today) {
+        int month = jdbc.queryForObject("select matrix_review_reminder_month from training_settings where id = 1", Integer.class);
+        if (today.getMonthValue() != month) return 0;
+        int count = 0;
+        for (Map<String, Object> row : jdbc.queryForList("""
+            select d.id as department_id, d.name, v.version_no, v.effective_at::date as since
+              from training_matrices m join departments d on d.id = m.department_id and m.scope = 'DEPARTMENT'
+              join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
+             where v.effective_at < now() - interval '11 months'
+               and not exists (select 1 from training_matrix_versions o where o.matrix_id = m.id and o.status in ('DRAFT','PENDING_REVIEW','PENDING_APPROVAL'))
+            """)) {
+            for (UserAccount person : recipients.holders("training.matrix.manage", (UUID) row.get("department_id"))) {
+                notifier.send("TRAINING_MATRIX_REVIEW_DUE", person, null, "Training: the matrix of " + row.get("name") + " is due for its yearly review",
+                        "The effective matrix (version " + row.get("version_no") + ") has not changed since " + row.get("since") + ". Review it against the job descriptions and the new documents before the annual training requirement is prepared (SOP.0003 5.3.1).",
+                        "TRAINING_MATRIX_LIST", (UUID) row.get("department_id"), "matrix-review:" + row.get("department_id") + ":" + today.getYear() + "-" + today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+                count++;
+            }
+        }
+        return count;
+    }
+
     private int periodicRequirementReminders(LocalDate today) {
         LocalDate last = today.withDayOfMonth(today.lengthOfMonth());
         if (today.isBefore(last.minusDays(2))) return 0;
@@ -308,7 +334,7 @@ public class TrainingReminderScheduler {
               from training_personnel_reviews r join app_users u on u.id = r.person_user_id
               left join training_approval_assignments a on a.object_type = 'TRAINING_PERSONNEL_REVIEW' and a.object_id = r.id and a.step_code = 'REVIEW_CLOSE' and a.status = 'PENDING'
              where r.status = 'OPEN'
-               and not exists (select 1 from training_personnel_review_items i where i.review_id = r.id and i.status = 'PENDING')
+               and not exists (select 1 from training_personnel_review_items i where i.review_id = r.id and training_review_item_state(i.review_id, i.item_code) = 'PENDING')
                and coalesce((select max(i.done_at) from training_personnel_review_items i where i.review_id = r.id), r.created_at) < now() - make_interval(days => ?)
             """, readyDays)) {
             List<UserAccount> who = new java.util.ArrayList<>();
@@ -324,7 +350,7 @@ public class TrainingReminderScheduler {
         for (Map<String, Object> row : jdbc.queryForList("""
             select r.id, r.review_no, r.created_by, u.full_name from training_personnel_reviews r join app_users u on u.id = r.person_user_id
              where r.status = 'OPEN' and r.created_at < now() - make_interval(days => ?)
-               and exists (select 1 from training_personnel_review_items i where i.review_id = r.id and i.status = 'PENDING')
+               and exists (select 1 from training_personnel_review_items i where i.review_id = r.id and training_review_item_state(i.review_id, i.item_code) = 'PENDING')
             """, openDays)) {
             UserAccount opener = row.get("created_by") == null ? null : users.findById((UUID) row.get("created_by")).orElse(null);
             if (opener == null) continue;

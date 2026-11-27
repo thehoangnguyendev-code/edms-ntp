@@ -11,10 +11,10 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { tr } from "@/i18n";
 
 const TERMINATION_REASON_OPTIONS = [
-  { label: tr("Resignation"), value: "Resignation" },
-  { label: tr("Layoff / Redundancy"), value: "Layoff / Redundancy" },
-  { label: tr("Contract Ended"), value: "Contract Ended" },
-  { label: tr("Retirement"), value: "Retirement" },
+  { get label() { return tr("Resignation"); }, value: "Resignation" },
+  { get label() { return tr("Layoff / Redundancy"); }, value: "Layoff / Redundancy" },
+  { get label() { return tr("Contract Ended"); }, value: "Contract Ended" },
+  { get label() { return tr("Retirement"); }, value: "Retirement" },
   { label: "Dismissal", value: "Dismissal" },
   { label: "Other", value: "Other" },
 ];

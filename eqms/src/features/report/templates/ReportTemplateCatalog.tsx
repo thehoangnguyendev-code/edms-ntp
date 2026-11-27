@@ -1,5 +1,6 @@
 import { tr, trFormat } from "@/i18n";
 import { useEffect, useMemo, useState } from "react";
+import { useViewState } from "@/hooks/useViewState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
 import {
@@ -54,16 +55,25 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
   const canManage = hasAnyPermission([
     "reports.definition.manage",
   ]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useViewState("ReportTemplateCatalog.search", "");
+  const [page, setPage] = useViewState("ReportTemplateCatalog.page", 1);
+  const [pageSize, setPageSize] = useViewState("ReportTemplateCatalog.pageSize", 10);
   // The menu item "Templates Pending Approval" opens this list already filtered (?status=PENDING_APPROVAL).
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<Filters>(() => ({ ...defaults, status: inAdministration ? (searchParams.get("status") ?? "") : "" }));
-  const [updated, setUpdated] = useState({ from: "", to: "" });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useViewState<Filters>("ReportTemplateCatalog.filters", () => ({ ...defaults, status: inAdministration ? (searchParams.get("status") ?? "") : "" }));
+  const requestedStatus = searchParams.get("status");
+  useEffect(() => {
+    if (inAdministration && requestedStatus !== null && filters.status !== requestedStatus) {
+      setFilters((previous) => ({ ...previous, status: requestedStatus }));
+      setPage(1);
+    }
+    // Explicit menu links can select a status without clearing other remembered filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inAdministration, requestedStatus]);
+  const [updated, setUpdated] = useViewState("ReportTemplateCatalog.updated", { from: "", to: "" });
   const [mobileDraft, setMobileDraft] = useState<Filters>(defaults);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [sort, setSort] = useState({
+  const [sort, setSort] = useViewState("ReportTemplateCatalog.sort", {
     field: "displayName",
     direction: "asc" as "asc" | "desc",
   });
@@ -140,6 +150,11 @@ export function ReportTemplateCatalog({ inAdministration = false }: { inAdminist
   const apply = (next: Filters) => {
     setPage(1);
     setFilters(next);
+    if (inAdministration) {
+      const params = new URLSearchParams(searchParams);
+      if (next.status) params.set("status", next.status); else params.delete("status");
+      setSearchParams(params, { replace: true });
+    }
   };
   const sortable = (field: string) => ({
     direction: sort.field === field ? sort.direction : undefined,

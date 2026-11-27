@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -45,9 +46,9 @@ export const ControlledCopyBatchStatusDiscrepanciesView: React.FC = () => {
   const [rows, setRows] = useState<ControlledCopyBatchStatusDiscrepancy[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useViewState("ControlledCopyBatchStatusDiscrepanciesView.currentPage", 1);
   // The server sorts (the newest detection first until a header is clicked).
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "detectedAt", direction: "desc" });
+  const [sortConfig, setSortConfig] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("ControlledCopyBatchStatusDiscrepanciesView.sortConfig", { key: "detectedAt", direction: "desc" });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);

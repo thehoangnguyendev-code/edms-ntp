@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,11 +32,11 @@ import { tr } from "@/i18n";
 
 const COLUMNS = [
   { key: "name", label: "Name" },
-  { key: "sourceField", label: tr("Source Field") },
+  { key: "sourceField", get label() { return tr("Source Field"); } },
   { key: "usedByHierarchies", label: "Used By" },
   { key: "active", label: "Status" },
-  { key: "updatedAt", label: tr("Last Updated") },
-  { key: "updatedBy", label: tr("Updated By") },
+  { key: "updatedAt", get label() { return tr("Last Updated"); } },
+  { key: "updatedBy", get label() { return tr("Updated By"); } },
 ] as const;
 
 const STATUS_OPTIONS = [
@@ -63,15 +64,15 @@ export const KnowledgeComponentsView: React.FC = () => {
   const [rows, setRows] = useState<KnowledgeComponent[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useViewState("KnowledgeComponentsView.page", 1);
+  const [pageSize, setPageSize] = useViewState("KnowledgeComponentsView.pageSize", 10);
+  const [search, setSearch] = useViewState("KnowledgeComponentsView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState("ALL");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [status, setStatus] = useViewState("KnowledgeComponentsView.status", "ALL");
+  const [updatedFrom, setUpdatedFrom] = useViewState("KnowledgeComponentsView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("KnowledgeComponentsView.updatedTo", "");
+  const [sortKey, setSortKey] = useViewState("KnowledgeComponentsView.sortKey", "name");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("KnowledgeComponentsView.sortDir", "asc");
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeComponent | null>(null);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);

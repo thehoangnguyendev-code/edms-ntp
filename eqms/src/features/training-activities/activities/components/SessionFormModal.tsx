@@ -60,7 +60,7 @@ export function SessionFormModal({ title, external, sources, initialSource, docu
               <Select value={source} onChange={setSource} enableSearch={false} placeholder={tr("No copy: an empty session")}
                 options={[{ label: tr("No copy: an empty session"), value: "" }, ...sources.map((s) => ({ label: s.label, value: s.key }))]} />
             </FormField>
-            <p className="text-xs text-slate-500">{tr("The topics, the mode, the assessment, the trainer and the place are filled in. Change what differs; choose the day.")}</p>
+            <p className="!mt-1.5 text-xs text-slate-500">{tr("The topics, the mode, the assessment, the trainer and the place are filled in. Change what differs; choose the day.")}</p>
             {canCopyPeople && picked && (picked.people ?? 0) > 0 && (
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <Checkbox checked={samePeople} onChange={setSamePeople} />

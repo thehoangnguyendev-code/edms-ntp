@@ -66,7 +66,7 @@ public class TrainingFormTemplateService {
         StringBuilder where = new StringBuilder(" where 1=1");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(t.code) like ? escape '\\' or lower(t.title) like ? escape '\\' or lower(t.version_label) like ? escape '\\' or lower(coalesce(t.original_name,'')) like ? escape '\\' or lower(coalesce(t.remark,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(t.code) like eqms_fold(?) escape '\\' or eqms_fold(t.title) like eqms_fold(?) escape '\\' or eqms_fold(t.version_label) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(t.original_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(t.remark,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (status != null && Set.of("ENABLED", "DISABLED").contains(status)) { where.append(" and t.status = ?"); args.add(status); }

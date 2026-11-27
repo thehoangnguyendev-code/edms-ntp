@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React, { useEffect, useRef, useState } from "react";
 import { Switch } from '@/components/ui/switch';
 import { useNavigate } from "react-router-dom";
@@ -216,7 +217,7 @@ export const EmailDesignView: React.FC = () => {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => go(ROUTES.SETTINGS.NOTIFICATIONS)}
+              onClick={() => navigateBack(go, null, ROUTES.SETTINGS.NOTIFICATIONS)}
             >
               {tr("Back")}
             </Button>
@@ -257,7 +258,7 @@ export const EmailDesignView: React.FC = () => {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => go(ROUTES.SETTINGS.NOTIFICATIONS)}
+              onClick={() => navigateBack(go, null, ROUTES.SETTINGS.NOTIFICATIONS)}
             >
               {tr("Back")}
             </Button>
@@ -365,7 +366,7 @@ export const EmailDesignView: React.FC = () => {
                         onChange={(value: string) => set("headerFontFamily", value === SAME_FONT ? null : value)}
                         options={[{ label: tr("Same as body"), value: SAME_FONT }, ...design.fonts.map((font) => ({ label: font, value: font }))]}
                       />
-                      <p className="mt-1 text-2xs text-slate-500 sm:text-xs">{tr("The font of the words in the header.")}</p>
+                      <p className="mt-1.5 text-xs text-slate-500">{tr("The font of the words in the header.")}</p>
                     </div>
                   </div>
                   ) : null}

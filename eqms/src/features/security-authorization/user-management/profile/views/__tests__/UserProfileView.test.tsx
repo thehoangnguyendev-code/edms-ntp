@@ -6,8 +6,11 @@ const mocks = vi.hoisted(() => ({
   profile: {} as Record<string, unknown>,
   getUserCapabilities: vi.fn(),
   startEdit: vi.fn(),
+  canAudit: false,
 }));
 
+vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ hasPermissionAlias: () => mocks.canAudit, hasPermission: () => mocks.canAudit }) }));
+vi.mock("@/features/audit-trail/AuditTrailView", () => ({ AuditTrailView: ({ userId }: { userId?: string }) => <div>audit records of {userId}</div> }));
 vi.mock("../../hooks/useUserProfile", () => ({ useUserProfile: () => mocks.profile }));
 vi.mock("@/services/api/settings", () => ({ settingsApi: { getUserCapabilities: mocks.getUserCapabilities } }));
 vi.mock("@/features/notifications/notificationRealtime", () => ({ subscribeNotificationRealtime: () => () => undefined }));
@@ -61,7 +64,7 @@ beforeEach(() => {
     actions: { edit: { allowed: true }, resetPassword: { allowed: true }, suspend: { allowed: true }, terminate: { allowed: true } },
   });
 });
-afterEach(() => { cleanup(); mocks.getUserCapabilities.mockReset(); mocks.startEdit.mockReset(); });
+afterEach(() => { mocks.canAudit = false; cleanup(); mocks.getUserCapabilities.mockReset(); mocks.startEdit.mockReset(); });
 
 describe("UserProfileView layout", () => {
   it("shows who the person is beside five tabs and opens on Personal & Identity", async () => {
@@ -72,6 +75,19 @@ describe("UserProfileView layout", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(5);
     expect(screen.getByText("personal fields")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Personal & Identity" })).toBeTruthy();
+  });
+
+  it("adds an Audit Trail tab, for one user, only to a person who may see the Audit Trail", async () => {
+    renderView();
+    expect(screen.queryByRole("tab", { name: /Audit Trail/ })).toBeNull();
+    cleanup();
+
+    mocks.canAudit = true;
+    renderView();
+    expect(screen.getAllByRole("tab")).toHaveLength(6);
+    fireEvent.click(screen.getByRole("tab", { name: /Audit Trail/ }));
+    expect(screen.getByText("audit records of u1")).toBeTruthy();
+    expect(screen.queryByText("personal fields")).toBeNull();
   });
 
   it("switches the content when another tab is pressed, and the summary stays", async () => {

@@ -1,0 +1,518 @@
+{
+  "notifications": [
+    "Notifications",
+    "Thông báo"
+  ],
+  "self-service": [
+    "Self-Service",
+    "Dịch vụ cá nhân"
+  ],
+  "dashboard": [
+    "Dashboard",
+    "Bảng điều khiển"
+  ],
+  "knowledge-base": [
+    "Knowledge Base",
+    "Cơ sở Kiến thức"
+  ],
+  "doc-control": [
+    "Document Control",
+    "Kiểm soát Tài liệu"
+  ],
+  "doc-owned-me": [
+    "Documents Owned By Me",
+    "Tài liệu tôi phụ trách"
+  ],
+  "doc-all": [
+    "All Documents",
+    "Tất cả Tài liệu"
+  ],
+  "doc-revisions": [
+    "Document Revisions",
+    "Phiên bản Tài liệu"
+  ],
+  "rev-owned-me": [
+    "Revisions Owned By Me",
+    "Phiên bản tôi phụ trách"
+  ],
+  "rev-all": [
+    "All Revisions",
+    "Tất cả Phiên bản"
+  ],
+  "pending-review": [
+    "Pending My Review",
+    "Chờ tôi rà soát"
+  ],
+  "pending-approval": [
+    "Pending My Approval",
+    "Chờ tôi phê duyệt"
+  ],
+  "controlled-copies": [
+    "Controlled Copies",
+    "Bản sao kiểm soát"
+  ],
+  "cc-all": [
+    "All Controlled Copies",
+    "Tất cả Bản sao kiểm soát"
+  ],
+  "cc-ready": [
+    "Ready for Distribution",
+    "Sẵn sàng Phân phối"
+  ],
+  "cc-distributed": [
+    "Distributed Copies",
+    "Bản sao đã phân phối"
+  ],
+  "uncontrolled-copies": [
+    "Uncontrolled Copies",
+    "Bản sao không kiểm soát"
+  ],
+  "uc-all": [
+    "All Uncontrolled Copies",
+    "Tất cả Bản sao không kiểm soát"
+  ],
+  "uc-ready": [
+    "Ready for Distribution",
+    "Sẵn sàng Phân phối"
+  ],
+  "uc-distributed": [
+    "Distributed Copies",
+    "Bản sao đã phân phối"
+  ],
+  "records": [
+    "Records",
+    "Hồ sơ"
+  ],
+  "doc-workflow": [
+    "Workflow",
+    "Quy trình"
+  ],
+  "training-management": [
+    "Training Management",
+    "Quản lý Đào tạo"
+  ],
+  "my-training": [
+    "My Training",
+    "Đào tạo của tôi"
+  ],
+  "my-tasks": [
+    "My Tasks",
+    "Nhiệm vụ của tôi"
+  ],
+  "my-records": [
+    "My Records",
+    "Hồ sơ của tôi"
+  ],
+  "training-planning": [
+    "Training Programme",
+    "Chương trình Đào tạo"
+  ],
+  "training-requirements": [
+    "Training Requirements",
+    "Yêu cầu Đào tạo"
+  ],
+  "training-activities": [
+    "Training Activities",
+    "Hoạt động Đào tạo"
+  ],
+  "training-matrices": [
+    "Training Matrix",
+    "Ma trận Đào tạo"
+  ],
+  "training-assessments": [
+    "Training Assessments",
+    "Đánh giá Đào tạo"
+  ],
+  "training-document-impact-assessment": [
+    "Document Impact Assessment",
+    "Đánh giá tác động Tài liệu"
+  ],
+  "training-people": [
+    "Personnel Qualification",
+    "Năng lực Nhân sự"
+  ],
+  "training-job-assignments": [
+    "Job Assignments",
+    "Phân công Công việc"
+  ],
+  "training-personnel-reviews": [
+    "Training Reviews",
+    "Rà soát Đào tạo"
+  ],
+  "training-specimen-signatures": [
+    "Specimen Signatures",
+    "Chữ ký mẫu"
+  ],
+  "training-records-compliance": [
+    "Training Records & Compliance",
+    "Hồ sơ Đào tạo & Tuân thủ"
+  ],
+  "training-records": [
+    "Training Records",
+    "Hồ sơ Đào tạo"
+  ],
+  "training-compliance": [
+    "Training Compliance",
+    "Tuân thủ Đào tạo"
+  ],
+  "training-number-allocation-log": [
+    "Training Number Allocation Log",
+    "Sổ theo dõi cấp Mã Đào tạo"
+  ],
+  "training-record-exports": [
+    "Training Record Exports",
+    "Xuất Hồ sơ Đào tạo"
+  ],
+  "training-legacy-evidence": [
+    "Legacy Training Evidence",
+    "Bằng chứng Đào tạo cũ"
+  ],
+  "training-workflow": [
+    "Workflow",
+    "Quy trình"
+  ],
+  "report": [
+    "Reports",
+    "Báo cáo"
+  ],
+  "report-templates": [
+    "Report Library",
+    "Thư viện Báo cáo"
+  ],
+  "report-history": [
+    "Report Run History",
+    "Lịch sử Chạy Báo cáo"
+  ],
+  "report-scheduled": [
+    "Scheduled Reports",
+    "Báo cáo theo Lịch"
+  ],
+  "report-template-group": [
+    "Template Management",
+    "Quản lý Mẫu"
+  ],
+  "report-template-management": [
+    "Report Templates",
+    "Mẫu Báo cáo"
+  ],
+  "report-template-revisions-all": [
+    "All Revisions",
+    "Tất cả Phiên bản"
+  ],
+  "report-template-revisions-pending": [
+    "Pending My Approval",
+    "Chờ tôi phê duyệt"
+  ],
+  "audit-trail": [
+    "Audit Trail",
+    "Nhật ký Kiểm toán"
+  ],
+  "audit-trail-all": [
+    "All Records",
+    "Tất cả Bản ghi"
+  ],
+  "audit-trail-review": [
+    "Periodic Review",
+    "Rà soát định kỳ"
+  ],
+  "backup-restore": [
+    "Backup & Restore",
+    "Sao lưu & Phục hồi"
+  ],
+  "backup-group": [
+    "Backup",
+    "Sao lưu"
+  ],
+  "backup-backups": [
+    "Backup History",
+    "Lịch sử Sao lưu"
+  ],
+  "backup-schedules": [
+    "Backup Schedules",
+    "Lịch Sao lưu"
+  ],
+  "restore-group": [
+    "Restore",
+    "Phục hồi"
+  ],
+  "production-restores": [
+    "Restore Backup",
+    "Khôi phục Bản sao lưu"
+  ],
+  "security-authorization": [
+    "Security & Authorization",
+    "Bảo mật và Phân quyền"
+  ],
+  "sec-user-administration": [
+    "User Administration",
+    "Quản trị Người dùng"
+  ],
+  "sec-user-management": [
+    "User Management",
+    "Quản lý Người dùng"
+  ],
+  "sec-time-limited-roles": [
+    "Time-Limited User",
+    "Người dùng tạm thời"
+  ],
+  "sec-logged-in-users": [
+    "Logged in Users",
+    "Người dùng đang trong phiên"
+  ],
+  "sec-access-explorer": [
+    "Access Explorer",
+    "Khám phá Quyền truy cập"
+  ],
+  "sec-access-profiles": [
+    "Access Profiles",
+    "Hồ sơ Truy cập"
+  ],
+  "sec-workflow-authorization": [
+    "Workflow Authorization",
+    "Phân quyền theo Quy trình"
+  ],
+  "sec-access-review": [
+    "Access Review",
+    "Rà soát Quyền truy cập"
+  ],
+  "sec-sod-violation-review": [
+    "SoD Violation Review",
+    "Rà soát Vi phạm SoD"
+  ],
+  "sec-advanced": [
+    "Advanced",
+    "Nâng cao"
+  ],
+  "sec-permission-sets": [
+    "Shared Permission Sets",
+    "Bộ quyền Dùng chung"
+  ],
+  "sec-sod": [
+    "Segregation of Duties",
+    "Phân tách Nhiệm vụ"
+  ],
+  "sec-authorization-diagnostics": [
+    "Engine Diagnostics",
+    "Công cụ Chẩn đoán"
+  ],
+  "settings": [
+    "Application Settings",
+    "Cài đặt Ứng dụng"
+  ],
+  "dictionaries": [
+    "Dictionaries",
+    "Danh mục"
+  ],
+  "dict-business-units": [
+    "Business Units",
+    "Đơn vị Kinh doanh"
+  ],
+  "dict-departments": [
+    "Departments",
+    "Bộ phận"
+  ],
+  "dict-positions": [
+    "Positions",
+    "Chức vụ"
+  ],
+  "dict-storage-locations": [
+    "Storage Locations",
+    "Vị trí Lưu trữ"
+  ],
+  "dict-retention-policies": [
+    "Retention Policies",
+    "Chính sách Lưu giữ"
+  ],
+  "education": [
+    "Education",
+    "Giáo dục"
+  ],
+  "education-degree-levels": [
+    "Degree Levels",
+    "Trình độ"
+  ],
+  "education-schools": [
+    "Schools",
+    "Trường học"
+  ],
+  "system-announcements": [
+    "System Announcements",
+    "Thông báo Hệ thống"
+  ],
+  "system-administration": [
+    "System Administration",
+    "Quản trị Hệ thống"
+  ],
+  "config": [
+    "Configuration",
+    "Cấu hình"
+  ],
+  "config-general": [
+    "General",
+    "Chung"
+  ],
+  "config-navigation-labels": [
+    "Navigation Labels",
+    "Nhãn điều hướng"
+  ],
+  "config-security": [
+    "Security",
+    "Bảo mật"
+  ],
+  "config-notifications": [
+    "Notifications",
+    "Thông báo"
+  ],
+  "config-integrations": [
+    "Integrations",
+    "Tích hợp"
+  ],
+  "config-preview-file": [
+    "Preview File",
+    "Tệp xem trước"
+  ],
+  "config-image-watermark": [
+    "Image Watermark",
+    "Dấu chìm Hình ảnh"
+  ],
+  "config-features": [
+    "Features",
+    "Tính năng"
+  ],
+  "electronic-signature-policies": [
+    "E-Sign Config",
+    "Cấu hình Chữ ký Điện tử"
+  ],
+  "object-numbering": [
+    "Object Numbering",
+    "Đánh Mã Đối tượng"
+  ],
+  "notification-settings": [
+    "Notifications Administration",
+    "Quản trị Thông báo"
+  ],
+  "doc-administration": [
+    "Document Administration",
+    "Quản trị Tài liệu"
+  ],
+  "doc-admin-properties": [
+    "Document Properties",
+    "Thuộc tính Tài liệu"
+  ],
+  "doc-admin-name-formats": [
+    "Document Name Formats",
+    "Định dạng Tên Tài liệu"
+  ],
+  "doc-admin-document-components": [
+    "Document Components",
+    "Thành phần Tài liệu"
+  ],
+  "doc-admin-document-types": [
+    "Document Types",
+    "Loại Tài liệu"
+  ],
+  "doc-admin-document-sub-types": [
+    "Document Sub-Types",
+    "Loại Tài liệu Con"
+  ],
+  "doc-admin-knowledge-categories": [
+    "Knowledge Categories Hierarchies",
+    "Cấu trúc Danh mục Kiến thức"
+  ],
+  "doc-admin-knowledge-components": [
+    "Knowledge Category Components",
+    "Thành phần Danh mục Kiến thức"
+  ],
+  "publishing-templates": [
+    "Publishing Templates",
+    "Mẫu Xuất bản"
+  ],
+  "controlled-copy-policy": [
+    "Controlled Copies Policy",
+    "Chính sách Bản sao kiểm soát"
+  ],
+  "uncontrolled-copy-policy": [
+    "Uncontrolled Copies Policy",
+    "Chính sách Bản sao không kiểm soát"
+  ],
+  "training-administration": [
+    "Training Administration",
+    "Quản trị Đào tạo"
+  ],
+  "training-admin-properties": [
+    "Training Properties",
+    "Thuộc tính Đào tạo"
+  ],
+  "training-admin-code-rules": [
+    "Training Code Rules",
+    "Quy tắc Mã Đào tạo"
+  ],
+  "training-admin-vendors": [
+    "Training Vendors",
+    "Nhà cung cấp Đào tạo"
+  ],
+  "training-admin-job-roles": [
+    "Work Positions",
+    "Vị trí Công việc"
+  ],
+  "training-admin-review-checklists": [
+    "Review Checklists",
+    "Danh mục kiểm tra rà soát"
+  ],
+  "training-admin-notifications": [
+    "Training Notifications",
+    "Thông báo Đào tạo"
+  ],
+  "training-admin-annex": [
+    "Training Annex",
+    "Phụ lục Đào tạo"
+  ],
+  "report-administration": [
+    "Report Administration",
+    "Quản trị Báo cáo"
+  ],
+  "report-admin-properties": [
+    "Report Properties",
+    "Thuộc tính Báo cáo"
+  ],
+  "report-admin-appearance": [
+    "Report Appearance",
+    "Giao diện Báo cáo"
+  ],
+  "report-admin-types": [
+    "Report Types",
+    "Loại Báo cáo"
+  ],
+  "report-admin-name-formats": [
+    "Report Name Formats",
+    "Định dạng Tên Báo cáo"
+  ],
+  "backup-restore-administration": [
+    "Backup & Restore Administration",
+    "Quản trị Sao lưu và Phục hồi"
+  ],
+  "backup-admin-policy": [
+    "Backup Policy",
+    "Chính sách Sao lưu"
+  ],
+  "backup-admin-storage": [
+    "Backup Storage & Encryption",
+    "Lưu trữ và Mã hoá Sao lưu"
+  ],
+  "backup-admin-alerts": [
+    "Backup Alerts & Recipients",
+    "Cảnh báo và Người nhận Sao lưu"
+  ],
+  "backup-admin-disaster-recovery": [
+    "Disaster Recovery Plan",
+    "Kế hoạch Phục hồi Thảm hoạ"
+  ],
+  "preferences": [
+    "Preferences",
+    "Tuỳ chọn"
+  ],
+  "system-information": [
+    "System Information",
+    "Thông tin Hệ thống"
+  ]
+}

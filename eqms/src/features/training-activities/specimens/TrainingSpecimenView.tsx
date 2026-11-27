@@ -14,6 +14,7 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Textarea } from "../shared/TrainingFields";
 import { Select } from "@/components/ui/select/Select";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import {
   DataTable,
   useCustomColumnLayout,
@@ -64,6 +65,7 @@ export function TrainingSpecimenView() {
   const [forPerson, setForPerson] = useState("");
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [reason, setReason] = useState("");
+  const [headSigned, setHeadSigned] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const fetcher = useCallback(
@@ -110,6 +112,7 @@ export function TrainingSpecimenView() {
         file2,
         forPerson || undefined,
         reason.trim() || undefined,
+        headSigned,
       );
       showToast({
         type: "success",
@@ -119,6 +122,7 @@ export function TrainingSpecimenView() {
       setUploading(false);
       setFile(null);
       setFile2(null);
+      setHeadSigned(false);
       setReason("");
       setForPerson("");
       table.reload();
@@ -224,12 +228,12 @@ export function TrainingSpecimenView() {
       <PageHeader
         title={TRAINING_PAGES.specimen.title}
         breadcrumbItems={trainingBreadcrumbs(navigate, "specimen")}
-        actions={
+        actions={canManage ? (
           <Button size="sm" onClick={() => setUploading(true)}>
             <IconPlus className="mr-2 h-4 w-4" />
             {tr("Upload Specimen Signature")}
           </Button>
-        }
+        ) : undefined}
       />
       {error && (
         <p role="alert" className="text-sm text-red-700">
@@ -322,16 +326,16 @@ export function TrainingSpecimenView() {
         description={tr("The scan of the paper that the employee signed by hand (FRM.0007): a PNG or JPEG picture of up to 5 MB. The watermark set in Configuration is stamped on it, and the picture as it was uploaded is kept. It becomes the current record of the employee at once; nobody confirms it.")}
         confirmText="Upload"
         isLoading={busy}
-        confirmDisabled={!file || !file2}
+        confirmDisabled={!file || !file2 || !forPerson || !headSigned}
         size="md"
       >
         <div className="grid gap-4">
           {canManage && (
-            <FormField label={tr("For another employee (leave empty for yourself)")}>
+            <FormField label={tr("Employee")} required>
               <Select
                 value={forPerson}
                 onChange={setForPerson}
-                options={[{ label: "Myself", value: "" }, ...people, ...(forPerson && !people.some((x) => x.value === forPerson) ? [{ label: tr("Selected employee"), value: forPerson }] : [])]}
+                options={[...people, ...(forPerson && !people.some((x) => x.value === forPerson) ? [{ label: tr("Selected employee"), value: forPerson }] : [])]}
                 onSearch={searchPeople}
                 placeholder={tr("Search by name")}
               />
@@ -343,6 +347,7 @@ export function TrainingSpecimenView() {
           <FormField label={tr("2nd specimen signature")} required>
             <SpecimenImagePicker file={file2} onChange={setFile2} />
           </FormField>
+          <Checkbox id="specimen-head-signed" checked={headSigned} onChange={setHeadSigned} label={tr("The paper FRM.0007 is signed by the Head of department")} />
           <FormField label={tr("Reason (needed when it replaces the current record)")}>
             <Textarea
               rows={2}

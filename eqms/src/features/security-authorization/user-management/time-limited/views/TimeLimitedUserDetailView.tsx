@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CalendarClock, ShieldCheck, UserRound } from "lucide-react";
@@ -87,7 +88,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}
+          onClick={() => navigateBack(navigate, null, ROUTES.SECURITY.TIME_LIMITED_USERS)}
         >
           {tr("Back to Time-Limited Users")}
         </Button>
@@ -113,7 +114,7 @@ export const TimeLimitedUserDetailView: React.FC = () => {
               size="sm"
               variant="outline-emerald"
               className="whitespace-nowrap"
-              onClick={() => navigate(ROUTES.SECURITY.TIME_LIMITED_USERS)}
+              onClick={() => navigateBack(navigate, null, ROUTES.SECURITY.TIME_LIMITED_USERS)}
             >
               {tr("Back")}
             </Button>

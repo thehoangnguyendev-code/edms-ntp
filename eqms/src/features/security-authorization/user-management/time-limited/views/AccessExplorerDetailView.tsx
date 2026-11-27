@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -49,7 +51,7 @@ type TabId = "general" | "people" | "through";
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
   { id: "people", label: "People" },
-  { id: "through", label: tr("Granted Through") },
+  { id: "through", get label() { return tr("Granted Through"); } },
 ];
 
 type ThroughRow = {
@@ -101,15 +103,15 @@ export const AccessExplorerDetailView: React.FC = () => {
   const { code = "" } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<TabId>("people");
+  const [activeTab, setActiveTab] = useViewState<TabId>("AccessExplorerDetailView.activeTab", "people");
   const [result, setResult] = useState<AccessExplorerHolders | null>(null);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeOnly, setActiveOnly] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AccessExplorerDetailView.search", "");
   const debounced = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("AccessExplorerDetailView.page", 1);
   const [size, setSize] = useState(10);
 
   const load = useCallback(() => {
@@ -355,7 +357,7 @@ export const AccessExplorerDetailView: React.FC = () => {
               variant="outline-emerald"
               size="sm"
               className="whitespace-nowrap gap-2"
-              onClick={() => navigate(ROUTES.SECURITY.ACCESS_EXPLORER)}
+              onClick={() => navigateBack(navigate, null, ROUTES.SECURITY.ACCESS_EXPLORER)}
             >
               {tr("Back")}
             </Button>

@@ -37,7 +37,7 @@ type CloseEdit = { declaration: DrDeclarationRecord; summary: string; step: "for
 
 const TABS: TabItem[] = [
   { id: "plan", label: "Plan" },
-  { id: "declarations", label: tr("Declarations") },
+  { id: "declarations", get label() { return tr("Declarations"); } },
 ];
 
 const hours = (value: number | null) => (value === null ? "—" : `${value} h`);
@@ -315,7 +315,7 @@ export const DisasterRecoveryPlanView: React.FC = () => {
         <div className="flex items-center justify-between gap-3 py-2.5">
           <div className="min-w-0">
             <span className="text-xs font-medium text-slate-900 sm:text-sm">{tr("Who may declare a disaster")}</span>
-            <p className="mt-0.5 text-2xs text-slate-400 sm:text-xs">{tr("Only this person can declare a disaster, with an electronic signature. Changing the person needs a signature too.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("Only this person can declare a disaster, with an electronic signature. Changing the person needs a signature too.")}</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-900">{authority ?? "—"}</span>

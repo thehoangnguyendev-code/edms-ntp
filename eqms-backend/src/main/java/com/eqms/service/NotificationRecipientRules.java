@@ -30,6 +30,8 @@ public final class NotificationRecipientRules {
     private static final List<Rule> RULES = List.of(
             new Rule("OWNER", CONTEXT, "Owner of the record", "The person the record belongs to; named by the module that raises the event.", false, null),
             new Rule("AUTHOR", CONTEXT, "Author", "The author of the document or record.", false, null),
+            new Rule("CO_AUTHOR", CONTEXT, "Co-Author", "The co-authors of the document or revision.", false, null),
+            new Rule("WORKFLOW_COORDINATOR", CONTEXT, "Document Control", "The people who hold the Document Control workspace permission.", false, null),
             new Rule("ASSIGNEE", CONTEXT, "Person it is assigned to", "The person who has been given the task.", false, null),
             new Rule("REVIEWER", CONTEXT, "Reviewer", "The reviewers of the process.", false, null),
             new Rule("APPROVER", CONTEXT, "Approver", "The approvers of the process.", false, null),

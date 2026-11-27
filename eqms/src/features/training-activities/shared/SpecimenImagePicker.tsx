@@ -62,7 +62,7 @@ export function SpecimenImagePicker({ file, onChange }: Props) {
             <Upload className={cn("h-6 w-6", dragging ? "text-emerald-600" : "text-slate-400")} />
           </div>
           <p className="text-center text-xs font-medium text-slate-700 sm:text-sm">{dragging ? tr("Drop your file here") : tr("Click to upload or drag & drop")}</p>
-          <p className="mt-1 text-2xs font-normal text-slate-400 sm:text-xs">{tr("PNG or JPG (max 5 MB)")}</p>
+          <p className="text-xs text-slate-500 mt-1 font-normal">{tr("PNG or JPG (max 5 MB)")}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 md:p-5">

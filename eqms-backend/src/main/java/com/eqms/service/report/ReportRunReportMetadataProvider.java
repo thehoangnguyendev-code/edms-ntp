@@ -68,7 +68,7 @@ public class ReportRunReportMetadataProvider implements ReportMetadataProvider {
         StringBuilder sql = new StringBuilder("from report_runs r left join report_definitions d on d.code=r.definition_code where (").append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (r.definition_code ilike ? escape '\\' or coalesce(r.report_title,'') ilike ? escape '\\' or coalesce(d.display_name,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(r.definition_code) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.report_title,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(d.display_name,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }

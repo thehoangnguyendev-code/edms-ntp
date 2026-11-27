@@ -138,7 +138,7 @@ export function TrainingAssigneePicker({ onChange, matrix, initialPeople }: { on
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-xs font-medium leading-tight text-slate-900 sm:text-sm">{m.fullName}</p>
                       {m.employeeCode && <Badge color="emerald" size="sm" pill>{m.employeeCode}</Badge>}
-                      <Badge color={m.reason === "DUE" ? "amber" : "red"} size="sm">{m.reason === "DUE" ? tr("Annual training due") : tr("Not trained")}</Badge>
+                      <Badge color={m.reason === "MISSING" ? "red" : "amber"} size="sm">{m.reason === "DUE" ? tr("Annual training due") : m.reason === "UPDATE_NEEDED" ? tr("New revision not trained") : tr("Not trained")}</Badge>
                     </div>
                     <p className="mt-0.5 truncate text-2xs leading-tight text-slate-500 sm:text-xs">{[m.positionName, m.department].filter(Boolean).join(" - ")}</p>
                   </div>

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ShieldAlert,
@@ -230,7 +231,7 @@ const CreateModeSecurityTab: React.FC<CreateModeProps> = ({
   selectionError,
 }) => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState("CreateModeSecurityTab.searchQuery", "");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const selectedProfiles = useMemo(
@@ -313,8 +314,8 @@ const ExistingModeSecurityTab: React.FC<ExistingModeProps> = ({
   const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof settingsApi.queryUserAuthorizationSummary>> | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useViewState("ExistingModeSecurityTab.searchQuery", "");
+  const [page, setPage] = useViewState("ExistingModeSecurityTab.page", 1);
   const [limit, setLimit] = useState(10);
   const search = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const generation = useRef(0);

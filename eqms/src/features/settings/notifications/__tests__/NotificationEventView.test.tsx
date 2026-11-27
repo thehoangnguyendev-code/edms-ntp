@@ -476,7 +476,7 @@ describe("Edit a notification", () => {
     expect(await screen.findByText("No results")).toBeTruthy();
     fireEvent.change(box, { target: { value: "" } });
     expect(await screen.findByRole("button", { name: "Copy {{weirdOne}}" })).toBeTruthy();
-  });
+  }, 10000); // Several sequential debounced searches plus table rendering under parallel test load.
 
   it("chooses an icon of Lucide or of Tabler, with no colour to choose, and saves it with Publish without touching the wording", async () => {
     await open();

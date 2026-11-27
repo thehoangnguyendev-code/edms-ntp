@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { numberEntryApi } from "@/services/api/numberEntry";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -591,7 +593,7 @@ export const NewDocumentView: React.FC = () => {
   const [documentTypeLookupOptions, setDocumentTypeLookupOptions] = useState<DocumentTypeLookupOption[]>([]);
   const [subTypeLookupOptions, setSubTypeLookupOptions] = useState<SubTypeLookupOption[]>([]);
   // Subtab states
-  const [activeSubtab, setActiveSubtab] = useState<SubTabId>("revisions");
+  const [activeSubtab, setActiveSubtab] = useViewState<SubTabId>("NewDocumentView.activeSubtab", "revisions");
   const [isReviewerModalOpen, setIsReviewerModalOpen] = useState(false);
   const [isApproverModalOpen, setIsApproverModalOpen] = useState(false);
   const [isRelatedModalOpen, setIsRelatedModalOpen] = useState(false);
@@ -1891,7 +1893,7 @@ export const NewDocumentView: React.FC = () => {
     // leave the workspace without attempting a Document Master UPDATE.
     if (isContributorReadOnly) {
       clearNewDocumentDraft();
-      navigateTo(ROUTES.DOCUMENTS.ALL);
+      navigateBack(navigateTo, location.state, ROUTES.DOCUMENTS.ALL);
       return;
     }
     if (isDirty) {
@@ -1905,7 +1907,7 @@ export const NewDocumentView: React.FC = () => {
       });
       return;
     }
-    navigateTo(ROUTES.DOCUMENTS.ALL);
+    navigateBack(navigateTo, location.state, ROUTES.DOCUMENTS.ALL);
   };
 
   const handleBackSaveConfirm = async () => {
@@ -2598,7 +2600,7 @@ export const NewDocumentView: React.FC = () => {
               className="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400 text-sm resize-none"
             />
             {!cancelActivitySummary.trim() && (
-              <p className="text-xs text-slate-500">
+              <p className="!mt-1.5 text-xs text-slate-500">
                 {tr("Activity Summary is required to cancel the document.")}
               </p>
             )}

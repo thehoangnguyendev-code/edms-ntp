@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useServerTable } from "@/features/settings/shared/hooks/useServerTable";
 import { trainingError, trainingReviewsApi, type TrainingPersonnelReviewSummary } from "@/services/api/trainingActivities";
 import { useDateRange, useDepartmentNameOptions } from "../shared/useListFilters";
-import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 /**
  * The list of training reviews: the filters, the dates, the search, the sort and the paging, all done by the server. It is the counterpart of `useDocumentServerTable`
@@ -14,6 +13,8 @@ export function usePersonnelReviewServerTable() {
   const [kindFilter, setKindFilterState] = usePersistedState("training.reviews.kind", "");
   const [departmentFilter, setDepartmentFilterState] = usePersistedState("training.reviews.department", "");
   const departmentOptions = useDepartmentNameOptions();
+  const [closerFilter, setCloserFilterState] = usePersistedState("training.reviews.closer", "");
+  const [closerOptions, setCloserOptions] = useState<{ label: string; value: string }[]>([]);
   const eventRange = useDateRange("training.reviews.event", "Event Date Range");
   const openedRange = useDateRange("training.reviews.opened", "Opened Date Range");
   const [error, setError] = useState("");
@@ -26,17 +27,17 @@ export function usePersonnelReviewServerTable() {
       }),
     [],
   );
-  const waiting = useWaitingForMe("training-personnel-reviews", () => table.setCurrentPage(1));
   const extraParams = useMemo(
     () => ({
       status: statusFilter || undefined,
       kind: kindFilter || undefined,
       department: departmentFilter || undefined,
+      closerId: closerFilter || undefined,
       ...eventRange.params("eventFrom", "eventTo"),
       ...openedRange.params("createdFrom", "createdTo"),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [statusFilter, kindFilter, departmentFilter, eventRange.from, eventRange.to, openedRange.from, openedRange.to],
+    [statusFilter, kindFilter, departmentFilter, closerFilter, eventRange.from, eventRange.to, openedRange.from, openedRange.to],
   );
   const table = useServerTable<TrainingPersonnelReviewSummary>({
     persistKey: "training.reviews",
@@ -44,16 +45,23 @@ export function usePersonnelReviewServerTable() {
     fetcher,
     defaultSortBy: "createdAt",
     defaultSortDirection: "desc",
-    extraParams: { ...extraParams, ...waiting.params },
+    extraParams,
     initialItemsPerPage: 10,
   });
+
+  // Read again with the list: a review that is closed or given to another person changes the choices.
+  useEffect(() => {
+    trainingReviewsApi.closers().then((people) => setCloserOptions(people.map((p) => ({ label: p.fullName, value: p.id })))).catch(() => setCloserOptions([]));
+  }, [table.items]);
 
   // A change of a filter or of the search sends the list back to its first page.
   const setSearchQuery = (value: string) => { table.setSearchQuery(value); table.setCurrentPage(1); };
   const setStatusFilter = (value: string) => { setStatusFilterState(value); table.setCurrentPage(1); };
   const setKindFilter = (value: string) => { setKindFilterState(value); table.setCurrentPage(1); };
   const setDepartmentFilter = (value: string) => { setDepartmentFilterState(value); table.setCurrentPage(1); };
+  const setCloserFilter = (value: string) => { setCloserFilterState(value); table.setCurrentPage(1); };
   const clearFilters = () => {
+    setCloserFilterState("");
     setStatusFilterState("");
     setKindFilterState("");
     setDepartmentFilterState("");
@@ -61,10 +69,12 @@ export function usePersonnelReviewServerTable() {
     openedRange.clear();
     table.setCurrentPage(1);
   };
-  const hasActiveFilters = Boolean(statusFilter || kindFilter || departmentFilter || eventRange.isSet || openedRange.isSet || table.searchQuery);
+  const hasActiveFilters = Boolean(statusFilter || kindFilter || departmentFilter || closerFilter || eventRange.isSet || openedRange.isSet || table.searchQuery);
 
   return {
-    waitingNode: waiting.node,
+    closerFilter,
+    setCloserFilter,
+    closerOptions,
     searchQuery: table.searchQuery,
     setSearchQuery,
     statusFilter,

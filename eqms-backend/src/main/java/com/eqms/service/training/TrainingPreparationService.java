@@ -24,7 +24,13 @@ public class TrainingPreparationService {
     public static final List<String> ITEMS = List.of("VENUE", "EQUIPMENT", "MATERIALS", "NOTICE");
     private static final Set<String> STATES = Set.of("PENDING", "DONE", "NOT_NEEDED");
 
-    public record UpdateRequest(String status, UUID assignedTo, String note) {}
+    public record UpdateRequest(String status, UUID assignedTo, String note, UUID assignedDepartmentId) {
+        public UpdateRequest(String status, UUID assignedTo, String note) { this(status, assignedTo, note, null); }
+    }
+
+    /** The people to tell when a line is given to a department (SOP.0003 5.3.6). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrainingRecipients recipients;
 
     private final JdbcTemplate jdbc;
     private final TrainingAccess access;
@@ -50,8 +56,8 @@ public class TrainingPreparationService {
         for (Map<String, Object> session : jdbc.queryForList("select id, session_no, status from training_sessions where activity_id = ? and status <> 'CANCELLED' order by session_no", activityId)) {
             Map<String, Map<String, Object>> stored = new LinkedHashMap<>();
             for (Map<String, Object> row : jdbc.queryForList("""
-                select p.item_code, p.status, p.assigned_to, u.full_name as assigned_to_name, p.note, p.updated_at, w.full_name as updated_by_name
-                  from training_session_preparation p left join app_users u on u.id = p.assigned_to left join app_users w on w.id = p.updated_by where p.session_id = ?
+                select p.item_code, p.status, p.assigned_to, u.full_name as assigned_to_name, p.assigned_department_id, dd.name as assigned_department_name, p.note, p.updated_at, w.full_name as updated_by_name
+                  from training_session_preparation p left join app_users u on u.id = p.assigned_to left join departments dd on dd.id = p.assigned_department_id left join app_users w on w.id = p.updated_by where p.session_id = ?
                 """, session.get("id"))) stored.put((String) row.get("item_code"), row);
             List<Map<String, Object>> items = new ArrayList<>();
             int open = 0;
@@ -119,8 +125,9 @@ public class TrainingPreparationService {
                 .stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         UUID activityId = (UUID) session.get("activity_id");
         Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
-        Map<String, Object> current = jdbc.queryForList("select assigned_to from training_session_preparation where session_id = ? and item_code = ?", sessionId, itemCode).stream().findFirst().orElse(null);
+        Map<String, Object> current = jdbc.queryForList("select assigned_to, assigned_department_id from training_session_preparation where session_id = ? and item_code = ?", sessionId, itemCode).stream().findFirst().orElse(null);
         UUID currentAssignee = current == null ? null : (UUID) current.get("assigned_to");
+        UUID currentDepartment = current == null ? null : (UUID) current.get("assigned_department_id");
         // The organizer or the conductor may change everything; the person the item was given to may only report it done or not needed.
         boolean manager = access.has(actor, "training.activity.organize") || access.has(actor, "training.activity.conduct");
         boolean assignee = actor.getId().equals(currentAssignee);
@@ -133,14 +140,19 @@ public class TrainingPreparationService {
             Integer ok = jdbc.queryForObject("select count(*) from app_users where id = ? and status = 'Active'", Integer.class, assignedTo);
             if (ok == null || ok == 0) throw new IllegalArgumentException("TRAINING_PREPARATION_ASSIGNEE_INVALID");
         }
+        UUID assignedDepartment = manager && request.assignedDepartmentId() != null ? request.assignedDepartmentId() : currentDepartment;
+        if (assignedDepartment != null && !assignedDepartment.equals(currentDepartment)) {
+            Integer found = jdbc.queryForObject("select count(*) from departments where id = ? and is_active", Integer.class, assignedDepartment);
+            if (found == null || found == 0) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
+        }
         String note = request.note() == null || request.note().isBlank() ? null : request.note().trim();
         if (note != null && note.length() > 500) throw new IllegalArgumentException("TRAINING_NOTE_TOO_LONG");
         String previousStatus = jdbc.queryForList("select status from training_session_preparation where session_id = ? and item_code = ?", String.class, sessionId, itemCode)
                 .stream().findFirst().orElse(null);
         jdbc.update("""
-            insert into training_session_preparation(session_id, item_code, status, assigned_to, note, updated_by, updated_at) values (?,?,?,?,?,?, now())
-            on conflict (session_id, item_code) do update set status = excluded.status, assigned_to = excluded.assigned_to, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()
-            """, sessionId, itemCode, request.status(), assignedTo, note, actor.getId());
+            insert into training_session_preparation(session_id, item_code, status, assigned_to, assigned_department_id, note, updated_by, updated_at) values (?,?,?,?,?,?,?, now())
+            on conflict (session_id, item_code) do update set status = excluded.status, assigned_to = excluded.assigned_to, assigned_department_id = excluded.assigned_department_id, note = excluded.note, updated_by = excluded.updated_by, updated_at = now()
+            """, sessionId, itemCode, request.status(), assignedTo, assignedDepartment, note, actor.getId());
         String itemField = "Session S" + session.get("session_no") + " › " + TrainingStore.words(itemCode);
         List<com.eqms.dto.audittrail.AuditTrailChangeResponse> preparationChanges = new ArrayList<>();
         preparationChanges.add(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Status",
@@ -150,6 +162,18 @@ public class TrainingPreparationService {
         if (assignedTo != null && !assignedTo.equals(currentAssignee) && !assignedTo.equals(actor.getId())) {
             users.findById(assignedTo).ifPresent(person -> notifier.send("TRAINING_PREPARATION_ASSIGNED", person, actor, "Preparation for training " + activity.get("training_number"),
                     "You were asked to prepare: " + itemCode.toLowerCase() + " for session " + session.get("session_no") + " of " + activity.get("training_topics") + ".", "TRAINING_ACTIVITY", activityId, null));
+        }
+        // the people who conduct training in the department are told, once for each change of department (SOP.0003 5.3.6)
+        if (assignedDepartment != null && !assignedDepartment.equals(currentDepartment) && recipients != null) {
+            String departmentName = jdbc.queryForList("select name from departments where id = ?", String.class, assignedDepartment).stream().findFirst().orElse("");
+            for (UserAccount person : recipients.holders("training.activity.conduct", assignedDepartment)) {
+                if (person.getId().equals(actor.getId())) continue;
+                notifier.send("TRAINING_PREPARATION_ASSIGNED", person, actor, "Preparation for training " + activity.get("training_number"),
+                        departmentName + " is asked to prepare: " + itemCode.toLowerCase() + " for session " + session.get("session_no") + " of " + activity.get("training_topics") + ".", "TRAINING_ACTIVITY", activityId,
+                        "prep-dept:" + sessionId + ":" + itemCode + ":" + assignedDepartment + ":" + person.getId());
+            }
+            store.auditActivity(actor, activity, "TRAINING_PREPARATION_DEPARTMENT", null, null, "Session S" + session.get("session_no") + ", " + TrainingStore.words(itemCode) + " given to " + departmentName,
+                    List.of(new com.eqms.dto.audittrail.AuditTrailChangeResponse(itemField + " › Department", null, departmentName)));
         }
         return get(actor, activityId);
     }

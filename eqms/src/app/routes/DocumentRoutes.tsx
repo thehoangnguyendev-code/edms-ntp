@@ -6,6 +6,10 @@ import { ROUTES } from '../routes.constants';
 import { LoadingFallback } from './LoadingFallback';
 import { navigateBack, type BackNavigationLocationState } from '../navigation/backNavigation';
 import { ProtectedRoute } from '@/middleware/ProtectedRoute';
+import { workflowPermissions } from '@/features/workflow-diagrams/workflowDiagramModel';
+
+const WorkflowDiagramsView = lazy(() => import('@/features/workflow-diagrams/WorkflowDiagramsView').then((m) => ({ default: m.WorkflowDiagramsView })));
+const WorkflowDiagramEditView = lazy(() => import('@/features/workflow-diagrams/WorkflowDiagramEditView').then((m) => ({ default: m.WorkflowDiagramEditView })));
 
 // ==================== LAZY LOADED ====================
 const DetailDocumentView = lazy(() => import('@/features/documents/document-detail/DetailDocumentView').then(m => ({ default: m.DetailDocumentView })));
@@ -184,6 +188,10 @@ export function documentRoutes(navigate: NavigateFunction) {
       {/* Document Administration -- moved to System Administration, see SettingsRoutes.tsx
           (route registered at documents/administration/* -- URL unchanged since it is also the
           backend @RequestMapping base path on several controllers). */}
+
+      {/* Workflow diagrams */}
+      <Route path="workflow" element={<ProtectedRoute requiredPermissions={workflowPermissions("DOCUMENT_CONTROL")}><Suspense fallback={<LoadingFallback />}><WorkflowDiagramsView key="DOCUMENT_CONTROL" module="DOCUMENT_CONTROL" /></Suspense></ProtectedRoute>} />
+      <Route path="workflow/:diagramId/edit" element={<ProtectedRoute requiredPermissions={["documents.workflow_diagram.manage"]}><Suspense fallback={<LoadingFallback />}><WorkflowDiagramEditView key="DOCUMENT_CONTROL" module="DOCUMENT_CONTROL" /></Suspense></ProtectedRoute>} />
 
       {/* Document Detail */}
       <Route path=":id" element={<DetailDocumentViewWrapper />} />

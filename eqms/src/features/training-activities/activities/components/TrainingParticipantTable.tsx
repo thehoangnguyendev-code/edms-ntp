@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SectionLoading } from "@/components/ui/loading";
@@ -20,10 +21,10 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   /** Draws each person as a line of a list instead of a row of the table (the attendance step of the workspace); the server paging, search and sort are the same. */
   renderRow?: (p: TrainingParticipant, index: number) => ReactNode;
 }) {
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<{ key?: string; direction: "asc" | "desc" }>({ direction: "asc" });
+  const [page, setPage] = useViewState(`${activityId}:${sessionId ?? "all"}:${group}:TrainingParticipantTable.page`, 1);
+  const [limit, setLimit] = useViewState(`${activityId}:${sessionId ?? "all"}:${group}:TrainingParticipantTable.limit`, 10);
+  const [search, setSearch] = useViewState(`${activityId}:${sessionId ?? "all"}:${group}:TrainingParticipantTable.search`, "");
+  const [sort, setSort] = useViewState<{ key?: string; direction: "asc" | "desc" }>(`${activityId}:${sessionId ?? "all"}:${group}:TrainingParticipantTable.sort`, { direction: "asc" });
   const query = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [rows, setRows] = useState<TrainingParticipant[]>([]);
   const [total, setTotal] = useState(0);
@@ -34,7 +35,7 @@ export function TrainingParticipantTable({ activityId, sessionId, group, title, 
   // follows a change of the activity (refreshToken) keeps the rows on the screen instead of showing the loading state again.
   const [loaded, setLoaded] = useState(false);
   const shownFor = useRef("");
-  useEffect(() => { setPage(1); }, [sessionId, group, query]);
+  useViewFilterChange(() => { setPage(1); }, [sessionId, group, query]);
   useEffect(() => {
     let active = true;
     const key = JSON.stringify([activityId, sessionId, group, query, page, limit, sort]);

@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconColumns3, IconFilter, IconId, IconInfoCircle, IconLock } from "@tabler/icons-react";
@@ -30,7 +31,7 @@ const columnColumns: DataTableColumn<Column>[] = [
   { id: "label", header: "Column", label: "Column", cell: (column) => <span className="font-medium text-slate-900">{column.label}</span> },
   { id: "code", header: "Code", label: "Code", cell: (column) => code(column.code) },
   { id: "type", header: "Type", label: "Type", cell: (column) => TYPE_TEXT[column.type] ?? column.type },
-  { id: "required", header: tr("In every report"), label: tr("In every report"), cell: (column) => (column.required ? <Badge color="emerald">{tr("Yes")}</Badge> : <Badge color="slate">{tr("No")}</Badge>) },
+  { id: "required", get header() { return tr("In every report"); }, get label() { return tr("In every report"); }, cell: (column) => (column.required ? <Badge color="emerald">{tr("Yes")}</Badge> : <Badge color="slate">{tr("No")}</Badge>) },
 ];
 const filterColumns: DataTableColumn<Filter>[] = [
   { id: "label", header: "Filter", label: "Filter", cell: (filter) => <span className="font-medium text-slate-900">{filter.label}</span> },
@@ -68,7 +69,7 @@ export const ReportTypeDetailView: React.FC = () => {
         title={title}
         breadcrumbItems={reportBreadcrumbs(navigate, title, true, { label: tr("Report Types"), onClick: () => navigate("/settings/report-types") })}
         actions={
-          <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate("/settings/report-types")}>
+          <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigateBack(navigate, null, "/settings/report-types")}>
             {tr("Back")}
           </Button>
         }

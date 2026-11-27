@@ -479,7 +479,7 @@ public class DocumentNameFormatService {
         String normalized = search.trim().toLowerCase(Locale.ROOT);
         List<Predicate> orPredicates = new ArrayList<>();
         for (jakarta.persistence.criteria.Path<String> field : fields) {
-            orPredicates.add(cb.like(cb.lower(field), "%" + normalized + "%"));
+            orPredicates.add(com.eqms.util.SearchText.like(cb, field, "%" + normalized + "%"));
         }
         predicates.add(cb.or(orPredicates.toArray(new Predicate[0])));
     }

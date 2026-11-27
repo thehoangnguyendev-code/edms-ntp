@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { useEffect, useId, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { SearchInput } from "@/components/ui/form/SearchInput";
@@ -14,16 +15,19 @@ const ALL = "ALL";
  * The Work Positions that can be given, as a list that is ticked, grouped by department. Search, the department filter and the pages are done by the server;
  * a Work Position that is already held is not offered.
  */
-export function WorkPositionChecklist({ selectedIds, excludedIds, onToggle }: {
+export function WorkPositionChecklist({ selectedIds, excludedIds, onToggle, departmentId }: {
   selectedIds: string[];
   /** Held already: not offered again. */
   excludedIds: string[];
   onToggle: (position: TrainingPosition) => void;
+  /** Only this department is offered; the department filter is then not shown. */
+  departmentId?: string;
 }) {
   const baseId = useId();
   const [query, setQuery] = useState("");
-  const [department, setDepartment] = useState(ALL);
-  const [page, setPage] = useState(1);
+  const [chosenDepartment, setDepartment] = useState(ALL);
+  const department = departmentId ?? chosenDepartment;
+  const [page, setPage] = useViewState("WorkPositionChecklist.page", 1);
   const [limit, setLimit] = useState(20);
   const [rows, setRows] = useState<TrainingPosition[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
@@ -33,7 +37,7 @@ export function WorkPositionChecklist({ selectedIds, excludedIds, onToggle }: {
   const search = useDebounce(query, SEARCH_DEBOUNCE_MS);
   const excluded = excludedIds.join(",");
 
-  useEffect(() => setPage(1), [search, department, excluded]);
+  useViewFilterChange(() => setPage(1), [search, department, excluded]);
   useEffect(() => {
     let cancelled = false;
     setState("loading");
@@ -65,19 +69,21 @@ export function WorkPositionChecklist({ selectedIds, excludedIds, onToggle }: {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+      <div className={departmentId ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]"}>
         <div className="min-w-0">
           <label htmlFor={searchId} className="mb-1.5 block text-xs font-medium text-slate-700 sm:text-sm">{tr("Search")}</label>
           <SearchInput value={query} onChange={setQuery} placeholder="Search by Work Position, code or department..." inputProps={{ id: searchId }} />
         </div>
-        <div className="min-w-0">
-          <Select
-            label={tr("Department")}
-            value={department}
-            onChange={setDepartment}
-            options={[{ label: tr("All departments"), value: ALL }, ...departments.map((d) => ({ label: d.name, value: d.id }))]}
-          />
-        </div>
+        {!departmentId && (
+          <div className="min-w-0">
+            <Select
+              label={tr("Department")}
+              value={department}
+              onChange={setDepartment}
+              options={[{ label: tr("All departments"), value: ALL }, ...departments.map((d) => ({ label: d.name, value: d.id }))]}
+            />
+          </div>
+        )}
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-200">
         <div className="max-h-96 overflow-y-auto">

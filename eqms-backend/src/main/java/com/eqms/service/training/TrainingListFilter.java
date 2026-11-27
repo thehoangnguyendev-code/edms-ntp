@@ -36,7 +36,7 @@ final class TrainingListFilter {
         String like = "%" + text.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
         List<String> parts = new ArrayList<>();
         for (String column : columns) {
-            parts.add("lower(coalesce(" + column + "::text,'')) like ? escape '\\'");
+            parts.add("eqms_fold(coalesce(" + column + "::text,'')) like eqms_fold(?) escape '\\'");
             args.add(like);
         }
         where.append(" and (").append(String.join(" or ", parts)).append(")");

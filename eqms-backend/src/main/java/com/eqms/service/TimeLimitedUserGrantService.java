@@ -131,10 +131,10 @@ public class TimeLimitedUserGrantService {
                 String like = "%" + search.trim().toLowerCase() + "%";
                 var userJoin = root.join("user");
                 predicates.add(cb.or(
-                        cb.like(cb.lower(userJoin.get("fullName")), like),
-                        cb.like(cb.lower(userJoin.get("username")), like),
-                        cb.like(cb.lower(userJoin.get("email")), like),
-                        cb.like(cb.lower(cb.coalesce(userJoin.get("employeeCode"), "")), like)
+                        com.eqms.util.SearchText.like(cb, userJoin.get("fullName"), like),
+                        com.eqms.util.SearchText.like(cb, userJoin.get("username"), like),
+                        com.eqms.util.SearchText.like(cb, userJoin.get("email"), like),
+                        com.eqms.util.SearchText.like(cb, cb.coalesce(userJoin.get("employeeCode"), ""), like)
                 ));
             }
             if (StringUtils.hasText(startDateFrom)) {

@@ -86,6 +86,8 @@ public class TrainingActivityService {
     public record ExternalPerson(String name, String org) {}
     public record ParticipantsRequest(UUID sessionId, List<UUID> personUserIds, String externalName, String externalOrg, List<ExternalPerson> externals, String reason) {}
     public record ReasonRequest(String reason) {}
+    /** One session of a new initial class: its topics (DEC-TRAINING-2026-11-27-01 B3). */
+    public record InitialSession(List<TopicRequest> topics) {}
     public record ExemptionRequest(Boolean materialsExempt, Boolean assessmentExempt, String reason) {}
     public record CommandRequest(Integer version, String reason, String signatureToken) {}
     /** The day a session was held is not typed or sent: the system takes the day the trainer starts the session. */
@@ -164,7 +166,7 @@ public class TrainingActivityService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(t.training_number) like ? escape '\\' or lower(training_activity_topics(t.id)) like ? escape '\\' or lower(coalesce(t.document_number,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(d.name,'')) like ? escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (lower(coalesce(st.topic_text,'')) like ? escape '\\' or lower(coalesce(tu.full_name,'')) like ? escape '\\' or lower(coalesce(s.external_trainer_name,'')) like ? escape '\\')))");
+            where.append(" and (eqms_fold(t.training_number) like eqms_fold(?) escape '\\' or eqms_fold(training_activity_topics(t.id)) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(t.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(cu.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(d.name,'')) like eqms_fold(?) escape '\\' or exists (select 1 from training_sessions s left join app_users tu on tu.id = s.trainer_user_id left join training_session_topics st on st.session_id = s.id where s.activity_id = t.id and (eqms_fold(coalesce(st.topic_text,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(tu.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.external_trainer_name,'')) like eqms_fold(?) escape '\\')))");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         if (extra.waitingForMe()) { where.append(" and ").append(TrainingWaiting.activity("t.id")); args.add(actor.getId()); args.add(actor.getId()); }
@@ -427,7 +429,7 @@ public class TrainingActivityService {
         if (key.equals("ABSENT")) where += " and p.person_user_id is not null and " + away;
         if (key.equals("OUTSIDE")) where += " and p.person_user_id is null";
         if (search != null && !search.isBlank()) {
-            where += " and (lower(coalesce(p.full_name,'')) like ? escape '\\' or lower(coalesce(p.employee_code,'')) like ? escape '\\')";
+            where += " and (eqms_fold(coalesce(p.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(p.employee_code,'')) like eqms_fold(?) escape '\\')";
             String needle = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
             args.add(needle); args.add(needle);
         }
@@ -543,30 +545,29 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         String sql = """
             select * from (
               select distinct on (u.id, tp.topic_text) u.id as person_id, u.full_name, u.employee_code, u.department, rp.position_name as position_name, tp.topic_text, r.annual_required,
-                     (select max(rec.completed_on) from training_records rec left join training_record_voids vv on vv.record_id = rec.id
-                       where rec.person_user_id = u.id and vv.id is null
-                         and ((tp.document_number is not null and rec.document_number = tp.document_number) or training_topic_key(rec.topic_text) = training_topic_key(tp.topic_text))) as last_done
+                     st.last_done, st.status
                 from training_session_topics tp
-                join training_matrix_versions v on v.status = 'EFFECTIVE'
-                join training_matrix_rows r on r.version_id = v.id
+                join training_effective_requirements r on true
                 join lateral (
                   select pp.person_user_id as person_id, p.name as position_name
                     from training_matrix_cells c join training_person_positions pp on pp.position_id = c.position_id and pp.valid_to is null join training_job_roles p on p.id = pp.position_id
                    where c.row_id = r.id
                   union
-                  select u2.id, null::varchar from training_matrices m join departments dp on dp.id = m.department_id join app_users u2 on lower(trim(u2.department)) = lower(trim(dp.name))
-                   where m.id = v.matrix_id and r.all_employees) rp on true
+                  select u2.id, null::varchar from departments dp join app_users u2 on lower(trim(u2.department)) = lower(trim(dp.name))
+                   where dp.id = r.department_id and r.all_employees) rp on true
                 join app_users u on u.id = rp.person_id and u.status = 'Active'
+                left join documents md on md.id = r.document_id
+                cross join lateral training_requirement_state(u.id, md.document_number, r.topic_text, r.annual_required) st
                where tp.session_id = ? and ((r.document_id is not null and r.document_id = tp.document_id) or (r.topic_text is not null and training_topic_key(r.topic_text) = training_topic_key(tp.topic_text)))
                  and not exists (select 1 from training_participants x where x.session_id = ? and x.person_user_id = u.id)
                  and not exists (select 1 from training_sessions ts where ts.id = ? and ts.trainer_user_id = u.id)
               """ + scope + """
               order by u.id, tp.topic_text) x
-             where x.last_done is null or (x.annual_required and x.last_done < current_date - interval '1 year')
+             where x.status <> 'OK'
              order by x.full_name, x.topic_text limit 200
             """;
         List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList(sql, args.toArray()));
-        for (Map<String, Object> row : rows) row.put("reason", row.get("lastDone") == null ? "MISSING" : "DUE");
+        for (Map<String, Object> row : rows) row.put("reason", row.get("status"));
         return rows;
     }
 
@@ -624,7 +625,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         }
         args.add(Math.min(Math.max(limit, 1), 50));
         String sql = "select u.id, u.full_name, u.employee_code, u.department, u.position, u.email, u.business_unit from app_users u"
-                + " where u.status = 'Active' and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\')"
+                + " where u.status = 'Active' and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\')"
                 + scope + " order by u.full_name limit ?";
         return TrainingRows.camel(jdbc.queryForList(sql, args.toArray()));
     }
@@ -978,17 +979,19 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
             for (UUID personId : request.personUserIds()) {
                 if (personId == null) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
                 UserAccount person = users.findById(personId).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
-                if (person.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
+                // SOP.0003 5.3.4: the list includes the people who are away (leave, maternity); an account suspended for it stays on the list as away, is not invited, and is offered the make-up once it is Active (D-SRM-6)
+                boolean away = person.getStatus() == UserStatus.Suspended;
+                if (person.getStatus() != UserStatus.Active && !away) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
                 Integer exists = jdbc.queryForObject("select count(*) from training_participants where session_id=? and person_user_id=?", Integer.class, request.sessionId(), personId);
                 if (exists != null && exists > 0) continue;
                 // The trainer is written in the content of the training (APD.0117), not in the list of the people who take part.
                 Integer isTrainer = jdbc.queryForObject("select count(*) from training_sessions where id=? and trainer_user_id=?", Integer.class, request.sessionId(), personId);
                 if (isTrainer != null && isTrainer > 0) throw new IllegalArgumentException("TRAINING_PARTICIPANT_IS_TRAINER");
                 jdbc.update("""
-                    insert into training_participants(id, activity_id, session_id, person_user_id, employee_code, full_name, department, position, added_reason, created_by)
-                    values (?,?,?,?,?,?,?,?,?,?)
+                    insert into training_participants(id, activity_id, session_id, person_user_id, employee_code, full_name, department, position, added_reason, created_by, planned_absence)
+                    values (?,?,?,?,?,?,?,?,?,?,?)
                     """, UUID.randomUUID(), id, request.sessionId(), personId, person.getEmployeeCode(), person.getFullName(), person.getDepartment(), person.getPosition(),
-                        request.reason().trim(), actor.getId());
+                        request.reason().trim(), actor.getId(), away ? "Account suspended (long leave or away)" : null);
                 added++;
             }
         }
@@ -1079,7 +1082,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         List<Map<String, Object>> all = new ArrayList<>();
         for (UserAccount candidate : approvals.eligibleUsers("CONTENT_APPROVE", department, apart)) {
             UUID personId = candidate.getId();
-            if (!needle.isEmpty() && !(String.valueOf(candidate.getFullName()).toLowerCase(Locale.ROOT).contains(needle) || String.valueOf(candidate.getUsername()).toLowerCase(Locale.ROOT).contains(needle))) continue;
+            if (!needle.isEmpty() && !(com.eqms.util.SearchText.containsFolded(candidate.getFullName(), needle) || com.eqms.util.SearchText.containsFolded(candidate.getUsername(), needle))) continue;
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", candidate.getId());
             row.put("fullName", candidate.getFullName());
@@ -1500,7 +1503,7 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
         String batch = "INVITED:" + id + ":" + System.currentTimeMillis();
         List<TrainingNotifier.Notice> notices = new ArrayList<>();
         for (UUID personId : personIds) {
-            users.findById(personId).ifPresent(person -> notices.add(new TrainingNotifier.Notice(person, "Training: you are invited", invitation(activity, personId), batch, Map.of("actionUrl", TrainingNotifier.MY_TRAINING))));
+            users.findById(personId).filter(u -> u.getStatus() == UserStatus.Active).ifPresent(person -> notices.add(new TrainingNotifier.Notice(person, "Training: you are invited", invitation(activity, personId), batch, Map.of("actionUrl", TrainingNotifier.MY_TRAINING))));
         }
         notifier.sendBatch("TRAINING_INVITED", actor, "TRAINING_ACTIVITY", id, notices);
     }
@@ -2418,6 +2421,49 @@ select p.id, p.session_id, p.person_user_id, p.full_name, p.employee_code, p.dep
     }
 
     static final String SUPPLEMENTARY_TOPIC_PREFIX = "Supplementary training: ";
+
+    /**
+     * An initial training class for new employees (SOP.0003 5.1.1, 5.1.4): one activity and one Training Number, with a session for each group of what is to be learned, or
+     * copied from an earlier initial class (sessions, trainers, materials, assessment) without its dates, people, signatures or results. Only a person who gives training
+     * numbers may make it (5.3.3). The content is still reviewed and approved before the people are notified (5.3.5).
+     */
+    @Transactional
+    public UUID createInitialClass(UserAccount actor, UUID copyFrom, List<InitialSession> sessions, String remarks) {
+        access.require(actor, "training.code.allocate");
+        Map<String, Object> created = create(actor, new CreateRequest(null, "INITIAL", "NEW_HIRE", null, null, remarks, null, null));
+        UUID id = (UUID) created.get("id");
+        if (copyFrom != null) {
+            Map<String, Object> parent = store.activity(copyFrom).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+            if (!"INITIAL".equals(parent.get("kind"))) throw new IllegalArgumentException("TRAINING_KIND_INVALID");
+            access.requireScope(actor, (UUID) parent.get("organizer_department_id"));
+            for (Map<String, Object> source : jdbc.queryForList("select * from training_sessions where activity_id = ? and status <> 'CANCELLED' order by session_no", copyFrom)) {
+                List<Map<String, Object>> topics = jdbc.queryForList("select topic_text, document_revision_id from training_session_topics where session_id = ? order by topic_text", source.get("id"));
+                if (topics.isEmpty()) continue;
+                UUID trainer = (UUID) source.get("trainer_user_id");
+                if (trainer != null && users.findById(trainer).filter(u -> u.getStatus() == UserStatus.Active).isEmpty()) trainer = null;
+                try {
+                    addSessionInner(actor, id, new SessionRequest((String) source.get("method"), (String) source.get("assessment_method"), trainer, (String) source.get("external_trainer_name"), null,
+                            (String) source.get("venue"), (String) source.get("location_type"), (String) source.get("online_platform"), (String) source.get("meeting_link"),
+                            topics.stream().map(t -> new TopicRequest((String) t.get("topic_text"), (UUID) t.get("document_revision_id"))).toList()));
+                } catch (IllegalArgumentException notCopiable) {
+                    // a session that cannot be copied as it is (an old one without a place or a method) is left out; the organizer adds one
+                }
+            }
+            copyContent(actor, store.activity(copyFrom).orElseThrow(), store.activity(id).orElseThrow());
+        }
+        // what the person still has to learn and the copied sessions do not teach is added as sessions by group
+        for (InitialSession wanted : sessions == null ? List.<InitialSession>of() : sessions) {
+            if (wanted.topics() == null || wanted.topics().isEmpty()) continue;
+            boolean taught = jdbc.queryForObject("""
+                select count(*) = ? from training_session_topics t join training_sessions s on s.id = t.session_id where s.activity_id = ? and s.status <> 'CANCELLED'
+                   and (t.topic_text in (%s))
+                """.formatted(String.join(",", java.util.Collections.nCopies(wanted.topics().size(), "?"))), Boolean.class,
+                    java.util.stream.Stream.concat(java.util.stream.Stream.of((Object) wanted.topics().size(), id), wanted.topics().stream().map(TopicRequest::topicText)).toArray());
+            // the place is a first guess the organizer corrects before the people are notified
+            if (!taught) addSessionInner(actor, id, new SessionRequest("CLASSROOM", "TEST", null, null, null, "Training room", "ONSITE", null, null, wanted.topics()));
+        }
+        return id;
+    }
 
     /**
      * The new activity opens with the sessions the people missed or failed, each like the original (mode, assessment, trainer, place, topic with the prefix above), so the organizer corrects it instead of

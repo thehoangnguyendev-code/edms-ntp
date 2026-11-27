@@ -84,7 +84,7 @@ public class TrainingJobAssignmentReportMetadataProvider implements ReportMetada
                 """).append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (" + ReportQueryKit.person("a.person_user_id") + " ilike ? escape '\\' or coalesce(pos.name,'') ilike ? escape '\\' or coalesce(dep.name,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(" + ReportQueryKit.person("a.person_user_id") + ") like eqms_fold(?) escape '\\' or eqms_fold(coalesce(pos.name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(dep.name,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }

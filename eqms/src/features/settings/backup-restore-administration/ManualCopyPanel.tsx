@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
@@ -16,8 +17,8 @@ import { tr } from "@/i18n";
 const STATE: Record<ManualCopyStatus["state"], { label: string; color: "emerald" | "amber" | "red" | "slate" }> = {
   ON_TIME: { label: "On time", color: "emerald" },
   OVERDUE: { label: "Overdue", color: "red" },
-  NEVER_RECORDED: { label: tr("None recorded yet"), color: "amber" },
-  NOT_DECLARED: { label: tr("Not declared in the policy"), color: "slate" },
+  NEVER_RECORDED: { get label() { return tr("None recorded yet"); }, color: "amber" },
+  NOT_DECLARED: { get label() { return tr("Not declared in the policy"); }, color: "slate" },
 };
 
 const todayText = () => {
@@ -41,8 +42,8 @@ export const ManualCopyPanel: React.FC = () => {
   const [status, setStatus] = useState<ManualCopyStatus>();
   const [error, setError] = useState("");
   const [rows, setRows] = useState<ManualCopyRecord[]>([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useViewState("ManualCopyPanel.page", 1);
+  const [pageSize, setPageSize] = useViewState("ManualCopyPanel.pageSize", 10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);

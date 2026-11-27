@@ -3,7 +3,7 @@ import type { AuditTrailRecord } from "@/features/audit-trail/types";
 import { ControlledCopy } from "../../types";
 import { formatDateTime } from "@/utils/format";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
-import { tr, useLanguage } from "@/i18n";
+import { tr, useLanguage, getCatalogLanguage } from "@/i18n";
 
 export interface SignatureRecord {
   actionBy: string;
@@ -148,7 +148,7 @@ export const SignaturesTab: React.FC<SignaturesTabProps> = ({
     }
 
     return buildControlledCopyFallbackRecords(controlledCopy);
-  }, [auditTrailRecords, controlledCopy, records]);
+  }, [auditTrailRecords, controlledCopy, records, getCatalogLanguage()]);
 
   const hasReportConfirmation = Boolean(
     controlledCopy.destructionType || controlledCopy.destroyedBy || controlledCopy.destroyedDate || controlledCopy.witnessedBy

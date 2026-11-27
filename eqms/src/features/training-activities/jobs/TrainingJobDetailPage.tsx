@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { PersonTitlePicker } from "./PersonTitlePicker";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
@@ -102,7 +103,7 @@ export function TrainingJobDetailPage() {
   const { showToast } = useToast();
   const [job, setJob] = useState<TrainingJobDetail>();
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useViewState("TrainingJobDetailPage.tab", "overview");
   const [form, setForm] = useState({
     directSuperiorTitle: "",
     subordinateTitles: "",
@@ -246,7 +247,11 @@ export function TrainingJobDetailPage() {
       id: "status",
       header: "Status",
       cell: (i) =>
-        i.lastDone ? (
+        i.status === "UPDATE_NEEDED" ? (
+          <Badge color="amber">{tr("New revision not trained")}</Badge>
+        ) : i.status === "DUE" ? (
+          <Badge color="amber">{tr("Annual training due")}</Badge>
+        ) : i.lastDone ? (
           <Badge color="emerald">{tr("Trained")}</Badge>
         ) : (
           <Badge color="red">{tr("Not trained")}</Badge>

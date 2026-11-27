@@ -36,6 +36,25 @@ public final class EmailFrameRenderer {
         return head.startsWith("<!doctype") || head.startsWith("<html");
     }
 
+    /**
+     * Every mail opens with the name of the person who receives it. A template that already greets its reader (Dear, Hello, Kính gửi...) is left as it is,
+     * so the wording is never greeted twice. The name is escaped like any other text of the mail.
+     */
+    public static String withGreeting(String contentHtml, String recipientName, boolean vietnamese) {
+        if (contentHtml == null || contentHtml.isBlank()) return contentHtml;
+        String plain = contentHtml.replaceAll("(?s)<!--.*?-->", " ").replaceAll("<[^>]+>", " ")
+                .replace("&nbsp;", " ").stripLeading().toLowerCase(Locale.ROOT);
+        if (plain.startsWith("kính gửi") || plain.startsWith("dear") || plain.startsWith("hello")
+                || plain.startsWith("thân gửi") || plain.startsWith("kính chào") || plain.startsWith("xin chào")
+                || plain.startsWith("chào")) {
+            return contentHtml;
+        }
+        String name = recipientName == null ? "" : recipientName.strip();
+        if (name.isEmpty()) name = vietnamese ? "Quý khách" : "Sir or Madam";
+        String greeting = (vietnamese ? "Kính gửi " : "Dear ") + name + ",";
+        return "<p style=\"margin:0 0 14px;\">" + escape(greeting) + "</p>" + contentHtml;
+    }
+
     /** Plain text into paragraphs: escaped, a blank line separates paragraphs, a single line break stays. Text that already holds tags is kept as it is. */
     public static String paragraphs(String text) {
         if (text == null || text.isBlank()) return "";

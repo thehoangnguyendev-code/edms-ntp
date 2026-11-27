@@ -78,7 +78,16 @@ public class PublishingPdfComposerService {
             Boolean enableFooter,
             Map<String, String> callerExtraValues
     ) throws IOException {
-        Path sourcePath = requireSourcePath(revision);
+        // The PDF carries the final text only: tracked changes accepted, comments left out (DEC-DOC-2026-11-27-04). Cleaned before the header/footer rendering, which
+        // does not look inside tracked-change wrappers.
+        Path storedSource = requireSourcePath(revision);
+        // Publishing, its preview and controlled copies are made only from the file recorded for this revision.
+        if (!com.eqms.util.SourceChecksum.matches(revision.getSourceFileChecksum(), Files.readAllBytes(storedSource))) {
+            log.error("The stored source of revision {} does not match its recorded checksum", revision.getId());
+            throw new com.eqms.exception.RevisionLifecycleConflictException("REVISION_FILE_INTEGRITY_MISMATCH",
+                    "The stored file of revision " + revision.getRevisionNumber() + " does not match its recorded checksum. No PDF was made. Contact an administrator.");
+        }
+        Path sourcePath = finalText(storedSource);
         // buildDetailResponse(), not getRevision(id): this already has the loaded entity, and
         // getRevision() requires an authenticated current user + writes its own "opened"/VIEW
         // audit bookkeeping -- both wrong here, and getRevision() throws outright when this runs
@@ -600,7 +609,12 @@ public class PublishingPdfComposerService {
         if (isPdf(path, fileName)) {
             return Files.readAllBytes(path);
         }
-        return onlyOfficeDocumentEditService.convertLocalFileToPdf(path, fileName);
+        // Cover, header and footer files of a template pass here too.
+        return onlyOfficeDocumentEditService.convertLocalFileToPdf(finalText(path), fileName);
+    }
+
+    private Path finalText(Path path) throws IOException {
+        return com.eqms.util.DocxSignature.isDocx(path) ? com.eqms.util.DocxMarkupCleaner.cleanedCopy(path) : path;
     }
 
     private boolean isPdf(Path path, String fileName) {

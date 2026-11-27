@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useViewState } from "@/hooks/useViewState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
 import { IconBinoculars, IconEye, IconFileDownload, IconInfoCircle } from "@tabler/icons-react";
@@ -32,11 +33,11 @@ export function ReportHistoryView() {
     if (run) navigate(`/report/runs/${run}`, { replace: true });
   }, [navigate, searchParams]);
   const drag = useTableDragScroll();
-  const [status, setStatus] = useState("");
-  const [definitionCode, setDefinitionCode] = useState("");
-  const [queued, setQueued] = useState({ from: "", to: "" });
-  const [completed, setCompleted] = useState({ from: "", to: "" });
-  const [format, setFormat] = useState("");
+  const [status, setStatus] = useViewState("ReportHistoryView.status", "");
+  const [definitionCode, setDefinitionCode] = useViewState("ReportHistoryView.definitionCode", "");
+  const [queued, setQueued] = useViewState("ReportHistoryView.queued", { from: "", to: "" });
+  const [completed, setCompleted] = useViewState("ReportHistoryView.completed", { from: "", to: "" });
+  const [format, setFormat] = useViewState("ReportHistoryView.format", "");
   const [templates, setTemplates] = useState<{ value: string; label: string }[]>([]);
   const [error, setError] = useState("");
 

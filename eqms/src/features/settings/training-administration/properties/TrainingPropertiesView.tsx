@@ -44,7 +44,7 @@ const NumberField: React.FC<{
       }}
       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
-    {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+    {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
   </div>
 );
 
@@ -53,12 +53,12 @@ const NumberField: React.FC<{
  * "Save Changes" saves the changes of every tab.
  */
 const SETTING_TABS = [
-  { id: "assessment", label: "Assessment", about: tr("How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training.") },
-  { id: "documents", label: tr("Document Training"), about: tr("How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control.") },
-  { id: "annual", label: tr("Annual & Retraining"), about: tr("When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance.") },
-  { id: "reminders", label: "Reminders", about: tr("When a person who has not signed a self-reading is reminded before the due date, and when the person who must close a training review, and the person who opened it, are reminded (once a week).") },
-  { id: "files", label: tr("File Names"), about: tr("The name of the file a person downloads for each form (APD.0011, 0014, 0024, 0108, 0117, 0118). Write the name with variables in braces; the example shows the result. It is used every time a form is downloaded as Word or PDF.") },
-  { id: "retention", label: tr("Records Retention"), about: tr("How long training records are kept. It is used when the records of a person who left are archived.") },
+  { id: "assessment", label: "Assessment", get about() { return tr("How a test is marked, and by when the trainer must finish the training, which sends the results to QA. It is used when the trainer records the results of a training."); } },
+  { id: "documents", get label() { return tr("Document Training"); }, get about() { return tr("How training on a new or revised document is organised. A document that requires training always goes through Training Management; this is used when it is created in Document Control."); } },
+  { id: "annual", get label() { return tr("Annual & Retraining"); }, get about() { return tr("When the annual requirement is due, when a person who was away is retrained, and how long a person counts as a new employee. It is used by the training requirements, the training reviews and Training Compliance."); } },
+  { id: "reminders", label: "Reminders", get about() { return tr("When a person who has not signed a self-reading is reminded before the due date, and when the person who must close a training review, and the person who opened it, are reminded (once a week)."); } },
+  { id: "files", get label() { return tr("File Names"); }, get about() { return tr("The name of the file a person downloads for each form (APD.0011, 0014, 0024, 0108, 0117, 0118). Write the name with variables in braces; the example shows the result. It is used every time a form is downloaded as Word or PDF."); } },
+  { id: "retention", get label() { return tr("Records Retention"); }, get about() { return tr("How long training records are kept. It is used when the records of a person who left are archived."); } },
 ] as const;
 
 const SAMPLE: Record<string, string> = { EMPLOYEE_CODE: "NT-0123", EMPLOYEE_NAME: "Nguyen-Van-An", DEPARTMENT: "Quality-Control", TRAINING_NUMBER: "TRN-QC-26-045", SESSION_NO: "01", MATRIX_CODE: "TM-QC", VERSION: "3", ISSUE_NO: "2", REQUEST_NO: "TR-QC-26-001", YEAR: "2026", DATE: "20261101" };
@@ -215,7 +215,7 @@ export const TrainingPropertiesView: React.FC = () => {
                 { label: tr("Every day (calendar days)"), value: "CALENDAR" },
               ]}
             />
-            <p className="text-xs text-slate-500 mt-1">{tr("The public holidays are not known to the system: a holiday counts as a working day.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("The public holidays are not known to the system: a holiday counts as a working day.")}</p>
           </div>
         </FormSection>
       </div>
@@ -246,14 +246,14 @@ export const TrainingPropertiesView: React.FC = () => {
                 { value: "MANUAL", label: "Manual" },
               ]}
             />
-            <p className="text-xs text-slate-500">
+            <p className="!mt-1.5 text-xs text-slate-500">
               {settings.trainingNumberEntryMode === "MANUAL"
                 ? tr("The person creating the document types the number.")
                 : tr("The system issues the number when Requires Training is saved.")}
             </p>
           </div>
           {settings.trainingNumberEntryMode === "MANUAL" && (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-slate-500">
               {tr("The number is typed as TRN/<department code>/<YY>-<NNN>. The screen warns at once when it is already used, and warns (without refusing) when the year is not the current one. It can be changed, with a reason, until the training opens. A training created without that screen (for example by upgrading a revision) still gets a number from the system, which can then be changed the same way.")}
             </p>
           )}
@@ -414,8 +414,8 @@ export const TrainingPropertiesView: React.FC = () => {
                 </Button>
               )}
             </div>
-                  <p className="mt-2 text-xs text-slate-500">{tr("Example:")} <span className="font-mono text-slate-800" data-testid={`file-name-example-${f.form}`}>{f.example}</span></p>
-            <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1.5 text-xs text-slate-500">{tr("Example:")} <span className="font-mono text-slate-800" data-testid={`file-name-example-${f.form}`}>{f.example}</span></p>
+            <p className="mt-1.5 text-xs text-slate-500">
                   {tr("Variables:")}{" "}
               {f.variables.map((v) => (
                 <span key={v.name} title={v.meaning} className="mr-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700">{`{${v.name}}`}</span>

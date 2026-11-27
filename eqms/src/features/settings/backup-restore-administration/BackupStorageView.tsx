@@ -27,8 +27,8 @@ const STEP_LABEL: Record<string, string> = {
 
 const TABS: TabItem[] = [
   { id: "targets", label: "Targets" },
-  { id: "manual-copy", label: tr("Manual Copy") },
-  { id: "encryption", label: tr("Encryption") },
+  { id: "manual-copy", get label() { return tr("Manual Copy"); } },
+  { id: "encryption", get label() { return tr("Encryption"); } },
 ];
 
 /** The result of a test run from this page: passed, or failed at the first step that did not work. */

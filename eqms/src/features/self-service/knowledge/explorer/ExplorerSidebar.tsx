@@ -28,8 +28,8 @@ interface ExplorerSidebarProps {
 const QUICK: { key: SmartKey | "home"; label: string; Icon: React.ElementType }[] = [
   { key: "home", label: "Home", Icon: Home },
   { key: "featured", label: "Featured", Icon: Star },
-  { key: "viewed", label: tr("Most Viewed"), Icon: Eye },
-  { key: "useful", label: tr("Most Helpful"), Icon: ThumbsUp },
+  { key: "viewed", get label() { return tr("Most Viewed"); }, Icon: Eye },
+  { key: "useful", get label() { return tr("Most Helpful"); }, Icon: ThumbsUp },
   { key: "subscribed", label: "Subscribed", Icon: Bell },
 ];
 

@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { tr } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { SearchInput } from "@/components/ui/form/SearchInput";
@@ -32,9 +33,9 @@ export function LocalListTable<T>({
   emptyTitle: string;
   emptyDescription: string;
 }) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState(`${columns.map((column) => column.id).join(",")}: LocalListTable.search`, "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState(`${columns.map((column) => column.id).join(",")}: LocalListTable.page`, 1);
   const [sort, setSort] = useState<{ id: string; direction: "asc" | "desc" }>();
 
   const shown = useMemo(() => {
@@ -55,7 +56,7 @@ export function LocalListTable<T>({
   }, [rows, debouncedSearch, sort]);
 
   const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
-  useEffect(() => setPage(1), [debouncedSearch, sort]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, sort]);
   const current = Math.min(page, totalPages);
   const pageRows = shown.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 

@@ -67,6 +67,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   const displayTitle = typeof title === 'string' ? tLabel(title) : title;
   const displayConfirm = typeof confirmText === 'string' ? tLabel(confirmText) : confirmText;
   const displayCancel = typeof cancelText === 'string' ? tLabel(cancelText) : cancelText;
+  const displayDescription = typeof description === 'string' ? tLabel(description) : description;
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -227,8 +228,8 @@ export const FormModal: React.FC<FormModalProps> = ({
             </div>
 
             <div className="form-modal-body px-4 sm:px-6 py-4 sm:py-5 bg-white overflow-y-auto flex-1 min-h-0">
-              {description && (
-                <div id={descriptionId} className="mb-4 text-xs sm:text-sm text-slate-500 leading-relaxed">{description}</div>
+              {displayDescription && (
+                <div id={descriptionId} className="mb-4 text-xs sm:text-sm text-slate-500 leading-relaxed">{displayDescription}</div>
               )}
               {children}
             </div>

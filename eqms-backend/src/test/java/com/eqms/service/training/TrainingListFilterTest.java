@@ -24,7 +24,7 @@ class TrainingListFilterTest {
         TrainingListFilter f = new TrainingListFilter().equal("r.status", "DRAFT'; drop table x; --").equal("r.department_id", id).contains("50%_off", "u.full_name", "r.reason");
 
         assertThat(f.where()).doesNotContain("drop table").doesNotContain("50%");
-        assertThat(f.where()).contains("r.status = ?").contains("r.department_id = ?").contains("lower(coalesce(u.full_name::text,'')) like ? escape");
+        assertThat(f.where()).contains("r.status = ?").contains("r.department_id = ?").contains("eqms_fold(coalesce(u.full_name::text,'')) like eqms_fold(?) escape");
         assertThat(f.args()).hasSize(4).contains(id).contains("%50\\%\\_off%");
     }
 

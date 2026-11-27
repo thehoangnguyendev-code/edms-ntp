@@ -42,7 +42,7 @@ public class TrainingRetentionService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(x.full_name) like ? escape '\\' or lower(coalesce(x.employee_code,'')) like ? escape '\\' or lower(coalesce(x.position,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(x.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(x.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(x.position,'')) like eqms_fold(?) escape '\\')");
             for (int i = 0; i < 3; i++) args.add(like);
         }
         String base = """

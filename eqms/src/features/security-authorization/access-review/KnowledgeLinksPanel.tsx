@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Check, MoreVertical, Search, X } from "lucide-react";
@@ -60,13 +61,13 @@ export const KnowledgeLinksPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("KnowledgeLinksPanel.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [status, setStatus] = useState("ALL");
-  const [sortKey, setSortKey] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortKey, setSortKey] = useViewState("KnowledgeLinksPanel.sortKey", "createdAt");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("KnowledgeLinksPanel.sortDir", "desc");
+  const [currentPage, setCurrentPage] = useViewState("KnowledgeLinksPanel.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("KnowledgeLinksPanel.itemsPerPage", 10);
   const [version, setVersion] = useState(0);
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);

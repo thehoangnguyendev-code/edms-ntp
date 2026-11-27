@@ -2355,3 +2355,115 @@ Source: evidence folder `docs/validation/evidence/training_2026_11_24/` (REPORT.
 
 - **Decided by the owner:** (1) e-mail to people outside the system is always English (replaces N4, bilingual); (2) the e-mail frame, its footer and the "button does not work" line are also Vietnamese; (3) sentences composed by the server, reasons and notes stay as they are.
 - **Built:** a Vietnamese mail carries a hidden marker and gets the Vietnamese frame when sent; the Email Design screen has "Footer line (Vietnamese)" (V864, filled from the English footer where it ended with "All rights reserved.").
+
+## DEC-WORKFLOW-DIAGRAM-2026-11-27: Workflow diagrams in Document Control and Training Management (built, not committed)
+
+- **Asked and decided by the owner (2026-11-27):** a "Workflow" menu in both modules showing the process as a block diagram, drawn with draw.io. (1) draw.io runs in its own container; (2) Save puts the diagram in force at once, with a reason; earlier versions are kept and the change is written to the audit trail; no electronic signature and no second approver; (3) several named diagrams per module; (4) separate view and edit permissions per module.
+- **Built:** V868 (tables `workflow_diagrams`, append-only `workflow_diagram_versions`; permissions `documents.workflow_diagram.view/manage`, `training.workflow_diagram.view/manage`, held by nobody until given), service with module-scoped permission checks and a version check against overwriting, menu entries, viewer and editor screens, compose service `drawio` (image pinned by digest), `/drawio/` in `nginx/nginx.conf`.
+- **For QA:** a saved diagram is not a controlled document: it has no review or approval step and no signature. It must not be used as the approved procedure unless QA accepts this.
+- **Open:** in TEST/PROD the editor is served under the same origin (`/drawio/`); a separate host name would isolate it better. The CSP of the production frontend is still report-only.
+- **(5) Decided by the owner the same day:** the four workflow diagram permissions are added to "Administrator managed permissions" of the ADMINISTRATOR profile (V869); other profiles receive them by hand.
+
+## DEC-TRAINING-2026-11-27-01: adjust Training Management to SOP.0003.02 (decided, build starting)
+
+- **Decided by the owner (who is QA; no other named QA approver; not a GMP approval):** every option marked ★ in `docs/plans/KE_HOACH_DIEU_CHINH_TRAINING_THEO_SOP0003_2026_11_27.md` (groups A, B, C, D, E, F, H); build in one run, stopping only for a HIGH/CRITICAL impact result or a new decision.
+- **Evidence of the gaps:** `docs/to-be-sds/training/GAP-TR-007-sop0003-versus-code-2026-11-27.md`.
+- **Main rules:** one status rule that looks at the revision everywhere (a person trained on a superseded revision cannot be given a job assignment without an approved exception); GMP topics are marked by QA, not guessed from the name; related departments assess document impact and the notification waits for them; review checklists take training lines from the matrix, completion needs a record; non-training items come from a configurable template (SOP items locked); initial training is one activity with sessions and can be copied from the previous one; one factory-wide matrix list approved by the head of QA; periodic training follows the document review cycle (12 months when none); one plant-wide annual requirement; detection of new, returning and transferred people with alerts.
+- **Not in this run:** group G (HR data, CAPA / Change Control links, sending records, several sites); D4 stays as it is.
+- **For QA:** the SOP wording to be corrected is listed at the end of the plan.
+
+## DEC-TRAINING-2026-11-27-02: the matrix row is the requirement, whatever the Requires Training tick (decided, built)
+
+- **Decided by the owner (who is QA; not a GMP approval):** a person who has never trained on a document of the matrix must train, even when the effective revision (or every revision) is not ticked Requires Training; an unticked revision only means that people already trained do not train again (SOP.0003 5.3.1, 5.3.8). Replaces the "Not required" wording of option A1-a in the plan.
+- **Change record:** `eqms-backend/docs/validation/TRAINING_SOP0003_ADJUSTMENT_2026_11_27_CHANGE_RECORD.md`.
+
+## DEC-TRAINING-2026-11-27-03: what was built of DEC-TRAINING-2026-11-27-01 and where it differs from the plan (for the owner to confirm)
+
+- **Built:** A1, A2, A3, B1–B8, C, D1, D2, D3, E1, F1–F4, F6 and the recognition and alerts of H; evidence in `eqms-backend/docs/validation/TRAINING_SOP0003_ADJUSTMENT_2026_11_27_CHANGE_RECORD.md`.
+- **Differences from the options marked ★, made by engineering, not decided by the owner:** (1) H1-a: the alerts come from a scan of the user records and the Audit Trail every twenty minutes, not from a hook in User Management; (2) H2.2: no "kind of suspension" field, so every suspension longer than the months of the SOP raises the alert, and a person dismisses it with a reason and a signature; (3) H2.1: the start date is not made mandatory, a "Start date missing" alert is raised instead; (4) F5: first the matrix kept one approval step; see DEC-TRAINING-2026-11-27-04; (5) D2.3: the three contents of SOP.0003 5.3.2 are rows of a seeded table with no screen; (6) B3: the alerts and the "Initial training class" dialog replace the "Create training" button of the review.
+- **For QA:** the signature meaning "Training Alert Dismissed" is new (V876). The wording of the two new notification events (Training Review Needed, Matrix Review Due) is English only.
+
+## DEC-TRAINING-2026-11-27-04: Security hooks and two-step matrix approval built (for the owner to confirm)
+
+- **Built after the owner asked to finish the open items, Security included:** H1-a (User Management tells Training after commit; the scan runs at once), H2.2 (kind of suspension LONG_LEAVE or OTHER, required on server and screen, OTHER never raises a return alert), H2.1 (start date required for a new user), F5 (matrix: Pending Review before Pending Approval; preparer, reviewer and approver are three different people; V878; signature meaning TRAINING_MATRIX_REVIEWED) and D2.3 (screen for the contents of SOP.0003 5.3.2, reason in the Audit Trail).
+- **Engineering choices to confirm:** the reviewer of a matrix is a person who manages matrices in the department (not necessarily the Head); matrix versions already Pending Approval keep one approval step; an existing suspension without a kind is not changed.
+- **For QA:** the kind of suspension is a new required field of the Suspend action (API clients must send it); evidence in the change record and `evidence/training_2026_11_27/e2e_f5_security.py`.
+
+## DEC-DOC-2026-11-27-01: continue the next revision from the Effective file, and compare with it (decided, not built)
+
+- **Decided by the owner, in this conversation (2026-11-27; not a GMP approval).** Plan: `docs/plans/KE_HOACH_SOAN_TIEP_TU_BAN_EFFECTIVE_VA_COMPARE_2026_11_27.md`.
+- **D1:** two choices for the file of a new revision: the file of the Effective revision, or a new upload.
+- **D2:** unresolved tracked changes block; unresolved comments only warn.
+- **D3:** the comparison is for viewing only; it is not kept as a record.
+- **D4:** whoever may view the revision being worked on may compare it; no download.
+- **Engineering reading, to confirm:** D2 applies at Submit for Review, Complete Review and Complete Approval, so a reviewer or approver who made tracked changes cannot complete the step with them in the file.
+- **Open:** whether OnlyOffice 9.4.0.1 can produce the comparison on the server under the licence in use has not been tried.
+
+## DEC-DOC-2026-11-27-02: tracked changes and comments do not block (decided, not built)
+
+- **Decided by the owner, in this conversation (2026-11-27; not a GMP approval).** Replaces D2 of DEC-DOC-2026-11-27-01 and the engineering reading under it: neither unresolved tracked changes nor comments block any step.
+- **Engineering choice, to confirm:** a count of both is shown as a warning at Submit for Review, Complete Review and Complete Approval.
+- **Not verified:** how the published PDF shows tracked changes or comments left in the file; to be tried with the comparison trial.
+
+## DEC-DOC-2026-11-27-03: what was built of DEC-DOC-2026-11-27-01/02 (for the owner to confirm)
+
+- **Built** (owner: do it directly): both choices of file source, Compare with Effective, the warning; evidence in `eqms-backend/docs/validation/DOC_NEXT_REVISION_FROM_EFFECTIVE_AND_COMPARE_2026_11_27_CHANGE_RECORD.md`. Not committed.
+- **Engineering choices to confirm:** the warning is on the screen, not in the signature dialog; the Effective file is preselected in Upload Revision; the comparison is a temporary cache, not a record.
+- **Open for a decision:** the read-only Document tab hides the tracked changes of a file that holds them, while the published PDF shows their markup.
+
+## DEC-DOC-2026-11-27-04: markup is for drafting, review and approval only (decided, built)
+
+- **Decided by the owner, in this conversation (2026-11-27; not a GMP approval):** a file taken from the previous revision no longer holds tracked changes or comments; the final published PDF, of a new or an older revision, holds neither; both are used only while drafting, reviewing and approving.
+- **Engineering reading, to confirm:** "no longer holds" means every tracked change is **accepted** (as Word's Accept All) and every comment removed. A change nobody accepted or rejected therefore becomes part of the published text.
+- **Engineering reading, to confirm:** PDFs already published are not made again; the rule applies to every PDF made from now on, whichever revision it is of.
+- **Built:** the copy into the next revision, the publishing preview, published and controlled-copy PDFs, the legacy-import PDF and the comparison use the final text; the read-only Document tab shows markup in Draft, Pending Review and Pending Approval and the final text afterwards. Stored files of existing revisions are not changed.
+- Closes the open point of DEC-DOC-2026-11-27-03.
+
+## DEC-DOC-2026-11-27-05: tell the Author of a new document and the Co-Authors of a new file (decided, built)
+
+- **Asked by the owner, in this conversation (2026-11-27; not a GMP approval):** tell the person assigned as Author of a new document to upload the revision (wording given: "Bạn đã được chỉ định làm Tác giả tài liệu xxxx, hãy thực hiện upload revision"), in both languages, listed in Notification Administration; and, after the Author uploads, tell the Co-Authors to join the editing.
+- **Engineering choices to confirm:** `document.author_assigned` is sent when the required Reviewer and Approver are saved (the Author can then upload), once per Author, never to the person saving; `document.coauthor_edit_ready` is sent for the first file of a Draft revision (upload, template or Effective file), not on a replacement, never to the uploader. Both: in-app and e-mail by default, priority High; the Vietnamese wording other than the owner's sentence is engineering wording, to be reviewed.
+
+## DEC-DOC-2026-11-27-06: rejection notices to Author and Co-Authors only; no markup warning (decided, built)
+
+- **Decided by the owner, in this conversation (2026-11-27; not a GMP approval):** (a) when a Reviewer or the Approver rejects, only the Author and the Co-Authors of the document are told, not people at large; (b) the on-screen warning about tracked changes and comments is removed: the user opens the file and sees them.
+- **Built:** (a) recipients narrowed (before: also all Reviewers and everyone in Document Control); the old e-mail template is no longer sent besides the registry notice (each person had two e-mails); recipient kind "Co-Author" added and the two policies set to Author and Co-Author (V880). (b) The warning, its server counting and its texts are deleted; replaces the engineering choice of DEC-DOC-2026-11-27-02 and the warning of -04.
+- **Open for a decision:** other workflow notices (for example review request and approval request) still send both the old e-mail and the registry notice.
+
+## DEC-DOC-2026-11-27-07: compare inside "Open File to Comment" (decided, built)
+
+- **Asked by the owner, in this conversation (2026-11-27; not a GMP approval):** a Reviewer or Approver opening the file from "Open File to Comment" has "Compare with Effective", chooses the revision to compare with, sees the comparison at once and can turn it off.
+- **Engineering choices to confirm:** the comparison is a separate read-only view over the editor (OnlyOffice's own Compare would write the differences into the file under review); revisions offered are the Effective one and previously Effective ones.
+
+## DEC-DOC-2026-11-27-08: side-by-side comparison with synchronised scrolling (decided, built)
+
+- **Asked by the owner, in this conversation (2026-11-27; not a GMP approval):** two ONLYOFFICE instances next to each other with different document keys, scrolling together; foresee and handle the cases that could show a wrong file or version or break the system.
+- **Engineering choices to confirm:** left = the chosen revision as published (final text), right = the revision under review as last saved with its markup, both read only; "side by side" is preselected, the single marked document stays available; synchronised scrolling uses a small script added to the Document Server's editor page (tied to ONLYOFFICE 9.4.0.1), because the DocsAPI has no scroll call.
+- **To note for validation:** the Document Server image is now modified; an upgrade of ONLYOFFICE must re-verify the scroll bridge.
+
+## DEC-DOC-2026-11-27-09: a revision's file is uploaded once (decided, built)
+
+- **Decided by the owner (2026-11-27; not a GMP approval):** after a Reject the revision returns to Draft and the Author keeps editing the same file; uploading a new file is not allowed.
+- **Built:** the server refuses `upload` and `source-from-effective` for a Draft that already has a file (`REVISION_SOURCE_ALREADY_UPLOADED`); the screen shows "Upload Source File" and "Use Effective File" only while the Draft has no file, so "Replace Source File" is gone. Engineering reading, to confirm: "Use Effective File" is also withdrawn once a file exists, because it would discard the work under review.
+- **Not checked:** the workspace batch save (`RevisionWorkspaceBatchService`) also calls the upload; it is refused for a draft that already has a file.
+
+## DEC-DOC-2026-11-27-10: who is told at each step of the Document Control workflow (decided, built)
+
+- **Decided by the owner (2026-11-27; not a GMP approval):** (1) first Save of a new document: the Author; (2) the Author's upload: the Co-Authors; (3) Submit for Review: Reviewers (sequential: the next one only after the previous completes; parallel: all) and Document Control (DCO); (4) Complete Review: DCO and Approver; Reject: DCO, Author and Co-Authors; (5) Complete Approval: DCO only; Reject to Draft: DCO, Author and Co-Authors; A7 (expiry): Author, DCO and holders of copies.
+- **Built:** one notice per person for each step (the registry event of Notification Administration; the old e-mail template is no longer sent besides it); new recipient kind "Document Control" (`WORKFLOW_COORDINATOR`); policies updated by V882 only where they still held the delivered recipients; expiry no longer goes to every active user.
+- **Engineering readings, to confirm:** a Reviewer who completes in a sequence tells only the next Reviewer (DCO is not told at each step); the person who did the action is never told; Publish goes to Author, Co-Authors, Reviewers and Approver (not DCO, who published); approval notice is the event "Document Approved", now in-app and e-mail.
+- **Not done:** A8 (controlled copy distribution, two e-mails) and A9 (recall/destroy/cancel of controlled copies, everyone who touched the copy), not yet requested to change.
+- **Verification:** isolated stack 30/30 (reject at review and approval, sequential and parallel submit, last review, approval complete: exact in-app people, one e-mail each); expiry recipients by unit test only. `NotificationDispatcherEmailChannelTest` fails on the working tree because `NotificationDispatcher` is being edited by another session; not mine.
+
+## DEC-DOC-2026-11-27-11: confirmations to the person acting, e-mail-only approval, controlled-copy notices (decided, built)
+
+- **Decided by the owner (2026-11-27; not a GMP approval):** (1) a Reviewer who completes in a sequence tells only the next Reviewer; DCO is told at Submit and at the last review; (2) the person who acts gets a short in-app confirmation of their own action, two languages; (3) Publish goes to Author, Co-Authors, Reviewers, Approver (not DCO); (4) "Document Approved" is told to DCO by e-mail only; A8: a distributed controlled copy has one e-mail (the one with the link and the password); A9: recall, destruction, cancellation and obsolescence of a controlled copy are told to its holder and to the person who requested it only.
+- **Built:** event `document.my_action_done` ("Done" / "Đã ghi nhận", then the action, document number and title, revision), in-app only, for submit, review complete, review reject, approval complete, approval reject, publish and the first upload of a file; `document.approved` e-mail only; policy `controlled_copy.distributed` in-app only; V884 changes only policies still on the delivered values.
+- **Verification:** isolated stack 6/6 (confirmations incl. Vietnamese; approved gives DCO e-mails and no in-app); copy and revision unit tests pass. **Not tried live:** A8 and A9 (controlled copy flows), only by code and unit tests.
+
+## DEC-AUDIT-2026-11-27-01: Audit Trail tab in the User Profile (decided, built)
+
+- **Asked by the owner (2026-11-27; not a GMP approval):** in each user's profile, a tab with every action of that user, identical to the All Records screen of the Audit Trail.
+- **Built:** the All Records screen itself, with the user fixed (not offered as a filter), no change of the page address, and its own remembered choices; shown only to a person who holds `audittrail.module.view` (the permission of the Audit Trail menu); not on Add User. The "User" filter of the server accepts an account id as an exact match (also the older rows that hold only the user name); a text value still searches as before. Export uses the same filter.
+- **Verification:** isolated stack 12/12: for three accounts the count equals the database and no other account appears; browser shows the tab with only that user's rows. Frontend security-authorization and audit-trail tests 191 passed, backend audit tests 102 passed.
+- **Not checked:** the Vietnamese screen, the Export from the tab, a very busy account (the first page loads, as in All Records).

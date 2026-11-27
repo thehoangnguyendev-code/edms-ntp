@@ -198,7 +198,7 @@ public class ObjectNumberService {
     public List<String> backupAlertIdsByNumber(String term) {
         if (term == null || term.isBlank()) return List.of();
         String like = "%" + term.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        return jdbc.queryForList("select alert_id from backup_alert_numbers where alert_number ilike ? order by alert_number limit 100", String.class, like);
+        return jdbc.queryForList("select alert_id from backup_alert_numbers where eqms_fold(alert_number) like eqms_fold(?) order by alert_number limit 100", String.class, like);
     }
 
     private void require(UserAccount actor, String... codes) {

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 ﻿import React, { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -33,10 +34,10 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
     onRowClick,
 }) => {
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useViewState("ControlledCopiesTab.searchQuery", "");
+    const [currentPage, setCurrentPage] = useViewState("ControlledCopiesTab.currentPage", 1);
+    const [itemsPerPage, setItemsPerPage] = useViewState("ControlledCopiesTab.itemsPerPage", 10);
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery.trim());
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -46,7 +47,7 @@ export const ControlledCopiesTab: React.FC<ControlledCopiesTabProps> = ({
     }, [searchQuery]);
 
     // Keys are the ones ControlledCopyService#resolveSort understands; search, sort and paging all run on the server.
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
+    const [sortConfig, setSortConfig] = useViewState<{ key: string; direction: "asc" | "desc" }>("ControlledCopiesTab.sortConfig", {
         key: "created",
         direction: "desc",
     });

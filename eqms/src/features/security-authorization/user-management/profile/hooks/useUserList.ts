@@ -535,9 +535,9 @@ export function useUserList() {
     }
   };
 
-  const suspendUser = async (userId: string, userName: string, reason: string, suspendedUntil: string, signatureToken: string) => {
+  const suspendUser = async (userId: string, userName: string, reason: string, suspendedUntil: string, signatureToken: string, suspensionKind?: "LONG_LEAVE" | "OTHER") => {
     try {
-      await settingsApi.suspendUser(userId, { reason, suspendedUntil, signatureToken });
+      await settingsApi.suspendUser(userId, { reason, suspendedUntil, signatureToken, suspensionKind });
       await fetchUsers();
       showToast({ type: "warning", title: "User Suspended", message: `${userName} has been suspended.` });
     } catch (error) {

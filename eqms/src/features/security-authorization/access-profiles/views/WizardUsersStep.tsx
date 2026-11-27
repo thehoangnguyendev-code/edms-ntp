@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
@@ -43,10 +44,10 @@ export const WizardUsersStep: React.FC<{
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(canListUsers);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("WizardUsersStep.page", 1);
   const [limit, setLimit] = useState(10);
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({ key: "fullName", direction: "asc" });
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("WizardUsersStep.search", "");
   const [businessUnit, setBusinessUnit] = useState("All");
   const [department, setDepartment] = useState("All");
   const [businessUnitOptions, setBusinessUnitOptions] = useState<Option[]>([]);

@@ -26,8 +26,8 @@ import { statusColors } from "@/components/ui/badge/statusColors";
 import type { BadgeColor } from "@/components/ui/badge/Badge";
 
 const STATUS_COLOR = statusColors("DRAFT", "ACTIVE", "EXPIRED", "INACTIVE") as Record<string, BadgeColor>;
-const STATUS_OPTIONS = [{ label: "All", value: "" }, { label: "Draft", value: "DRAFT" }, { label: "Active", value: "ACTIVE" }, { label: tr("Approval ended"), value: "EXPIRED" }, { label: "Inactive", value: "INACTIVE" }];
-const END_OPTIONS = [{ label: "All", value: "" }, { label: tr("No end date"), value: "true" }];
+const STATUS_OPTIONS = [{ label: "All", value: "" }, { label: "Draft", value: "DRAFT" }, { label: "Active", value: "ACTIVE" }, { get label() { return tr("Approval ended"); }, value: "EXPIRED" }, { label: "Inactive", value: "INACTIVE" }];
+const END_OPTIONS = [{ label: "All", value: "" }, { get label() { return tr("No end date"); }, value: "true" }];
 
 /**
  * The register of approved training vendors (SOP.0025): the units that train from outside the company. A vendor is written as a Draft, approved with an electronic signature of another person,

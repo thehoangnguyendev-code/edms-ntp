@@ -108,7 +108,7 @@ class UserManagementServiceSelfEscalationGuardTest {
     }
 
     private StatusActionRequest statusRequest(String reason, String date) {
-        return new StatusActionRequest(reason, date, "sig-token");
+        return new StatusActionRequest(reason, date, "sig-token", "OTHER");
     }
 
     /** Signature verification must pass for whichever user is acting in a given test. */

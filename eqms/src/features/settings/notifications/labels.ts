@@ -1,28 +1,14 @@
 import type { BadgeColor } from '@/components/ui/badge/Badge';
-import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { NAV_CONFIG } from '@/app/navigation';
+import { canonicalModuleKey, moduleDisplayName } from '@/utils/moduleDisplay';
 import { priorityColor } from "@/components/ui/badge/statusColors";
 
-/** A module is written "DOCUMENT_CONTROL" by most events and "Document Control" by a few; both read the same. */
-export const moduleKey = (module: string) => module.trim().toUpperCase().replace(/ /g, '_');
+export const moduleLabel = (module: string) => moduleDisplayName(module);
 
-const MODULE_LABEL: Record<string, string> = {
-  DOCUMENT_CONTROL: 'Document Control',
-  CONTROLLED_COPIES: 'Controlled Copies',
-  TRAINING: 'Training Management',
-  REPORTS: 'Reports',
-  AUDIT_TRAIL: 'Audit Trail',
-  BACKUP_RESTORE: 'Backup & Restore',
-  SECURITY: 'Security & Authorization',
-  ACCESS_REVIEW: 'Access Review',
-  KNOWLEDGE: 'Knowledge Base',
-  SYSTEM: 'System',
-};
-
-export const moduleLabel = (module: string) => MODULE_LABEL[moduleKey(module)] ?? moduleDisplayName(module);
-
+/** Every level-1 menu of the sidebar, in its order and by its name; the value is the one key the server finds all the spellings and sub-menus of that module by. */
 export const MODULE_OPTIONS = [
   { label: 'All', value: 'All' },
-  ...Object.entries(MODULE_LABEL).map(([value, label]) => ({ label, value })),
+  ...NAV_CONFIG.map((item) => ({ label: item.label, value: canonicalModuleKey(item.label) })),
 ];
 
 export const PRIORITY_COLOR = Object.fromEntries((["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const).map((code) => [code, priorityColor(code)])) as Record<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL", BadgeColor> as Record<string, BadgeColor>;

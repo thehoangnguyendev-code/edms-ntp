@@ -19,16 +19,16 @@ const REVEAL_MS = 320;
 
 /** The checks in the order the agent runs them, with names for what each one checks. They are shown only; nothing here decides anything. */
 const PLAN: { code: string; label: string }[] = [
-  { code: "RUN_COMPLETED", label: tr("The backup finished") },
-  { code: "SET_PRESENT", label: tr("The backup folder is present") },
-  { code: "MANIFEST_UNCHANGED", label: tr("The manifest is unchanged") },
-  { code: "MANIFEST_SIGNATURE", label: tr("The manifest signature is valid") },
-  { code: "FILES_MATCH_MANIFEST", label: tr("The files match the manifest") },
-  { code: "OBJECTS_PRESENT", label: tr("Stored documents are present") },
-  { code: "CHECKSUM_FILE", label: tr("The checksum file agrees") },
-  { code: "CHAIN_TO_PREVIOUS", label: tr("It follows the previous backup") },
-  { code: "ENCRYPTED_FOR_KEY", label: tr("It is encrypted for the expected key") },
-  { code: "LEDGER_RECORDS_MANIFEST", label: tr("The ledger recorded this backup") },
+  { code: "RUN_COMPLETED", get label() { return tr("The backup finished"); } },
+  { code: "SET_PRESENT", get label() { return tr("The backup folder is present"); } },
+  { code: "MANIFEST_UNCHANGED", get label() { return tr("The manifest is unchanged"); } },
+  { code: "MANIFEST_SIGNATURE", get label() { return tr("The manifest signature is valid"); } },
+  { code: "FILES_MATCH_MANIFEST", get label() { return tr("The files match the manifest"); } },
+  { code: "OBJECTS_PRESENT", get label() { return tr("Stored documents are present"); } },
+  { code: "CHECKSUM_FILE", get label() { return tr("The checksum file agrees"); } },
+  { code: "CHAIN_TO_PREVIOUS", get label() { return tr("It follows the previous backup"); } },
+  { code: "ENCRYPTED_FOR_KEY", get label() { return tr("It is encrypted for the expected key"); } },
+  { code: "LEDGER_RECORDS_MANIFEST", get label() { return tr("The ledger recorded this backup"); } },
 ];
 const EXTRA_LABEL: Record<string, string> = {
   SET_RECORDED: "Location and manifest are recorded",

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useState } from "react";
@@ -62,13 +63,13 @@ export const TimeLimitedUserListView: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useViewState<string>("TimeLimitedUserListView.statusFilter", "All");
   const [startDateFrom, setStartDateFrom] = useState("");
   const [startDateTo, setStartDateTo] = useState("");
   const [endDateFrom, setEndDateFrom] = useState("");
   const [endDateTo, setEndDateTo] = useState("");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
+  const [createdFrom, setCreatedFrom] = useViewState("TimeLimitedUserListView.createdFrom", "");
+  const [createdTo, setCreatedTo] = useViewState("TimeLimitedUserListView.createdTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["status", "startDate", "endDate", "created"]),

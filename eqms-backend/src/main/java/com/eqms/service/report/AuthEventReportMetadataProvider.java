@@ -67,7 +67,7 @@ public class AuthEventReportMetadataProvider implements ReportMetadataProvider {
         StringBuilder sql = new StringBuilder("from auth_audit_logs al left join app_users au on au.id=al.user_id where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (al.event_type ilike ? escape '\\' or coalesce(au.full_name,'') ilike ? escape '\\' or coalesce(au.username,'') ilike ? escape '\\' or coalesce(al.ip_address,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(al.event_type) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(au.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(au.username,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(al.ip_address,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 4; i++) args.add(term);
         }

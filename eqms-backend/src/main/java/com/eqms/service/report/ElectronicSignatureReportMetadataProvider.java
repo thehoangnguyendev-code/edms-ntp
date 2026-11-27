@@ -80,8 +80,8 @@ public class ElectronicSignatureReportMetadataProvider implements ReportMetadata
                 left join documents d on d.id=es.document_id left join document_revisions r on r.id=es.revision_id where true""");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (coalesce(es.full_name,'') ilike ? escape '\\' or coalesce(es.username,'') ilike ? escape '\\' or coalesce(es.signature_id,'') ilike ? escape '\\'"
-                    + " or coalesce(d.document_number,'') ilike ? escape '\\' or coalesce(es.meaning,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(coalesce(es.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(es.username,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(es.signature_id,'')) like eqms_fold(?) escape '\\'"
+                    + " or eqms_fold(coalesce(d.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(es.meaning,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 5; i++) args.add(term);
         }

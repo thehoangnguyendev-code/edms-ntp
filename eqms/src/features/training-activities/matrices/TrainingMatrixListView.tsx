@@ -40,13 +40,14 @@ import { useWaitingForMe } from "@/features/navigation/useWaitingForMe";
 
 const OPEN_LABEL: Record<string, string> = {
   DRAFT: "Draft",
+  PENDING_REVIEW: "Pending Review",
   PENDING_APPROVAL: "Pending Approval",
 };
 const STATE_OPTIONS = [
   { label: "All", value: "" },
-  { label: tr("Has an effective version"), value: "EFFECTIVE" },
-  { label: tr("No effective version"), value: "NO_EFFECTIVE" },
-  { label: tr("A version is being prepared"), value: "IN_PREPARATION" },
+  { get label() { return tr("Has an effective version"); }, value: "EFFECTIVE" },
+  { get label() { return tr("No effective version"); }, value: "NO_EFFECTIVE" },
+  { get label() { return tr("A version is being prepared"); }, value: "IN_PREPARATION" },
 ];
 
 /** One matrix for each department: which version is effective and whether another one is being prepared. Search, filter and paging are done by the server. */
@@ -63,6 +64,7 @@ export function TrainingMatrixListView() {
     { label: string; value: string }[]
   >([]);
   const [departmentId, setDepartmentId] = useState("");
+  const [factory, setFactory] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const fetcher = useCallback(
@@ -95,7 +97,7 @@ export function TrainingMatrixListView() {
   const create = async () => {
     setBusy(true);
     try {
-      const v = await trainingMatrixApi.create(departmentId);
+      const v = await trainingMatrixApi.create(departmentId, factory);
       showToast({
         type: "success",
         title: tr("Matrix created"),
@@ -139,7 +141,7 @@ export function TrainingMatrixListView() {
         );
       },
     },
-    { id: "department", header: "Department", sort: sorted("department"), cell: (m) => m.departmentName },
+    { id: "department", header: "Department", sort: sorted("department"), cell: (m) => (m.scope === "FACTORY" ? <Badge color="blue">{trFormat("Whole factory (held by {department})", { department: m.departmentName })}</Badge> : m.departmentName) },
     {
       id: "effective",
       header: tr("Effective version"), sort: sorted("effective"),
@@ -176,10 +178,17 @@ export function TrainingMatrixListView() {
         breadcrumbItems={trainingBreadcrumbs(navigate, "matrices")}
         actions={
           canManage ? (
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              {tr("New Matrix")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {hasPermission("training.admin.manage") && (
+                <Button size="sm" variant="outline-emerald" onClick={() => { setFactory(true); setCreating(true); }}>
+                  {tr("New Factory-wide List")}
+                </Button>
+              )}
+              <Button size="sm" onClick={() => { setFactory(false); setCreating(true); }}>
+                <IconPlus className="mr-2 h-4 w-4" />
+                {tr("New Matrix")}
+              </Button>
+            </div>
           ) : undefined
         }
       />

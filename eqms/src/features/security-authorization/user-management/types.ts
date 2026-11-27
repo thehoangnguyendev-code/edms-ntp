@@ -41,6 +41,8 @@ export interface SuspendUserPayload {
   reason: string;
   suspendedUntil?: string;
   signatureToken: string;
+  /** LONG_LEAVE (away for a long time) or OTHER (security, administration). Training Management reads it when the person returns (SOP.0003 5.1.1). */
+  suspensionKind?: "LONG_LEAVE" | "OTHER";
 }
 
 export interface TerminateUserPayload {

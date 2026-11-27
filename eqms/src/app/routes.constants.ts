@@ -28,6 +28,7 @@ export const ROUTES = {
 
   // Documents
   DOCUMENTS: {
+    WORKFLOW: '/documents/workflow',
     OWNED: '/documents/owned',
     ALL: '/documents/all',
     NEW: '/documents/all/new',
@@ -46,8 +47,6 @@ export const ROUTES = {
 
     // Templates
     TEMPLATES: '/documents/templates',
-    TEMPLATES_NEW: '/documents/templates/new',
-    TEMPLATE_DETAIL: (id: string) => `/documents/templates/${id}`,
 
     // Revisions
     REVISIONS: {
@@ -120,6 +119,7 @@ export const ROUTES = {
 
   // Training
   TRAINING: {
+    WORKFLOW: '/training-management/workflow',
     BASE: '/training-management',
     ACTIVITIES: '/training-management/activities',
     ACTIVITY_DETAIL: (activityId: string) => `/training-management/activities/${activityId}`,
@@ -134,6 +134,7 @@ export const ROUTES = {
     RECORD_EXPORTS: '/training-management/record-exports',
     SPECIMEN_SIGNATURES: '/training-management/specimen-signatures',
     JOB_ASSIGNMENTS: '/training-management/job-assignments',
+    JOB_ASSIGNMENT_NEW: '/training-management/job-assignments/new',
     PERSONNEL_REVIEWS: '/training-management/personnel-reviews',
     MY_TRAINING: '/training-management/my-training',
     MY_TASKS: '/training-management/my-training/tasks',
@@ -173,7 +174,6 @@ export const ROUTES = {
   SETTINGS: {
     USERS: '/settings/users',
     USERS_ADD: '/settings/users/add',
-    USERS_EDIT: (userId: string) => `/settings/users/edit/${userId}`,
     USERS_PROFILE: (userId: string) => `/settings/users/profile/${userId}`,
     DICTIONARIES: '/settings/dictionaries',
     DICTIONARIES_BUSINESS_UNITS: '/settings/dictionaries/business-units',
@@ -217,7 +217,6 @@ export const ROUTES = {
       POLICY_NEW: '/settings/administration/backup/policy/new',
       POLICY_DETAIL: (version: number | string) => `/settings/administration/backup/policy/${version}`,
       STORAGE: '/settings/administration/backup/storage',
-      MEDIUM_DETAIL: (id: string) => `/settings/administration/backup/storage/media/${id}`,
       /** Verification, and retention & legal hold, one tab each (?tab=verification | retention). */
       ALERTS: '/settings/administration/backup/alerts',
       DISASTER_RECOVERY: '/settings/administration/backup/disaster-recovery',
@@ -227,6 +226,7 @@ export const ROUTES = {
       CODE_RULES: '/settings/administration/training/code-rules',
       VENDORS: '/settings/administration/training/vendors',
       JOB_ROLES: '/settings/administration/training/job-roles',
+      REVIEW_CHECKLISTS: '/settings/administration/training/review-checklists',
       NOTIFICATIONS: '/settings/administration/training/notifications',
       ANNEX: '/settings/administration/training/annex',
       ANNEX_DETAIL: (code: string) => `/settings/administration/training/annex/${code}`,

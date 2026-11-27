@@ -557,7 +557,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               {errors.destructionDate && (
                 <p className="text-xs text-red-600 mt-1">{errors.destructionDate}</p>
               )}
-              <p className="text-xs text-slate-500 mt-1.5">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {tr("Auto-captured at page open time (adjustable)")}
               </p>
             </div>
@@ -614,7 +614,7 @@ export const DestroyControlledCopyView: React.FC = () => {
               {errors.destructionSupervisor && (
                 <p className="text-xs text-red-600 mt-1">{errors.destructionSupervisor}</p>
               )}
-              <p className="text-xs text-slate-500 mt-1.5">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {tr("Required for compliance: 2-person verification")}
               </p>
             </div>

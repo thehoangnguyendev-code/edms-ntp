@@ -116,7 +116,7 @@ public class ReportTemplateService {
         String term=search==null?"":search.trim();
         if(term.length()>200||!Set.of("asc","desc").contains(direction))throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");
         String pattern="%"+term.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";
-        StringBuilder where=new StringBuilder(" from report_definitions d where d.source_code is not null and d.deleted_at is null and (d.display_name ilike ? or d.code ilike ? or d.description ilike ?)");
+        StringBuilder where=new StringBuilder(" from report_definitions d where d.source_code is not null and d.deleted_at is null and (eqms_fold(d.display_name) like eqms_fold(?) or eqms_fold(d.code) like eqms_fold(?) or eqms_fold(d.description) like eqms_fold(?))");
         List<Object> args=new ArrayList<>(List.of(pattern,pattern,pattern));
         // Records per page: chosen by the user from a fixed set, applied here (the screen only passes the choice).
         int pageSize;
@@ -227,7 +227,7 @@ public class ReportTemplateService {
         var args = new ArrayList<>(query.arguments());
         args.add("%" + search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
         return jdbc.queryForList("select distinct cast(" + identity + " as text) as value," + provider.columns().get(field) + " as label "
-                + query.fromWhere() + " and " + provider.columns().get(field) + " ilike ? order by label,value limit 100", args.toArray());
+                + query.fromWhere() + " and eqms_fold(" + provider.columns().get(field) + ") like eqms_fold(?) order by label,value limit 100", args.toArray());
     }
 
     public Map<String, Object> definition(String code) {
@@ -357,7 +357,7 @@ public class ReportTemplateService {
         int limit = query.limit() == null ? 10 : query.limit();
         if (!Set.of(10, 20, 50, 100).contains(limit)) throw new IllegalArgumentException("REPORT_FILTER_NOT_ALLOWED");
         int page = Math.max(1, query.page() == null ? 1 : query.page());
-        StringBuilder from = new StringBuilder(" from roles r left join jsonb_to_recordset(cast(? as jsonb)) as a(role_id uuid, scope text) on a.role_id = r.id where r.is_active=true and (r.name ilike ? or r.code ilike ?)");
+        StringBuilder from = new StringBuilder(" from roles r left join jsonb_to_recordset(cast(? as jsonb)) as a(role_id uuid, scope text) on a.role_id = r.id where r.is_active=true and (eqms_fold(r.name) like eqms_fold(?) or eqms_fold(r.code) like eqms_fold(?))");
         List<Object> args = new ArrayList<>(List.of(write(given), pattern, pattern));
         if ("ASSIGNED".equals(assignment)) from.append(" and a.scope is not null");
         if ("UNASSIGNED".equals(assignment)) from.append(" and a.scope is null");

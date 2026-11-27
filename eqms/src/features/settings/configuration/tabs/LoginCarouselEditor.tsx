@@ -221,7 +221,7 @@ export const LoginCarouselEditor: React.FC<LoginCarouselEditorProps> = ({ value,
             onChange={(e) => commit(slides, Number(e.target.value))}
             className="mt-1.5 w-full accent-emerald-700 disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-slate-500">{slides.length < 2 ? 'Add a second slide to set the speed.' : `Each slide stays ${seconds} seconds (${minSeconds} to ${maxSeconds}). It rests while someone points at it.`}</p>
+          <p className="mt-1.5 text-xs text-slate-500">{slides.length < 2 ? 'Add a second slide to set the speed.' : `Each slide stays ${seconds} seconds (${minSeconds} to ${maxSeconds}). It rests while someone points at it.`}</p>
         </div>
 
         {slides.length === 0 ? (

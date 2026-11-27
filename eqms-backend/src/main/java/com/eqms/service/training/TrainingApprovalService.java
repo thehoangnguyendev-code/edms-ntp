@@ -40,6 +40,7 @@ public class TrainingApprovalService {
             Map.entry("CONTENT_APPROVE_FIRST", new Step("CONTENT_APPROVE_FIRST", "training.content.approve", "TRAINING_CONTENT_APPROVED")),
             Map.entry("CONTENT_APPROVE", new Step("CONTENT_APPROVE", "training.content.approve", "TRAINING_CONTENT_APPROVED")),
             Map.entry("ACTIVITY_COMPLETE", new Step("ACTIVITY_COMPLETE", "training.activity.close", "TRAINING_COMPLETED")),
+            Map.entry("MATRIX_REVIEW", new Step("MATRIX_REVIEW", "training.matrix.manage", "TRAINING_MATRIX_REVIEWED")),
             Map.entry("MATRIX_APPROVE", new Step("MATRIX_APPROVE", "training.matrix.approve", "TRAINING_MATRIX_APPROVED")),
             Map.entry("JOB_ASSIGN_EXCEPTION", new Step("JOB_ASSIGN_EXCEPTION", "training.job_assignment.exception.approve", "TRAINING_JOB_EXCEPTION_APPROVED")),
             Map.entry("SPECIMEN_CONFIRM", new Step("SPECIMEN_CONFIRM", "training.signature.confirm", "TRAINING_SPECIMEN_APPROVED")),
@@ -128,6 +129,8 @@ public class TrainingApprovalService {
             row.put("employeeCode", candidate.getEmployeeCode());
             row.put("department", candidate.getDepartment());
             row.put("position", candidate.getPosition());
+            // SOP.0003 section 3 names the Quality Manager for the requirement: the screen says so when another person is chosen
+            row.put("role", access.codes(candidate).contains("training.quality_manager") ? "QUALITY_MANAGER" : null);
             all.add(row);
         }
         all.sort((a, b) -> String.valueOf(a.get("fullName")).compareToIgnoreCase(String.valueOf(b.get("fullName"))));

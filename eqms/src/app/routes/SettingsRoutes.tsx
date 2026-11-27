@@ -76,6 +76,7 @@ const TrainingAnnexView = lazy(() => import('@/features/settings/training-admini
 const TrainingAnnexDetailView = lazy(() => import('@/features/settings/training-administration/annex/TrainingAnnexDetailView').then(m => ({ default: m.TrainingAnnexDetailView })));
 const TrainingVendorsView = lazy(() => import('@/features/settings/training-administration/vendors/TrainingVendorsView').then(m => ({ default: m.TrainingVendorsView })));
 const TrainingCodeRulesView = lazy(() => import('@/features/settings/training-administration/code-rules/TrainingCodeRulesView').then(m => ({ default: m.TrainingCodeRulesView })));
+const ReviewChecklistsView = lazy(() => import('@/features/settings/training-administration/review-checklists/ReviewChecklistsView').then(m => ({ default: m.ReviewChecklistsView })));
 const TrainingJobRolesView = lazy(() => import('@/features/settings/training-administration/job-roles/TrainingJobRolesView').then(m => ({ default: m.TrainingJobRolesView })));
 const TrainingPropertiesView = lazy(() => import('@/features/settings').then(m => ({ default: m.TrainingPropertiesView })));
 
@@ -257,6 +258,7 @@ export function settingsRoutes(navigate: NavigateFunction) {
         <Route path="code-rules" element={<ProtectedRoute requiredPermissions={["training.admin.properties.view", "training.settings.view"]}><Suspense fallback={<LoadingFallback />}><TrainingCodeRulesView /></Suspense></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingVendorsView /></Suspense></ProtectedRoute>} />
         <Route path="job-roles" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingJobRolesView /></Suspense></ProtectedRoute>} />
+        <Route path="review-checklists" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><ReviewChecklistsView /></Suspense></ProtectedRoute>} />
         <Route path="notifications" element={<ProtectedRoute requiredPermissions={["training.admin.manage"]}><Suspense fallback={<LoadingFallback />}><TrainingNotificationsView /></Suspense></ProtectedRoute>} />
         <Route path="annex" element={<ProtectedRoute requiredPermissions={["training.annex.view"]}><Suspense fallback={<LoadingFallback />}><TrainingAnnexView /></Suspense></ProtectedRoute>} />
         <Route path="annex/:code" element={<ProtectedRoute requiredPermissions={["training.annex.view"]}><Suspense fallback={<LoadingFallback />}><TrainingAnnexDetailView mode="view" /></Suspense></ProtectedRoute>} />

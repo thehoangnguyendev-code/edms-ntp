@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useCallback, useEffect, useState } from "react";
@@ -50,13 +51,13 @@ const COLUMNS = [
   { key: "name", label: "Name", sortable: true },
   {
     key: "determinatorField",
-    label: tr("Knowledge Base Field Determinator"),
+    get label() { return tr("Knowledge Base Field Determinator"); },
     sortable: true,
   },
   { key: "levels", label: "Levels", sortable: true },
   { key: "active", label: "Status", sortable: true },
-  { key: "updatedAt", label: tr("Last Updated"), sortable: true },
-  { key: "updatedBy", label: tr("Updated By"), sortable: true },
+  { key: "updatedAt", get label() { return tr("Last Updated"); }, sortable: true },
+  { key: "updatedBy", get label() { return tr("Updated By"); }, sortable: true },
 ] as const;
 
 const STATUS_OPTIONS = [
@@ -92,15 +93,15 @@ export const KnowledgeCategoriesView: React.FC = () => {
   const [rows, setRows] = useState<KnowledgeHierarchy[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useViewState("KnowledgeCategoriesView.page", 1);
+  const [pageSize, setPageSize] = useViewState("KnowledgeCategoriesView.pageSize", 10);
+  const [search, setSearch] = useViewState("KnowledgeCategoriesView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState("ALL");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [status, setStatus] = useViewState("KnowledgeCategoriesView.status", "ALL");
+  const [updatedFrom, setUpdatedFrom] = useViewState("KnowledgeCategoriesView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("KnowledgeCategoriesView.updatedTo", "");
+  const [sortKey, setSortKey] = useViewState("KnowledgeCategoriesView.sortKey", "name");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("KnowledgeCategoriesView.sortDir", "asc");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeHierarchy | null>(

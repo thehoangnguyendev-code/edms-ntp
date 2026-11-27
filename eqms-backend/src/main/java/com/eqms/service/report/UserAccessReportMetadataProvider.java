@@ -104,7 +104,7 @@ public class UserAccessReportMetadataProvider implements ReportMetadataProvider 
         StringBuilder sql = new StringBuilder("from app_users u where (").append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (u.full_name ilike ? escape '\\' or u.username ilike ? escape '\\' or coalesce(u.employee_code,'') ilike ? escape '\\' or coalesce(u.position,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.position,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 4; i++) args.add(term);
         }

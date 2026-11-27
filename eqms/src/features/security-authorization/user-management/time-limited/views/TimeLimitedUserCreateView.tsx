@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useCallback, useMemo, useState } from "react";
@@ -48,7 +49,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty({ selectedUserIds, startDisplay, endDisplay, notifyEmailOnExpiry, reason });
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, "New Time-Limited User", "the list");
-  const goBack = () => go(ROUTES.SECURITY.TIME_LIMITED_USERS);
+  const goBack = () => navigateBack(go, null, ROUTES.SECURITY.TIME_LIMITED_USERS);
 
   // Stable across renders (useCallback) -- MultiSelect's debounced-search effect depends on this
   // function by reference, so a function re-created every render re-triggers the search on every
@@ -151,7 +152,7 @@ export const TimeLimitedUserCreateView: React.FC = () => {
               searchPlaceholder={tr("Search name, username, email...")}
               disabled={isSaving || !canManage}
             />
-            <p className="mt-1.5 flex items-center gap-1 text-2xs font-normal text-slate-400 sm:text-xs">
+            <p className="mt-1.5 text-xs text-slate-500 flex items-center gap-1 font-normal">
               {tr("Selecting several users creates one separate record for each -- they are never merged into a single row.")}
             </p>
           </div>

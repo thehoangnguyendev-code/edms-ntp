@@ -98,9 +98,9 @@ export const withChannel = (form: DeliveryForm, channel: string, on: boolean, su
 };
 
 const DIGEST_OPTIONS = [
-  { value: 'IMMEDIATE', label: tr('Immediately') },
-  { value: 'DAILY_DIGEST', label: tr('Daily digest') },
-  { value: 'WEEKLY_DIGEST', label: tr('Weekly digest') },
+  { value: 'IMMEDIATE', get label() { return tr('Immediately'); } },
+  { value: 'DAILY_DIGEST', get label() { return tr('Daily digest'); } },
+  { value: 'WEEKLY_DIGEST', get label() { return tr('Weekly digest'); } },
 ];
 
 interface Props {
@@ -156,7 +156,7 @@ export const DeliverySettings: React.FC<Props> = ({ channel, form, onChange, sup
                   <TimePicker value={form.quietEnd} onChange={(quietEnd) => set({ quietEnd })} placeholder={tr("None")} disabled={disabled} />
                 </FormField>
               </div>
-              <p className="-mt-2 text-xs text-slate-500">{tr("Timing and quiet hours hold back the email; a digest groups the emails of a person into one.")}</p>
+              <p className="-mt-2.5 text-xs text-slate-500">{tr("Timing and quiet hours hold back the email; a digest groups the emails of a person into one.")}</p>
             </>
           ) : (
             <>

@@ -25,8 +25,10 @@ class DocumentExpiryNotifierTest {
     private final NotificationDispatcher dispatcher = Mockito.mock(NotificationDispatcher.class);
     private final UserAccountRepository users = Mockito.mock(UserAccountRepository.class);
     private final DocumentExpiryProcessingService processing = Mockito.mock(DocumentExpiryProcessingService.class);
+    private final com.eqms.repository.DocumentRecordRepository documents = Mockito.mock(com.eqms.repository.DocumentRecordRepository.class);
+    private final PermissionEvaluationService permissions = Mockito.mock(PermissionEvaluationService.class);
     private final PlatformTransactionManager transactions = Mockito.mock(PlatformTransactionManager.class);
-    private final DocumentExpiryNotifier notifier = new DocumentExpiryNotifier(dispatcher, users, processing, transactions);
+    private final DocumentExpiryNotifier notifier = new DocumentExpiryNotifier(dispatcher, users, documents, permissions, processing, transactions);
     private final UUID documentId = UUID.randomUUID();
     private final Instant now = Instant.now();
 
@@ -34,6 +36,7 @@ class DocumentExpiryNotifierTest {
         UserAccount user = Mockito.mock(UserAccount.class);
         when(user.getId()).thenReturn(UUID.randomUUID());
         when(users.findAllByStatus(UserStatus.Active)).thenReturn(List.of(user));
+        when(permissions.hasPermission(user, "documents.workspace.manage")).thenReturn(true); // Document Control is told
         when(processing.copyHolders(documentId)).thenReturn(List.of());
     }
 

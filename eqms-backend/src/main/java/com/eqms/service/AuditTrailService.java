@@ -366,16 +366,16 @@ public class AuditTrailService {
             if (StringUtils.hasText(search)) {
                 String likePattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
                 List<Predicate> searchPredicates = new ArrayList<>();
-                searchPredicates.add(builder.like(builder.lower(root.get("entityType")), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("entityType"), likePattern));
                 // The name of the record too (a template number, a document number), so a record can be found by what people call it.
-                searchPredicates.add(builder.like(builder.lower(root.get("entityName")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(root.get("actionType")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(root.get("comment")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(root.get("fromStatus")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(root.get("toStatus")), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("entityName"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("actionType"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("comment"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("fromStatus"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("toStatus"), likePattern));
                 // The number of the object, and the words of the columns as they are shown: the type ("Report File"), the module ("Document Control") and the action ("Approve").
-                searchPredicates.add(builder.like(builder.lower(root.get("entityCode")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(root.get("documentNumber")), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("entityCode"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, root.get("documentNumber"), likePattern));
                 String shownTerm = search.toLowerCase(Locale.ROOT).trim();
                 List<String> typesShown = distinctEntityTypes().stream()
                         .filter(type -> com.eqms.util.AuditObjectCatalog.typeLabel(type).toLowerCase(Locale.ROOT).contains(shownTerm)
@@ -388,9 +388,9 @@ public class AuditTrailService {
                 if (!actionsShown.isEmpty()) searchPredicates.add(root.get("actionType").in(actionsShown));
                 
                 Join<AuditLog, UserAccount> actedByJoin = root.join("actedBy", JoinType.LEFT);
-                searchPredicates.add(builder.like(builder.lower(actedByJoin.get("fullName")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(actedByJoin.get("username")), likePattern));
-                searchPredicates.add(builder.like(builder.lower(actedByJoin.get("employeeCode")), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, actedByJoin.get("fullName"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, actedByJoin.get("username"), likePattern));
+                searchPredicates.add(com.eqms.util.SearchText.like(builder, actedByJoin.get("employeeCode"), likePattern));
                 
                 predicates.add(builder.or(searchPredicates.toArray(new Predicate[0])));
             }
@@ -547,13 +547,25 @@ public class AuditTrailService {
             }
 
             // 4. User filter
-            if (StringUtils.hasText(user)) {
+            java.util.UUID accountId = accountIdOf(user);
+            if (accountId != null) {
+                // The User Profile asks for one account (its id): every record of that account, and no other account whose name merely contains the same letters.
+                // A few older rows hold only the user name, not the account: they are included when the user name is exactly this account's.
+                Join<AuditLog, UserAccount> actedByJoin = root.join("actedBy", JoinType.LEFT);
+                UserAccount account = entityManager.find(UserAccount.class, accountId);
+                Predicate byAccount = builder.equal(actedByJoin.get("id"), accountId);
+                if (account != null && StringUtils.hasText(account.getUsername())) {
+                    byAccount = builder.or(byAccount, builder.and(builder.isNull(actedByJoin.get("id")),
+                            builder.equal(builder.lower(root.get("username")), account.getUsername().toLowerCase(Locale.ROOT))));
+                }
+                predicates.add(byAccount);
+            } else if (StringUtils.hasText(user)) {
                 String likePattern = "%" + user.toLowerCase(Locale.ROOT) + "%";
                 Join<AuditLog, UserAccount> actedByJoin = root.join("actedBy", JoinType.LEFT);
                 predicates.add(builder.or(
-                    builder.like(builder.lower(actedByJoin.get("fullName")), likePattern),
-                    builder.like(builder.lower(actedByJoin.get("username")), likePattern),
-                    builder.like(builder.lower(actedByJoin.get("employeeCode")), likePattern)
+                    com.eqms.util.SearchText.like(builder, actedByJoin.get("fullName"), likePattern),
+                    com.eqms.util.SearchText.like(builder, actedByJoin.get("username"), likePattern),
+                    com.eqms.util.SearchText.like(builder, actedByJoin.get("employeeCode"), likePattern)
                 ));
             }
 
@@ -592,9 +604,9 @@ public class AuditTrailService {
             if (StringUtils.hasText(documentNumber)) {
                 String likePattern = "%" + documentNumber.toLowerCase(Locale.ROOT) + "%";
                 List<Predicate> documentPredicates = new ArrayList<>();
-                documentPredicates.add(builder.like(builder.lower(root.get("entityName")), likePattern));
-                documentPredicates.add(builder.like(builder.lower(root.get("comment")), likePattern));
-                documentPredicates.add(builder.like(builder.lower(root.get("documentNumber")), likePattern));
+                documentPredicates.add(com.eqms.util.SearchText.like(builder, root.get("entityName"), likePattern));
+                documentPredicates.add(com.eqms.util.SearchText.like(builder, root.get("comment"), likePattern));
+                documentPredicates.add(com.eqms.util.SearchText.like(builder, root.get("documentNumber"), likePattern));
                 try {
                     UUID parsedEntityId = UUID.fromString(documentNumber.trim());
                     documentPredicates.add(builder.equal(root.get("entityId"), parsedEntityId));
@@ -620,16 +632,16 @@ public class AuditTrailService {
             if (StringUtils.hasText(status)) {
                 String likePattern = "%" + status.toLowerCase(Locale.ROOT) + "%";
                 predicates.add(builder.or(
-                    builder.like(builder.lower(root.get("fromStatus")), likePattern),
-                    builder.like(builder.lower(root.get("toStatus")), likePattern),
-                    builder.like(builder.lower(root.get("comment")), likePattern)
+                    com.eqms.util.SearchText.like(builder, root.get("fromStatus"), likePattern),
+                    com.eqms.util.SearchText.like(builder, root.get("toStatus"), likePattern),
+                    com.eqms.util.SearchText.like(builder, root.get("comment"), likePattern)
                 ));
             }
 
             // 8. IP Address filter
             if (StringUtils.hasText(ipAddress)) {
                 String likePattern = "%" + ipAddress.toLowerCase(Locale.ROOT) + "%";
-                predicates.add(builder.like(builder.lower(root.get("ipAddress")), likePattern));
+                predicates.add(com.eqms.util.SearchText.like(builder, root.get("ipAddress"), likePattern));
             }
 
             // 9. E-Signature Only filter
@@ -846,9 +858,9 @@ public class AuditTrailService {
         if (StringUtils.hasText(documentNumber)) {
             String likePattern = "%" + documentNumber.toLowerCase(Locale.ROOT) + "%";
             List<Predicate> documentPredicates = new ArrayList<>();
-            documentPredicates.add(cb.like(cb.lower(root.get("entityName")), likePattern));
-            documentPredicates.add(cb.like(cb.lower(root.get("comment")), likePattern));
-            documentPredicates.add(cb.like(cb.lower(root.get("documentNumber")), likePattern));
+            documentPredicates.add(com.eqms.util.SearchText.like(cb, root.get("entityName"), likePattern));
+            documentPredicates.add(com.eqms.util.SearchText.like(cb, root.get("comment"), likePattern));
+            documentPredicates.add(com.eqms.util.SearchText.like(cb, root.get("documentNumber"), likePattern));
             try {
                 documentPredicates.add(cb.equal(root.get("entityId"), UUID.fromString(documentNumber.trim())));
             } catch (IllegalArgumentException ignored) {
@@ -2483,6 +2495,13 @@ public class AuditTrailService {
             return true;
         }
         return mapAction(record.getActionType()).equalsIgnoreCase(action);
+    }
+
+    private static java.util.UUID accountIdOf(String user) {
+        if (user == null || !user.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            return null;
+        }
+        return java.util.UUID.fromString(user);
     }
 
     private boolean matchesUser(AuditLog record, String user) {

@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Trash2, Undo2 } from "lucide-react";
@@ -167,10 +169,10 @@ export const ControlledCopyRecallScanView: React.FC = () => {
 
   // Search, group and sort of the scans are done by the server. With the default query (nothing typed, no group, upload order)
   // the batch response already holds every scan in that order, so nothing more is fetched.
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState("ControlledCopyRecallScanView.searchQuery", "");
   const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [group, setGroup] = useState<RecallItemGroup | undefined>(undefined);
-  const [sortConfig, setSortConfig] = useState<{ key: NonNullable<RecallItemQuery["sortBy"]>; direction: "asc" | "desc" }>({
+  const [sortConfig, setSortConfig] = useViewState<{ key: NonNullable<RecallItemQuery["sortBy"]>; direction: "asc" | "desc" }>("ControlledCopyRecallScanView.sortConfig", {
     key: "itemNo",
     direction: "asc",
   });
@@ -526,7 +528,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
     controlledCopyRecallApi.listMyDrafts().then(setDrafts).catch(() => setDrafts([]));
   };
 
-  const goBack = () => (uploadProgress ? setConfirmingLeave(true) : navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL));
+  const goBack = () => (uploadProgress ? setConfirmingLeave(true) : navigateBack(navigateTo, null, ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL));
   const openRecord = useCallback(
     (recordNumber: string) => navigateTo(`${ROUTES.DOCUMENTS.RECORDS}?search=${encodeURIComponent(recordNumber)}`),
     [navigateTo],
@@ -1126,7 +1128,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
               onChange={(value) => setReceivedDate(displayToIso(value))}
               error={receivedDate > todayIso() ? tr("The received date cannot be in the future.") : undefined}
             />
-            <p className="mt-1 text-2xs text-slate-500">{tr("The signing time is recorded separately and cannot be changed.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("The signing time is recorded separately and cannot be changed.")}</p>
           </div>
           <Checkbox
             checked={attested}
@@ -1163,7 +1165,7 @@ export const ControlledCopyRecallScanView: React.FC = () => {
       <FormModal
         isOpen={confirmingLeave}
         onClose={() => setConfirmingLeave(false)}
-        onConfirm={() => navigateTo(ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL)}
+        onConfirm={() => navigateBack(navigateTo, null, ROUTES.DOCUMENTS.CONTROLLED_COPIES.ALL)}
         title={tr("Leave While Uploading?")}
         description={tr("Files that have not been sent yet will be lost. A draft that was already started stays under Your Open Drafts.")}
         confirmText="Leave"

@@ -1327,7 +1327,7 @@ export const RequestControlledCopyView: React.FC = () => {
                 {errors.reason && (
                   <p className="text-xs text-red-600 mt-1">{errors.reason}</p>
                 )}
-                <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
+                <p className="mt-1.5 text-xs text-slate-500 font-normal flex items-center gap-1">
                   {tr("Recorded in audit trail for compliance tracking.")}
                 </p>
               </div>

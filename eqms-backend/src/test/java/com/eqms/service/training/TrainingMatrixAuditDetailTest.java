@@ -115,8 +115,8 @@ class TrainingMatrixAuditDetailTest {
 
         service.submit(actor, versionId, new TrainingMatrixService.SubmitRequest(7, "token", approverId));
 
-        List<AuditTrailChangeResponse> changes = captured("TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_APPROVAL");
-        assertThat(changes).extracting(AuditTrailChangeResponse::field).containsExactly("Status", "Prepared by", "Designated approver", "What changed in this version");
+        List<AuditTrailChangeResponse> changes = captured("TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_REVIEW");
+        assertThat(changes).extracting(AuditTrailChangeResponse::field).containsExactly("Status", "Prepared by", "Designated reviewer", "What changed in this version");
         assertThat(changes.get(2).newValue()).isEqualTo("Ann Approver");
         assertThat(changes.get(3).newValue()).isEqualTo("Added gowning");
     }

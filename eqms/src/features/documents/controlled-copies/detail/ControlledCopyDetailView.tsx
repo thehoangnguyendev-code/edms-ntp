@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react";
+import { useViewState } from "@/hooks/useViewState";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
 import { Button } from "@/components/ui/button/Button";
@@ -153,9 +154,9 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
     failedItems: DistributeBatchFailedItem[];
     isRetrying: boolean;
   } | null>(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get('tab') as TabType;
-  const [activeTab, setActiveTab] = useState<TabType>(urlTab || initialTab);
+  const [activeTab, setActiveTab] = useViewState<TabType>("ControlledCopyDetailView.activeTab", urlTab || initialTab, Boolean(urlTab));
   const [isNavigating, setIsNavigating] = useState(false);
   const { showToast } = useToast();
   const {
@@ -1216,7 +1217,12 @@ export const ControlledCopyDetailView: React.FC<ControlledCopyDetailViewProps> =
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TabNav tabs={tabs} activeTab={activeTab} onChange={(id) => setActiveTab(id as TabType)} />
+        <TabNav tabs={tabs} activeTab={activeTab} onChange={(id) => {
+          setActiveTab(id as TabType);
+          const params = new URLSearchParams(searchParams);
+          params.set("tab", id);
+          setSearchParams(params, { replace: true });
+        }} />
 
         {/* Tab Content */}
         <div className="p-4 md:p-5">

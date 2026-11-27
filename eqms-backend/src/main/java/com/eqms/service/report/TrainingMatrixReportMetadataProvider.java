@@ -84,7 +84,7 @@ public class TrainingMatrixReportMetadataProvider implements ReportMetadataProvi
                 """).append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (m.code ilike ? escape '\\' or coalesce(d.document_number,'') ilike ? escape '\\' or coalesce(d.document_name,'') ilike ? escape '\\' or coalesce(r.topic_text,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(m.code) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(d.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(d.document_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.topic_text,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 4; i++) args.add(term);
         }

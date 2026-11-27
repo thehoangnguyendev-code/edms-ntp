@@ -183,6 +183,33 @@ public class UserManagementService {
      * Messages about an account or its access are sent after the transaction committed: a database guard (the emergency account of the network policy) is checked at commit and may still
      * roll the change back, and no one must be told about a change that did not happen. A failure to send is logged; it does not undo the change.
      */
+    /** The modules that follow the record of a person (Training Management); called after the change is committed, and a failure never hides the change. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private List<UserLifecycleListener> lifecycleListeners;
+
+    private void tellListeners(UUID userId, String change) {
+        if (lifecycleListeners == null || lifecycleListeners.isEmpty() || userId == null) return;
+        Runnable tell = () -> {
+            for (UserLifecycleListener listener : lifecycleListeners) {
+                try {
+                    listener.userChanged(userId, change);
+                } catch (RuntimeException failure) {
+                    log.warn("A module could not be told about '{}' of a user after the change was committed", change);
+                }
+            }
+        };
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            tell.run();
+            return;
+        }
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                tell.run();
+            }
+        });
+    }
+
     private void dispatchAfterCommit(String eventCode, List<UserAccount> recipients, Map<String, String> variables) {
         List<UserAccount> to = List.copyOf(recipients);
         Map<String, String> values = new java.util.HashMap<>(variables);
@@ -511,6 +538,7 @@ public class UserManagementService {
                 "Created user account: " + user.getUsername() + " (" + user.getEmployeeCode() + ")"
         );
 
+        tellListeners(user.getId(), "CREATED");
         return new UserCreationResponse(toResponse(user, true), rawPassword);
     }
 
@@ -555,6 +583,12 @@ public class UserManagementService {
                 "Updated user profile for " + user.getFullName(),
                 changes
         );
+        for (AuditTrailChangeResponse change : changes) {
+            String field = change.field() == null ? "" : change.field();
+            if (field.equals("department")) tellListeners(user.getId(), "DEPARTMENT_CHANGED");
+            else if (field.equals("position")) tellListeners(user.getId(), "POSITION_CHANGED");
+            else if (field.equals("startDate")) tellListeners(user.getId(), "START_DATE_CHANGED");
+        }
 
         return toResponse(user, true);
     }
@@ -697,6 +731,10 @@ public class UserManagementService {
         requireUserActionAllowed(id, "SUSPEND");
         String oldStatus = user.getStatus() != null ? user.getStatus().name() : null;
         String reason = normalizeRequired(request.reason(), "Reason");
+        // SOP.0003 5.1.1: Training Management must be able to tell a long leave from other reasons, so the kind is required here and not only on the screen.
+        String kind = request.suspensionKind() == null || request.suspensionKind().isBlank() ? null : request.suspensionKind().trim().toUpperCase(java.util.Locale.ROOT);
+        if (kind == null) throw new IllegalArgumentException("Kind of suspension is required");
+        if (!java.util.Set.of("LONG_LEAVE", "OTHER").contains(kind)) throw new IllegalArgumentException("Kind of suspension is not valid");
         // A manual status decision takes precedence over any scheduler-owned access window.
         // Clearing the ownership marker prevents a future in-window pass from reinstating this user.
         user.setTimeLimitedGrantId(null);
@@ -708,7 +746,8 @@ public class UserManagementService {
                 "suspendedUntil", request.date()
         ), clientIp(httpRequest), userAgent(httpRequest));
 
-        String comment = "Suspended user: " + reason;
+        // the kind is kept in the entry of the Audit Trail: Training Management reads it when the person returns
+        String comment = "Suspended user" + (kind == null ? "" : " [" + kind + "]") + ": " + reason;
         if (request.date() != null) {
             comment += " until " + request.date();
         }
@@ -727,6 +766,7 @@ public class UserManagementService {
         );
         recordStrandedWorkflowAssignments(actor, user, "suspended");
         dispatchAfterCommit("user.account_suspended", List.of(user), Map.of());
+        tellListeners(user.getId(), "SUSPENDED");
 
         return toResponse(user, true);
     }
@@ -793,6 +833,8 @@ public class UserManagementService {
                 UserStatus.Active.name(),
                 comment
         );
+
+        tellListeners(user.getId(), "REINSTATED");
 
         return toResponse(user, true);
     }
@@ -1017,11 +1059,11 @@ public class UserManagementService {
             if (search != null && !search.isBlank()) {
                 String q = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(user.get("fullName")), q),
-                        cb.like(cb.lower(user.get("username")), q),
-                        cb.like(cb.lower(user.get("email")), q),
-                        cb.like(cb.lower(user.get("employeeCode")), q),
-                        cb.like(cb.lower(cb.coalesce(root.get("ipAddress"), "")), q)
+                        com.eqms.util.SearchText.like(cb, user.get("fullName"), q),
+                        com.eqms.util.SearchText.like(cb, user.get("username"), q),
+                        com.eqms.util.SearchText.like(cb, user.get("email"), q),
+                        com.eqms.util.SearchText.like(cb, user.get("employeeCode"), q),
+                        com.eqms.util.SearchText.like(cb, cb.coalesce(root.get("ipAddress"), ""), q)
                 ));
             }
             addInstantRangePredicate(predicates, cb, user.get("lastLoginAt"), lastLoginFrom, lastLoginTo);
@@ -1983,10 +2025,10 @@ public class UserManagementService {
             if (search != null && !search.isBlank()) {
                 String q = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("fullName")), q),
-                        cb.like(cb.lower(root.get("username")), q),
-                        cb.like(cb.lower(root.get("email")), q),
-                        cb.like(cb.lower(root.get("employeeCode")), q)
+                        com.eqms.util.SearchText.like(cb, root.get("fullName"), q),
+                        com.eqms.util.SearchText.like(cb, root.get("username"), q),
+                        com.eqms.util.SearchText.like(cb, root.get("email"), q),
+                        com.eqms.util.SearchText.like(cb, root.get("employeeCode"), q)
                 ));
             }
             // "role" here is really an Access Profile filter -- app_users.role_name is a retired,
@@ -2317,6 +2359,8 @@ public class UserManagementService {
         requirePosition(request.businessUnit(), request.department(), request.position());
         requireStatus(request.status());
         validateDateOfBirth(request.dateOfBirth());
+        // SOP.0003 5.1: the start date is what tells Training Management that an employee is new
+        if (request.startDate() == null || request.startDate().isBlank()) throw new IllegalArgumentException("Start Date is required");
         validateStartDate(request.startDate());
         validateGenderIfProvided(request.gender());
         requireEmploymentType(request.employmentType());

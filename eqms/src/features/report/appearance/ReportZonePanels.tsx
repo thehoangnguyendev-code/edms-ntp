@@ -64,8 +64,8 @@ const places: { value: ReportPlace; label: string }[] = [
   { value: "RIGHT", label: "Right" },
 ];
 const pageOptions = [
-  { value: "ALL", label: tr("Every page") },
-  { value: "FIRST", label: tr("First page only") },
+  { value: "ALL", get label() { return tr("Every page"); } },
+  { value: "FIRST", get label() { return tr("First page only"); } },
 ];
 /** The fields most often put in a header or footer; the rest are in the list under "More fields". */
 export const defaultApprovalRoles = ["Prepared by", "Reviewed by", "Approved by"];

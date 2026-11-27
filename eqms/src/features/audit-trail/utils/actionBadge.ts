@@ -74,6 +74,10 @@ export const formatAuditActionLabel = (action: string) => {
  * The label of the module of an audit record. A module the screens already name ("Document", "Controlled Copy") is shown as it is; a machine code
  * (TRAINING_ACTIVITY) is shown as words ("Training Activity").
  */
+/** The Module of a record: the level-1 menu the server places it under; the record type in words only when the server sent none. */
+export const auditMenuModule = (record: { module?: string | null; metadata?: Record<string, any> }) =>
+  String(record.metadata?.menuModule || formatAuditModuleLabel(record.module));
+
 export const formatAuditModuleLabel = (module?: string | null) => {
   const value = (module ?? "").trim();
   if (!value) return "-";

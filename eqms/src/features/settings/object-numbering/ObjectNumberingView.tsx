@@ -29,19 +29,19 @@ const SEPARATOR_PATTERN = /^[^\s\p{Cc}<>"'\\%]{0,3}$/u;
 /** The numbers kept by the screens of their own module; shown here so an administrator knows where each one is set. */
 const SET_ELSEWHERE: { label: string; where: string; path: string; permissions: string[] }[] = [
   {
-    label: tr("Document numbers"),
+    get label() { return tr("Document numbers"); },
     where: "Document Administration > Document Name Formats",
     path: ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS,
     permissions: ["documents.admin.name_formats.view", "documents.admin.name_formats.manage"],
   },
   {
-    label: tr("Training numbers"),
+    get label() { return tr("Training numbers"); },
     where: "Training Administration > Training Code Rules",
     path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.CODE_RULES,
     permissions: ["training.admin.properties.view", "training.settings.view"],
   },
   {
-    label: tr("Report template names"),
+    get label() { return tr("Report template names"); },
     where: "Report Administration > Report Name Formats",
     path: ROUTES.SETTINGS.REPORT_ADMINISTRATION.NAME_FORMATS,
     permissions: ["reports.definition.view", "reports.name_format.manage"],

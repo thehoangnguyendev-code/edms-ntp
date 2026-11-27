@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Grid3X3, KeyRound, ShieldCheck, Users, Info } from "lucide-react";
@@ -24,15 +25,15 @@ import type { PermissionGroup } from "@/features/security-authorization/shared/p
 import { formatDateUS } from "@/utils/format";
 import { IconChartColumn } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
-import { tr, trFormat, trPlural } from "@/i18n";
+import { tr, trFormat, trPlural, getCatalogLanguage } from "@/i18n";
 
 type TabId = "general" | "permissions" | "access-profiles" | "audit";
 
 const TABS: TabItem[] = [
   { id: "general",         label: "General" },
   { id: "permissions",     label: "Permissions" },
-  { id: "access-profiles", label: tr("Assigned Access Profiles") },
-  { id: "audit",           label: tr("Audit Trail") },
+  { id: "access-profiles", get label() { return tr("Assigned Access Profiles"); } },
+  { id: "audit",           get label() { return tr("Audit Trail"); } },
 ];
 
 const getModuleLabels = (permissionSet: PermissionSetResponse, groups: PermissionGroup[]) => {
@@ -74,7 +75,7 @@ export const PermissionSetDetailView: React.FC = () => {
 
   const [permissionSet, setPermissionSet] = React.useState<PermissionSetResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>("general");
+  const [activeTab, setActiveTab] = useViewState<TabId>("PermissionSetDetailView.activeTab", "general");
   const [cloneModal, setCloneModal] = useState(false);
   const [assignedProfiles, setAssignedProfiles] = React.useState<PermissionSetAssignedAccessProfile[]>([]);
   const [assignedProfilesLoading, setAssignedProfilesLoading] = React.useState(true);
@@ -106,7 +107,7 @@ export const PermissionSetDetailView: React.FC = () => {
   const modules = useMemo(() => {
     if (!permissionSet) return [];
     return getModuleLabels(permissionSet, permissionGroups);
-  }, [permissionSet, permissionGroups]);
+  }, [permissionSet, permissionGroups, getCatalogLanguage()]);
 
   const category = useMemo(() => inferCategory(modules), [modules]);
 

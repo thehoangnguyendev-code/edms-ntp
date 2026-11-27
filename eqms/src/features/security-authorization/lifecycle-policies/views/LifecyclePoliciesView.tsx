@@ -12,15 +12,15 @@ import { StateCapabilitiesView } from "./StateCapabilitiesView";
 import { WorkflowRolesView, type WorkflowRolesViewHandle } from "./WorkflowRolesView";
 import { ActionStatusMatrix } from "../components/ActionStatusMatrix";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 type TabId = "matrix" | "transitions" | "capabilities" | "roles";
 
 const TAB_LABELS: Record<TabId, string> = {
-  matrix: tr("Action Matrix"),
-  transitions: tr("Transition Policies"),
-  capabilities: tr("State Capabilities"),
-  roles: tr("Workflow Roles"),
+  get matrix() { return tr("Action Matrix"); },
+  get transitions() { return tr("Transition Policies"); },
+  get capabilities() { return tr("State Capabilities"); },
+  get roles() { return tr("Workflow Roles"); },
 };
 
 const TABS: TabItem[] = [
@@ -49,7 +49,7 @@ export const LifecyclePoliciesView: React.FC = () => {
 
   const breadcrumbItems = useMemo(
     () => workflowAuthorizationBreadcrumb(navigate, TAB_LABELS[activeTab]),
-    [navigate, activeTab],
+    [navigate, activeTab, getCatalogLanguage()],
   );
 
   const canManage = hasPermissionAlias("security.workflow_authorization.manage");

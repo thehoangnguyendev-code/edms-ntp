@@ -72,7 +72,7 @@ public class KnowledgeShareReportMetadataProvider implements ReportMetadataProvi
                 left join app_users cb on cb.id=l.created_by left join app_users rb on rb.id=l.revoked_by where true""");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (coalesce(l.label,'') ilike ? escape '\\' or coalesce(d.document_number,'') ilike ? escape '\\' or coalesce(cb.full_name,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(coalesce(l.label,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(d.document_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(cb.full_name,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }

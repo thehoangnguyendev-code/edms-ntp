@@ -155,15 +155,15 @@ type SortKey = "name" | "type" | "permissionSetCount" | "assignedUserCount" | "c
 
 const TABLE_COLS: { id: SortKey | "no" | "workflowRoles" | "visibility" | "status" | "action"; label: string; sortable: boolean }[] = [
   { id: "no",               label: "No.",              sortable: false },
-  { id: "name",             label: tr("Access Profile"),   sortable: true  },
+  { id: "name",             get label() { return tr("Access Profile"); },   sortable: true  },
   { id: "type",             label: "Type",             sortable: true  },
   { id: "status",           label: "Status",           sortable: false },
-  { id: "permissionSetCount", label: tr("Permission Sets"), sortable: true },
-  { id: "workflowRoles",   label: tr("Workflow Eligibility"),   sortable: false },
-  { id: "visibility",      label: tr("Document Control Visibility"), sortable: false },
-  { id: "assignedUserCount", label: tr("Assigned Users"), sortable: true  },
-  { id: "createdAt",       label: tr("Created Date"),     sortable: true  },
-  { id: "updatedAt",       label: tr("Last Updated"),     sortable: true  },
+  { id: "permissionSetCount", get label() { return tr("Permission Sets"); }, sortable: true },
+  { id: "workflowRoles",   get label() { return tr("Workflow Eligibility"); },   sortable: false },
+  { id: "visibility",      get label() { return tr("Document Control Visibility"); }, sortable: false },
+  { id: "assignedUserCount", get label() { return tr("Assigned Users"); }, sortable: true  },
+  { id: "createdAt",       get label() { return tr("Created Date"); },     sortable: true  },
+  { id: "updatedAt",       get label() { return tr("Last Updated"); },     sortable: true  },
   { id: "action",          label: "Action",           sortable: false },
 ];
 

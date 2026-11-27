@@ -252,7 +252,7 @@ public class TrainingMatrixFormService {
     @SuppressWarnings("unchecked")
     private static String table(Map<String, Object> v) throws XmlException {
         List<Map<String, Object>> positions = (List<Map<String, Object>>) v.get("positions");
-        List<Map<String, Object>> rows = (List<Map<String, Object>>) v.get("rows");
+        List<Map<String, Object>> rows = withFactoryRows(v);
         int n = Math.max(positions.size(), 1);
         boolean upright = n > UPRIGHT_LIMIT;
         int grid_ = landscape(v) ? GRID_LANDSCAPE : GRID;
@@ -348,5 +348,30 @@ public class TrainingMatrixFormService {
 
     private static String escape(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /**
+     * The rows of the form: the rows of the version, and the factory-wide list that applies on top of it (ticked for every Work Position). A row of the version that the
+     * factory list also has is written once, as the factory row.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> withFactoryRows(Map<String, Object> version) {
+        List<Map<String, Object>> own = (List<Map<String, Object>>) version.get("rows");
+        List<Map<String, Object>> factory = (List<Map<String, Object>>) version.getOrDefault("factoryRows", List.of());
+        if (factory == null || factory.isEmpty()) return own;
+        List<Object> positions = ((List<Map<String, Object>>) version.get("positions")).stream().map(p -> p.get("id")).toList();
+        java.util.function.Function<Map<String, Object>, String> key = r -> r.get("documentId") != null ? "D" + r.get("documentId")
+                : "T" + String.valueOf(r.get("topicText")).trim().replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT);
+        java.util.Set<String> covered = factory.stream().map(key).collect(java.util.stream.Collectors.toSet());
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (Map<String, Object> row : factory) {
+            Map<String, Object> copy = new java.util.LinkedHashMap<>(row);
+            copy.put("rowGroup", "FACTORY_GENERAL");
+            copy.put("allEmployees", true);
+            copy.put("positionIds", positions);
+            out.add(copy);
+        }
+        own.stream().filter(r -> !covered.contains(key.apply(r))).forEach(out::add);
+        return out;
     }
 }

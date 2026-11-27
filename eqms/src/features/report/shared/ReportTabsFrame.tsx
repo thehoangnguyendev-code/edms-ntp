@@ -24,17 +24,17 @@ interface PairTab {
  */
 export const REPORT_TAB_PAIRS = {
   runs: {
-    title: tr("Report Run History"),
+    get title() { return tr("Report Run History"); },
     tabs: [
-      { id: "history", label: tr("Run History"), path: ROUTES.REPORT.HISTORY },
-      { id: "legal-holds", label: tr("Legal Hold Register"), path: ROUTES.REPORT.LEGAL_HOLDS, needsRegisterAccess: true },
+      { id: "history", get label() { return tr("Run History"); }, path: ROUTES.REPORT.HISTORY },
+      { id: "legal-holds", get label() { return tr("Legal Hold Register"); }, path: ROUTES.REPORT.LEGAL_HOLDS, needsRegisterAccess: true },
     ] as PairTab[],
   },
   scheduled: {
-    title: tr("Scheduled Reports"),
+    get title() { return tr("Scheduled Reports"); },
     tabs: [
       { id: "scheduled", label: "Schedules", path: ROUTES.REPORT.SCHEDULED },
-      { id: "delivery-log", label: tr("Delivery Log"), path: ROUTES.REPORT.DELIVERY_LOG, needsRegisterAccess: true },
+      { id: "delivery-log", get label() { return tr("Delivery Log"); }, path: ROUTES.REPORT.DELIVERY_LOG, needsRegisterAccess: true },
     ] as PairTab[],
   },
 };

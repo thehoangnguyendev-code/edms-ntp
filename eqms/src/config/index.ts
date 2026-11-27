@@ -53,6 +53,11 @@ export const config = {
     pageSizeOptions: [10, 20, 50, 100],
   },
 
+  // draw.io editor of the workflow diagrams (browser-reachable address of the frame)
+  drawio: {
+    url: import.meta.env.VITE_DRAWIO_URL || (import.meta.env.DEV ? 'http://localhost:8083' : '/drawio'),
+  },
+
   // OnlyOffice Document Server (browser-reachable address for the DocsAPI script + editor iframe)
   onlyOffice: {
     documentServerUrl: import.meta.env.VITE_ONLYOFFICE_URL || (import.meta.env.DEV ? 'http://localhost:8082' : '/onlyoffice'),

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState, useCallback } from "react";
@@ -56,8 +57,8 @@ const STATUS_OPTIONS: SelectOption[] = [
 ];
 
 const BASE_TABS: TabItem[] = [
-  { id: "constraints", label: tr("Permission Conflict Rules") },
-  { id: "document-rules", label: tr("Document Revision Integrity") },
+  { id: "constraints", get label() { return tr("Permission Conflict Rules"); } },
+  { id: "document-rules", get label() { return tr("Document Revision Integrity"); } },
 ];
 
 // The Separation Rules of every other module get one tab each (id "sep:<module key>"), named like the module in the menu.
@@ -89,7 +90,7 @@ export const SegregationOfDutiesView: React.FC = () => {
     };
   }, []);
   const SOD_TABS: TabItem[] = [...BASE_TABS, ...separationModules];
-  const [activeTab, setActiveTab] = useState<string>("constraints");
+  const [activeTab, setActiveTab] = useViewState<string>("SegregationOfDutiesView.activeTab", "constraints");
   const { scrollerRef, isDragging, dragEvents } = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
   const { requestSignature, signatureModal } = useSecurityESign();
@@ -178,19 +179,19 @@ export const SegregationOfDutiesView: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<SodConstraintResponse | null>(null);
 
   // Server-side query state.
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("SegregationOfDutiesView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [severityFilter, setSeverityFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
-  const [sortKey, setSortKey] = useState("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [severityFilter, setSeverityFilter] = useViewState("SegregationOfDutiesView.severityFilter", "ALL");
+  const [typeFilter, setTypeFilter] = useViewState("SegregationOfDutiesView.typeFilter", "ALL");
+  const [statusFilter, setStatusFilter] = useViewState("SegregationOfDutiesView.statusFilter", "ALL");
+  const [createdFrom, setCreatedFrom] = useViewState("SegregationOfDutiesView.createdFrom", "");
+  const [createdTo, setCreatedTo] = useViewState("SegregationOfDutiesView.createdTo", "");
+  const [updatedFrom, setUpdatedFrom] = useViewState("SegregationOfDutiesView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("SegregationOfDutiesView.updatedTo", "");
+  const [sortKey, setSortKey] = useViewState("SegregationOfDutiesView.sortKey", "name");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("SegregationOfDutiesView.sortDir", "asc");
+  const [currentPage, setCurrentPage] = useViewState("SegregationOfDutiesView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("SegregationOfDutiesView.itemsPerPage", 10);
 
   // Severity options from the server.
   const [severities, setSeverities] = useState<string[]>([]);

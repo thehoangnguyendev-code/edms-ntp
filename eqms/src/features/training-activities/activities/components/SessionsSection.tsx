@@ -12,14 +12,14 @@ import { tr, trFormat } from "@/i18n";
 const PATTERNS: { id: string; title: string; description: string; topics: string[] }[] = [
   {
     id: "INITIAL",
-    title: tr("Initial training of new employees"),
-    description: tr("Three parts, each given by another unit: Human Resources, QA and the department of the employee (SOP.0003 5.1.1)."),
+    get title() { return tr("Initial training of new employees"); },
+    get description() { return tr("Three parts, each given by another unit: Human Resources, QA and the department of the employee (SOP.0003 5.1.1)."); },
     topics: ["Occupational safety and company policy", "General principles of GMP", "Job-specific training"],
   },
   {
     id: "ANNUAL",
-    title: tr("Annual periodic training"),
-    description: tr("The topics the annual training requirement has (SOP.0003 5.3.2)."),
+    get title() { return tr("Annual periodic training"); },
+    get description() { return tr("The topics the annual training requirement has (SOP.0003 5.3.2)."); },
     topics: ["General GMP", "Data integrity and aseptic technique", "Trends of the errors found in audits, complaints, OOS investigations and CAPA"],
   },
 ];

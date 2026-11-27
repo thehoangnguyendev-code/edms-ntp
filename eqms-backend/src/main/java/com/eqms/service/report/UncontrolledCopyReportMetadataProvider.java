@@ -105,7 +105,7 @@ public class UncontrolledCopyReportMetadataProvider implements ReportMetadataPro
         ReportQueryKit.and(sql, args, visibility.uncontrolledCopies(actor, "uc"));
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (uc.uncontrolled_copy_number ilike ? escape '\\' or uc.document_number ilike ? escape '\\' or uc.document_title ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(uc.uncontrolled_copy_number) like eqms_fold(?) escape '\\' or eqms_fold(uc.document_number) like eqms_fold(?) escape '\\' or eqms_fold(uc.document_title) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             args.add(term); args.add(term); args.add(term);
         }

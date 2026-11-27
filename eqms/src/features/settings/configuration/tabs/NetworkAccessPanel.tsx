@@ -155,7 +155,7 @@ export function NetworkAccessPanel({ value, onChange, failed }: NetworkAccessPan
               </p>
             )}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="!mt-1.5 text-xs text-slate-500">
             {tr("If everyone is locked out: set")}{" "}
             <code>APP_ADMIN_NETWORK_RECOVERY_DISABLE=true</code> {tr("in the server environment and restart the backend, correct the policy here, then remove the setting.")}
           </p>

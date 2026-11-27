@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { sessionStarted } from "@/services/api/trainingActivities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,9 +24,9 @@ import { statusColors } from "@/components/ui/badge/statusColors";
 const lineColumns: DataTableColumn<TrainingTranscriptionLine>[] = [
   { id: "n", header: "No.", cell: (_l, i) => i + 1 },
   { id: "name", header: "Full name", cell: (l) => l.fullName },
-  { id: "state", header: tr("Attendance"), cell: (l) => (l.state === "ATTENDED" ? "Attended" : "Absent") },
+  { id: "state", get header() { return tr("Attendance"); }, cell: (l) => (l.state === "ATTENDED" ? "Attended" : "Absent") },
   { id: "score", header: "Score", cell: (l) => (l.scoreObtained != null ? `${l.scoreObtained} / ${l.scoreMax}` : "—") },
-  { id: "why", header: tr("Reason / remarks"), cell: (l) => <div className="max-w-64 whitespace-normal">{l.absenceReason ?? l.remarks ?? "—"}</div> },
+  { id: "why", get header() { return tr("Reason / remarks"); }, cell: (l) => <div className="max-w-64 whitespace-normal">{l.absenceReason ?? l.remarks ?? "—"}</div> },
 ];
 
 const STATUS_LABEL = localized({ ENTERED: "Waiting to be checked", VERIFIED: "Verified", REJECTED: "Rejected" });
@@ -47,7 +48,7 @@ export function TrainingTranscriptionBlock({ activity, userId, canEnter, canVeri
   const { showToast } = useToast();
   const [items, setItems] = useState<TrainingTranscription[]>([]);
   const [pendingSessions, setPendingSessions] = useState<string[]>([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("TrainingTranscriptionBlock.page", 1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);

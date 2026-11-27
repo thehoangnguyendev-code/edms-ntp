@@ -127,6 +127,10 @@ public class NavigationService {
                 docChildren.add(new NavigationItemResponse("records", "Records", null, "/documents/records", false, null));
             }
 
+            if (hasAnyPermission(normalizedPermissions, "documents.workflow_diagram.view", "documents.workflow_diagram.manage")) {
+                docChildren.add(new NavigationItemResponse("doc-workflow", "Workflow", null, "/documents/workflow", false, null));
+            }
+
             if (!docChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("doc-control", "Document Control", "IconFileDescription", null, false, docChildren));
             }
@@ -150,7 +154,7 @@ public class NavigationService {
                 planning.add(new NavigationItemResponse("training-activities", "Training Activities", null, "/training-management/activities", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.matrix.view")) {
-                planning.add(new NavigationItemResponse("training-matrices", "Training Matrices", null, "/training-management/matrices", false, null));
+                planning.add(new NavigationItemResponse("training-matrices", "Training Matrix", null, "/training-management/matrix", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.assessment.view") || hasPermission(normalizedPermissions, "training.assessment.manage") || hasPermission(normalizedPermissions, "training.assessment.manage_all") || hasPermission(normalizedPermissions, "training.assessment.approve")) {
                 planning.add(new NavigationItemResponse("training-assessments", "Training Assessments", null, "/training-management/assessments", false, null));
@@ -189,6 +193,9 @@ public class NavigationService {
             }
             if (!records.isEmpty()) {
                 trainingChildren.add(new NavigationItemResponse("training-records-compliance", "Training Records & Compliance", null, null, false, records));
+            }
+            if (hasAnyPermission(normalizedPermissions, "training.workflow_diagram.view", "training.workflow_diagram.manage")) {
+                trainingChildren.add(new NavigationItemResponse("training-workflow", "Workflow", null, "/training-management/workflow", false, null));
             }
             if (!trainingChildren.isEmpty()) {
                 menu.add(new NavigationItemResponse("training-management", "Training Management", "GraduationCap", null, false, trainingChildren));
@@ -426,6 +433,7 @@ public class NavigationService {
             if (hasPermission(normalizedPermissions, "training.admin.manage")) {
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-vendors", "Training Vendors", null, "/settings/administration/training/vendors", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-job-roles", "Work Positions", null, "/settings/administration/training/job-roles", false, null));
+                trainingAdminChildren.add(new NavigationItemResponse("training-admin-review-checklists", "Review Checklists", null, "/settings/administration/training/review-checklists", false, null));
                 trainingAdminChildren.add(new NavigationItemResponse("training-admin-notifications", "Training Notifications", null, "/settings/administration/training/notifications", false, null));
             }
             if (hasPermission(normalizedPermissions, "training.annex.view")) {
@@ -519,15 +527,8 @@ public class NavigationService {
         if (query == null || query.isBlank()) {
             return Collections.emptyList();
         }
-        String q = query.trim().toLowerCase(Locale.ROOT);
-        List<NavigationItemResponse> menu = getNavigation(user, permissions);
-        List<FlatMenuItem> flatList = new ArrayList<>();
-        flattenAndFilter(menu, null, null, q, flatList);
-
-        if (flatList.size() > 8) {
-            return flatList.subList(0, 8);
-        }
-        return flatList;
+        // only the menu built for this person is searched, so a page they may not open can never be found
+        return MenuSearch.search(getNavigation(user, permissions), query);
     }
 
     private boolean hasPermission(Set<String> permissions, String code) {
@@ -544,26 +545,6 @@ public class NavigationService {
             if (hasPermission(permissions, code)) return true;
         }
         return false;
-    }
-
-    private void flattenAndFilter(List<NavigationItemResponse> items, String parentLabel, String parentIcon, String query, List<FlatMenuItem> result) {
-        if (items == null) return;
-        for (NavigationItemResponse item : items) {
-            String fullLabel = parentLabel != null ? parentLabel + " > " + item.label() : item.label();
-            String iconToUse = parentIcon != null ? parentIcon : item.icon();
-
-            if (item.path() != null) {
-                boolean matches = item.label().toLowerCase(Locale.ROOT).contains(query)
-                        || fullLabel.toLowerCase(Locale.ROOT).contains(query);
-                if (matches) {
-                    result.add(new FlatMenuItem(item.id(), item.label(), iconToUse, item.path(), fullLabel));
-                }
-            }
-
-            if (item.children() != null) {
-                flattenAndFilter(item.children(), fullLabel, iconToUse, query, result);
-            }
-        }
     }
 
     public record FlatMenuItem(

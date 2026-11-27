@@ -3154,19 +3154,30 @@ public class RevisionService {
         List<UserAccount> recipients = new ArrayList<>();
         String templateType = null;
         String comment = firstNonBlank(request == null ? null : request.comment(), request == null ? null : request.reason());
+        notifyActorDone(revision, actor, switch (actionType == null ? "" : actionType.toUpperCase(Locale.ROOT)) {
+            case "SUBMIT_FOR_REVIEW" -> "Submitted for Review";
+            case "REVIEW_COMPLETE" -> "Review Completed";
+            case "REVIEW_REJECT" -> "Review Rejected";
+            case "APPROVE_COMPLETE" -> "Approval Completed";
+            case "APPROVE_REJECT" -> "Approval Rejected";
+            case "PUBLISH" -> "Published";
+            default -> null;
+        });
 
         if ("SUBMIT_FOR_REVIEW".equalsIgnoreCase(actionType)) {
             if ("PENDING_REVIEW".equalsIgnoreCase(targetStatus)) {
                 templateType = "document-review";
                 recipients.addAll(reviewersToNotify(revision, true));
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             } else if ("PENDING_APPROVAL".equalsIgnoreCase(targetStatus)) {
                 templateType = "document-approval";
                 nextPendingParticipant(revision, "APPROVER")
                         .map(RevisionWorkflowParticipant::getUser)
                         .ifPresent(recipients::add);
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             } else if ("PENDING_TRAINING".equalsIgnoreCase(targetStatus) || "READY_FOR_PUBLISHING".equalsIgnoreCase(targetStatus)) {
                 templateType = "training-notification";
-                recipients.addAll(getRevisionStakeholders(revision));
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             }
         } else if ("REVIEW_COMPLETE".equalsIgnoreCase(actionType) && "PENDING_REVIEW".equalsIgnoreCase(targetStatus)) {
             templateType = "document-review";
@@ -3176,6 +3187,7 @@ public class RevisionService {
             nextPendingParticipant(revision, "APPROVER")
                     .map(RevisionWorkflowParticipant::getUser)
                     .ifPresent(recipients::add);
+            recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
         } else if ("APPROVE_COMPLETE".equalsIgnoreCase(actionType) && "PENDING_APPROVAL".equalsIgnoreCase(targetStatus)) {
             templateType = "document-approval";
             nextPendingParticipant(revision, "APPROVER")
@@ -3189,7 +3201,7 @@ public class RevisionService {
         } else if ("APPROVE_COMPLETE".equalsIgnoreCase(actionType)) {
             if ("PENDING_TRAINING".equalsIgnoreCase(targetStatus)) {
                 templateType = "training-notification";
-                recipients.addAll(getRevisionStakeholders(revision));
+                recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
             } else if ("READY_FOR_PUBLISHING".equalsIgnoreCase(targetStatus)) {
                 templateType = EmailTemplateTypeUtils.DOCUMENT_READY_FOR_PUBLISHING_NOTIFICATION;
                 recipients.addAll(withoutActor(getWorkflowCoordinatorRecipients(revision), actor));
@@ -3201,7 +3213,9 @@ public class RevisionService {
             }
         } else if ("PUBLISH".equalsIgnoreCase(actionType)) {
             templateType = "document-publish";
-            recipients.addAll(getRevisionStakeholders(revision));
+            // The people of the revision; Document Control did the publishing and is not told of it.
+            java.util.Set<UUID> coordinatorIds = getWorkflowCoordinatorRecipients(revision).stream().map(UserAccount::getId).collect(java.util.stream.Collectors.toSet());
+            recipients.addAll(getRevisionStakeholders(revision).stream().filter(user -> !coordinatorIds.contains(user.getId())).toList());
         }
 
         if (!StringUtils.hasText(templateType) || recipients.isEmpty()) {
@@ -3291,7 +3305,13 @@ public class RevisionService {
                     comment,
                     overrides
             );
-            emailNotificationService.sendDocumentWorkflowNotification(templateType, List.of(recipient), variables);
+            if (notificationEventCode != null) {
+                // One notice only: the registry event (wording, languages and channels of Notification Administration). Sending the old e-mail template as well
+                // gave every recipient two e-mails.
+                emailNotificationService.sendDocumentWorkflowEvent(List.of(recipient), variables);
+            } else {
+                emailNotificationService.sendDocumentWorkflowNotification(templateType, List.of(recipient), variables);
+            }
         }
     }
 
@@ -3464,10 +3484,8 @@ public class RevisionService {
     }
 
     /**
-     * A Reject sends the revision back to Draft and closes the round for everyone: the Author and
-     * Co-Authors must fix it, every Reviewer must know their round ended (they may be mid-review in
-     * Word Online, which is being revoked), and Document Control follows up. The rejecting user
-     * already knows and is left out.
+     * A rejection goes to the people who have to rework the file, the Author and the Co-Authors, and to Document Control (DEC-DOC-2026-11-27-06, -10). Not to the other
+     * Reviewers or the Approver. The person who rejected is not told.
      */
     private List<UserAccount> rejectionRecipients(DocumentRevisionRecord revision, UserAccount actor) {
         java.util.LinkedHashMap<UUID, UserAccount> byId = new java.util.LinkedHashMap<>();
@@ -3477,12 +3495,8 @@ public class RevisionService {
                 byId.putIfAbsent(user.getId(), user);
             }
         };
-        add.accept(revision.getAuthor());
-        if (revision.getDocument() != null) {
-            add.accept(revision.getDocument().getAuthor());
-        }
+        add.accept(revision.getAuthor() != null || revision.getDocument() == null ? revision.getAuthor() : revision.getDocument().getAuthor());
         getRevisionParticipants(revision, "CO_AUTHOR").forEach(add);
-        getRevisionParticipants(revision, "REVIEWER").forEach(add);
         getWorkflowCoordinatorRecipients(revision).forEach(add);
         return new ArrayList<>(byId.values());
     }
@@ -3712,26 +3726,26 @@ public class RevisionService {
             addBooleanPredicate(predicates, cb, root.get("hasCorrelatedDocuments"), correlatedDocument);
             addBooleanPredicate(predicates, cb, root.get("template"), isTemplate);
             if (StringUtils.hasText(trainingNumber)) {
-                predicates.add(cb.like(cb.lower(root.get("trainingNumber")), "%" + trainingNumber.trim().toLowerCase(java.util.Locale.ROOT) + "%"));
+                predicates.add(com.eqms.util.SearchText.like(cb, root.get("trainingNumber"), "%" + trainingNumber.trim().toLowerCase(java.util.Locale.ROOT) + "%"));
             }
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + normalize(search) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("documentNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentName")), pattern),
-                        cb.like(cb.lower(root.get("revisionName")), pattern),
-                        cb.like(cb.lower(root.get("revisionNumber")), pattern),
-                        cb.like(cb.lower(root.get("trainingNumber")), pattern),
-                        cb.like(cb.lower(typeJoin.get("name")), pattern),
-                        cb.like(cb.lower(typeJoin.get("shortCode")), pattern),
-                        cb.like(cb.lower(businessUnitJoin.get("name")), pattern),
-                        cb.like(cb.lower(businessUnitJoin.get("code")), pattern),
-                        cb.like(cb.lower(departmentJoin.get("name")), pattern),
-                        cb.like(cb.lower(departmentJoin.get("code")), pattern),
-                        cb.like(cb.lower(authorJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(authorJoin.get("username")), pattern),
-                        cb.like(cb.lower(openedByJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(root.get("description")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("revisionName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("revisionNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("trainingNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, typeJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, typeJoin.get("shortCode"), pattern),
+                        com.eqms.util.SearchText.like(cb, businessUnitJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, businessUnitJoin.get("code"), pattern),
+                        com.eqms.util.SearchText.like(cb, departmentJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, departmentJoin.get("code"), pattern),
+                        com.eqms.util.SearchText.like(cb, authorJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, authorJoin.get("username"), pattern),
+                        com.eqms.util.SearchText.like(cb, openedByJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("description"), pattern)
                 ));
             }
 
@@ -4789,10 +4803,12 @@ public class RevisionService {
         requireRevisionStatus(revision, "DRAFT");
         requireRevisionNotCompletedEditing(revision);
         ensureNoRevisionInProgress(document.getId(), revision.getId());
+        requireNoSourceFileYet(revision);
         RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = validateRevisionUpload(
                 currentUser, document, revision, file
         );
 
+        boolean firstFile = !StringUtils.hasText(revision.getFilePath());
         try {
             storeRevisionFile(revision, file, validatedFile);
             applyRevisionSnapshot(
@@ -4814,16 +4830,241 @@ public class RevisionService {
                     currentUser,
                     revisionFileAuditChanges(file, revision, validatedFile)
             );
+            if (firstFile) {
+                notifyCoAuthorsFileReady(revision, currentUser);
+            }
             return toDetailResponse(revision);
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to upload revision file", ex);
         }
     }
 
+    /**
+     * A short in-app confirmation to the person who did a step (submit, review, approve, reject, publish, upload): what was done on which document (DEC-DOC-2026-11-27-11).
+     * In-app only; it never blocks or undoes the step.
+     */
+    private void notifyActorDone(DocumentRevisionRecord revision, UserAccount actor, String done) {
+        if (notificationDispatcher == null || actor == null || done == null || revision == null || revision.getDocument() == null) {
+            return;
+        }
+        try {
+            Map<String, String> overrides = new HashMap<>();
+            overrides.put("documentNumber", Objects.toString(revision.getDocumentNumber(), Objects.toString(revision.getDocument().getDocumentNumber(), "")));
+            overrides.put("documentTitle", Objects.toString(revision.getDocumentName(), ""));
+            overrides.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
+            overrides.put("workflowAction", done);
+            overrides.put("relatedEntityType", "revision");
+            overrides.put("relatedEntityId", String.valueOf(revision.getId()));
+            overrides.put("actionUrl", "/documents/revisions/" + revision.getId());
+            notificationDispatcher.dispatch("document.my_action_done", List.of(actor), overrides);
+        } catch (Exception ex) {
+            log.warn("Action confirmation failed for revision {}", revision.getId(), ex);
+        }
+    }
+
+    /**
+     * Tells the Co-Authors of a Draft that its file is there and they can edit it together with the Author. Sent for the first file of the revision only: replacing
+     * the file later sends nothing. The person who uploaded is not told.
+     */
+    private void notifyCoAuthorsFileReady(DocumentRevisionRecord revision, UserAccount uploadedBy) {
+        notifyActorDone(revision, uploadedBy, "Revision File Uploaded");
+        if (notificationDispatcher == null || revision.getStatus() == null || !"DRAFT".equals(revision.getStatus().getCode())) {
+            return;
+        }
+        try {
+            List<UserAccount> coAuthors = revisionWorkflowParticipantRepository
+                    .findAllByRevision_IdAndParticipantTypeOrderBySequenceOrderAsc(revision.getId(), "CO_AUTHOR")
+                    .stream()
+                    .map(RevisionWorkflowParticipant::getUser)
+                    .filter(user -> user != null && user.getStatus() == com.eqms.entity.UserStatus.Active
+                            && (uploadedBy == null || !Objects.equals(user.getId(), uploadedBy.getId())))
+                    .toList();
+            if (coAuthors.isEmpty()) {
+                return;
+            }
+            Map<String, String> variables = new java.util.HashMap<>();
+            variables.put("documentNumber", Objects.toString(revision.getDocumentNumber(), ""));
+            variables.put("documentTitle", Objects.toString(revision.getDocumentName(), ""));
+            variables.put("revisionNumber", Objects.toString(revision.getRevisionNumber(), ""));
+            variables.put("actionUrl", "/documents/revisions/edit/" + revision.getId());
+            notificationDispatcher.dispatch("document.coauthor_edit_ready", coAuthors, variables);
+        } catch (Exception ex) {
+            // A notification never undoes an upload that succeeded.
+            log.warn("Co-author notification failed for revision {}", revision.getId(), ex);
+        }
+    }
+
+    /** Whether the next revision may start from the Effective revision's Word file; same permission as uploading a revision file. */
+    @Transactional(readOnly = true)
+    public com.eqms.dto.document.EffectiveSourceOptionResponse getEffectiveSourceOption(UUID documentId) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRecord document = requireDocument(documentId);
+        requireCurrentUserCanUploadRevision(document, currentUser);
+        DocumentRevisionRecord effective = revisionRepository
+                .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(documentId, "EFFECTIVE")
+                .orElse(null);
+        if (effective == null) {
+            return new com.eqms.dto.document.EffectiveSourceOptionResponse(false, "NO_EFFECTIVE_REVISION", null);
+        }
+        boolean docx = StringUtils.hasText(effective.getFilePath()) && isDocxTemplate(effective);
+        return new com.eqms.dto.document.EffectiveSourceOptionResponse(docx, docx ? null : "EFFECTIVE_HAS_NO_DOCX", effective.getRevisionNumber());
+    }
+
+    /** Same gates as {@link #uploadRevisionFile}: the file of an editable Draft is replaced by a copy of the Effective revision's Word file. */
+    @Transactional
+    public RevisionDetailResponse useEffectiveSourceForRevision(UUID revisionId) {
+        UserAccount currentUser = currentUserService.requireCurrentUser();
+        DocumentRevisionRecord revision = requireRevision(revisionId);
+        DocumentRecord document = requireDocument(revision.getDocument().getId());
+        requireDocumentAllowsRevisionFileUpload(document, revision);
+        requireCurrentUserCanUploadRevision(document, currentUser);
+        requireRevisionFileAccess(currentUser, revision, FileAccessAction.UPLOAD);
+        requireRevisionStatus(revision, "DRAFT");
+        requireRevisionNotCompletedEditing(revision);
+        ensureNoRevisionInProgress(document.getId(), revision.getId());
+        requireNoSourceFileYet(revision);
+        DocumentRevisionRecord source = requireEffectiveDocxSource(document.getId());
+
+        boolean firstFile = !StringUtils.hasText(revision.getFilePath());
+        RevisionUploadFileValidator.ValidatedRevisionFile validatedFile = copyEffectiveSourceFile(currentUser, source, revision);
+        revision.setParentRevision(source);
+        revision.setLastModifiedBy(currentUser);
+        revisionRepository.save(revision);
+        recordSourceCopiedFromEffective(currentUser, source, revision, validatedFile);
+        if (firstFile) {
+            notifyCoAuthorsFileReady(revision, currentUser);
+        }
+        return toDetailResponse(revision);
+    }
+
+    /** The file of a revision is uploaded once; afterwards, also after a Reject, it is changed by editing it (DEC-DOC-2026-11-27-09). */
+    private void requireNoSourceFileYet(DocumentRevisionRecord revision) {
+        if (StringUtils.hasText(revision.getFilePath())) {
+            throw new RevisionLifecycleConflictException("REVISION_SOURCE_ALREADY_UPLOADED",
+                    "This revision already has its file. Edit that file online; a new file cannot be uploaded.");
+        }
+    }
+
+    /** Found by status, never "the latest revision": that one may be a cancelled draft. */
+    private DocumentRevisionRecord requireEffectiveDocxSource(UUID documentId) {
+        DocumentRevisionRecord effective = revisionRepository
+                .findFirstByDocument_IdAndStatus_CodeOrderByCreatedAtDesc(documentId, "EFFECTIVE")
+                .orElseThrow(() -> new RevisionUploadValidationException("NO_EFFECTIVE_REVISION", "This document has no Effective revision."));
+        if (!StringUtils.hasText(effective.getFilePath()) || !isDocxTemplate(effective)) {
+            throw new RevisionUploadValidationException("EFFECTIVE_HAS_NO_DOCX",
+                    "The Effective revision has no Word (.docx) file. Upload a file instead.");
+        }
+        return effective;
+    }
+
+    /**
+     * Copies the Effective revision's Word file into the target's own storage object: the source must carry its recorded checksum, and the copy starts without tracked
+     * changes and comments (all accepted and removed; byte for byte when the source holds none). The two revisions never share an object: saving the Draft deletes the
+     * file it replaces, which must never be the Effective one. The copy is validated and scanned like an upload.
+     */
+    private RevisionUploadFileValidator.ValidatedRevisionFile copyEffectiveSourceFile(
+            UserAccount currentUser,
+            DocumentRevisionRecord source,
+            DocumentRevisionRecord target
+    ) {
+        try {
+            byte[] content = fileStorageService.readFile(source.getFilePath());
+            String previousFilePath = target.getFilePath();
+            String previousPreviewPath = target.getPreviewFilePath();
+            String fileName = buildRevisionSourceDisplayName(target, sanitizeFileName(source.getFileName()));
+            RevisionUploadFileValidator.ValidatedRevisionFile validatedFile =
+                    validateOnlyOfficeSyncedFile(currentUser, target, fileName, content);
+            if (!com.eqms.util.SourceChecksum.matches(source.getSourceFileChecksum(), content)) {
+                throw new RevisionUploadValidationException("REVISION_FILE_INTEGRITY_MISMATCH",
+                        "The stored file of the Effective revision does not match its recorded checksum. Contact an administrator.");
+            }
+            byte[] finalText = com.eqms.util.DocxMarkupCleaner.clean(content);
+            if (finalText != content) {
+                content = finalText;
+                validatedFile = validateOnlyOfficeSyncedFile(currentUser, target, fileName, content);
+            }
+            FileStorageService.StorageWriteResult stored;
+            try (InputStream inputStream = new ByteArrayInputStream(content)) {
+                stored = fileStorageService.storeRevisionSourceFile(target.getId(), fileName, inputStream, target.getDocumentNumber(), target.getRevisionNumber());
+            }
+            if (stored.storedPath().equals(source.getFilePath())) {
+                throw new IllegalStateException("The copy would share the storage object of the Effective revision");
+            }
+            if (!validatedFile.sha256().equalsIgnoreCase(stored.checksum())) {
+                deleteInvalidStoredFile(stored.storedPath());
+                throw new RevisionUploadValidationException("REVISION_FILE_INTEGRITY_MISMATCH",
+                        "The file changed while it was being copied. Please try again.");
+            }
+            target.setFileName(fileName);
+            target.setFilePath(stored.storedPath());
+            target.setPreviewFilePath(null);
+            target.setStoragePdfUrl(null);
+            target.setFileType(validatedFile.detectedContentType());
+            target.setFileSize((long) content.length);
+            target.setSourceStorageProvider(stored.provider());
+            target.setSourceStorageBucket(stored.bucket());
+            target.setSourceStorageObjectKey(stored.objectKey());
+            target.setSourceStorageVersionId(stored.versionId());
+            target.setSourceFileChecksum(stored.checksum());
+            target.setSourceUploadedAt(Instant.now());
+            revisionRepository.save(target);
+            if (!Objects.equals(previousFilePath, source.getFilePath())) {
+                deleteReplacedStoredFile(previousFilePath, stored.storedPath());
+                deleteReplacedStoredFile(previousPreviewPath, null);
+            }
+            return validatedFile;
+        } catch (IOException ex) {
+            log.error("Copying the file of effective revision {} into revision {} failed", source.getId(), target.getId(), ex);
+            throw new IllegalStateException("Failed to copy the Effective revision file", ex);
+        }
+    }
+
+    private void recordSourceCopiedFromEffective(
+            UserAccount currentUser,
+            DocumentRevisionRecord source,
+            DocumentRevisionRecord target,
+            RevisionUploadFileValidator.ValidatedRevisionFile validatedFile
+    ) {
+        String status = target.getStatus() == null ? null : target.getStatus().getCode();
+        // Identical means the copy has the recorded content of the source, whichever way that record was written.
+        boolean identical;
+        try {
+            identical = com.eqms.util.SourceChecksum.matches(source.getSourceFileChecksum(), fileStorageService.readFile(target.getFilePath()));
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read the copied revision file", ex);
+        }
+        recordRevisionHistory(
+                target,
+                "REVISION_SOURCE_COPIED_FROM_EFFECTIVE",
+                status,
+                status,
+                "Revision file copied from effective revision " + source.getRevisionNumber(),
+                currentUser,
+                List.of(
+                        new AuditTrailChangeResponse("Source Revision", "-", source.getRevisionNumber()),
+                        new AuditTrailChangeResponse("fileName", "-", firstNonBlank(target.getFileName(), "-")),
+                        new AuditTrailChangeResponse("sourceFileChecksum", "-", firstNonBlank(target.getSourceFileChecksum(), "-")),
+                        new AuditTrailChangeResponse("Tracked changes and comments", "-",
+                                identical
+                                        ? "None removed (identical copy)"
+                                        : "Accepted and removed from the copy (effective file checksum " + firstNonBlank(source.getSourceFileChecksum(), "not recorded") + ")"),
+                        new AuditTrailChangeResponse("docxOoxmlValidation", "-", "PASSED"),
+                        new AuditTrailChangeResponse("malwareScan", "-", validatedFile.malwareScanPerformed() ? "CLEAN" : "DISABLED_BY_CONFIGURATION")
+                )
+        );
+    }
+
     @Transactional
     public RevisionDetailResponse createRevisionAndUploadFile(UUID documentId, MultipartFile file, RevisionCreationRequest request) {
-        if ((file == null || file.isEmpty()) && (request == null || !StringUtils.hasText(request.templateRevisionId()))) {
+        boolean useEffectiveSource = request != null && request.useEffectiveSource();
+        boolean hasUpload = file != null && !file.isEmpty();
+        boolean hasTemplate = request != null && StringUtils.hasText(request.templateRevisionId());
+        if (!hasUpload && !hasTemplate && !useEffectiveSource) {
             throw new RevisionUploadValidationException("REVISION_FILE_REQUIRED", "A DOCX source file is required.");
+        }
+        if (useEffectiveSource && (hasUpload || hasTemplate)) {
+            throw new RevisionUploadValidationException("REVISION_SOURCE_CHOICE_CONFLICT",
+                    "Choose one source: the Effective revision file, an uploaded file or a template.");
         }
 
         UserAccount currentUser = currentUserService.requireCurrentUser();
@@ -4853,6 +5094,8 @@ public class RevisionService {
                     : templateSelectionComment;
         }
 
+        DocumentRevisionRecord effectiveSource = useEffectiveSource ? requireEffectiveDocxSource(documentId) : null;
+
         DocumentRevisionRecord revision = new DocumentRevisionRecord();
         revision.setId(UUID.randomUUID());
         applyRevisionSnapshot(
@@ -4864,14 +5107,16 @@ public class RevisionService {
                 resolveNextDraftRevisionNumber(documentId)
         );
         revision.setDocumentNumber(document.getDocumentNumber());
-        revision.setParentRevision(latestRevision);
+        revision.setParentRevision(effectiveSource != null ? effectiveSource : latestRevision);
         revisionRepository.save(revision);
         if (trainingHooks != null) {
             trainingHooks.onRevisionCreated(revision, currentUser);
         }
 
         try {
-            if (templateRevision != null) {
+            if (effectiveSource != null) {
+                validatedFile = copyEffectiveSourceFile(currentUser, effectiveSource, revision);
+            } else if (templateRevision != null) {
                 try {
                     validatedFile = cloneRevisionFile(templateRevision, revision);
                     recordTemplateLineage(templateRevision, revision, currentUser);
@@ -4912,7 +5157,9 @@ public class RevisionService {
                 revisionComment,
                 currentUser
         );
-        if (StringUtils.hasText(revision.getFilePath())) {
+        if (effectiveSource != null) {
+            recordSourceCopiedFromEffective(currentUser, effectiveSource, revision, validatedFile);
+        } else if (StringUtils.hasText(revision.getFilePath())) {
             recordRevisionHistory(
                     revision,
                     "REVISION_SOURCE_FILE_UPLOADED",
@@ -4922,6 +5169,9 @@ public class RevisionService {
                     currentUser,
                     revisionFileAuditChanges(file, revision, validatedFile)
             );
+        }
+        if (StringUtils.hasText(revision.getFilePath())) {
+            notifyCoAuthorsFileReady(revision, currentUser);
         }
         return toDetailResponse(revision);
     }
@@ -5248,9 +5498,27 @@ public class RevisionService {
         UserAccount actor = (editingUserId == null ? java.util.Optional.<UserAccount>empty() : userAccountRepository.findById(editingUserId))
                 .or(() -> userAccountRepository.findById(userId))
                 .orElseThrow(() -> new IllegalStateException("OnlyOffice access token references an unknown user"));
+        if (wasFileReplacedSince(revisionId, onlyOfficeDocumentEditService.accessTokenIssuedAt(token))) {
+            // This session still holds the file as it was before the replacement: saving it would silently bring the old file back. The save is dropped, not retried.
+            log.warn("DROPPING OnlyOffice save for revision {}: its file was replaced after this editing session opened", revisionId);
+            String status = revision.getStatus() == null ? null : revision.getStatus().getCode();
+            recordRevisionHistory(revision, "ONLYOFFICE_STALE_SAVE_REFUSED", status, status,
+                    "Changes of an editing session opened before the file was replaced were not saved", actor);
+            return;
+        }
         applyOnlyOfficeEditedContent(revision, fileBytes, actor);
     }
 
+
+    /** The history entries written when the file of a revision is replaced by something other than the editor's own saving. */
+    private static final Set<String> FILE_REPLACEMENT_ACTIONS = Set.of("REVISION_SOURCE_FILE_UPLOADED", "REVISION_SOURCE_COPIED_FROM_EFFECTIVE");
+
+    private boolean wasFileReplacedSince(UUID revisionId, Instant sessionOpened) {
+        // The token keeps whole seconds, so the comparison does too: an upload and the first opening within one second are not a replacement.
+        return revisionWorkflowHistoryRepository.findAllByRevision_IdOrderByCreatedAtAsc(revisionId).stream()
+                .anyMatch(entry -> FILE_REPLACEMENT_ACTIONS.contains(entry.getActionType()) && entry.getCreatedAt() != null
+                        && entry.getCreatedAt().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).isAfter(sessionOpened));
+    }
 
     /**
      * Applies the single, policy-controlled watermark to the transient preview response.
@@ -5949,7 +6217,8 @@ public class RevisionService {
             // OnlyOffice fetches that URL over HTTP in a separate transaction, so it cannot see a
             // revision created (and not yet committed) by the caller -- e.g. Legacy Import, which
             // renders each published PDF inside the same transaction that creates the revision.
-            return onlyOfficeDocumentEditService.convertLocalFileToPdf(sourcePath, displayName);
+            Path finalText = com.eqms.util.DocxSignature.isDocx(sourcePath) ? com.eqms.util.DocxMarkupCleaner.cleanedCopy(sourcePath) : sourcePath;
+            return onlyOfficeDocumentEditService.convertLocalFileToPdf(finalText, displayName);
         } catch (RuntimeException ex) {
             throw new IOException("Failed to convert revision file to PDF via OnlyOffice", ex);
         }

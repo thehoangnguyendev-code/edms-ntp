@@ -41,8 +41,8 @@ public class TrainingSpecimenController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestPart(value = "file2", required = false) MultipartFile file2, @RequestParam(required = false) UUID personId, @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, file2, reason));
+    public ResponseEntity<?> upload(@RequestPart("file") MultipartFile file, @RequestPart(value = "file2", required = false) MultipartFile file2, @RequestParam(required = false) UUID personId, @RequestParam(required = false) String reason, @RequestParam(defaultValue = "false") boolean headSigned) {
+        return ResponseEntity.ok(specimens.upload(users.requireCurrentUser(), personId, file, file2, reason, headSigned));
     }
 
     /** The specimen signature in force of a person, to open it beside a scan; an empty answer when there is none. */

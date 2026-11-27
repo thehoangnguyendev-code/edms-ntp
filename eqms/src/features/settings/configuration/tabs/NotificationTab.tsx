@@ -19,8 +19,8 @@ import { IconBellShare } from '@tabler/icons-react';
 import { tr } from "@/i18n";
 
 const TABS = [
-  { id: 'channels-delivery', label: tr('Channels & Delivery'), icon: IconBellShare },
-  { id: 'email', label: tr('Email (SMTP)'), icon: Mail },
+  { id: 'channels-delivery', get label() { return tr('Channels & Delivery'); }, icon: IconBellShare },
+  { id: 'email', get label() { return tr('Email (SMTP)'); }, icon: Mail },
   HISTORY_TAB,
 ] as const;
 
@@ -165,7 +165,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = ({ config, onChan
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Public App URL")}</label>
                 <input type="url" value={config.publicAppUrl || ''} onChange={(e) => handleChange('publicAppUrl', e.target.value)} className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500" placeholder="http://localhost:3000" />
-                <p className="text-xs text-slate-500 mt-1">{tr("Public URL used in controlled copy preview emails and external links")}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("Public URL used in controlled copy preview emails and external links")}</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

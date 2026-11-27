@@ -24,8 +24,8 @@ import { tr, trFormat } from "@/i18n";
 import { statusColors } from "@/components/ui/badge/statusColors";
 import type { BadgeColor } from "@/components/ui/badge/Badge";
 
-const STATUS_LABEL: Record<string, string> = localized({ MISSING: "Not trained", DUE: "Annual training due", OK: "Trained" });
-const STATUS_COLOR = statusColors("MISSING", "DUE", "OK") as Record<string, BadgeColor>;
+const STATUS_LABEL: Record<string, string> = localized({ MISSING: "Not trained", UPDATE_NEEDED: "New revision not trained", DUE: "Annual training due", OK: "Trained" });
+const STATUS_COLOR = statusColors("MISSING", "UPDATE_NEEDED", "DUE", "OK") as Record<string, BadgeColor>;
 /** One total of the gaps with its colour bar on the left, the same figure style as the Summary tab. */
 function GapStat({ value, label, tone }: { value: number; label: string; tone: "red" | "amber" | "slate" }) {
   const bar = { red: "border-red-600", amber: "border-amber-500", slate: "border-slate-300" }[tone];
@@ -86,6 +86,7 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
   const chooseTraining = (id: string) => { setRowId(id); table.setCurrentPage(1); };
   const trainingNow = trainings?.data.find((t) => t.id === rowId);
   const totalMissing = (trainings?.data ?? []).reduce((sum, t) => sum + t.missing, 0);
+  const totalUpdate = (trainings?.data ?? []).reduce((sum, t) => sum + (t.updateNeeded ?? 0), 0);
   const totalDue = (trainings?.data ?? []).reduce((sum, t) => sum + t.due, 0);
   const sorted = (key: string) => ({ direction: table.sortConfig.key === key ? table.sortConfig.direction : undefined, onSort: () => table.handleSort(key) });
 
@@ -166,9 +167,10 @@ export function ComplianceGapsTab({ departmentId, departmentFilter, registerPrin
       <div className="space-y-4 md:space-y-5">
       {trainings && trainings.data.length > 0 && (
         <>
-          <div className="grid grid-cols-3 gap-x-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
             <GapStat value={trainings.data.length} label={tr("Required training with a gap")} tone="slate" />
             <GapStat value={totalMissing} label={tr("not trained")} tone={totalMissing > 0 ? "red" : "slate"} />
+            <GapStat value={totalUpdate} label={tr("new revision not trained")} tone={totalUpdate > 0 ? "amber" : "slate"} />
             <GapStat value={totalDue} label={tr("annual training due")} tone={totalDue > 0 ? "amber" : "slate"} />
           </div>
           <TrainingChips

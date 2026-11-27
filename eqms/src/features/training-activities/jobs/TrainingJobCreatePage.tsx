@@ -1,7 +1,7 @@
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Briefcase, Repeat, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -59,6 +59,8 @@ export function TrainingJobCreatePage() {
   const [picked, setPicked] = useState<Record<string, TrainingPosition>>({});
   const [people, setPeople] = useState<{ label: string; value: string }[]>([]);
   const [personId, setPersonId] = useState("");
+  // A link from an alert names the person (?person=<id>&name=<full name>): the person is chosen already.
+  const [linkParams] = useSearchParams();
   // The chosen person is kept apart from the search results: a later search must not lose what the summary shows.
   const [found, setFound] = useState<Record<string, TrainingPerson>>({});
   // One assignment can give several Work Positions: they are listed, and each is checked against the matrix of its department.
@@ -85,8 +87,12 @@ export function TrainingJobCreatePage() {
     return mapped;
   }, []);
   useEffect(() => {
-    void searchPeople("");
-  }, [searchPeople]);
+    const wanted = linkParams.get("person");
+    const name = linkParams.get("name") ?? "";
+    void searchPeople(name).then((list) => {
+      if (wanted && list.some((p) => p.value === wanted)) setPersonId(wanted);
+    });
+  }, [searchPeople, linkParams]);
   useEffect(() => {
     setHeld([]);
     setReplaces("");

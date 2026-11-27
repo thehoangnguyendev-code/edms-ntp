@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -33,9 +34,9 @@ import { statusColors } from "@/components/ui/badge/statusColors";
 const ALL = "ALL";
 const STATUS_OPTIONS = [
   { label: "All", value: ALL },
-  { label: tr("Waiting to finalize"), value: "PENDING_FINALIZATION" },
+  { get label() { return tr("Waiting to finalize"); }, value: "PENDING_FINALIZATION" },
   { label: "Finalized", value: "FINALIZED" },
-  { label: tr("Rolled back"), value: "ROLLED_BACK" },
+  { get label() { return tr("Rolled back"); }, value: "ROLLED_BACK" },
 ];
 const STATUS_COLOR = statusColors("PENDING_FINALIZATION", "FINALIZED", "ROLLED_BACK");
 const STATUS_TEXT: Record<ProductionRestoreStatus, string> = {
@@ -68,17 +69,17 @@ const MEANING: Record<Signing["kind"], { code: string; name: string; verb: strin
  */
 export const ProductionRestoresView: React.FC = () => {
   const { showToast } = useToast();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("ProductionRestoresView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState(ALL);
-  const [part, setPart] = useState(ALL);
-  const [restoredFrom, setRestoredFrom] = useState("");
-  const [restoredTo, setRestoredTo] = useState("");
-  const [closedFrom, setClosedFrom] = useState("");
-  const [closedTo, setClosedTo] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "restoredAt", direction: "desc" });
+  const [status, setStatus] = useViewState("ProductionRestoresView.status", ALL);
+  const [part, setPart] = useViewState("ProductionRestoresView.part", ALL);
+  const [restoredFrom, setRestoredFrom] = useViewState("ProductionRestoresView.restoredFrom", "");
+  const [restoredTo, setRestoredTo] = useViewState("ProductionRestoresView.restoredTo", "");
+  const [closedFrom, setClosedFrom] = useViewState("ProductionRestoresView.closedFrom", "");
+  const [closedTo, setClosedTo] = useViewState("ProductionRestoresView.closedTo", "");
+  const [page, setPage] = useViewState("ProductionRestoresView.page", 1);
+  const [pageSize, setPageSize] = useViewState("ProductionRestoresView.pageSize", 10);
+  const [sort, setSort] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("ProductionRestoresView.sort", { key: "restoredAt", direction: "desc" });
   const [rows, setRows] = useState<ProductionRestoreRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -144,7 +145,7 @@ export const ProductionRestoresView: React.FC = () => {
     };
   }, [debouncedSearch, status, part, restoredFrom, restoredTo, closedFrom, closedTo, sort, page, pageSize, reload]);
 
-  useEffect(() => setPage(1), [debouncedSearch, status, part, restoredFrom, restoredTo, closedFrom, closedTo, pageSize]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, status, part, restoredFrom, restoredTo, closedFrom, closedTo, pageSize]);
 
   const sortFor = (key: SortKey) => ({
     direction: sort.key === key ? sort.direction : undefined,

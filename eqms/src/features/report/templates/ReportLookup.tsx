@@ -114,7 +114,7 @@ export function ReportLookup({
           {error}
         </p>
       ) : (
-        <p className="text-xs text-slate-500">
+        <p className="!mt-1.5 text-xs text-slate-500">
           {loading
             ? "Loading…"
             : tr("Up to 100 scoped matches. Search to find more.")}

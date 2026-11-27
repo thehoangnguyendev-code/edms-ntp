@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Eye } from "lucide-react";
@@ -20,11 +21,11 @@ export const ExecutedRecordsTab: React.FC<{ formDocumentId?: string; controlledC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [currentPage, setCurrentPage] = useViewState("ExecutedRecordsTab.currentPage", 1);
+  const [itemsPerPage] = useViewState("ExecutedRecordsTab.itemsPerPage", 20);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "created", direction: "desc" });
+  const [sortConfig, setSortConfig] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("ExecutedRecordsTab.sortConfig", { key: "created", direction: "desc" });
   const [previewRecord, setPreviewRecord] = useState<ExecutedRecord | null>(null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);

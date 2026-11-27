@@ -79,7 +79,7 @@ export const LocalizationTab: React.FC<LocalizationTabProps> = ({ onRegisterSave
           onChange={chooseLanguage}
           enableSearch={false}
         />
-        <p className="text-xs text-slate-500">{t('preferences.languageHint', 'The interface language for your account.')}</p>
+        <p className="!mt-1.5 text-xs text-slate-500">{t('preferences.languageHint', 'The interface language for your account.')}</p>
       </div>
     </FormSection>
 

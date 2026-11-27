@@ -189,7 +189,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder={tr("EQMS Enterprise")}
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Internal system identifier")}
                   </p>
                 </div>
@@ -204,7 +204,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder={tr("EQMS - Quality Management System")}
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Displayed in browser tab title")}
                   </p>
                 </div>
@@ -222,7 +222,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                 className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder={DEFAULT_SYSTEM_HEADER_TITLE}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-slate-500">
                 {trFormat("Shown in the top bar of the Dashboard on desktop, and stays there while the page is scrolled. Leave empty to use “{title}”.", { title: DEFAULT_SYSTEM_HEADER_TITLE })}
               </p>
             </div>
@@ -240,7 +240,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder={tr("© {year} Your Company. All rights reserved.")}
                   />
-                  <p className="mt-1 text-xs text-slate-500">{trFormat("Shown at the left of the footer. Use {year} to insert the current year.", { year: "{year}" })}</p>
+                  <p className="mt-1.5 text-xs text-slate-500">{trFormat("Shown at the left of the footer. Use {year} to insert the current year.", { year: "{year}" })}</p>
                 </div>
                 <div>
                   <label htmlFor="systemFooterRight" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{tr("Right Footer")}</label>
@@ -253,7 +253,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     className="w-full h-9 px-3 text-sm text-right border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder={tr("e.g. Version, hotline or support e-mail")}
                   />
-                  <p className="mt-1 text-xs text-slate-500">{tr("Always shown at the right of the footer. Leave empty to show nothing there.")}</p>
+                  <p className="mt-1.5 text-xs text-slate-500">{tr("Always shown at the right of the footer. Leave empty to show nothing there.")}</p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
@@ -501,7 +501,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onVali
                     className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="admin@example.com"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Receives the e-mail about maintenance windows and restore requests")}
                   </p>
                 </div>

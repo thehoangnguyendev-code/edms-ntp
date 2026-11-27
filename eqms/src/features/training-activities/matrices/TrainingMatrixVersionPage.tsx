@@ -40,13 +40,15 @@ import { tr, trFormat } from "@/i18n";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft",
+  PENDING_REVIEW: "Pending Review",
   PENDING_APPROVAL: "Pending Approval",
   EFFECTIVE: "Effective",
   OBSOLETED: "Obsoleted",
 };
 
 const NEXT_STEP: Record<string, string> = {
-  DRAFT: "This version is a draft. Edit the matrix, save it, then submit it for approval with an electronic signature.",
+  DRAFT: "This version is a draft. Edit the matrix, save it, then send it for review with an electronic signature.",
+  PENDING_REVIEW: "This version is waiting for the reviewer, who chooses the person who approves it. It cannot be changed until it is approved or sent back.",
   PENDING_APPROVAL: "This version is waiting for the approver. It cannot be changed until it is approved or sent back.",
   EFFECTIVE: "This version is in use: it tells who must be trained on what. To change the matrix, upgrade the revision.",
   OBSOLETED: "This version was replaced by a newer one and stays as history. It cannot be changed.",
@@ -57,6 +59,7 @@ type Dialog =
   | "addTopic"
   | "addDocument"
   | "submit"
+  | "review"
   | "reject"
   | "upgrade"
   | "applyLocked"
@@ -227,6 +230,10 @@ export function TrainingMatrixVersionPage() {
     setRows(rows.map((r, i) => (i !== rowIndex ? r : { ...r, locked: value })));
     setDirty(true);
   };
+  const setGmp = (rowIndex: number, value: boolean) => {
+    setRows(rows.map((r, i) => (i !== rowIndex ? r : { ...r, gmp: value })));
+    setDirty(true);
+  };
   const body = () => ({
     version: version.version,
     changeReason: reason.trim() || undefined,
@@ -239,6 +246,7 @@ export function TrainingMatrixVersionPage() {
       positionIds: r.positionIds,
       allEmployees: Boolean(r.allEmployees),
       locked: Boolean(r.locked),
+      gmp: Boolean(r.gmp),
     })),
   });
 
@@ -277,7 +285,12 @@ export function TrainingMatrixVersionPage() {
               : setDialog("submit")
           }
         >
-          {tr("Submit for Approval")}
+          {tr("Submit for Review")}
+        </Button>
+      )}
+      {caps.review && (
+        <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => setDialog("review")}>
+          {tr("Complete Review")}
         </Button>
       )}
       {caps.approve && (
@@ -468,6 +481,9 @@ export function TrainingMatrixVersionPage() {
               ) : undefined}
               </div>
             </div>
+            {version.scope === "FACTORY" && (
+              <p className="mx-4 mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">{tr("This is the factory-wide list: every row is required of every employee of every department, once a version is approved.")}</p>
+            )}
             {positions.length === 0 ? (
               <p className="p-4 text-sm text-amber-700">
                 {tr("This department has no Work Position yet. A Training Administrator creates them under Training Administration, Work Positions.")}
@@ -475,6 +491,15 @@ export function TrainingMatrixVersionPage() {
             ) : rows.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">{tr("No row yet.")}</p>
             ) : (
+              <>
+              {(version.factoryRows?.length ?? 0) > 0 && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  <p className="font-medium text-slate-900">{trFormat("Factory-wide training that also applies ({count})", { count: version.factoryRows?.length ?? 0 })}</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {version.factoryRows?.map((r) => <li key={r.id}>{r.documentNumber ? `${r.documentNumber} — ${r.documentName}` : r.topicText}</li>)}
+                  </ul>
+                </div>
+              )}
               <TrainingMatrixGrid
                 rows={rows}
                 positions={positions}
@@ -484,6 +509,7 @@ export function TrainingMatrixVersionPage() {
                 onToggle={toggle}
                 onAllEmployees={setAllEmployees}
                 onLock={setLocked}
+                onGmp={setGmp}
                 canLock={hasPermission("training.admin.manage")}
                 lockedPositionIds={hasPermission("training.admin.manage") ? [] : positions.filter((p) => p.seniorManagement).map((p) => p.id)}
                 onAnnual={(index, annual) => {
@@ -499,6 +525,7 @@ export function TrainingMatrixVersionPage() {
                   setDirty(true);
                 }}
               />
+              </>
             )}
           </div>
         )}
@@ -549,14 +576,15 @@ export function TrainingMatrixVersionPage() {
       )}
       {dialog === "submit" && (
         <SubmitDialog
+          stage="review"
           versionId={version.id}
           busy={busy}
           onClose={() => setDialog(undefined)}
           onSubmit={(approver) => {
             setDialog(undefined);
             setSign({
-              title: tr("Send Matrix for Approval"),
-              changes: statusChange("Draft", "Pending Approval"),
+              title: tr("Send Matrix for Review"),
+              changes: statusChange("Draft", "Pending Review"),
               code: "TRAINING_MATRIX_PREPARED",
               name: "Training Matrix Prepared",
               run: (t) =>
@@ -566,6 +594,24 @@ export function TrainingMatrixVersionPage() {
                   t,
                   approver,
                 ),
+            });
+          }}
+        />
+      )}
+      {dialog === "review" && (
+        <SubmitDialog
+          stage="approve"
+          versionId={version.id}
+          busy={busy}
+          onClose={() => setDialog(undefined)}
+          onSubmit={(approver) => {
+            setDialog(undefined);
+            setSign({
+              title: tr("Complete Review of the Matrix"),
+              changes: statusChange("Pending Review", "Pending Approval"),
+              code: "TRAINING_MATRIX_REVIEWED",
+              name: "Training Matrix Reviewed",
+              run: (t) => trainingMatrixApi.review(version.id, version.version, t, approver),
             });
           }}
         />
@@ -764,11 +810,14 @@ function AddDocumentDialog({
 }
 
 function SubmitDialog({
+  stage,
   versionId,
   busy,
   onClose,
   onSubmit,
 }: {
+  /** "review": a draft is sent and the next person reviews it; "approve": the version is reviewed and the next person approves it. */
+  stage: "review" | "approve";
   versionId: string;
   busy: boolean;
   onClose: () => void;
@@ -796,21 +845,26 @@ function SubmitDialog({
     <FormModal
       isOpen
       onClose={onClose}
-      title={tr("Send for Approval")}
-      description={tr("Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you.")}
+      title={stage === "review" ? tr("Send for Review") : tr("Send for Approval")}
+      description={stage === "review"
+        ? tr("Choose who reviews this version. Only people the system found eligible are listed: they manage matrices in this department and are not you.")
+        : tr("Choose who approves this version. Only people the system found eligible are listed: they hold the approval permission, are in this department, and are not you.")}
       confirmText={tr("Continue to Signature")}
       isLoading={busy}
       confirmDisabled={!id}
       size="md"
       onConfirm={() => onSubmit(id)}
     >
+      {stage === "approve" && id && !people.find((p) => p.id === id)?.role && (
+        <p role="status" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{tr("SOP.0003 asks the Head of the Quality Assurance department to approve the matrix. You can choose another person; the choice is recorded.")}</p>
+      )}
       {loaded && people.length === 0 ? (
         <p className="text-sm text-amber-700">
-          {tr("No eligible person was found. A person needs the permission to approve matrices in this department.")}
+          {stage === "review" ? tr("No eligible person was found. A person needs the permission to manage matrices in this department.") : tr("No eligible person was found. A person needs the permission to approve matrices in this department.")}
         </p>
       ) : (
         <Select
-          label={tr("Approver")}
+          label={stage === "review" ? tr("Reviewer") : tr("Approver")}
           value={id}
           onChange={setId}
           options={people.map((p) => ({

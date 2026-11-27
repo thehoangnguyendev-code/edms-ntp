@@ -201,6 +201,11 @@ class GlobalSearchServiceTest {
     }
 
     @Test
+    void theReportTemplatesAreAskedWithAPageSizeTheirListAccepts() {
+        assertTrue(Set.of(10, 20, 50, 100).contains(GlobalSearchService.TEMPLATE_CANDIDATES));
+    }
+
+    @Test
     void aKindWithNoScreenPerRecordOpensTheListScreenOfItsMenuPage() {
         when(navigation.getNavigation(any(UserAccount.class), any())).thenReturn(List.of(
                 new NavigationItemResponse("dict-departments", "Departments", null, "/settings/dictionaries/departments", false, null)));

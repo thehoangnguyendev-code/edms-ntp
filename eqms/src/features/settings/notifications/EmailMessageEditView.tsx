@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { tr as __ariaTr } from "@/i18n";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -261,7 +262,7 @@ export const EmailMessageEditView: React.FC = () => {
     }
   };
 
-  const back = () => go(`${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`);
+  const back = () => navigateBack(go, null, `${ROUTES.SETTINGS.NOTIFICATIONS}?tab=email`);
 
   if (error) {
     return (
@@ -413,7 +414,7 @@ export const EmailMessageEditView: React.FC = () => {
                   <span className="text-xs font-medium text-slate-700 sm:text-sm">
                     {tr("Active")}
                   </span>
-                  <p className="mt-0.5 text-2xs text-slate-500 sm:text-xs">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("When turned off, the system does not send this email.")}
                   </p>
                 </div>

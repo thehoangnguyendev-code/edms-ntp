@@ -1082,7 +1082,8 @@ public class WorkflowActionPolicyService {
             // the name of the menu the module is under (the same names as the screens: utils/moduleDisplay.ts)
             if ("REPORT".equals(key)) return "Reports";
             if ("TRAINING".equals(key)) return "Training Management";
-            if ("SECURITY_REVIEW".equals(key)) return "Access Review & Audit Trail Review";
+            if ("SECURITY".equals(key)) return "Security & Authorization";
+            if ("AUDIT_TRAIL".equals(key)) return "Audit Trail";
             return "DOCUMENT_CONTROL".equals(key) ? "Document Control" : pretty(key);
         }
 

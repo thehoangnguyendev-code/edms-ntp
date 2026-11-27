@@ -90,7 +90,7 @@ class AuditNotificationBridgeTest {
         ArgumentCaptor<Map<String, String>> variables = ArgumentCaptor.forClass(Map.class);
         verify(dispatcher).dispatchIndependently(eq("backup.restore_requested"), eq(List.of(actor)), variables.capture());
         assertThat(variables.getValue()).containsEntry("title", "Restore requested").containsEntry("actorName", "Nguyen Van A").containsEntry("entityName", "RS-0001")
-                .containsEntry("actionName", "Restore requested").containsEntry("actionComment", "for the rehearsal").containsEntry("actionUrl", "/settings/administration/backup/restore");
+                .containsEntry("actionName", "Restore requested").containsEntry("actionComment", "for the rehearsal").containsEntry("actionUrl", "/backup-restore/production-restores");
         assertThat(variables.getValue().get("message")).isEqualTo("Nguyen Van A - RS-0001: for the rehearsal");
     }
 

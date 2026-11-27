@@ -398,7 +398,8 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("ok.pdf"), pdf("blurry.pdf")]);
 
-    expect(await screen.findByRole("button", { name: /Recall 1 controlled copy/i })).toBeDisabled();
+    // The completed upload deliberately remains visible for 900 ms before this button appears.
+    expect(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }, { timeout: 3000 })).toBeDisabled();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Exclude" })[1]);
 
@@ -452,7 +453,7 @@ describe("Recall by Scan", () => {
 
     expect(mocks.navigateTo).not.toHaveBeenCalled();
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Leave" }));
-    expect(mocks.navigateTo).toHaveBeenCalledWith("/documents/controlled-copies/all");
+    expect(mocks.navigateTo).toHaveBeenCalledWith("/documents/controlled-copies/all", { replace: true });
   });
 
   it("stops at the first file that fails and leaves the rest chosen for a retry", async () => {
@@ -640,7 +641,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("scan-1.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }, { timeout: 3000 }));
 
     const proceed = screen.getByRole("button", { name: "Continue to Sign" });
     expect(proceed).toBeDisabled();
@@ -660,7 +661,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf"), pdf("b.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 2 controlled copies/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 2 controlled copies/i }, { timeout: 3000 }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     expect(screen.getByText("signing RCB-2026-00001")).toBeInTheDocument();
@@ -680,7 +681,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }, { timeout: 3000 }));
     // Pick the 1st of the previous month in the date picker (dd/MM/yyyy on screen, an ISO date in the request).
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -705,7 +706,7 @@ describe("Recall by Scan", () => {
     render(<ControlledCopyRecallScanView />);
     await upload([pdf("a.pdf")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Recall 1 controlled copy/i }, { timeout: 3000 }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Continue to Sign" }));
     fireEvent.click(screen.getByText("sign"));

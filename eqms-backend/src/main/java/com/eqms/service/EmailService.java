@@ -183,11 +183,13 @@ public class EmailService {
         return sendRenderedEmail(to, subject, htmlBody, null, null);
     }
 
-    private String framed(String body) {
+    private String framed(String body, String recipientName) {
         if (body == null || com.eqms.util.EmailFrameRenderer.isFullDocument(body)) {
             return body;
         }
         String content = com.eqms.util.EmailFrameRenderer.paragraphs(body);
+        content = com.eqms.util.EmailFrameRenderer.withGreeting(content, recipientName,
+                body.contains(com.eqms.util.EmailFrameRenderer.VIETNAMESE_MARK));
         return emailDesignService == null ? com.eqms.util.EmailFrameRenderer.render(null, content) : emailDesignService.frame(content);
     }
 
@@ -215,7 +217,7 @@ public class EmailService {
         helper.setTo(to);
         helper.setSubject(stripHeaderInjectionChars(subject));
         // every mail has the one look of the system: a body that is not already a whole page is put in the shared frame
-        helper.setText(framed(htmlBody), true);
+        helper.setText(framed(htmlBody, to), true);
         helper.setFrom(senderEmail, senderName);
         if (attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentFileName)) {
             helper.addAttachment(attachmentFileName, new org.springframework.core.io.ByteArrayResource(attachmentBytes));

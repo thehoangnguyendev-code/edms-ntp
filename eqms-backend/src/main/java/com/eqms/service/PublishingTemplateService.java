@@ -631,11 +631,11 @@ public class PublishingTemplateService {
             if (StringUtils.hasText(normalizedSearch)) {
                 String like = "%" + normalizedSearch.toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("templateName")), like),
-                        cb.like(cb.lower(root.get("description")), like),
-                        cb.like(cb.lower(root.get("documentType")), like),
-                        cb.like(cb.lower(root.get("createdBy")), like),
-                        cb.like(cb.lower(root.get("updatedBy")), like)
+                        com.eqms.util.SearchText.like(cb, root.get("templateName"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("description"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("documentType"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("createdBy"), like),
+                        com.eqms.util.SearchText.like(cb, root.get("updatedBy"), like)
                 ));
             }
             if (StringUtils.hasText(status) && !"ALL".equalsIgnoreCase(status)) {
@@ -648,7 +648,7 @@ public class PublishingTemplateService {
                 predicates.add(cb.equal(cb.lower(root.get("documentType")), documentType.trim().toLowerCase(Locale.ROOT)));
             }
             if (StringUtils.hasText(createdBy)) {
-                predicates.add(cb.like(cb.lower(root.get("createdBy")), "%" + createdBy.trim().toLowerCase(Locale.ROOT) + "%"));
+                predicates.add(com.eqms.util.SearchText.like(cb, root.get("createdBy"), "%" + createdBy.trim().toLowerCase(Locale.ROOT) + "%"));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   useInRouterContext,
@@ -18,6 +19,7 @@ import { useDocumentPermissions } from "@/features/documents/shared/useDocumentP
 import { useRevisionActionCapabilities } from "@/hooks/useRevisionActionCapabilities";
 import { createRevision } from "@/components/ui/breadcrumb/breadcrumbs.config";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
+import { AlertModal } from "@/components/ui/modal/AlertModal";
 import { ROUTES } from "@/app/routes.constants";
 import { documentApi } from "@/services/api/documents";
 import {
@@ -70,7 +72,7 @@ import {
 } from "@/features/documents/shared/detailSnapshotHelpers";
 import { subscribeNotificationRealtime } from "@/features/notifications/notificationRealtime";
 import { isLiveViewStage } from "@/features/documents/shared/liveDocumentView";
-import { tr } from "@/i18n";
+import { tr, trFormat } from "@/i18n";
 
 type TabType =
   | "general"
@@ -770,8 +772,10 @@ const RevisionCreateViewContent: React.FC = () => {
     Boolean(revisionDisplay?.id) &&
     hasRevisionSource &&
     canCurrentUserEditDraftFile;
+  // DEC-DOC-2026-11-27-09: a file is uploaded once; a Draft that has one (also after a Reject) is changed by editing that file.
   const canReplaceRevisionFile =
     Boolean(revisionDisplay?.id) &&
+    !hasRevisionSource &&
     isEditable &&
     !editingCompleted &&
     resolveRevisionCapability("uploadSource");
@@ -818,6 +822,54 @@ const RevisionCreateViewContent: React.FC = () => {
       if (replaceFileInputRef.current) {
         replaceFileInputRef.current.value = "";
       }
+    }
+  };
+
+  // A Draft that already exists (for example one made by an upgrade session) can also start from the Effective revision's file.
+  const [effectiveSource, setEffectiveSource] = useState<{ available: boolean; revisionNumber?: string | null } | null>(null);
+  const [showUseEffectiveConfirm, setShowUseEffectiveConfirm] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEffectiveSource(null);
+    const documentId = revisionDisplay?.documentId;
+    if (!documentId || !canReplaceRevisionFile) return;
+    documentApi
+      .getEffectiveSourceOption(documentId)
+      .then((option) => {
+        if (!cancelled && option.available) setEffectiveSource(option);
+      })
+      .catch(() => {
+        // Without the server's answer only the upload is offered.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [revisionDisplay?.documentId, canReplaceRevisionFile]);
+
+  const handleUseEffectiveSource = async () => {
+    setShowUseEffectiveConfirm(false);
+    if (!revisionDisplay?.id) return;
+    setIsReplacingFile(true);
+    try {
+      await documentApi.useEffectiveRevisionSource(revisionDisplay.id);
+      await refreshRevisionFromBackend(revisionDisplay.id);
+      await loadReviewComments();
+      showToast({
+        type: "success",
+        title: tr("File copied"),
+        message: tr("The revision now starts from the file of the effective revision."),
+        duration: 3000,
+      });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: tr("Copy failed"),
+        message: (error as any)?.response?.data?.message || tr("Unable to copy the file of the effective revision."),
+        duration: 4000,
+      });
+    } finally {
+      setIsReplacingFile(false);
     }
   };
 
@@ -972,11 +1024,11 @@ const RevisionCreateViewContent: React.FC = () => {
       locationState?.returnTo ||
       locationState?.from;
     if (returnTo) {
-      navigateTo(returnTo);
+      navigateBack(navigateTo, { from: returnTo }, returnTo);
       return;
     }
 
-    navigateTo(ROUTES.DOCUMENTS.REVISIONS.ALL);
+    navigateBack(navigateTo, location.state, ROUTES.DOCUMENTS.REVISIONS.ALL);
   };
 
   const refreshRevisionFromBackend = async (revisionId: string) => {
@@ -1212,8 +1264,9 @@ const RevisionCreateViewContent: React.FC = () => {
     note: string,
     useTemplate: boolean,
     templateRevisionId?: string,
+    useEffectiveSource?: boolean,
   ) => {
-    if (!file) return;
+    if (!useEffectiveSource && !file && !(useTemplate && templateRevisionId)) return;
     if (!parentDocumentId) {
       showToast({
         type: "error",
@@ -1232,6 +1285,7 @@ const RevisionCreateViewContent: React.FC = () => {
         {
           changeDescription: note?.trim() || undefined,
           templateRevisionId: useTemplate ? templateRevisionId : undefined,
+          useEffectiveSource,
         },
       );
 
@@ -1562,6 +1616,17 @@ const RevisionCreateViewContent: React.FC = () => {
               {hasRevisionSource ? "Replace Source File" : "Upload Source File"}
             </Button>
           )}
+          {canReplaceRevisionFile && effectiveSource && (
+            <Button
+              onClick={() => (hasRevisionSource ? setShowUseEffectiveConfirm(true) : void handleUseEffectiveSource())}
+              size="sm"
+              variant="outline-emerald"
+              disabled={isReplacingFile}
+              className="whitespace-nowrap gap-2"
+            >
+              {tr("Use Effective File")}
+            </Button>
+          )}
 
           {canSubmitForReview && (
             <Button
@@ -1617,19 +1682,30 @@ const RevisionCreateViewContent: React.FC = () => {
         }}
       />
 
+      <AlertModal
+        isOpen={showUseEffectiveConfirm}
+        onClose={() => setShowUseEffectiveConfirm(false)}
+        onConfirm={() => void handleUseEffectiveSource()}
+        type="warning"
+        title={tr("Use Effective File")}
+        description={trFormat("The current file of this draft will be replaced by the file of effective revision {revision}. Changes made in the current file are lost.", { revision: effectiveSource?.revisionNumber ?? "" })}
+      />
+
       <UploadRevisionModal
         isOpen={showUploadModal}
         onClose={() => {
           setShowUploadModal(false);
         }}
-        onConfirm={(file, note, useTemplate, templateRevisionId) => {
+        onConfirm={(file, note, useTemplate, templateRevisionId, useEffectiveSource) => {
           void handleUploadRevisionConfirm(
             file,
             note,
             useTemplate,
             templateRevisionId,
+            useEffectiveSource,
           );
         }}
+        documentId={parentDocumentId || undefined}
         documentName={
           generalForm.documentName ||
           sourceDocumentInfo?.documentName ||

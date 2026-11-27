@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ROUTES } from '@/app/routes.constants';
@@ -75,7 +76,7 @@ export const RevisionApprovalView: React.FC<RevisionApprovalViewProps> = ({
     const [previewMessage, setPreviewMessage] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isWorkingNotesSubmitting, setIsWorkingNotesSubmitting] = useState(false);
-    const [activeTab, setActiveTab] = useState<TabType>("general");
+    const [activeTab, setActiveTab] = useViewState<TabType>("RevisionApprovalView.activeTab", "general");
     const [commentHistoryOpen, setCommentHistoryOpen] = useState(false);
     const [showesignModal, setshowesignModal] = useState(false);
     const [showRejectWarning, setShowRejectWarning] = useState(false);

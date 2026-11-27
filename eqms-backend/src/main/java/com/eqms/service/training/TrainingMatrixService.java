@@ -61,8 +61,9 @@ public class TrainingMatrixService {
         this.notifier = notifier;
     }
 
-    public record RowRequest(String group, String topicText, UUID documentId, Boolean annualRequired, String note, List<UUID> positionIds, Boolean allEmployees, Boolean locked) {}
+    public record RowRequest(String group, String topicText, UUID documentId, Boolean annualRequired, String note, List<UUID> positionIds, Boolean allEmployees, Boolean locked, Boolean gmp) {}
     public record SaveRequest(Integer version, String changeReason, List<RowRequest> rows) {}
+    /** approverUserId is the next person: the reviewer when a draft is submitted, the approver when a version is reviewed. */
     public record SubmitRequest(Integer version, String signatureToken, UUID approverUserId) {}
     public record SignRequest(Integer version, String signatureToken) {}
     public record RejectRequest(Integer version, String reason) {}
@@ -86,7 +87,7 @@ public class TrainingMatrixService {
         }
         if (search != null && !search.isBlank()) {
         String like = "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(m.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
+            where.append(" and (eqms_fold(m.code) like eqms_fold(?) escape '\\' or eqms_fold(d.name) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like);
         }
         if (waitingForMe) {
@@ -99,7 +100,7 @@ public class TrainingMatrixService {
         String from = """
               from training_matrices m join departments d on d.id = m.department_id
               left join training_matrix_versions ev on ev.matrix_id = m.id and ev.status = 'EFFECTIVE'
-              left join training_matrix_versions ov on ov.matrix_id = m.id and ov.status in ('DRAFT','PENDING_APPROVAL')
+              left join training_matrix_versions ov on ov.matrix_id = m.id and ov.status in ('DRAFT','PENDING_REVIEW','PENDING_APPROVAL')
             """;
         int safeLimit = Math.min(Math.max(limit, 1), 100), safePage = Math.max(page, 1);
         Long total = jdbc.queryForObject("select count(*)" + from + where, Long.class, args.toArray());
@@ -107,7 +108,7 @@ public class TrainingMatrixService {
         pageArgs.add(safeLimit);
         pageArgs.add((safePage - 1) * safeLimit);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            select m.id, m.code, m.department_id, d.name as department_name,
+            select m.id, m.code, m.scope, m.department_id, d.name as department_name,
                    ev.id as effective_version_id, ev.version_no as effective_version_no, ev.effective_at,
                    ov.id as open_version_id, ov.version_no as open_version_no, ov.status as open_status
             """ + from + where + TrainingRows.orderBy(sortBy, sortDirection, Map.of("code", "m.code", "department", "d.name", "effective", "ev.version_no", "prepared", "ov.version_no"), "d.name") + " limit ? offset ?", pageArgs.toArray());
@@ -125,6 +126,7 @@ public class TrainingMatrixService {
         access.requireScope(actor, (UUID) m.get("department_id"));
         Map<String, Object> out = TrainingRows.camel(m);
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, m.get("department_id")));
+        out.put("scope", m.get("scope"));
         out.put("versionCount", jdbc.queryForObject("select count(*) from training_matrix_versions where matrix_id=?", Integer.class, matrixId));
         out.put("effective", TrainingRows.camel(jdbc.queryForList("select id, version_no, effective_at from training_matrix_versions where matrix_id=? and status='EFFECTIVE'", matrixId)).stream().findFirst().orElse(null));
         out.put("canManage", access.has(actor, "training.matrix.manage") && access.inScope(actor, (UUID) m.get("department_id")));
@@ -142,10 +144,10 @@ public class TrainingMatrixService {
         StringBuilder where = new StringBuilder(" where v.matrix_id = ?");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (('version ' || v.version_no) like ? escape '\\' or lower(coalesce(v.change_reason,'')) like ? escape '\\' or lower(coalesce(pu.full_name,'')) like ? escape '\\' or lower(coalesce(au.full_name,'')) like ? escape '\\')");
+            where.append(" and (('version ' || v.version_no) like ? escape '\\' or eqms_fold(coalesce(v.change_reason,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(pu.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(au.full_name,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
-        if (status != null && Set.of("DRAFT", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED").contains(status)) {
+        if (status != null && Set.of("DRAFT", "PENDING_REVIEW", "PENDING_APPROVAL", "EFFECTIVE", "OBSOLETED").contains(status)) {
             where.append(" and v.status = ?");
             args.add(status);
         }
@@ -187,8 +189,15 @@ public class TrainingMatrixService {
         out.put("matrixCode", m.get("code"));
         out.put("departmentId", department);
         out.put("departmentName", jdbc.queryForObject("select name from departments where id=?", String.class, department));
+        out.put("scope", m.get("scope"));
+        // the factory-wide list applies on top of the matrix of a department; it is shown with it and edited in its own record
+        out.put("factoryRows", "FACTORY".equals(m.get("scope")) ? List.of() : TrainingRows.camel(jdbc.queryForList("""
+            select r.id, r.row_no, r.topic_text, r.document_id, r.annual_required, r.is_gmp as gmp, d.document_number, d.document_name
+              from training_effective_requirements r left join documents d on d.id = r.document_id
+             where r.department_id = ? and r.factory order by r.row_no
+            """, department)));
         List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
-            select r.id, r.row_no, r.row_group, r.topic_text, r.document_id, r.annual_required, r.all_employees, (r.all_employees and r.locked) as locked, r.note,
+            select r.id, r.row_no, r.row_group, r.topic_text, r.document_id, r.annual_required, r.all_employees, (r.all_employees and r.locked) as locked, r.is_gmp as gmp, r.note,
                    d.document_number, d.document_name
               from training_matrix_rows r left join documents d on d.id = r.document_id
              where r.version_id=? order by r.row_no
@@ -210,7 +219,7 @@ public class TrainingMatrixService {
     /** The buttons follow the decision of the Hybrid engine (EngineCapabilities); the keys that name no action stay as the hints were. */
     private Map<String, Object> withEngine(UserAccount actor, Map<String, Object> row, Map<String, Object> caps) {
         return engineCapabilities == null ? caps : engineCapabilities.apply(actor, "TRAINING_MATRIX_VERSION", (UUID) row.get("id"), caps,
-                Map.of("submit", "SUBMIT"), Map.of("approve", "APPROVE", "reject", "REJECT"));
+                Map.of("submit", "SUBMIT", "review", "REVIEW"), Map.of("approve", "APPROVE", "reject", "REJECT"));
     }
 
     private Map<String, Object> capabilities(UserAccount actor, Map<String, Object> v, UUID department) {
@@ -218,11 +227,14 @@ public class TrainingMatrixService {
         boolean manage = access.has(actor, "training.matrix.manage") && access.inScope(actor, department);
         boolean assignedToMe = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and status='PENDING' and assignee_user_id=?",
                 Integer.class, TYPE, v.get("id"), actor.getId()) > 0;
+        boolean assignedReview = jdbc.queryForObject("select count(*) from training_approval_assignments where object_type=? and object_id=? and step_code='MATRIX_REVIEW' and status='PENDING' and assignee_user_id=?",
+                Integer.class, TYPE, v.get("id"), actor.getId()) > 0;
         Map<String, Object> caps = new LinkedHashMap<>();
         caps.put("edit", manage && "DRAFT".equals(status));
         caps.put("submit", manage && "DRAFT".equals(status));
+        caps.put("review", "PENDING_REVIEW".equals(status) && assignedReview && access.has(actor, "training.matrix.manage"));
         caps.put("approve", "PENDING_APPROVAL".equals(status) && (assignedToMe || "ANY_ELIGIBLE".equals(approvals.mode("MATRIX_APPROVE"))) && access.has(actor, "training.matrix.approve"));
-        caps.put("reject", caps.get("approve"));
+        caps.put("reject", "PENDING_REVIEW".equals(status) ? caps.get("review") : caps.get("approve"));
         caps.put("upgrade", manage && "EFFECTIVE".equals(status));
         return caps;
     }
@@ -286,24 +298,32 @@ public class TrainingMatrixService {
 
     @Transactional
     public Map<String, Object> createMatrix(UserAccount actor, UUID departmentId) {
+        return createMatrix(actor, departmentId, false);
+    }
+
+    /** {@code factory}: the one factory-wide list (DEC-TRAINING-2026-11-27-01 C), held by the Quality Assurance department chosen here and prepared by Training Administration. */
+    @Transactional
+    public Map<String, Object> createMatrix(UserAccount actor, UUID departmentId, boolean factory) {
         access.require(actor, "training.matrix.manage");
+        if (factory) access.require(actor, "training.admin.manage");
         if (departmentId == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
         access.requireScope(actor, departmentId);
         String departmentCode = jdbc.queryForList("select code from departments where id=?", String.class, departmentId).stream().findFirst().orElseThrow(() -> new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED"));
-        Integer exists = jdbc.queryForObject("select count(*) from training_matrices where department_id=?", Integer.class, departmentId);
+        Integer exists = factory ? jdbc.queryForObject("select count(*) from training_matrices where scope='FACTORY'", Integer.class)
+                : jdbc.queryForObject("select count(*) from training_matrices where department_id=? and scope='DEPARTMENT'", Integer.class, departmentId);
         if (exists != null && exists > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_EXISTS");
         UUID matrixId = UUID.randomUUID(), versionId = UUID.randomUUID();
-        String code = codes.next(TrainingCodeService.MATRIX, departmentCode, java.time.LocalDate.now().getYear(),
+        String code = factory ? "TM-FACTORY" : codes.next(TrainingCodeService.MATRIX, departmentCode, java.time.LocalDate.now().getYear(),
                 candidate -> Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from training_matrices where code = ?)", Boolean.class, candidate)));
-        jdbc.update("insert into training_matrices(id, department_id, code, created_by) values (?,?,?,?)", matrixId, departmentId, code, actor.getId());
+        jdbc.update("insert into training_matrices(id, department_id, code, created_by, scope) values (?,?,?,?,?)", matrixId, departmentId, code, actor.getId(), factory ? "FACTORY" : "DEPARTMENT");
         jdbc.update("insert into training_matrix_versions(id, matrix_id, version_no, prepared_by) values (?,?,1,?)", versionId, matrixId, actor.getId());
         // the trainings Quality Assurance locked in the matrices of the other departments are required of every employee: a new matrix starts with them
         jdbc.update("""
-            insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked)
-            select gen_random_uuid(), ?, row_number() over (order by src.row_group, src.topic_text, src.document_id), src.row_group, src.topic_text, src.document_id, src.annual_required, true, true
-              from (select distinct on (coalesce(training_topic_key(r.topic_text), r.document_id::text)) r.row_group, r.topic_text, r.document_id, r.annual_required
+            insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked, is_gmp)
+            select gen_random_uuid(), ?, row_number() over (order by src.row_group, src.topic_text, src.document_id), src.row_group, src.topic_text, src.document_id, src.annual_required, true, true, src.is_gmp
+              from (select distinct on (coalesce(training_topic_key(r.topic_text), r.document_id::text)) r.row_group, r.topic_text, r.document_id, r.annual_required, r.is_gmp
                       from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id
-                     where v.status = 'EFFECTIVE' and r.locked
+                     where v.status = 'EFFECTIVE' and r.locked and not exists (select 1 from training_matrices f join training_matrix_versions fv on fv.matrix_id = f.id and fv.status = 'EFFECTIVE' where f.scope = 'FACTORY')
                      order by coalesce(training_topic_key(r.topic_text), r.document_id::text), v.effective_at desc nulls last) src
             """, versionId);
         ensureAllEmployees(versionId, departmentId);
@@ -317,6 +337,8 @@ public class TrainingMatrixService {
         Map<String, Object> v = lockVersion(versionId);
         UUID department = departmentOf(v);
         requireManage(actor, department);
+        boolean factory = "FACTORY".equals(matrixRow((UUID) v.get("matrix_id")).get("scope"));
+        if (factory) access.require(actor, "training.admin.manage");
         requireStatus(v, "DRAFT");
         requireVersion(v, request == null ? null : request.version());
         if (request.rows() == null) throw new IllegalArgumentException("TRAINING_MATRIX_ROWS_REQUIRED");
@@ -348,11 +370,13 @@ public class TrainingMatrixService {
             for (RowRequest row : request.rows()) sentKeys.add(rowKey(clean(row.topicText()), row.documentId()));
             for (String key : lockedBefore) if (!sentKeys.contains(key)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TRAINING_MATRIX_LOCKED_ROW");
         }
+        Set<String> gmpBefore = new LinkedHashSet<>(jdbc.queryForList("select coalesce('T' || training_topic_key(topic_text), 'D' || document_id) from training_matrix_rows where version_id=? and is_gmp", String.class, versionId));
         jdbc.update("delete from training_matrix_cells where row_id in (select id from training_matrix_rows where version_id=?)", versionId);
         jdbc.update("delete from training_matrix_rows where version_id=?", versionId);
         int no = 0;
         Set<String> seen = new LinkedHashSet<>();
-        for (RowRequest row : request.rows()) {
+        for (RowRequest sent : request.rows()) {
+            RowRequest row = factory ? new RowRequest("FACTORY_GENERAL", sent.topicText(), sent.documentId(), sent.annualRequired(), sent.note(), sent.positionIds(), true, false, sent.gmp()) : sent;
             if (row.group() == null || !GROUPS.contains(row.group())) throw new IllegalArgumentException("TRAINING_MATRIX_ROW_INVALID");
             String topicText = clean(row.topicText());
             if ((topicText == null) == (row.documentId() == null) || (topicText != null && topicText.length() > 500)) throw new IllegalArgumentException("TRAINING_MATRIX_ROW_INVALID");
@@ -361,8 +385,9 @@ public class TrainingMatrixService {
             boolean locked = Boolean.TRUE.equals(row.allEmployees()) && (qa ? Boolean.TRUE.equals(row.locked()) : lockedBefore.contains(rowKey(topicText, row.documentId())));
             if (row.documentId() != null && jdbc.queryForObject("select count(*) from documents where id=?", Integer.class, row.documentId()) == 0) throw new IllegalArgumentException("TRAINING_MATRIX_ROW_INVALID");
             UUID rowId = UUID.randomUUID();
-            jdbc.update("insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, note, all_employees, locked) values (?,?,?,?,?,?,?,?,?,?)",
-                    rowId, versionId, ++no, row.group(), topicText, row.documentId(), Boolean.TRUE.equals(row.annualRequired()), row.note() == null || row.note().isBlank() ? null : row.note().trim(), Boolean.TRUE.equals(row.allEmployees()), locked);
+            boolean gmp = qa ? Boolean.TRUE.equals(row.gmp()) : gmpBefore.contains(rowKey(topicText, row.documentId()));
+            jdbc.update("insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, note, all_employees, locked, is_gmp) values (?,?,?,?,?,?,?,?,?,?,?)",
+                    rowId, versionId, ++no, row.group(), topicText, row.documentId(), Boolean.TRUE.equals(row.annualRequired()), row.note() == null || row.note().isBlank() ? null : row.note().trim(), Boolean.TRUE.equals(row.allEmployees()), locked, gmp);
             for (UUID position : row.positionIds() == null ? List.<UUID>of() : new LinkedHashSet<>(row.positionIds())) {
                 if (!allowed.contains(position)) throw new IllegalArgumentException("TRAINING_MATRIX_POSITION_INVALID");
                 jdbc.update("insert into training_matrix_cells(row_id, position_id) values (?,?)", rowId, position);
@@ -389,9 +414,10 @@ public class TrainingMatrixService {
     public Map<String, Object> upgrade(UserAccount actor, UUID matrixId) {
         Map<String, Object> m = matrixRow(matrixId);
         requireManage(actor, (UUID) m.get("department_id"));
+        if ("FACTORY".equals(m.get("scope"))) access.require(actor, "training.admin.manage");
         List<Map<String, Object>> effective = jdbc.queryForList("select id, version_no from training_matrix_versions where matrix_id=? and status='EFFECTIVE' for update", matrixId);
         if (effective.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_NOT_EFFECTIVE");
-        Integer open = jdbc.queryForObject("select count(*) from training_matrix_versions where matrix_id=? and status in ('DRAFT','PENDING_APPROVAL')", Integer.class, matrixId);
+        Integer open = jdbc.queryForObject("select count(*) from training_matrix_versions where matrix_id=? and status in ('DRAFT','PENDING_REVIEW','PENDING_APPROVAL')", Integer.class, matrixId);
         if (open != null && open > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_OPEN_VERSION");
         return version(actor, startNextVersion(actor, m, effective.getFirst()));
     }
@@ -405,8 +431,8 @@ public class TrainingMatrixService {
         jdbc.update("insert into training_matrix_versions(id, matrix_id, version_no, prepared_by) values (?,?,?,?)", versionId, matrixId, next, actor.getId());
         for (Map<String, Object> row : jdbc.queryForList("select * from training_matrix_rows where version_id=? order by row_no", effective.getFirst().get("id"))) {
             UUID rowId = UUID.randomUUID();
-            jdbc.update("insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, note, all_employees, locked) values (?,?,?,?,?,?,?,?,?,?)",
-                    rowId, versionId, row.get("row_no"), row.get("row_group"), row.get("topic_text"), row.get("document_id"), row.get("annual_required"), row.get("note"), row.get("all_employees"), row.get("locked"));
+            jdbc.update("insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, note, all_employees, locked, is_gmp) values (?,?,?,?,?,?,?,?,?,?,?)",
+                    rowId, versionId, row.get("row_no"), row.get("row_group"), row.get("topic_text"), row.get("document_id"), row.get("annual_required"), row.get("note"), row.get("all_employees"), row.get("locked"), row.get("is_gmp"));
             jdbc.update("insert into training_matrix_cells(row_id, position_id) select ?, position_id from training_matrix_cells where row_id=?", rowId, row.get("id"));
         }
         ensureAllEmployees(versionId, (UUID) m.get("department_id"));
@@ -423,18 +449,18 @@ public class TrainingMatrixService {
     public Map<String, Object> applyLockedRows(UserAccount actor, UUID versionId) {
         access.require(actor, "training.admin.manage");
         Map<String, Object> source = versionRow(versionId);
-        List<Map<String, Object>> rows = jdbc.queryForList("select row_group, topic_text, document_id, annual_required from training_matrix_rows where version_id=? and locked order by row_no", versionId);
+        List<Map<String, Object>> rows = jdbc.queryForList("select row_group, topic_text, document_id, annual_required, is_gmp from training_matrix_rows where version_id=? and locked order by row_no", versionId);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_NO_LOCKED_ROWS");
         UUID sourceMatrix = (UUID) source.get("matrix_id");
         List<Map<String, Object>> report = new ArrayList<>();
-        for (Map<String, Object> m : jdbc.queryForList("select * from training_matrices where id <> ? order by code for update", sourceMatrix)) {
+        for (Map<String, Object> m : jdbc.queryForList("select * from training_matrices where id <> ? and scope = 'DEPARTMENT' order by code for update", sourceMatrix)) {
             UUID matrixId = (UUID) m.get("id");
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("code", m.get("code"));
-            List<Map<String, Object>> open = jdbc.queryForList("select id, status, version_no from training_matrix_versions where matrix_id=? and status in ('DRAFT','PENDING_APPROVAL') for update", matrixId);
+            List<Map<String, Object>> open = jdbc.queryForList("select id, status, version_no from training_matrix_versions where matrix_id=? and status in ('DRAFT','PENDING_REVIEW','PENDING_APPROVAL') for update", matrixId);
             UUID target;
             String outcome;
-            if (!open.isEmpty() && "PENDING_APPROVAL".equals(open.getFirst().get("status"))) {
+            if (!open.isEmpty() && !"DRAFT".equals(open.getFirst().get("status"))) {
                 entry.put("outcome", "SKIPPED_PENDING_APPROVAL");
                 report.add(entry);
                 continue;
@@ -456,16 +482,16 @@ public class TrainingMatrixService {
                 String topic = (String) r.get("topic_text");
                 UUID document = (UUID) r.get("document_id");
                 List<Map<String, Object>> have = jdbc.queryForList(topic != null
-                        ? "select id, locked, all_employees from training_matrix_rows where version_id=? and training_topic_key(topic_text) = training_topic_key(?)"
-                        : "select id, locked, all_employees from training_matrix_rows where version_id=? and document_id = ?", target, topic != null ? topic : document);
+                        ? "select id, locked, all_employees, is_gmp from training_matrix_rows where version_id=? and training_topic_key(topic_text) = training_topic_key(?)"
+                        : "select id, locked, all_employees, is_gmp from training_matrix_rows where version_id=? and document_id = ?", target, topic != null ? topic : document);
                 if (have.isEmpty()) {
                     jdbc.update("""
-                        insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked)
-                        select gen_random_uuid(), ?, coalesce(max(row_no), 0) + 1, ?, ?, ?, ?, true, true from training_matrix_rows where version_id=?
-                        """, target, r.get("row_group"), topic, document, r.get("annual_required"), target);
+                        insert into training_matrix_rows(id, version_id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked, is_gmp)
+                        select gen_random_uuid(), ?, coalesce(max(row_no), 0) + 1, ?, ?, ?, ?, true, true, ? from training_matrix_rows where version_id=?
+                        """, target, r.get("row_group"), topic, document, r.get("annual_required"), r.get("is_gmp"), target);
                     changed++;
-                } else if (!Boolean.TRUE.equals(have.getFirst().get("locked")) || !Boolean.TRUE.equals(have.getFirst().get("all_employees"))) {
-                    jdbc.update("update training_matrix_rows set all_employees=true, locked=true where id=?", have.getFirst().get("id"));
+                } else if (!Boolean.TRUE.equals(have.getFirst().get("locked")) || !Boolean.TRUE.equals(have.getFirst().get("all_employees")) || Boolean.TRUE.equals(r.get("is_gmp")) && !Boolean.TRUE.equals(have.getFirst().get("is_gmp"))) {
+                    jdbc.update("update training_matrix_rows set all_employees=true, locked=true, is_gmp = is_gmp or ? where id=?", Boolean.TRUE.equals(r.get("is_gmp")), have.getFirst().get("id"));
                     changed++;
                 }
             }
@@ -489,7 +515,8 @@ public class TrainingMatrixService {
     @Transactional(readOnly = true)
     public Map<String, Object> eligibleApprovers(UserAccount actor, UUID versionId, String search, int page, int limit) {
         Map<String, Object> v = versionRow(versionId);
-        return approvals.eligibleApprovers(actor, subject(v), "MATRIX_APPROVE", search, page, limit, keptApart(v, actor));
+        String step = "DRAFT".equals(v.get("status")) ? "MATRIX_REVIEW" : "MATRIX_APPROVE";
+        return approvals.eligibleApprovers(actor, subject(v), step, search, page, limit, keptApart(v, step));
     }
 
     /** Sends the version for approval: the preparer signs and chooses the person who approves. */
@@ -510,17 +537,41 @@ public class TrainingMatrixService {
         if (uncovered != null && uncovered > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_MATRIX_ROW_WITHOUT_POSITION");
         if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
         approvals.cancelOpen(TYPE, versionId, "Resubmitted");
-        approvals.designate(actor, subject(v), "MATRIX_APPROVE", request.approverUserId(), Set.of(actor.getId()));
+        approvals.designate(actor, subject(v), "MATRIX_REVIEW", request.approverUserId(), Set.of(actor.getId()));
         UUID signature = sign(actor, v, "TRAINING_MATRIX_PREPARED", request.signatureToken());
         String approverName = users.findById(request.approverUserId()).map(UserAccount::getFullName).orElse(String.valueOf(request.approverUserId()));
-        jdbc.update("update training_matrix_versions set status='PENDING_APPROVAL', prepared_by=?, submitted_at=now(), prepare_signature_id=?, content_sha256=?, reject_reason=null, version=version+1, updated_at=now() where id=?",
+        jdbc.update("update training_matrix_versions set status='PENDING_REVIEW', prepared_by=?, submitted_at=now(), prepare_signature_id=?, content_sha256=?, reject_reason=null, reviewed_by=null, reviewed_at=null, review_signature_id=null, version=version+1, updated_at=now() where id=?",
                 actor.getId(), signature, contentHash(versionId), versionId);
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_APPROVAL", "Sent for approval to " + approverName + " (" + rows + " rows)",
-                List.of(new AuditTrailChangeResponse("Status", "Draft", "Pending Approval"),
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_SUBMITTED", "DRAFT", "PENDING_REVIEW", "Sent for review to " + approverName + " (" + rows + " rows)",
+                List.of(new AuditTrailChangeResponse("Status", "Draft", "Pending Review"),
                         new AuditTrailChangeResponse("Prepared by", null, actor.getFullName()),
-                        new AuditTrailChangeResponse("Designated approver", null, approverName),
+                        new AuditTrailChangeResponse("Designated reviewer", null, approverName),
                         new AuditTrailChangeResponse("What changed in this version", null, v.get("change_reason") == null ? null : String.valueOf(v.get("change_reason")))),
                 signature);
+        return version(actor, versionId);
+    }
+
+    @Transactional
+    public Map<String, Object> review(UserAccount actor, UUID versionId, SubmitRequest request) {
+        return shadow.around(actor, TYPE, versionId, "REVIEW", true, () -> reviewInner(actor, versionId, request));
+    }
+
+    /** SOP.0003 5.3.1: a second person reviews the version and chooses who approves it; preparer, reviewer and approver are three different people. */
+    private Map<String, Object> reviewInner(UserAccount actor, UUID versionId, SubmitRequest request) {
+        Map<String, Object> v = lockVersion(versionId);
+        requireStatus(v, "PENDING_REVIEW");
+        requireVersion(v, request == null ? null : request.version());
+        if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
+        UUID assignment = approvals.requireCanSign(actor, subject(v), "MATRIX_REVIEW", keptApart(v, "MATRIX_REVIEW"));
+        UUID signature = sign(actor, v, "TRAINING_MATRIX_REVIEWED", request.signatureToken());
+        approvals.complete(assignment, signature);
+        approvals.designate(actor, subject(v), "MATRIX_APPROVE", request.approverUserId(), TrainingApprovalService.apart((UUID) v.get("prepared_by"), actor.getId()));
+        jdbc.update("update training_matrix_versions set status='PENDING_APPROVAL', reviewed_by=?, reviewed_at=now(), review_signature_id=?, version=version+1, updated_at=now() where id=?", actor.getId(), signature, versionId);
+        String approverName = users.findById(request.approverUserId()).map(UserAccount::getFullName).orElse(String.valueOf(request.approverUserId()));
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_REVIEWED", "PENDING_REVIEW", "PENDING_APPROVAL", "Reviewed and sent for approval to " + approverName,
+                List.of(new AuditTrailChangeResponse("Status", "Pending Review", "Pending Approval"),
+                        new AuditTrailChangeResponse("Reviewed by", null, actor.getFullName()),
+                        new AuditTrailChangeResponse("Designated approver", null, approverName)), signature);
         return version(actor, versionId);
     }
 
@@ -534,7 +585,7 @@ public class TrainingMatrixService {
         requireStatus(v, "PENDING_APPROVAL");
         requireVersion(v, request == null ? null : request.version());
         if (request.signatureToken() == null || request.signatureToken().isBlank()) throw new IllegalArgumentException("TRAINING_SIGNATURE_REQUIRED");
-        UUID assignment = approvals.requireCanSign(actor, subject(v), "MATRIX_APPROVE", keptApart(v, actor));
+        UUID assignment = approvals.requireCanSign(actor, subject(v), "MATRIX_APPROVE", keptApart(v, "MATRIX_APPROVE"));
         UUID signature = sign(actor, v, "TRAINING_MATRIX_APPROVED", request.signatureToken());
         approvals.complete(assignment, signature);
         List<Integer> replaced = jdbc.queryForList("select version_no from training_matrix_versions where matrix_id=? and status='EFFECTIVE'", Integer.class, v.get("matrix_id"));
@@ -558,14 +609,15 @@ public class TrainingMatrixService {
 
     private Map<String, Object> rejectInner(UserAccount actor, UUID versionId, RejectRequest request) {
         Map<String, Object> v = lockVersion(versionId);
-        requireStatus(v, "PENDING_APPROVAL");
+        requireStatus(v, "PENDING_REVIEW", "PENDING_APPROVAL");
         requireVersion(v, request == null ? null : request.version());
         if (request.reason() == null || request.reason().isBlank()) throw new IllegalArgumentException("TRAINING_REASON_REQUIRED");
-        UUID assignment = approvals.requireCanSign(actor, subject(v), "MATRIX_APPROVE", keptApart(v, actor));
+        String step = "PENDING_REVIEW".equals(v.get("status")) ? "MATRIX_REVIEW" : "MATRIX_APPROVE";
+        UUID assignment = approvals.requireCanSign(actor, subject(v), step, keptApart(v, step));
         approvals.complete(assignment, null);
         approvals.cancelOpen(TYPE, versionId, "Rejected");
-        jdbc.update("update training_matrix_versions set status='DRAFT', reject_reason=?, version=version+1, updated_at=now() where id=?", request.reason().trim(), versionId);
-        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_REJECTED", "PENDING_APPROVAL", "DRAFT", request.reason().trim(),
+        jdbc.update("update training_matrix_versions set status='DRAFT', reject_reason=?, reviewed_by=null, reviewed_at=null, review_signature_id=null, version=version+1, updated_at=now() where id=?", request.reason().trim(), versionId);
+        audit.logAs(actor, "TRAINING_MATRIX", label(v), versionId, "TRAINING_MATRIX_REJECTED", String.valueOf(v.get("status")), "DRAFT", request.reason().trim(),
                 List.of(TrainingStore.change("Reason for Rejection", null, request.reason().trim())));
         tellPreparer(v, actor, "TRAINING_MATRIX_REJECTED", "Training: matrix sent back", label(v) + " was sent back by " + actor.getFullName() + ". Reason: " + request.reason().trim());
         return version(actor, versionId);
@@ -589,7 +641,7 @@ public class TrainingMatrixService {
             else { where.append(" and lower(trim(u.department)) = lower(trim(?))"); args.add(actor.getDepartment()); }
         }
         if (search != null && !search.isBlank()) {
-            where.append(" and (lower(u.full_name) like ? escape '\' or lower(coalesce(u.employee_code,'')) like ? escape '\' or lower(coalesce(u.department,'')) like ? escape '\' or lower(coalesce(u.position,'')) like ? escape '\' or lower(coalesce(" + roles + ",'')) like ? escape '\')");
+            where.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\' or eqms_fold(coalesce(u.department,'')) like eqms_fold(?) escape '\' or eqms_fold(coalesce(u.position,'')) like eqms_fold(?) escape '\' or eqms_fold(coalesce(" + roles + ",'')) like eqms_fold(?) escape '\')");
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
@@ -629,7 +681,7 @@ public class TrainingMatrixService {
         if (allowed == null || allowed == 0) throw new SecurityException(TrainingAccess.DENIED);
         String like = "%" + escape(search == null ? "" : search.trim().toLowerCase(Locale.ROOT)) + "%";
         String from = " from training_person_positions tp join training_job_roles r on r.id = tp.position_id join app_users u on u.id = tp.person_user_id ";
-        String where = " where tp.person_user_id = ? and u.status = 'Active' and tp.valid_to is null and lower(r.name) like ? escape '\\'" + scope;
+        String where = " where tp.person_user_id = ? and u.status = 'Active' and tp.valid_to is null and eqms_fold(r.name) like eqms_fold(?) escape '\\'" + scope;
         List<Object> args = new ArrayList<>();
         args.add(personId); args.add(like);
         if (!all) args.add(actor.getDepartment());
@@ -661,7 +713,7 @@ public class TrainingMatrixService {
         java.util.List<Object> args = new java.util.ArrayList<>();
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(java.util.Locale.ROOT)) + "%";
-            where.append(" and (lower(p.name) like ? escape '\\' or lower(p.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
+            where.append(" and (eqms_fold(p.name) like eqms_fold(?) escape '\\' or eqms_fold(p.code) like eqms_fold(?) escape '\\' or eqms_fold(d.name) like eqms_fold(?) escape '\\')");
             args.add(like);
             args.add(like);
             args.add(like);
@@ -723,11 +775,11 @@ public class TrainingMatrixService {
     private Map<String, String> rowSnapshot(UUID versionId) {
         Map<String, String> out = new LinkedHashMap<>();
         for (Map<String, Object> r : jdbc.queryForList("""
-                select r.id, r.annual_required, r.all_employees, coalesce(r.topic_text, d.document_number || ' ' || d.document_name) as title
+                select r.id, r.annual_required, r.all_employees, r.is_gmp, coalesce(r.topic_text, d.document_number || ' ' || d.document_name) as title
                 from training_matrix_rows r left join documents d on d.id = r.document_id
                 where r.version_id=? order by r.row_no""", versionId)) {
             List<String> positions = jdbc.queryForList("select p.name from training_matrix_cells c join training_job_roles p on p.id = c.position_id where c.row_id=? order by p.name", String.class, r.get("id"));
-            out.put(String.valueOf(r.get("title")), (Boolean.TRUE.equals(r.get("all_employees")) ? "All employees" : positions.isEmpty() ? "no position" : String.join(", ", positions)) + (Boolean.TRUE.equals(r.get("annual_required")) ? " | every year" : ""));
+            out.put(String.valueOf(r.get("title")), (Boolean.TRUE.equals(r.get("all_employees")) ? "All employees" : positions.isEmpty() ? "no position" : String.join(", ", positions)) + (Boolean.TRUE.equals(r.get("annual_required")) ? " | every year" : "") + (Boolean.TRUE.equals(r.get("is_gmp")) ? " | GMP topic" : ""));
         }
         return out;
     }
@@ -753,9 +805,14 @@ public class TrainingMatrixService {
     }
 
     /** The person who prepared the version, and the person who is acting, cannot approve it. */
-    private Set<UUID> keptApart(Map<String, Object> version, UserAccount actor) {
+    /** Preparer, reviewer and approver are three different people; the preparer rule is the one the separation switch controls, the others follow from the steps. */
+    private Set<UUID> keptApart(Map<String, Object> version, String step) {
         Set<UUID> apart = new LinkedHashSet<>();
-        if (version.get("prepared_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_MATRIX_VERSION", "APPROVE", "PREPARER")) apart.add((UUID) version.get("prepared_by"));
+        if (version.get("prepared_by") != null && com.eqms.service.SeparationRuleSwitch.isOn(jdbc, "TRAINING_MATRIX_VERSION", "MATRIX_REVIEW".equals(step) ? "REVIEW" : "APPROVE", "PREPARER")) apart.add((UUID) version.get("prepared_by"));
+        if ("MATRIX_APPROVE".equals(step)) {
+            if (version.get("reviewed_by") != null) apart.add((UUID) version.get("reviewed_by"));
+            apart.addAll(jdbc.queryForList("select assignee_user_id from training_approval_assignments where object_type=? and object_id=? and step_code='MATRIX_REVIEW' and status in ('PENDING','DONE')", UUID.class, TYPE, version.get("id")));
+        }
         return apart;
     }
 
@@ -786,8 +843,9 @@ public class TrainingMatrixService {
     /** A fingerprint of the rows and cells at the time of submission, so that what was approved can be proved to be what was prepared. */
     private String contentHash(UUID versionId) {
         StringBuilder sb = new StringBuilder();
-        for (Map<String, Object> r : jdbc.queryForList("select id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked from training_matrix_rows where version_id=? order by row_no", versionId)) {
+        for (Map<String, Object> r : jdbc.queryForList("select id, row_no, row_group, topic_text, document_id, annual_required, all_employees, locked, is_gmp from training_matrix_rows where version_id=? order by row_no", versionId)) {
             sb.append(r.get("row_no")).append('|').append(r.get("row_group")).append('|').append(r.get("topic_text")).append('|').append(r.get("document_id")).append('|').append(r.get("annual_required")).append('|').append(r.get("locked"));
+            if (Boolean.TRUE.equals(r.get("is_gmp"))) sb.append("|GMP");
             for (UUID p : jdbc.queryForList("select position_id from training_matrix_cells where row_id=? order by position_id", UUID.class, r.get("id"))) sb.append('|').append(p);
             sb.append('\n');
         }

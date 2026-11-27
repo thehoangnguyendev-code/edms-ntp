@@ -9,8 +9,12 @@ const MENU_NAME_BY_KEY: Record<string, string> = {
   document: "Document Control",
   documentcontrol: "Document Control",
   doccontrol: "Document Control",
-  controlledcopies: "Controlled Copies",
-  uncontrolledcopies: "Uncontrolled Copies",
+  // a module is a level-1 menu of app/navigation.ts: a sub-menu (Controlled Copies, Access Review, Knowledge Base, Dashboard) is part of the menu it is under
+  controlledcopies: "Document Control",
+  controlledcopy: "Document Control",
+  uncontrolledcopies: "Document Control",
+  uncontrolledcopy: "Document Control",
+  documentreview: "Document Control",
   // Training Management
   training: "Training Management",
   trainingmanagement: "Training Management",
@@ -26,21 +30,22 @@ const MENU_NAME_BY_KEY: Record<string, string> = {
   // Security & Authorization
   security: "Security & Authorization",
   securityauthorization: "Security & Authorization",
-  accessreview: "Access Review",
-  securityreview: "Access Review & Audit Trail Review",
+  accessreview: "Security & Authorization",
+  securityandaccess: "Security & Authorization",
   // Application Settings and System Administration
   settings: "Application Settings",
   appsettings: "Application Settings",
   applicationsettings: "Application Settings",
   systemadmin: "System Administration",
   systemadministration: "System Administration",
+  system: "System Administration",
   // the rest of the menu
   notifications: "Notifications",
   preferences: "Preferences",
   selfservice: "Self-Service",
-  dashboard: "Dashboard",
-  knowledge: "Knowledge Base",
-  knowledgebase: "Knowledge Base",
+  dashboard: "Self-Service",
+  knowledge: "Self-Service",
+  knowledgebase: "Self-Service",
   workmanagement: "Work Management",
   systeminformation: "System Information",
 };
@@ -74,12 +79,13 @@ const CANONICAL_KEY_BY_NAME: Record<string, string> = {
   Reports: "reports",
   "Audit Trail": "audit-trail",
   "Backup & Restore": "backup",
-  "Controlled Copies": "controlled-copies",
-  "Access Review": "access-review",
   "Security & Authorization": "security",
   "Application Settings": "settings",
   "System Administration": "system-admin",
   "Self-Service": "self_service",
+  Notifications: "notifications",
+  Preferences: "preferences",
+  "System Information": "system-information",
 };
 
 export const canonicalModuleKey = (key?: string | null): string => {
@@ -114,9 +120,9 @@ const MODULE_NAME_BY_MENU_ID: Record<string, string> = {
   "system-information": "System Information",
 };
 
-/** The order of the menu as the server builds it (NavigationService); used until the menu answers, or when it cannot. "Dashboard" sits under Self-Service in the menu. */
+/** The order of the menu as the server builds it (NavigationService); used until the menu answers, or when it cannot. */
 export const MENU_MODULE_ORDER: readonly string[] = [
-  "Notifications", "Self-Service", "Dashboard", "Document Control", "Training Management", "Reports", "Audit Trail", "Backup & Restore",
+  "Notifications", "Self-Service", "Document Control", "Training Management", "Reports", "Audit Trail", "Backup & Restore",
   "Security & Authorization", "Application Settings", "System Administration", "Preferences", "System Information",
 ];
 
@@ -127,7 +133,6 @@ export const moduleOrderFromMenu = (menu: readonly { id: string }[]): string[] =
     const name = MODULE_NAME_BY_MENU_ID[item.id];
     if (!name || order.includes(name)) continue;
     order.push(name);
-    if (name === "Self-Service") order.push("Dashboard");
   }
   return order;
 };

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from "@/components/ui/filter/ConfiguredDesktopFilters";
 import React, { useCallback, useMemo, useState } from "react";
@@ -52,8 +53,8 @@ export const ReportTypesView: React.FC = () => {
   const [toggleError, setToggleError] = useState("");
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useViewState<StatusFilter>("ReportTypesView.statusFilter", "All");
+  const [categoryFilter, setCategoryFilter] = useViewState("ReportTypesView.categoryFilter", "");
   const [categories, setCategories] = useState<string[]>([]);
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");

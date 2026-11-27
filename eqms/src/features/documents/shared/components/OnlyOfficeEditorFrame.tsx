@@ -4,6 +4,7 @@ import { config } from "@/config";
 import { documentApi } from "@/services/api/documents";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { OnlyOfficeCapacityNotice } from "./OnlyOfficeCapacityNotice";
+import { useEditorComparison } from "./useEditorComparison";
 import { tr } from "@/i18n";
 
 declare global {
@@ -39,6 +40,7 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
   const editorInstanceRef = useRef<{ destroyEditor?: () => void } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [lockedReason, setLockedReason] = useState<string | null>(null);
+  const comparison = useEditorComparison(revisionId);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,27 +135,31 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 bg-white px-3 py-2 sm:flex-nowrap sm:px-4">
         <img
           src={`${config.api.baseURL}/branding/logo`}
           alt=""
-          className="h-7 max-w-[240px] object-contain"
+          className="h-7 max-w-20 shrink-0 object-contain sm:max-w-40 lg:max-w-[240px]"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
         />
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          aria-label={tr("Close editor")}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="ml-auto flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          {!lockedReason && comparison.actions}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:h-9 sm:w-9"
+            aria-label={tr("Close editor")}
+            title={tr("Close editor")}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <OnlyOfficeCapacityNotice kind="edit" className="mx-4 mt-2" />
-      <div className="relative flex-1">
+      <div className="relative min-h-0 flex-1">
         {loadState === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -167,6 +173,8 @@ export const OnlyOfficeEditorFrame = ({ revisionId, title, onClose }: OnlyOffice
           </div>
         )}
         <div ref={hostRef} className="h-full w-full" />
+        {!lockedReason && comparison.view}
+        {comparison.chooser}
         {lockedReason && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white px-6 text-center text-slate-700">
             <AlertTriangle className="h-6 w-6 text-amber-500" />

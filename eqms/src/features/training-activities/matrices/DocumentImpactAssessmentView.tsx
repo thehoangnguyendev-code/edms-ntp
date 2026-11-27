@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { RadioGroup } from "@/components/ui/radio";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { DataTable, useCustomColumnLayout, type DataTableColumn } from "@/components/ui/table/DataTable";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
@@ -57,6 +58,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   const [outcome, setOutcome] = useState("");
   const [positionIds, setPositionIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  const [related, setRelated] = useState<string[]>([]);
   const [signing, setSigning] = useState(false);
   const [deviation, setDeviation] = useState<TrainingImpactRow>();
 
@@ -74,7 +76,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   const open = async (row: TrainingImpactRow) => {
     try {
       const context = await trainingFollowUpApi.impactContext(row.id);
-      setOutcome(""); setPositionIds([]); setReason("");
+      setOutcome(""); setPositionIds([]); setReason(""); setRelated((context.relatedDepartments ?? []).map((d) => d.id));
       setAssessing({ row, context });
     } catch (e) {
       showToast({ type: "error", title: tr("The assessment could not be opened"), message: trainingError(e) });
@@ -107,7 +109,7 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
   const submit = async (token: string) => {
     if (!assessing) return;
     try {
-      await trainingFollowUpApi.assess(assessing.row.id, { outcome, reason: reason.trim(), positionIds, signatureToken: token });
+      await trainingFollowUpApi.assess(assessing.row.id, { outcome, reason: reason.trim(), positionIds, signatureToken: token, relatedDepartmentIds: assessing.context.ownerDepartment ? related : undefined });
       showToast({ type: "success", title: tr("Impact assessed"), message: assessing.row.documentNumber ?? "" });
       setSigning(false);
       setAssessing(undefined);
@@ -165,6 +167,18 @@ function DocumentImpactAssessment({ ownDepartmentId }: { ownDepartmentId: string
                 <p className="text-xs font-medium text-slate-700 sm:text-sm">{tr("Work Positions that must be trained on the document")} <span className="text-red-500">*</span></p>
                 <ImpactPositionsTable activityId={ctx.activityId} selected={positionIds} onChange={setPositionIds} />
                 <p className="text-xs text-slate-500">{tr("The matrix itself is then updated on the Training Matrix screen. This line stays \"Pending Matrix Update\" until an effective matrix has the document.")}</p>
+              </div>
+            )}
+            {ctx.ownerDepartment && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-slate-700 sm:text-sm">{tr("Related departments that must also assess")}</p>
+                <div className="grid max-h-40 grid-cols-1 gap-1.5 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2">
+                  {departments.filter((d) => d.value !== ctx.departmentId).map((d) => {
+                    const assessed = ctx.relatedDepartments?.some((r) => r.id === d.value && r.assessed);
+                    return <Checkbox key={d.value} id={`impact-related-${d.value}`} label={d.label} disabled={assessed} checked={related.includes(d.value)} onChange={(on) => setRelated((old) => (on ? [...old, d.value] : old.filter((x) => x !== d.value)))} />;
+                  })}
+                </div>
+                <p className="text-xs text-slate-500">{tr("The participants cannot be notified until each of them has assessed and updated its matrix.")}</p>
               </div>
             )}
             <FormField label={tr("Reason")} required><Textarea rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>

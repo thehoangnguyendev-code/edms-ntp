@@ -11,9 +11,9 @@ import { tr } from "@/i18n";
 type TabId = "resolver" | "simulator" | "relations";
 
 const TAB_LABELS: Record<TabId, string> = {
-  resolver: tr("Policy Resolver"),
-  simulator: tr("Simulator"),
-  relations: tr("Relation Definitions"),
+  get resolver() { return tr("Policy Resolver"); },
+  get simulator() { return tr("Simulator"); },
+  get relations() { return tr("Relation Definitions"); },
 };
 
 const TABS: TabItem[] = [

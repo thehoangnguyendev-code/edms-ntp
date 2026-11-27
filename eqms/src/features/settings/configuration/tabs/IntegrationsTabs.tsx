@@ -1,4 +1,4 @@
-import { tr as __ariaTr } from "@/i18n";
+import { tr as __ariaTr, getCatalogLanguage } from "@/i18n";
 import { tr } from "@/i18n";
 import React, { lazy, Suspense } from 'react';
 import { IconDatabase, IconChartBar, IconFileText, IconArchive, IconStack2 } from '@tabler/icons-react';
@@ -17,8 +17,8 @@ const OnlyOfficeTab = lazy(() => import('./OnlyOfficeTab').then((m) => ({ defaul
 
 const ALL_TABS = [
   { id: 'storage', label: 'Storage', icon: IconArchive },
-  { id: 'storage-usage', label: tr('Storage Usage'), icon: IconChartBar },
-  { id: 'onlyoffice', label: tr('OnlyOffice'), icon: IconStack2 },
+  { id: 'storage-usage', get label() { return tr('Storage Usage'); }, icon: IconChartBar },
+  { id: 'onlyoffice', get label() { return tr('OnlyOffice'); }, icon: IconStack2 },
   HISTORY_TAB,
 ] as const;
 
@@ -51,7 +51,7 @@ interface IntegrationsTabsProps {
 export const IntegrationsTabs: React.FC<IntegrationsTabsProps> = ({
   integrations, onIntegrationsChange, onlyOffice, onOnlyOfficeChange, onOnlyOfficeValidationChange, saved, onlyOfficeValid, canManage, storagePolicy, checks, activeTab: requested, onTabChange,
 }) => {
-  const tabs = React.useMemo(() => ALL_TABS.filter((tab) => tab.id !== 'storage-usage' || canManage), [canManage]);
+  const tabs = React.useMemo(() => ALL_TABS.filter((tab) => tab.id !== 'storage-usage' || canManage), [canManage, getCatalogLanguage()]);
   const activeTab = tabs.some((tab) => tab.id === requested) ? requested : tabs[0].id;
   const changed = React.useMemo(() => {
     const set = new Set<IntegrationTabId>();

@@ -2,7 +2,7 @@ import React from 'react';
 import { IconHistory } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button/Button';
 import { TabNav, type TabItem } from '@/components/ui/tabs';
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 
 /** The last tab of every page that is split into tabs: the Audit Trail of that page of Configuration. */
 export const HISTORY_TAB = { id: 'history', label: 'History', icon: IconHistory } as const;
@@ -37,7 +37,7 @@ export function ConfigTabs<T extends string>({ tabs, activeTab, onChange, change
             ? { ...tab, dot: true, dotLabel: 'Not saved yet' }
             : tab,
       ),
-    [tabs, changed, invalid],
+    [tabs, changed, invalid, getCatalogLanguage()],
   );
   const canReset = Boolean(onReset && changed?.has(activeTab));
   return (

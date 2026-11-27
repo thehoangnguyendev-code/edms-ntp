@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React from "react";
 import {
   Database,
@@ -47,7 +48,7 @@ export const DataPrivacyNoticeView: React.FC = () => {
           <Button
             size="sm"
             variant="outline-emerald"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigateBack(navigate, null, "/profile")}
           >
             {tr("Back to Personal Information")}
           </Button>

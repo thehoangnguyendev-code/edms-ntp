@@ -93,7 +93,7 @@ export const UncontrolledCopyMarkingPreview: React.FC<{
           </div>
         )}
       </div>
-      <p className="mt-3 text-2xs text-slate-400">
+      <p className="text-xs text-slate-500 mt-3">
         {tr("The watermark itself always prints on every page; its title line defaults to the mandatory text but can be replaced.")}
       </p>
     </div>

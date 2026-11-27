@@ -27,24 +27,24 @@ interface PreviewFileTabProps {
 }
 
 const TABS = [
-  { id: 'onlyoffice-preview', label: tr('OnlyOffice Preview'), icon: () => <img src={onlyOfficeLogo} alt="" className="h-4 w-4 object-contain" /> },
-  { id: 'pdf-preview', label: tr('PDF Preview'), icon: () => <img src={EmbedPDF} alt="" className="h-4 w-4 object-contain" /> },
+  { id: 'onlyoffice-preview', get label() { return tr('OnlyOffice Preview'); }, icon: () => <img src={onlyOfficeLogo} alt="" className="h-4 w-4 object-contain" /> },
+  { id: 'pdf-preview', get label() { return tr('PDF Preview'); }, icon: () => <img src={EmbedPDF} alt="" className="h-4 w-4 object-contain" /> },
   HISTORY_TAB,
 ] as const;
 
 /** Community Edition options supported by OnlyOffice Document Server. */
 const VIEWER_OPTIONS: Array<{ key: 'showPluginsTab' | 'showRightMenu' | 'showFileName'; label: string; hint: string; defaultValue: boolean }> = [
-  { key: 'showPluginsTab', label: tr('Enable plugins'), hint: tr('Allow OnlyOffice plugins in the viewer.'), defaultValue: false },
-  { key: 'showRightMenu', label: tr('Open right menu by default'), hint: tr('OnlyOffice may restore a viewer preference saved in that browser.'), defaultValue: false },
-  { key: 'showFileName', label: tr('Show document name in header'), hint: tr('Hiding it uses OnlyOffice compact header layout.'), defaultValue: true },
+  { key: 'showPluginsTab', get label() { return tr('Enable plugins'); }, get hint() { return tr('Allow OnlyOffice plugins in the viewer.'); }, defaultValue: false },
+  { key: 'showRightMenu', get label() { return tr('Open right menu by default'); }, get hint() { return tr('OnlyOffice may restore a viewer preference saved in that browser.'); }, defaultValue: false },
+  { key: 'showFileName', get label() { return tr('Show document name in header'); }, get hint() { return tr('Hiding it uses OnlyOffice compact header layout.'); }, defaultValue: true },
 ];
 
 export { DEFAULT_WATERMARK_ANGLE, MIN_WATERMARK_ANGLE, MAX_WATERMARK_ANGLE } from './WatermarkTraceabilityEditor';
 
 type StageMode = 'REVIEW' | 'COMMENT_ONLY';
 const STAGE_MODE_OPTIONS = [
-  { label: tr('Review Mode'), value: 'REVIEW' },
-  { label: tr('Comment Only'), value: 'COMMENT_ONLY' },
+  { get label() { return tr('Review Mode'); }, value: 'REVIEW' },
+  { get label() { return tr('Comment Only'); }, value: 'COMMENT_ONLY' },
 ];
 const STAGE_MODE_HINT: Record<StageMode, string> = {
   REVIEW: 'Review Mode: the person suggests changes. Track changes is on, and they cannot type outside a tracked change.',
@@ -55,33 +55,33 @@ type PdfToggleOption = { key: keyof PdfPreviewConfig; label: string; hint: strin
 
 const PDF_TOGGLE_GROUPS: Array<{ title: string; description: string; options: PdfToggleOption[] }> = [
   {
-    title: tr('Viewing and Navigation'),
-    description: tr('Controls used to move around and inspect the current PDF.'),
+    get title() { return tr('Viewing and Navigation'); },
+    get description() { return tr('Controls used to move around and inspect the current PDF.'); },
     options: [
-      { key: 'showThumbnailSidebar', label: tr('Thumbnails and outline'), hint: tr('Show the side panel for page thumbnails and document outline.'), defaultValue: true },
-      { key: 'showSearch', label: tr('Find in document'), hint: tr('Show the search control for text in the current PDF.'), defaultValue: true },
-      { key: 'showPageNavigation', label: tr('Previous / next page'), hint: tr('Show page navigation controls in the viewer toolbar.'), defaultValue: true },
-      { key: 'showZoomControls', label: tr('Zoom menu and controls'), hint: tr('Show zoom percentage, fit page, fit width, marquee zoom, and zoom buttons.'), defaultValue: true },
-      { key: 'showFullScreen', label: tr('Full-screen viewer'), hint: tr('Allow the viewer to enter browser full-screen mode.'), defaultValue: true },
+      { key: 'showThumbnailSidebar', get label() { return tr('Thumbnails and outline'); }, get hint() { return tr('Show the side panel for page thumbnails and document outline.'); }, defaultValue: true },
+      { key: 'showSearch', get label() { return tr('Find in document'); }, get hint() { return tr('Show the search control for text in the current PDF.'); }, defaultValue: true },
+      { key: 'showPageNavigation', get label() { return tr('Previous / next page'); }, get hint() { return tr('Show page navigation controls in the viewer toolbar.'); }, defaultValue: true },
+      { key: 'showZoomControls', get label() { return tr('Zoom menu and controls'); }, get hint() { return tr('Show zoom percentage, fit page, fit width, marquee zoom, and zoom buttons.'); }, defaultValue: true },
+      { key: 'showFullScreen', get label() { return tr('Full-screen viewer'); }, get hint() { return tr('Allow the viewer to enter browser full-screen mode.'); }, defaultValue: true },
     ],
   },
   {
-    title: tr('Document Menu'),
-    description: tr('Commands available from the menu at the top left of the viewer.'),
+    get title() { return tr('Document Menu'); },
+    get description() { return tr('Commands available from the menu at the top left of the viewer.'); },
     options: [
-      { key: 'showOpenDocumentAction', label: tr('Open document'), hint: tr('Allow a user to select a local PDF in the Document menu.'), defaultValue: true },
-      { key: 'showCloseDocumentAction', label: tr('Close document'), hint: tr('Show the Close command for the current preview.'), defaultValue: true },
-      { key: 'showSecurityAction', label: tr('Security information'), hint: tr('Show the PDF permission details dialog.'), defaultValue: true },
-      { key: 'showScreenshotAction', label: tr('Screenshot'), hint: tr('Allow temporary screenshot capture; captured content is not saved to EQMS.'), defaultValue: true },
+      { key: 'showOpenDocumentAction', get label() { return tr('Open document'); }, get hint() { return tr('Allow a user to select a local PDF in the Document menu.'); }, defaultValue: true },
+      { key: 'showCloseDocumentAction', get label() { return tr('Close document'); }, get hint() { return tr('Show the Close command for the current preview.'); }, defaultValue: true },
+      { key: 'showSecurityAction', get label() { return tr('Security information'); }, get hint() { return tr('Show the PDF permission details dialog.'); }, defaultValue: true },
+      { key: 'showScreenshotAction', get label() { return tr('Screenshot'); }, get hint() { return tr('Allow temporary screenshot capture; captured content is not saved to EQMS.'); }, defaultValue: true },
     ],
   },
   {
-    title: tr('Session Tools'),
-    description: tr('Temporary browser-only tools; none can change the stored PDF.'),
+    get title() { return tr('Session Tools'); },
+    get description() { return tr('Temporary browser-only tools; none can change the stored PDF.'); },
     options: [
-      { key: 'allowAnnotations', label: tr('Allow annotations and comments'), hint: tr('Allow temporary highlighting, drawing, and comments. Disabled by default; EQMS never saves these changes to the stored PDF.'), defaultValue: false },
-      { key: 'showInsertTools', label: tr('Insert tab'), hint: tr('Allow temporary stamps, images, and signatures only when annotations are enabled. Exported PDFs may include session marks.'), defaultValue: false },
-      { key: 'allowTextSelection', label: tr('Select and copy text'), hint: tr('Allow text selection and copying only when export and print are permitted.'), defaultValue: false },
+      { key: 'allowAnnotations', get label() { return tr('Allow annotations and comments'); }, get hint() { return tr('Allow temporary highlighting, drawing, and comments. Disabled by default; EQMS never saves these changes to the stored PDF.'); }, defaultValue: false },
+      { key: 'showInsertTools', get label() { return tr('Insert tab'); }, get hint() { return tr('Allow temporary stamps, images, and signatures only when annotations are enabled. Exported PDFs may include session marks.'); }, defaultValue: false },
+      { key: 'allowTextSelection', get label() { return tr('Select and copy text'); }, get hint() { return tr('Allow text selection and copying only when export and print are permitted.'); }, defaultValue: false },
     ],
   },
 ];
@@ -173,7 +173,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
               onChange={(value) => setViewer({ pendingReviewMode: value as StageMode })}
               options={STAGE_MODE_OPTIONS}
             />
-            <p className="mt-1 text-xs text-slate-500">{STAGE_MODE_HINT[onlyOfficeConfig.viewer?.pendingReviewMode ?? 'REVIEW']}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{STAGE_MODE_HINT[onlyOfficeConfig.viewer?.pendingReviewMode ?? 'REVIEW']}</p>
           </div>
           <div>
             <Select
@@ -183,7 +183,7 @@ export const PreviewFileTab: React.FC<PreviewFileTabProps> = ({
               onChange={(value) => setViewer({ pendingApprovalMode: value as StageMode })}
               options={STAGE_MODE_OPTIONS}
             />
-            <p className="mt-1 text-xs text-slate-500">{STAGE_MODE_HINT[onlyOfficeConfig.viewer?.pendingApprovalMode ?? 'COMMENT_ONLY']}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{STAGE_MODE_HINT[onlyOfficeConfig.viewer?.pendingApprovalMode ?? 'COMMENT_ONLY']}</p>
           </div>
         </div>
       </div>

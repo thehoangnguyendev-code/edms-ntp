@@ -34,7 +34,8 @@ class TrainingTrainerServiceTest {
 
     private Map<String, Object> qualification(boolean holdsPermission) {
         when(jdbc.queryForList(contains("from training_sessions s join"), eq(sessionId))).thenReturn(List.of(Map.of("trainer_user_id", trainerId, "organizer_department_id", UUID.randomUUID())));
-        when(jdbc.queryForObject(contains("lower(r.topic_text) like '%gmp%'"), eq(Integer.class), eq(trainerId))).thenReturn(1);
+        when(jdbc.queryForObject(contains("r.is_gmp"), eq(Boolean.class))).thenReturn(false);
+        when(jdbc.queryForObject(contains("lower(rec.topic_text) like '%gmp%'"), eq(Boolean.class), eq(trainerId))).thenReturn(true);
         when(jdbc.queryForList(contains("from training_session_topics"), eq(sessionId))).thenReturn(List.of(Map.of("topic_text", "Gowning")));
         when(jdbc.queryForObject(contains("training_topic_key(r.topic_text) = training_topic_key(?)"), eq(Integer.class), any(), any(), any(), any())).thenReturn(0);
         when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
@@ -48,7 +49,8 @@ class TrainingTrainerServiceTest {
     void theRecordWrittenForATrainerIsNotCountedAsTrainingOfTheTrainer() {
         when(jdbc.queryForList(contains("from training_sessions s join"), eq(sessionId))).thenReturn(List.of(Map.of("trainer_user_id", trainerId, "organizer_department_id", UUID.randomUUID())));
         // both queries only answer when they leave the Trainer records out; a query that does not would get the default (null) and fail
-        when(jdbc.queryForObject(contains("r.result <> 'TRAINER' and lower(r.topic_text) like '%gmp%'"), eq(Integer.class), eq(trainerId))).thenReturn(1);
+        when(jdbc.queryForObject(contains("r.is_gmp"), eq(Boolean.class))).thenReturn(false);
+        when(jdbc.queryForObject(contains("rec.result <> 'TRAINER' and lower(rec.topic_text) like '%gmp%'"), eq(Boolean.class), eq(trainerId))).thenReturn(true);
         when(jdbc.queryForList(contains("from training_session_topics"), eq(sessionId))).thenReturn(List.of(Map.of("topic_text", "Gowning")));
         when(jdbc.queryForObject(contains("r.result <> 'TRAINER' and ((cast(? as varchar)"), eq(Integer.class), any(), any(), any(), any())).thenReturn(0);
         when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
@@ -58,6 +60,22 @@ class TrainingTrainerServiceTest {
         Map<String, Object> q = new TrainingTrainerService(jdbc, access, null, null, null, null, users, com.eqms.service.authorization.TestGuards.allowingTraining()).qualification(sessionId);
 
         assertThat(q).containsEntry("gmpTrained", true).containsEntry("qualified", false);
+    }
+
+    /** DEC-TRAINING-2026-11-27-01 A2: once QA marks a row, only a record of a marked row counts; a topic that merely names GMP does not. */
+    @Test
+    void onceAGmpRowIsMarkedTheNameOfTheTopicNoLongerCounts() {
+        when(jdbc.queryForList(contains("from training_sessions s join"), eq(sessionId))).thenReturn(List.of(Map.of("trainer_user_id", trainerId, "organizer_department_id", UUID.randomUUID())));
+        when(jdbc.queryForObject(contains("from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id where"), eq(Boolean.class))).thenReturn(true);
+        when(jdbc.queryForObject(contains("where r.is_gmp and"), eq(Boolean.class), eq(trainerId))).thenReturn(false);
+        when(jdbc.queryForList(contains("from training_session_topics"), eq(sessionId))).thenReturn(List.of());
+        when(jdbc.queryForList(contains("training_trainer_exceptions"), eq(sessionId))).thenReturn(List.of());
+        when(users.findById(trainerId)).thenReturn(Optional.of(trainer));
+        when(access.has(trainer, "training.trainer.qualified")).thenReturn(false);
+
+        Map<String, Object> q = new TrainingTrainerService(jdbc, access, null, null, null, null, users, com.eqms.service.authorization.TestGuards.allowingTraining()).qualification(sessionId);
+
+        assertThat(q).containsEntry("gmpTrained", false).containsEntry("qualified", false);
     }
 
     @Test

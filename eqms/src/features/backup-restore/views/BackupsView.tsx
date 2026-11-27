@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Plus } from "lucide-react";
@@ -32,8 +33,8 @@ type SortKey = "startedAt" | "backupNumber" | "status" | "type" | "trigger" | "d
 const ALL = "ALL";
 const option = (value: string) => ({ label: statusLabel(value), value });
 const STATUS_OPTIONS = [{ label: "All", value: ALL }, ...["COMPLETED", "RUNNING", "FAILED"].map(option)];
-const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { label: tr("Pre-change"), value: "PRE_CHANGE" }];
-const TRIGGER_OPTIONS = [{ label: "All", value: ALL }, { label: "Scheduled", value: "SCHEDULED" }, { label: "Manual", value: "MANUAL" }, { label: tr("Pre-change"), value: "PRE_CHANGE" }];
+const TYPE_OPTIONS = [{ label: "All", value: ALL }, { label: "Full", value: "FULL" }, { get label() { return tr("Pre-change"); }, value: "PRE_CHANGE" }];
+const TRIGGER_OPTIONS = [{ label: "All", value: ALL }, { label: "Scheduled", value: "SCHEDULED" }, { label: "Manual", value: "MANUAL" }, { get label() { return tr("Pre-change"); }, value: "PRE_CHANGE" }];
 const CONTENT_OPTIONS = [{ label: "All", value: ALL }, { label: "Database", value: "DATABASE" }, { label: "Files", value: "OBJECT_STORE" }];
 /** Short names for the parts a backup holds, shown in the table only. */
 const CONTENT_SHORT: Record<string, string> = { CONFIGURATION: "Settings", DATABASE: "Database", OBJECT_STORE: "Files", FILE_STORAGE: "Files" };
@@ -49,20 +50,20 @@ export const BackupsView: React.FC = () => {
   const { hasPermission } = usePermissions();
   const menu = usePortalDropdown();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("BackupsView.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState(ALL);
-  const [type, setType] = useState(ALL);
-  const [integrity, setIntegrity] = useState(ALL);
-  const [trigger, setTrigger] = useState(ALL);
-  const [component, setComponent] = useState(ALL);
-  const [checkedFrom, setCheckedFrom] = useState("");
-  const [checkedTo, setCheckedTo] = useState("");
-  const [startedFrom, setStartedFrom] = useState("");
-  const [startedTo, setStartedTo] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "startedAt", direction: "desc" });
+  const [status, setStatus] = useViewState("BackupsView.status", ALL);
+  const [type, setType] = useViewState("BackupsView.type", ALL);
+  const [integrity, setIntegrity] = useViewState("BackupsView.integrity", ALL);
+  const [trigger, setTrigger] = useViewState("BackupsView.trigger", ALL);
+  const [component, setComponent] = useViewState("BackupsView.component", ALL);
+  const [checkedFrom, setCheckedFrom] = useViewState("BackupsView.checkedFrom", "");
+  const [checkedTo, setCheckedTo] = useViewState("BackupsView.checkedTo", "");
+  const [startedFrom, setStartedFrom] = useViewState("BackupsView.startedFrom", "");
+  const [startedTo, setStartedTo] = useViewState("BackupsView.startedTo", "");
+  const [page, setPage] = useViewState("BackupsView.page", 1);
+  const [pageSize, setPageSize] = useViewState("BackupsView.pageSize", 10);
+  const [sort, setSort] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("BackupsView.sort", { key: "startedAt", direction: "desc" });
   const [rows, setRows] = useState<BackupRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -125,7 +126,7 @@ export const BackupsView: React.FC = () => {
   }, [debouncedSearch, status, type, integrity, trigger, component, startedFrom, startedTo, checkedFrom, checkedTo, sort, page, pageSize, reloadKey]);
 
   // A different search, filter or page size starts again from the first page.
-  useEffect(() => setPage(1), [debouncedSearch, status, type, integrity, trigger, component, startedFrom, startedTo, checkedFrom, checkedTo, pageSize]);
+  useViewFilterChange(() => setPage(1), [debouncedSearch, status, type, integrity, trigger, component, startedFrom, startedTo, checkedFrom, checkedTo, pageSize]);
 
   const clearFilters = () => {
     setSearch("");

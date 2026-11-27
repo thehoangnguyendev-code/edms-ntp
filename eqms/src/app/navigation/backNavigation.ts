@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { rememberedBackNavigation } from "./viewNavigation";
 
 export interface BackNavigationLocationState {
   from?: string;
@@ -31,10 +32,12 @@ export const navigateBack = (
   state: BackNavigationLocationState | null | undefined,
   fallbackRoute: string,
 ) => {
-  const target = pickBackTarget(state);
+  const remembered = rememberedBackNavigation(pickBackTarget(state) ?? undefined);
+  const target = remembered?.href;
 
   if (target) {
-    navigate(target);
+    if (remembered?.state) navigate(target, { state: remembered.state });
+    else navigate(target);
     return;
   }
 
@@ -43,7 +46,8 @@ export const navigateBack = (
     return;
   }
 
-  navigate(fallbackRoute, { replace: true });
+  const fallback = rememberedBackNavigation(fallbackRoute);
+  navigate(fallback?.href ?? fallbackRoute, { replace: true, ...(fallback?.state ? { state: fallback.state } : {}) });
 };
 
 export const useBackNavigation = (

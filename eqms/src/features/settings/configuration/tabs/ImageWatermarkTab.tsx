@@ -42,8 +42,8 @@ export const UTC_OFFSETS: Array<{ value: string; label: string }> = (() => {
 const POSITIONS: Array<{ value: ImageWatermarkPosition; label: string }> = [
   { value: "TOP_LEFT", label: "Top Left" },
   { value: "TOP_RIGHT", label: "Top Right" },
-  { value: "BOTTOM_LEFT", label: tr("Bottom Left") },
-  { value: "BOTTOM_RIGHT", label: tr("Bottom Right") },
+  { value: "BOTTOM_LEFT", get label() { return tr("Bottom Left"); } },
+  { value: "BOTTOM_RIGHT", get label() { return tr("Bottom Right"); } },
 ];
 
 const readAsDataUrl = (file: File) =>
@@ -188,7 +188,7 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
                       onChange={(utcOffset) => set({ utcOffset: String(utcOffset) })}
                       options={UTC_OFFSETS}
                     />
-                    <p className="mt-1 text-xs text-slate-500">{trFormat("Printed with the time, for example 02/11/2026 11:20:43 ({zone}).", { zone: UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7" })}</p>
+                    <p className="mt-1.5 text-xs text-slate-500">{trFormat("Printed with the time, for example 02/11/2026 11:20:43 ({zone}).", { zone: UTC_OFFSETS.find((zone) => zone.value === settings.utcOffset)?.label ?? "UTC+7" })}</p>
                     </div>
                   </div>
                 )}
@@ -253,8 +253,8 @@ export const ImageWatermarkCard: React.FC<CardProps> = ({ target, title, descrip
 };
 
 const TABS = [
-  { id: "controlled-copy", label: tr("Controlled Copy Destruction Evidence"), icon: IconCamera },
-  { id: "specimen-signature", label: tr("Specimen Signature"), icon: IconSignature },
+  { id: "controlled-copy", get label() { return tr("Controlled Copy Destruction Evidence"); }, icon: IconCamera },
+  { id: "specimen-signature", get label() { return tr("Specimen Signature"); }, icon: IconSignature },
   HISTORY_TAB,
 ] as const;
 

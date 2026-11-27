@@ -17,7 +17,7 @@ import { RowActionsMenu, type RowAction } from "./workspace/RowActionsMenu";
 import { tr, trPlural } from "@/i18n";
 
 export const DELIVERY_LABEL: Record<string, string> = localized({ ELECTRONIC: "Electronic", PAPER: "Paper", MIXED: "Mixed" });
-const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
+const DELIVERY_OPTIONS = Object.keys(DELIVERY_LABEL).map((value) => ({ value, get label() { return DELIVERY_LABEL[value]; } }));
 
 type Ask = { kind: "mode"; session: TrainingSession; mode: string } | { kind: "print"; session: TrainingSession } | { kind: "exam"; session: TrainingSession; format: "pdf" | "docx" };
 

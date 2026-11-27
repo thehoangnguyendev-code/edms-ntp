@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import { TrainingPersonName } from "../shared/TrainingPersonName";
 import { TabNav, type TabItem } from "@/components/ui/tabs/TabNav";
@@ -65,13 +66,13 @@ export const JOB_STATUS_COLOR = statusColors("DRAFT", "PENDING_RECEIVER", "EFFEC
 
 /** Job assignments (APD.0024): the position a person is given, after the training the matrix requires for it. */
 const TABS: TabItem[] = [
-  { id: "assignments", label: tr("Job Assignments") },
-  { id: "roles", label: tr("Work Positions Held") },
+  { id: "assignments", get label() { return tr("Job Assignments"); } },
+  { id: "roles", get label() { return tr("Work Positions Held"); } },
 ];
 
 export function TrainingJobListView() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("assignments");
+  const [tab, setTab] = useViewState("TrainingJobListView.tab", "assignments");
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("training.job_assignment.manage");
   const [status, setStatus] = usePersistedState("training.jobs.status", "");

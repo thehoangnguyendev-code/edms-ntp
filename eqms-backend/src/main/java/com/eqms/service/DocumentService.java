@@ -378,9 +378,9 @@ public class DocumentService {
             if (StringUtils.hasText(normalizedSearch)) {
                 String pattern = "%" + normalizedSearch + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("documentNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentName")), pattern),
-                        cb.like(cb.lower(root.get("titleLocalLanguage")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("titleLocalLanguage"), pattern)
                 ));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
@@ -758,7 +758,7 @@ public class DocumentService {
     }
 
     private static boolean containsIgnoreCase(String value, String lowerCaseQuery) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(lowerCaseQuery);
+        return com.eqms.util.SearchText.containsFolded(value, lowerCaseQuery);
     }
 
     @Transactional(readOnly = true)
@@ -1038,6 +1038,9 @@ public class DocumentService {
                 buildDraftAuditComment(request, "Document draft created"),
                 buildCreatedDocumentDraftAuditChanges(document, request)
         );
+        if (trainingNumber) { // false = legacy import: its revisions are filed by the same request
+            notifyAuthorAssigned(document, currentUser);
+        }
         return toListItem(document);
     }
 
@@ -1138,6 +1141,8 @@ public class DocumentService {
         documentAuthorizationService.requireCanEditInitialDocumentDraft(currentUser, document);
 
         if (isDraftUnchanged(document, request)) {
+            // A draft that became ready before this notification existed is announced on its next Save; an Author already told is not told again.
+            notifyAuthorAssigned(document, currentUser);
             return toListItem(document);
         }
         DocumentDraftAuditSnapshot beforeSnapshot = captureDocumentDraftAuditSnapshot(document);
@@ -1160,6 +1165,7 @@ public class DocumentService {
                 buildDraftAuditComment(request, "Document draft updated"),
                 buildDocumentDraftModificationChanges(beforeSnapshot, captureDocumentDraftAuditSnapshot(document))
         );
+        notifyAuthorAssigned(document, currentUser);
         return toListItem(document);
     }
 
@@ -1449,6 +1455,36 @@ public class DocumentService {
     // Optional: a missing dispatcher must never block saving the configuration.
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private NotificationDispatcher upgradeNotificationDispatcher;
+
+    /**
+     * Tells the Author of a new document (no revision yet) to upload the revision, once, as soon as they can: the required Reviewer and Approver are assigned.
+     * Saving again sends nothing; a new Author is told. Nobody is told about their own Save.
+     */
+    private void notifyAuthorAssigned(DocumentRecord document, UserAccount savedBy) {
+        UserAccount author = document == null ? null : document.getAuthor();
+        if (upgradeNotificationDispatcher == null || author == null || author.getStatus() != UserStatus.Active
+                || document.getStatus() == null || !"DRAFT".equals(document.getStatus().getCode())
+                || Objects.equals(author.getId(), document.getAuthorUploadNotifiedUserId())
+                || (savedBy != null && Objects.equals(author.getId(), savedBy.getId()))
+                || documentRevisionRepository.findFirstByDocument_IdOrderByCreatedAtDesc(document.getId()).isPresent()
+                || revisionService.describeWhyDocumentWorkflowParticipantsAreMissing(document) != null) {
+            return;
+        }
+        try {
+            Map<String, String> variables = new java.util.HashMap<>();
+            variables.put("documentNumber", Objects.toString(document.getDocumentNumber(), ""));
+            variables.put("documentTitle", Objects.toString(document.getDocumentName(), ""));
+            variables.put("revisionNumber", Objects.toString(document.getVersion(), ""));
+            variables.put("actionUrl", "/documents/" + document.getId());
+            var outcome = upgradeNotificationDispatcher.dispatch("document.author_assigned", List.of(author), variables);
+            if (outcome == null || outcome.blocked() == null) {
+                document.setAuthorUploadNotifiedUserId(author.getId());
+                documentRepository.save(document);
+            }
+        } catch (Exception ex) {
+            log.warn("Author-assigned notification failed for document {}", document.getId(), ex);
+        }
+    }
 
     /** Tells the document's Author that the DCO configured the upgrade, so Upload Revision is now open to them. */
     private void notifyAuthorUpgradeReady(DocumentRecord document, UserAccount configuredBy) {
@@ -2493,8 +2529,8 @@ public class DocumentService {
 
         return departmentRepository.findAllByActiveTrueOrderByNameAsc().stream()
                 .filter(department -> normalizedSearch.isBlank()
-                        || Optional.ofNullable(normalizeString(department.getName())).orElse("").toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                        || Optional.ofNullable(normalizeString(department.getCode())).orElse("").toLowerCase(Locale.ROOT).contains(normalizedSearch))
+                        || com.eqms.util.SearchText.containsFolded(normalizeString(department.getName()), normalizedSearch)
+                        || com.eqms.util.SearchText.containsFolded(normalizeString(department.getCode()), normalizedSearch))
                 .sorted(comparator)
                 .map(department -> new KnowledgeBaseDepartmentResponse(
                         department.getId().toString(),
@@ -2516,9 +2552,9 @@ public class DocumentService {
 
         List<KnowledgeBaseDocumentResponse> documents = folder.documents() == null ? List.of() : folder.documents().stream()
                 .filter(doc -> normalizedSearch.isBlank()
-                        || Optional.ofNullable(doc.documentNumber()).orElse("").toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                        || Optional.ofNullable(doc.documentName()).orElse("").toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                        || Optional.ofNullable(doc.documentType()).orElse("").toLowerCase(Locale.ROOT).contains(normalizedSearch))
+                        || com.eqms.util.SearchText.containsFolded(doc.documentNumber(), normalizedSearch)
+                        || com.eqms.util.SearchText.containsFolded(doc.documentName(), normalizedSearch)
+                        || com.eqms.util.SearchText.containsFolded(doc.documentType(), normalizedSearch))
                 .sorted((left, right) -> {
                     int comparison = switch (Optional.ofNullable(sortField).orElse("name").toLowerCase(Locale.ROOT)) {
                         case "filetype" -> Optional.ofNullable(left.documentType()).orElse("").compareToIgnoreCase(Optional.ofNullable(right.documentType()).orElse(""));
@@ -2606,19 +2642,19 @@ public class DocumentService {
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + normalize(search) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("documentNumber")), pattern),
-                        cb.like(cb.lower(root.get("documentName")), pattern),
-                        cb.like(cb.lower(root.get("version")), pattern),
-                        cb.like(cb.lower(root.get("description")), pattern),
-                        cb.like(cb.lower(typeJoin.get("name")), pattern),
-                        cb.like(cb.lower(typeJoin.get("shortCode")), pattern),
-                        cb.like(cb.lower(businessUnitJoin.get("name")), pattern),
-                        cb.like(cb.lower(businessUnitJoin.get("code")), pattern),
-                        cb.like(cb.lower(departmentJoin.get("name")), pattern),
-                        cb.like(cb.lower(departmentJoin.get("code")), pattern),
-                        cb.like(cb.lower(authorJoin.get("fullName")), pattern),
-                        cb.like(cb.lower(authorJoin.get("username")), pattern),
-                        cb.like(cb.lower(openedByJoin.get("fullName")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("documentName"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("version"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("description"), pattern),
+                        com.eqms.util.SearchText.like(cb, typeJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, typeJoin.get("shortCode"), pattern),
+                        com.eqms.util.SearchText.like(cb, businessUnitJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, businessUnitJoin.get("code"), pattern),
+                        com.eqms.util.SearchText.like(cb, departmentJoin.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, departmentJoin.get("code"), pattern),
+                        com.eqms.util.SearchText.like(cb, authorJoin.get("fullName"), pattern),
+                        com.eqms.util.SearchText.like(cb, authorJoin.get("username"), pattern),
+                        com.eqms.util.SearchText.like(cb, openedByJoin.get("fullName"), pattern)
                 ));
             }
 

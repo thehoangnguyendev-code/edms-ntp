@@ -7,8 +7,8 @@ import { tr, trFormat } from "@/i18n";
 
 const STATE: Record<string, { label: string; color: "emerald" | "amber" | "slate" }> = {
   STORED: { label: "Stored", color: "emerald" },
-  STORED_INCOMPLETE: { label: tr("Stored, pages missing"), color: "amber" },
-  ALREADY_UPLOADED: { label: tr("Already uploaded"), color: "slate" },
+  STORED_INCOMPLETE: { get label() { return tr("Stored, pages missing"); }, color: "amber" },
+  ALREADY_UPLOADED: { get label() { return tr("Already uploaded"); }, color: "slate" },
 };
 
 /**

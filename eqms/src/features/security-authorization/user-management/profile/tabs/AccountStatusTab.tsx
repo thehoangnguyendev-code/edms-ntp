@@ -13,7 +13,7 @@ import { tr } from "@/i18n";
 const HOME_PAGE_OPTIONS: { label: string; value: string }[] = [
   { label: "Dashboard", value: "DASHBOARD" },
   { label: "Notifications", value: "NOTIFICATIONS" },
-  { label: tr("Knowledge Base"), value: "KNOWLEDGE" },
+  { get label() { return tr("Knowledge Base"); }, value: "KNOWLEDGE" },
 ];
 const HOME_PAGE_LABELS: Record<string, string> = {
   DASHBOARD: "Dashboard",
@@ -87,7 +87,7 @@ export const AccountStatusTab: React.FC<Props> = (props) => {
               options={HOME_PAGE_OPTIONS}
               className="w-full"
             />
-            <p className="text-xs text-slate-500 mt-2">{tr("Where this user lands after signing in.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("Where this user lands after signing in.")}</p>
           </div>
         </FieldGroup>
       </div>

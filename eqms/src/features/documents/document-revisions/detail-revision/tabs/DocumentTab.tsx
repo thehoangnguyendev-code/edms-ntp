@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { DocumentPdfViewer } from "@/features/documents/shared/components/DocumentPdfViewer";
 import { Loading } from "@/components/ui/loading/Loading";
 import { OnlyOfficeDocumentViewer } from "@/features/documents/shared/components/OnlyOfficeDocumentViewer";
+import { CompareWithEffectiveButton } from "@/features/documents/shared/components/CompareWithEffectiveButton";
 
 export interface DocumentTabProps {
   documentFile?: File | null;
@@ -61,7 +62,10 @@ export const DocumentTab: React.FC<DocumentTabProps> = ({
   if (liveViewRevisionId) {
     return (
       <div className="min-w-0 select-none" onContextMenu={(e) => e.preventDefault()}>
-        {workspaceAction ? <div className="mb-3 flex justify-end">{workspaceAction}</div> : null}
+        <div className="mb-3 flex flex-wrap justify-end gap-2 empty:hidden">
+          <CompareWithEffectiveButton revisionId={liveViewRevisionId} />
+          {workspaceAction}
+        </div>
         <OnlyOfficeDocumentViewer revisionId={liveViewRevisionId} />
       </div>
     );

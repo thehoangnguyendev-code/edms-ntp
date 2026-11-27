@@ -213,9 +213,10 @@ class TrainingPolicyAdaptersTest {
 
     @Test
     void theMigrationSaysWhatTheRegistryAndTheRelationTableSay() throws Exception {
-        String migration = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/db/migration/V810__training_requirement_and_matrix_in_workflow_authorization.sql"));
+        String migration = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/db/migration/V810__training_requirement_and_matrix_in_workflow_authorization.sql"))
+                + java.nio.file.Files.readString(java.nio.file.Path.of("src/main/resources/db/migration/V878__training_matrix_review_step.sql"));
         var requirementAndMatrix = WorkflowActionDefaultPolicyRegistry.allTraining().stream().filter(d -> !d.workflowKey().equals("TRAINING_ACTIVITY")).toList();
-        assertThat(requirementAndMatrix).hasSize(8);
+        assertThat(requirementAndMatrix).hasSize(10);
         for (var d : requirementAndMatrix) {
             String row = "('" + d.objectType() + "', '" + d.objectType() + "', '" + d.policy().actionCode() + "',";
             String rowMatrix = "('" + d.workflowKey() + "',      '" + d.objectType() + "', '" + d.policy().actionCode() + "',";

@@ -50,8 +50,8 @@ const clearSelectionClass =
 
 const STEPS = ["Basic Info", "Permissions", "Workflow Eligibility", "Users", "Review & Create"] as const;
 const PERMISSION_MODE_TABS: TabItem[] = [
-  { id: "existing", label: tr("Use existing Permission Sets") },
-  { id: "custom", label: tr("Pick individual permissions") },
+  { id: "existing", get label() { return tr("Use existing Permission Sets"); } },
+  { id: "custom", get label() { return tr("Pick individual permissions"); } },
 ];
 
 interface WorkflowRoleCatalogEntry {
@@ -406,7 +406,7 @@ export const RoleSetupWizardView: React.FC = () => {
                   {trFormat("An access profile named “{name}” already exists — choose a different name.", { name: name.trim() })}
                 </p>
               ) : (
-                <p className="text-xs text-slate-500 mt-1.5">
+                <p className="mt-1.5 text-xs text-slate-500">
                   {tr("This is the named bundle of permissions that will be assigned to users.")}
                 </p>
               )}

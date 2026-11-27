@@ -50,11 +50,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
             where u.status = :status
               and (
                 :search is null
-                or lower(u.fullName) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.employeeCode, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.email, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.department, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.position, '')) like lower(concat('%', cast(:search as string), '%'))
+                or cast(function('eqms_fold', u.fullName) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.employeeCode, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.email, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.department, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.position, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
               )
             """)
     Page<UserAccount> findParticipantCandidates(
@@ -70,11 +70,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
               and (:department is null or lower(coalesce(u.department, '')) = lower(cast(:department as string)))
               and (
                 :search is null
-                or lower(u.fullName) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.email, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.employeeCode, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.department, '')) like lower(concat('%', cast(:search as string), '%'))
-                or lower(coalesce(u.position, '')) like lower(concat('%', cast(:search as string), '%'))
+                or cast(function('eqms_fold', u.fullName) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.email, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.employeeCode, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.department, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
+                or cast(function('eqms_fold', coalesce(u.position, '')) as string) like cast(function('eqms_fold', concat('%', cast(:search as string), '%')) as string)
               )
             """)
     Page<UserAccount> findMetadataLookupCandidates(
@@ -98,7 +98,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
     java.util.List<UserAccount> findAllByDepartmentNameOrCodeAndStatus(@Param("first") String first, @Param("second") String second, @Param("status") UserStatus status);
 
     /** User names of the people whose full name contains the text; the backup screens search people by the name they show. */
-    @Query("select u.username from UserAccount u where lower(u.fullName) like lower(concat('%', :text, '%'))")
+    @Query("select u.username from UserAccount u where cast(function('eqms_fold', u.fullName) as string) like cast(function('eqms_fold', concat('%', :text, '%')) as string)")
     java.util.List<String> findUsernamesByFullNameContaining(@Param("text") String text);
 
     @Query("select u from UserAccount u where lower(u.fullName) = lower(:fullName)")

@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, Layers3, ListChecks, PenLine, SearchCheck } from "lucide-react";
@@ -179,7 +180,7 @@ export function TrainingAnnexDetailView({ mode = "view" }: { mode?: "view" | "ed
         breadcrumbItems={trainingAnnexDetail(navigate, code, editing ? tr("Edit Training Annex") : "Training Annex Details")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigate(ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX)}>{tr("Back")}</Button>
+            <Button size="sm" variant="outline-emerald" className="whitespace-nowrap" onClick={() => navigateBack(navigate, null, ROUTES.SETTINGS.TRAINING_ADMINISTRATION.ANNEX)}>{tr("Back")}</Button>
             {checked && detail.starterAvailable && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => void download("starter")}><IconDownload className="h-4 w-4" />{tr("Download Starter File")}</Button>}
             {canManage && <Button size="sm" variant="outline-emerald" className="gap-2 whitespace-nowrap" onClick={() => setUploadOpen(true)}><IconPlus className="h-4 w-4" />{tr("Upload Template")}</Button>}
           </div>

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
@@ -40,7 +41,7 @@ import { statusColor } from "@/components/ui/badge/statusColors";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "ALL" },
-  { label: tr("In Progress"), value: "IN_PROGRESS" },
+  { get label() { return tr("In Progress"); }, value: "IN_PROGRESS" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
@@ -116,13 +117,13 @@ export const AuditTrailReviewView: React.FC = () => {
     [],
   );
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("AuditTrailReviewView.search", "");
   const searchQuery = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [status, setStatus] = useState("ALL");
-  const [sortBy, setSortBy] = useState<SortKey>("createdAt");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [status, setStatus] = useViewState("AuditTrailReviewView.status", "ALL");
+  const [sortBy, setSortBy] = useViewState<SortKey>("AuditTrailReviewView.sortBy", "createdAt");
+  const [sortDirection, setSortDirection] = useViewState<"asc" | "desc">("AuditTrailReviewView.sortDirection", "desc");
+  const [currentPage, setCurrentPage] = useViewState("AuditTrailReviewView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("AuditTrailReviewView.itemsPerPage", 10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);

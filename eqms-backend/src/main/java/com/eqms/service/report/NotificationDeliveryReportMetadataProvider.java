@@ -17,7 +17,7 @@ public class NotificationDeliveryReportMetadataProvider implements ReportMetadat
     static {
         column("createdAt", "Created At", ReportQueryKit.timestamp("o.created_at"));
         column("event", "Event", "o.event_code");
-        column("domain", "Module", "o.event_domain");
+        column("domain", "Module", com.eqms.util.ModuleKeys.menuNameSql("o.event_domain"));
         column("status", "Status", "initcap(replace(lower(o.status), '_', ' '))");
         column("completedAt", "Completed At", ReportQueryKit.timestamp("o.completed_at"));
         group("Delivery", "priority", "Priority", "o.priority");
@@ -52,7 +52,7 @@ public class NotificationDeliveryReportMetadataProvider implements ReportMetadat
                 Map.of("code", "createdFrom", "name", "From date (required)", "type", "DATE"),
                 Map.of("code", "createdTo", "name", "To date (required)", "type", "DATE"));
     }
-    public Map<String, String> lookupColumns() { return Map.of("status", "o.status", "domain", "o.event_domain"); }
+    public Map<String, String> lookupColumns() { return Map.of("status", "o.status", "domain", com.eqms.util.ModuleKeys.menuNameSql("o.event_domain")); }
     public Map<String, String> filterColumns() { return Map.of("status", "status", "domain", "domain", "createdFrom", "createdAt", "createdTo", "createdAt"); }
 
     @Override
@@ -68,12 +68,12 @@ public class NotificationDeliveryReportMetadataProvider implements ReportMetadat
         StringBuilder sql = new StringBuilder("from notification_email_outbox o where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (coalesce(o.event_code,'') ilike ? escape '\\' or coalesce(o.event_domain,'') ilike ? escape '\\' or o.recipient_email ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(coalesce(o.event_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(o.event_domain,'')) like eqms_fold(?) escape '\\' or eqms_fold(o.recipient_email) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }
         Map<String, String> equals = new LinkedHashMap<>();
-        equals.put("status", "o.status"); equals.put("domain", "o.event_domain");
+        equals.put("status", "o.status"); equals.put("domain", com.eqms.util.ModuleKeys.menuNameSql("o.event_domain"));
         ReportQueryKit.equalsFilters(sql, args, filters, equals);
         ReportQueryKit.momentRange(sql, args, filters, "created", "o.created_at");
         return new Query(sql.toString(), args);

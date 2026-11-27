@@ -868,7 +868,7 @@ public class AccessProfileService {
         String term = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
         var matches = term.isEmpty() ? everyone : everyone.stream()
                 .filter(u -> java.util.stream.Stream.of(u.fullName(), u.employeeCode(), u.email(), u.department(), u.status())
-                        .anyMatch(v -> v != null && v.toLowerCase(java.util.Locale.ROOT).contains(term)))
+                        .anyMatch(v -> com.eqms.util.SearchText.containsFolded(v, term)))
                 .toList();
         Comparator<AccessProfileDetailResponse.AssignedUserSummary> byName = Comparator.comparing(
                 AccessProfileDetailResponse.AssignedUserSummary::fullName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
@@ -1337,9 +1337,9 @@ public class AccessProfileService {
             if (search != null && !search.isBlank()) {
                 String pattern = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("name")), pattern),
-                        cb.like(cb.lower(root.get("code")), pattern),
-                        cb.like(cb.lower(root.get("description")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.get("name"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("code"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("description"), pattern)
                 ));
             }
             if (type != null && !type.isBlank() && !"ALL".equalsIgnoreCase(type)) {

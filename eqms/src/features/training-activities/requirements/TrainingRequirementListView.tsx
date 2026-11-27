@@ -26,6 +26,8 @@ import { FormModal } from "@/components/ui/modal/FormModal";
 import { FormField } from "@/components/ui/form/ResponsiveForm";
 import { Input } from "../shared/TrainingFields";
 import { Select } from "@/components/ui/select/Select";
+import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { MandatoryTopicsDialog } from "./MandatoryTopicsDialog";
 import {
   DataTable,
   useCustomColumnLayout,
@@ -90,6 +92,8 @@ export function TrainingRequirementListView() {
   const [creating, setCreating] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [kind, setKind] = useState("ANNUAL");
+  const [plantWide, setPlantWide] = useState(false);
+  const [mandatory, setMandatory] = useState(false);
   const [reviewDone, setReviewDone] = useState("");
   const [busy, setBusy] = useState(false);
   const menu = usePortalDropdown();
@@ -214,6 +218,7 @@ export function TrainingRequirementListView() {
         year: Number(year),
         kind,
         reviewCompletedOn: kind === "SOP_PERIODIC" ? reviewDone || undefined : undefined,
+        plantWide: kind === "ANNUAL" && plantWide ? true : undefined,
       });
       showToast({
         type: "success",
@@ -240,10 +245,15 @@ export function TrainingRequirementListView() {
         breadcrumbItems={trainingBreadcrumbs(navigate, "requirements")}
         actions={
           canPrepare ? (
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              {tr("New Requirement")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {hasPermission("training.admin.manage") && (
+                <Button size="sm" variant="outline-emerald" onClick={() => setMandatory(true)}>{tr("Required Contents")}</Button>
+              )}
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <IconPlus className="mr-2 h-4 w-4" />
+                {tr("New Requirement")}
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -253,6 +263,7 @@ export function TrainingRequirementListView() {
         </p>
       )}
       {waiting.node}
+      {mandatory && <MandatoryTopicsDialog onClose={() => setMandatory(false)} />}
       <ReportListToolbar
         searchPlaceholder={tr("Search request number…")}
         search={table.searchQuery}
@@ -415,6 +426,9 @@ export function TrainingRequirementListView() {
               }))}
             />
           </FormField>
+          {kind === "ANNUAL" && hasPermission("training.code.allocate") && (
+            <Checkbox id="requirement-plant-wide" label={tr("One requirement for the whole plant")} checked={plantWide} onChange={setPlantWide} />
+          )}
           {kind === "SOP_PERIODIC" && (
             <FormField label={tr("Date the review of the SOPs was completed")} required hint={tr("SOP.0003 5.3.2: the requirement is prepared and approved at the latest on the last day of that month. The due date is set from it.")}>
               <TrainingDateField value={reviewDone} onChange={setReviewDone} label="" />

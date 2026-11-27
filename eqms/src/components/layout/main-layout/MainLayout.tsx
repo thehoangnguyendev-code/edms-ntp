@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { ROUTES, isDashboardPath } from '@/app/routes.constants';
 import { Sidebar } from '@/components/layout/sidebar/Sidebar';
 import { Header } from '@/components/layout/header/Header';
@@ -22,6 +22,7 @@ import { SECURITY_CONFIG_STORAGE_KEY } from '@/config/security';
 import { AnnouncementHost } from '../AnnouncementHost';
 import { RouteFade } from './RouteFade';
 import { recordRoute } from '@/app/navigation/routeTrail';
+import { recordViewLocation } from '@/app/navigation/viewNavigation';
 import { subscribeNotificationRealtime } from '@/features/notifications/notificationRealtime';
 
 const MainLayoutContent: React.FC = () => {
@@ -30,6 +31,10 @@ const MainLayoutContent: React.FC = () => {
   useEffect(() => { recordRoute(location.pathname); }, [location.pathname]);
   const { isSidebarCollapsed, isMobileMenuOpen, toggleSidebar, closeMobileMenu } = useResponsiveSidebar();
   const { user, logout, isAuthenticated } = useAuth();
+  const navigationType = useNavigationType();
+  useLayoutEffect(() => {
+    recordViewLocation(location, navigationType, user?.id ?? 'anonymous');
+  }, [location, navigationType, user?.id]);
   const { activeId, handleNavigate } = useNavigation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageColumnRef = useRef<HTMLDivElement>(null);

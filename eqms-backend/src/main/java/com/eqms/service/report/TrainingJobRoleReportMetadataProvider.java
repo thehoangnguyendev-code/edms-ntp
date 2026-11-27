@@ -69,7 +69,7 @@ public class TrainingJobRoleReportMetadataProvider implements ReportMetadataProv
                 """).append(grants).append(")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (r.code ilike ? escape '\\' or r.name ilike ? escape '\\' or coalesce(pos.name,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(r.code) like eqms_fold(?) escape '\\' or eqms_fold(r.name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(pos.name,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }

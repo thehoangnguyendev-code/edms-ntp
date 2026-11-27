@@ -31,8 +31,8 @@ type SortKey = "name" | "code" | "module" | "permissionSetCount" | "accessProfil
 const SORT_KEYS: SortKey[] = ["name", "code", "module", "permissionSetCount", "accessProfileCount", "holderCount"];
 const HELD_OPTIONS = [
   { label: "All", value: "all" },
-  { label: tr("Held by someone"), value: "held" },
-  { label: tr("Held by nobody"), value: "none" },
+  { get label() { return tr("Held by someone"); }, value: "held" },
+  { get label() { return tr("Held by nobody"); }, value: "none" },
 ];
 
 /**

@@ -11,8 +11,8 @@ import { ExportsPersonalTab } from "./tabs/ExportsPersonalTab";
 import { ExportsBatchesTab } from "./tabs/ExportsBatchesTab";
 
 const TABS: TabItem[] = [
-  { id: "personal", label: tr("One person") },
-  { id: "batches", label: tr("Department and year") },
+  { id: "personal", get label() { return tr("One person"); } },
+  { id: "batches", get label() { return tr("Department and year"); } },
 ];
 
 /** Exports of personal training records (APD.0014): one person at a time, or a whole department for a year. Both are prepared and approved with signatures by two people. */

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { Select } from "@/components/ui/select/Select";
@@ -13,10 +14,11 @@ import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
 const SCOPES: { value: MetadataScope; label: string }[] = [
   { value: "PERSONAL", label: "Personal" },
   { value: "DEPARTMENT", label: "Department" },
-  { value: "BUSINESS_UNIT", label: tr("Business Unit") },
-  { value: "SYSTEM", label: tr("Entire system") },
+  { value: "BUSINESS_UNIT", get label() { return tr("Business Unit"); } },
+  { value: "SYSTEM", get label() { return tr("Entire system"); } },
 ];
-const SCOPE_LABEL: Record<string, string> = Object.fromEntries(SCOPES.map((scope) => [scope.value, scope.label]));
+/** Read when drawn, so the words are those of the language on screen. */
+const scopeLabel = (value: string): string => SCOPES.find((scope) => scope.value === value)?.label ?? value;
 
 /**
  * Access & Scope of a report template: which Access Profiles may use it and how far their data reaches. The profiles are searched, filtered, sorted and
@@ -26,11 +28,11 @@ const SCOPE_LABEL: Record<string, string> = Object.fromEntries(SCOPES.map((scope
 export function ReportTemplateAccessScope({ assignments, editable, onChange, allowedScopes }: { assignments: RoleGrant[]; editable: boolean; onChange: (next: RoleGrant[]) => void; allowedScopes?: MetadataScope[] }) {
   // The report type decides which scopes it can be given: the Audit Trail, for example, only the whole system.
   const scopeChoices = allowedScopes?.length ? SCOPES.filter((item) => allowedScopes.includes(item.value)) : SCOPES;
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("ReportTemplateAccessScope.search", "");
   const [assignment, setAssignment] = useState("ALL");
   const [scope, setScope] = useState("");
   const [sort, setSort] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "name", direction: "asc" });
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("ReportTemplateAccessScope.page", 1);
   const [limit, setLimit] = useState(10);
   const [result, setResult] = useState<ReportRolePage>();
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
             />
           </div>
         ) : row.scope ? (
-          SCOPE_LABEL[row.scope] ?? row.scope
+          scopeLabel(row.scope)
         ) : (
           "No access"
         ),
@@ -137,7 +139,7 @@ export function ReportTemplateAccessScope({ assignments, editable, onChange, all
             {(result?.inactive ?? []).map((role) => (
               <li key={role.id} className="flex items-center justify-between gap-3">
                 <span>
-                  {role.name} · {SCOPE_LABEL[role.scope] ?? role.scope}
+                  {role.name} · {scopeLabel(role.scope)}
                 </span>
                 {editable && (
                   <button type="button" className="text-xs font-medium text-red-700 underline" onClick={() => onChange(assignments.filter((grant) => grant.roleId !== role.id))}>

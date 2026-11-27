@@ -84,6 +84,8 @@ public class GlobalSearchService {
     static final int PER_GROUP = 5;
     /** How many matches of a kind are asked for, so that the ones whose code matches best can be put first. */
     static final int CANDIDATES = 15;
+    /** The report template list accepts only its own page sizes (10, 20, 50, 100). */
+    static final int TEMPLATE_CANDIDATES = 20;
     static final long GROUP_TIMEOUT_MS = 2500;
 
     private final NavigationService navigationService;
@@ -327,14 +329,14 @@ public class GlobalSearchService {
     private Found training(String q) {
         Map<String, Object> page = trainingActivityService.list(currentUserService.requireCurrentUser(), q, null, null, null, null, null, false, "createdAt", "desc", 1, CANDIDATES);
         return found(rowsOf(page).stream()
-                .map(r -> new Item(str(r, "id"), str(r, "trainingNumber"), first(str(r, "trainingTopics"), str(r, "documentNumber")), str(r, "departmentName"), DisplayLabels.status(str(r, "status")), null)).toList(),
+                .map(r -> new Item(str(r, "id"), str(r, "trainingNumber"), first(str(r, "trainingTopics"), str(r, "documentNumber")), str(r, "departmentName"), str(r, "status"), null)).toList(),
                 totalOf(page), q);
     }
 
     private Found trainingRequirements(String q) {
         Map<String, Object> page = trainingRequirementService.list(currentUserService.requireCurrentUser(), null, null, q, null, null, 1, CANDIDATES);
         return found(rowsOf(page).stream()
-                .map(r -> new Item(str(r, "id"), str(r, "requestNo"), first(str(r, "departmentName"), "Training requirement"), str(r, "year"), DisplayLabels.status(str(r, "status")), null)).toList(),
+                .map(r -> new Item(str(r, "id"), str(r, "requestNo"), first(str(r, "departmentName"), "Training requirement"), str(r, "year"), str(r, "status"), null)).toList(),
                 totalOf(page), q);
     }
 
@@ -348,14 +350,14 @@ public class GlobalSearchService {
     private Found trainingAssessments(String q) {
         Map<String, Object> page = trainingAssessmentLibraryService.page(currentUserService.requireCurrentUser(), q, null, null, null, "desc", 1, CANDIDATES);
         return found(rowsOf(page).stream()
-                .map(r -> new Item(str(r, "id"), str(r, "code"), str(r, "name"), null, DisplayLabels.status(str(r, "status")), null)).toList(),
+                .map(r -> new Item(str(r, "id"), str(r, "code"), str(r, "name"), null, str(r, "status"), null)).toList(),
                 totalOf(page), q);
     }
 
     private Found trainingJobAssignments(String q) {
         Map<String, Object> page = trainingJobAssignmentService.list(currentUserService.requireCurrentUser(), q, null, null, null, 1, CANDIDATES);
         return found(rowsOf(page).stream()
-                .map(r -> new Item(str(r, "id"), str(r, "issueNo"), str(r, "fullName"), label(str(r, "employeeCode"), str(r, "positionName")), DisplayLabels.status(str(r, "status")), null)).toList(),
+                .map(r -> new Item(str(r, "id"), str(r, "issueNo"), str(r, "fullName"), label(str(r, "employeeCode"), str(r, "positionName")), str(r, "status"), null)).toList(),
                 totalOf(page), q);
     }
 
@@ -384,7 +386,7 @@ public class GlobalSearchService {
     // ---- Reports
 
     private Found reportTemplates(String q) {
-        Map<String, Object> page = reportTemplateService.catalog(currentUserService.requireCurrentUser(), q, 1, "displayName", "asc", Map.of("limit", String.valueOf(CANDIDATES)));
+        Map<String, Object> page = reportTemplateService.catalog(currentUserService.requireCurrentUser(), q, 1, "displayName", "asc", Map.of("limit", String.valueOf(TEMPLATE_CANDIDATES)));
         return found(rowsOf(page).stream()
                 .map(r -> new Item(str(r, "code"), str(r, "code"), first(str(r, "displayName"), str(r, "name")), null, null, null)).toList(), totalOf(page), q);
     }
@@ -392,7 +394,7 @@ public class GlobalSearchService {
     private Found reportRuns(String q) {
         Map<String, Object> page = reportPlatformService.runs(currentUserService.requireCurrentUser(), q, null, null, null, null, null, null, null, 1, CANDIDATES, "queuedAt", "desc");
         return found(rowsOf(page).stream()
-                .map(r -> new Item(str(r, "id"), str(r, "definitionCode"), first(str(r, "reportTitle"), str(r, "definitionCode")), null, DisplayLabels.status(str(r, "status")), null)).toList(), totalOf(page), q);
+                .map(r -> new Item(str(r, "id"), str(r, "definitionCode"), first(str(r, "reportTitle"), str(r, "definitionCode")), null, str(r, "status"), null)).toList(), totalOf(page), q);
     }
 
     // ---- Backup & Restore
@@ -406,7 +408,7 @@ public class GlobalSearchService {
             for (JsonNode backup : body.path("data")) {
                 String id = backup.path("id").asText(null);
                 if (id == null) continue;
-                items.add(new Item(id, id, "Backup", startedAt(backup.path("startedAt").asText(null)), DisplayLabels.status(backup.path("status").asText(null)), null));
+                items.add(new Item(id, id, "Backup", startedAt(backup.path("startedAt").asText(null)), backup.path("status").asText(null), null));
             }
         }
         long total = body == null ? items.size() : body.path("pagination").path("total").asLong(items.size());

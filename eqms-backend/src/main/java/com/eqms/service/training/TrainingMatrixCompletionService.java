@@ -23,11 +23,11 @@ import java.util.UUID;
  * that are not voided, the open activities and the effective revision of the document: nothing is typed, and the screen only shows it.
  *
  * <pre>
- * NOT_REQUIRED  the effective revision of the SOP was marked as not needing training
+ * NOT_REQUIRED  the row does not apply to the person (kept for the screen; a row of the matrix is always required of the people it names)
  * IN_PROGRESS   the person is on an open activity of the topic and has not been trained yet, or must be trained again
  * QUALIFIED     a valid record exists for the effective revision and the annual training is not due
- * UPDATE_NEEDED the only records are for an older revision of the SOP and the effective revision needs training
- * DUE           the annual training of the row is due again (one year after the last record)
+ * UPDATE_NEEDED trained only on a revision older than the latest one marked Requires Training
+ * DUE           the periodic training is due again: the review cycle of the document, 12 months when there is none
  * REQUIRED      no valid record
  * </pre>
  */
@@ -70,7 +70,7 @@ public class TrainingMatrixCompletionService {
         all.put("id", ALL_EMPLOYEES);
         all.put("code", "ALL");
         all.put("name", "All employees");
-        all.put("rowCount", jdbc.queryForObject("select count(*) from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' join training_matrices m on m.id = v.matrix_id where m.department_id = ? and r.all_employees", Integer.class, department));
+        all.put("rowCount", jdbc.queryForObject("select count(*) from training_effective_requirements r where r.department_id = ? and r.all_employees", Integer.class, department));
         all.put("peopleCount", jdbc.queryForObject("select count(*) from app_users u where u.status = 'Active' and lower(trim(u.department)) = lower(trim((select name from departments where id = ?)))", Integer.class, department));
         out.add(all);
         out.addAll(TrainingRows.camel(jdbc.queryForList("""
@@ -78,7 +78,7 @@ public class TrainingMatrixCompletionService {
                    (select count(*) from training_person_positions tp join app_users u on u.id = tp.person_user_id where tp.position_id = p.id and tp.valid_to is null and u.status = 'Active') as people_count
               from training_matrices m join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
               join training_matrix_rows r on r.version_id = v.id join training_matrix_cells c on c.row_id = r.id join training_job_roles p on p.id = c.position_id
-             where m.department_id = ? group by p.id, p.code, p.name order by p.name
+             where m.department_id = ? and m.scope = 'DEPARTMENT' group by p.id, p.code, p.name order by p.name
             """, department)));
         return out;
     }
@@ -93,7 +93,7 @@ public class TrainingMatrixCompletionService {
 
         Map<String, Object> out = new LinkedHashMap<>();
         Map<String, Object> version = jdbc.queryForList("""
-            select v.id, v.version_no, v.effective_at from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'
+            select v.id, v.version_no, v.effective_at from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and m.scope = 'DEPARTMENT' and v.status = 'EFFECTIVE'
             """, department).stream().findFirst().orElse(null);
         out.put("hasEffectiveMatrix", version != null);
         if (version == null) return empty(out, safePage, safeLimit, safeColumnPage, safeColumnLimit);
@@ -106,11 +106,11 @@ public class TrainingMatrixCompletionService {
                    r.topic_text as tname, d.document_number as dnum, d.id as doc_id,
                    (select dr.revision_number from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_rev,
                    (select dr.requires_training from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_requires
-              from training_matrix_rows r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
+              from training_effective_requirements r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
               left join documents d on d.id = r.document_id
-             where r.version_id = ? and (case when ?::boolean then r.all_employees else c.row_id is not null end)
+             where r.department_id = ? and (case when ?::boolean then r.all_employees else c.row_id is not null or r.factory end)
              order by case r.row_group when 'FACTORY_GENERAL' then 0 when 'DEPARTMENT_GENERAL' then 1 else 2 end, r.row_no
-            """, positionId, version.get("id"), ALL_EMPLOYEES.equals(positionId));
+            """, positionId, department, ALL_EMPLOYEES.equals(positionId));
         if (rows.size() > MAX_ROWS) throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "TRAINING_MATRIX_TOO_LARGE");
 
         List<Object> args = new ArrayList<>();
@@ -132,7 +132,7 @@ public class TrainingMatrixCompletionService {
         }
         if (search != null && !search.isBlank()) {
             like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            sql.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')");
+            sql.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like);
         }
         sql.append(" order by u.full_name limit ").append(MAX_PEOPLE + 1);
@@ -148,17 +148,13 @@ public class TrainingMatrixCompletionService {
             String rowMarks = String.join(",", java.util.Collections.nCopies(rowIds.size(), "?"));
             List<Object> factArgs = new ArrayList<>(pids);
             factArgs.addAll(rowIds);
-            factArgs.add(version.get("id"));
             String factSql = """
-                select pe.pid, ro.row_id, lr.last_done, lr.last_rev, oa.activity_id
+                select pe.pid, ro.row_id, st.status, st.last_done, st.last_revision as last_rev, oa.activity_id
                   from (select u.id as pid from app_users u where u.id in (%s)) pe
-                  cross join (select r.id as row_id, r.topic_text as tname, d.document_number as dnum from training_matrix_rows r
+                  cross join (select r.id as row_id, r.topic_text as tname, d.document_number as dnum, r.annual_required as annual from training_matrix_rows r
                                left join documents d on d.id = r.document_id
-                               where r.id in (%s) and r.version_id = ?) ro
-                  left join lateral (select rec.completed_on as last_done, rec.document_revision as last_rev from training_records rec left join training_record_voids v on v.record_id = rec.id
-                                      where rec.person_user_id = pe.pid and v.id is null
-                                        and ((ro.dnum is not null and rec.document_number = ro.dnum) or (ro.tname is not null and training_topic_key(rec.topic_text) = training_topic_key(ro.tname)))
-                                      order by rec.completed_on desc limit 1) lr on true
+                               where r.id in (%s)) ro
+                  cross join lateral training_requirement_state(pe.pid, ro.dnum, ro.tname, ro.annual) st
                   left join lateral (select a.id as activity_id from training_participants p join training_activities a on a.id = p.activity_id
                                       join training_session_topics st on st.session_id = p.session_id
                                       where p.person_user_id = pe.pid and a.status in ('PLANNED','PENDING_APPROVAL','NOTIFIED','IN_PROGRESS','PENDING_QA_CONFIRMATION') and p.state <> 'ABSENT'
@@ -178,7 +174,6 @@ public class TrainingMatrixCompletionService {
                 reviews.computeIfAbsent((UUID) rv.get("person_user_id"), k -> new ArrayList<>()).add(String.valueOf(rv.get("kind")));
             }
         }
-        LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
         List<Map<String, Object>> data = new ArrayList<>();
         // Totals over every person of the position who matches the search, before the state filter and the paging, so they are the whole picture of the position.
         Map<String, Map<String, Object>> rowSummary = new LinkedHashMap<>();
@@ -192,7 +187,7 @@ public class TrainingMatrixCompletionService {
             for (Map<String, Object> row : rows) {
                 Map<String, Object> fact = facts.get(person.get("pid") + "|" + row.get("row_id"));
                 LocalDate lastDone = fact == null || fact.get("last_done") == null ? null : ((Date) fact.get("last_done")).toLocalDate();
-                String state = state(row, lastDone, fact == null ? null : (String) fact.get("last_rev"), fact != null && fact.get("activity_id") != null, today);
+                String state = state(fact == null ? "MISSING" : (String) fact.get("status"), fact != null && fact.get("activity_id") != null);
                 countInRow(rowSummary.get(String.valueOf(row.get("row_id"))), person, state);
                 if (!"NOT_REQUIRED".equals(state)) required++;
                 if ("QUALIFIED".equals(state)) done++;
@@ -288,9 +283,9 @@ public class TrainingMatrixCompletionService {
             select r.id as row_id, r.row_group, r.annual_required, d.document_number as code, coalesce(r.topic_text, d.document_name) as title, r.topic_text as tname, d.document_number as dnum,
                    (select dr.revision_number from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_rev,
                    (select dr.requires_training from document_revisions dr where dr.document_id = d.id and dr.status_code = 'EFFECTIVE' order by dr.effective_date desc nulls last limit 1) as eff_requires
-              from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' join training_matrices m on m.id = v.matrix_id and m.department_id = ?
+              from training_effective_requirements r
               left join documents d on d.id = r.document_id
-             where r.id = ? and (r.all_employees or exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id))
+             where r.department_id = ? and r.id = ? and (r.all_employees or exists (select 1 from training_matrix_cells c join training_person_positions tp on tp.position_id = c.position_id and tp.person_user_id = ? and tp.valid_to is null where c.row_id = r.id))
             """, department, rowId, personId).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
         Map<String, Object> person = jdbc.queryForList("""
             select u.id, u.full_name, u.employee_code, u.department, (select string_agg(p.name, ', ') from training_person_positions tp join training_job_roles p on p.id = tp.position_id where tp.person_user_id = u.id and tp.valid_to is null) as positions
@@ -311,15 +306,16 @@ public class TrainingMatrixCompletionService {
         Map<String, Object> last = records.stream().filter(r -> !Boolean.TRUE.equals(r.get("voided"))).findFirst().orElse(null);
         LocalDate lastDone = last == null ? null : LocalDate.parse(String.valueOf(last.get("completedOn")).substring(0, 10));
         String lastRevision = last == null ? null : (String) last.get("documentRevision");
-        LocalDate today = LocalDate.now(TrainingNumberService.ZONE);
-        String state = state(row, lastDone, lastRevision, !open.isEmpty(), today);
+        Map<String, Object> standing = jdbc.queryForMap("select status, required_revision, period_months from training_requirement_state(?, ?, ?, ?)",
+                personId, row.get("dnum"), row.get("tname"), Boolean.TRUE.equals(row.get("annual_required")));
+        String state = state((String) standing.get("status"), !open.isEmpty());
+        int periodMonths = ((Number) standing.get("period_months")).intValue();
         boolean annual = Boolean.TRUE.equals(row.get("annual_required"));
         String why = switch (state) {
-            case "NOT_REQUIRED" -> "The revision of this SOP now in force was marked as not needing training.";
             case "IN_PROGRESS" -> "A training on this requirement is open and the person is on its list.";
-            case "QUALIFIED" -> "Trained" + (lastRevision == null ? "" : " on revision " + lastRevision) + " on " + lastDone + (annual ? "; the annual training falls due on " + lastDone.plusYears(1) + "." : ".");
-            case "UPDATE_NEEDED" -> "The last training was on revision " + lastRevision + ", but revision " + row.get("eff_rev") + " is in force and needs training.";
-            case "DUE" -> "The annual training is due again: the last training was on " + lastDone + ", more than a year ago.";
+            case "QUALIFIED" -> "Trained" + (lastRevision == null ? "" : " on revision " + lastRevision) + " on " + lastDone + (annual ? "; the annual training falls due on " + lastDone.plusMonths(periodMonths) + "." : ".");
+            case "UPDATE_NEEDED" -> "The last training was on revision " + lastRevision + ", but revision " + standing.get("required_revision") + " needs training.";
+            case "DUE" -> "The periodic training is due again: the last training was on " + lastDone + ", more than " + periodMonths + " months ago.";
             default -> "There is no valid training record of this person for this requirement.";
         };
         Map<String, Object> out = new LinkedHashMap<>();
@@ -338,22 +334,17 @@ public class TrainingMatrixCompletionService {
         out.put("lastRevision", lastRevision);
         out.put("lastTrainingNumber", last == null ? null : last.get("trainingNumber"));
         out.put("lastActivityId", last == null ? null : last.get("activityId"));
-        out.put("nextDueOn", annual && lastDone != null ? lastDone.plusYears(1).toString() : null);
+        out.put("nextDueOn", annual && lastDone != null ? lastDone.plusMonths(periodMonths).toString() : null);
         out.put("records", records);
         out.put("openTrainings", open);
         return out;
     }
 
-    private static String state(Map<String, Object> row, LocalDate lastDone, String lastRevision, boolean openActivity, LocalDate today) {
-        boolean sop = row.get("dnum") != null;
-        Object effRequires = row.get("eff_requires");
-        if (sop && row.get("eff_rev") != null && Boolean.FALSE.equals(effRequires)) return "NOT_REQUIRED";
-        if (lastDone == null) return openActivity ? "IN_PROGRESS" : "REQUIRED";
-        boolean olderRevision = sop && row.get("eff_rev") != null && Boolean.TRUE.equals(effRequires) && lastRevision != null && !lastRevision.equals(row.get("eff_rev"));
-        if (olderRevision) return openActivity ? "IN_PROGRESS" : "UPDATE_NEEDED";
-        boolean annualDue = Boolean.TRUE.equals(row.get("annual_required")) && lastDone.isBefore(today.minusYears(1));
-        if (annualDue) return openActivity ? "IN_PROGRESS" : "DUE";
-        return "QUALIFIED";
+    /** What a cell shows for the standing of training_requirement_state: a person on an open training of the topic who is not up to date is In Progress. */
+    static String state(String standing, boolean openActivity) {
+        if ("OK".equals(standing)) return "QUALIFIED";
+        if (openActivity) return "IN_PROGRESS";
+        return "MISSING".equals(standing) ? "REQUIRED" : standing;
     }
 
     private static Map<String, Object> empty(Map<String, Object> out, int page, int limit, int columnPage, int columnLimit) {

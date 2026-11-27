@@ -77,7 +77,7 @@ public class BackupRunReportMetadataProvider implements ReportMetadataProvider {
         StringBuilder sql = new StringBuilder("from backup_run_summary s where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (coalesce(s.reference,'') ilike ? escape '\\' or coalesce(s.backup_number,'') ilike ? escape '\\' or coalesce(s.actor,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(coalesce(s.reference,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.backup_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.actor,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 3; i++) args.add(term);
         }

@@ -248,7 +248,7 @@ export const TrainingInformationTab: React.FC<TrainingInformationTabProps> = ({
         />
       )}
 
-      <p className="text-xs text-slate-500">
+      <p className="!mt-1.5 text-xs text-slate-500">
         {tr("Training Planned Date is the start of the training period (the day the document is approved), not the day the training is held; the period ends after the Training Period (Days). The Training Completion Date is the day the training was held.")}
       </p>
 

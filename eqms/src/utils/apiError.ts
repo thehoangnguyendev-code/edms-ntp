@@ -1,3 +1,5 @@
+import { tr } from "@/i18n";
+
 type ApiErrorLike = {
   response?: {
     data?: unknown;
@@ -32,16 +34,16 @@ export const getApiErrorMessage = (error: unknown, fallback: string): string => 
     responseData?.error?.details?.[0]?.message;
 
   if (apiMessage && apiMessage.trim()) {
-    return apiMessage.trim();
+    return tr(apiMessage.trim());
   }
 
   if (candidate.response?.statusText && candidate.response.statusText.trim()) {
-    return candidate.response.statusText.trim();
+    return tr(candidate.response.statusText.trim());
   }
 
   if (candidate.message && candidate.message.trim()) {
-    return candidate.message.trim();
+    return tr(candidate.message.trim());
   }
 
-  return fallback;
+  return tr(fallback);
 };

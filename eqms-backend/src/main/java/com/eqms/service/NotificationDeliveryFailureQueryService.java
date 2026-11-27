@@ -43,13 +43,17 @@ public class NotificationDeliveryFailureQueryService {
             if (search != null && !search.isBlank()) {
                 String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
                 all.add(cb.or(
-                        cb.like(cb.lower(root.get("recipient")), like, '\\'),
-                        cb.like(cb.lower(root.get("notificationType")), like, '\\'),
-                        cb.like(cb.lower(cb.coalesce(root.<String>get("errorMessage"), "")), like, '\\')));
+                        com.eqms.util.SearchText.like(cb, root.get("recipient"), like, '\\'),
+                        com.eqms.util.SearchText.like(cb, root.get("notificationType"), like, '\\'),
+                        com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("errorMessage"), ""), like, '\\')));
             }
             if (status != null && !status.isBlank()) all.add(cb.equal(root.get("status"), status.trim().toUpperCase(Locale.ROOT)));
             if (channel != null && !channel.isBlank()) all.add(cb.equal(root.get("channel"), channel.trim().toUpperCase(Locale.ROOT)));
-            if (eventDomain != null && !eventDomain.isBlank()) all.add(cb.equal(root.get("eventDomain"), eventDomain.trim()));
+            if (eventDomain != null && !eventDomain.isBlank()) {
+                // one module is stored under several spellings and sub-menu keys: the filter finds all of them
+                var compact = cb.function("regexp_replace", String.class, cb.lower(root.get("eventDomain")), cb.literal("[\\s._-]+"), cb.literal(""), cb.literal("g"));
+                all.add(compact.in(com.eqms.util.ModuleKeys.compactSpellingsOf(eventDomain)));
+            }
             if (from != null) all.add(cb.greaterThanOrEqualTo(root.<Instant>get("lastAttemptAt"), from.atStartOfDay(com.eqms.util.DateTimeFormatUtils.ZONE).toInstant()));
             if (to != null) all.add(cb.lessThan(root.<Instant>get("lastAttemptAt"), to.plusDays(1).atStartOfDay(com.eqms.util.DateTimeFormatUtils.ZONE).toInstant()));
             return cb.and(all.toArray(Predicate[]::new));

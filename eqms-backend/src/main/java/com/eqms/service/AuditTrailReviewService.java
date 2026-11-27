@@ -155,9 +155,13 @@ public class AuditTrailReviewService {
         }
         Instant start = from != null ? from.atStartOfDay(DateTimeFormatUtils.ZONE).toInstant() : Instant.EPOCH;
         Instant end = to != null ? to.plusDays(1).atStartOfDay(DateTimeFormatUtils.ZONE).toInstant() : Instant.parse("9999-01-01T00:00:00Z");
+        // the Module filter is a menu name; the records of it are those of every entity type that belongs to that menu
+        boolean anyModule = !StringUtils.hasText(module);
+        List<String> types = anyModule ? List.of() : itemRepo.distinctModules(campaignId).stream()
+                .filter(type -> com.eqms.util.AuditMenuModule.forEntityType(type).equals(module.trim())).toList();
         Page<AuditTrailReviewItem> results = itemRepo.search(
                 campaignId, normalizeSearch(search), normalizeDecision(decision),
-                StringUtils.hasText(module) ? module.trim() : "",
+                anyModule, types.isEmpty() ? List.of("") : types,
                 StringUtils.hasText(action) ? action.trim() : "",
                 normalizeSigned(signed), start, end,
                 PageRequest.of(normalizePage(page), normalizeLimit(limit), itemSort(sortBy, sortDirection)));
@@ -169,7 +173,8 @@ public class AuditTrailReviewService {
     public ItemFilterOptions listItemFilterOptions(UUID campaignId) {
         requireView();
         require(campaignId);
-        return new ItemFilterOptions(itemRepo.distinctModules(campaignId), itemRepo.distinctActions(campaignId));
+        return new ItemFilterOptions(itemRepo.distinctModules(campaignId).stream().map(com.eqms.util.AuditMenuModule::forEntityType).distinct().sorted().toList(),
+                itemRepo.distinctActions(campaignId));
     }
 
     public record ItemFilterOptions(List<String> modules, List<String> actions) {}
@@ -408,7 +413,7 @@ public class AuditTrailReviewService {
                 i.getId(), log.getId(),
                 log.getCreatedAt() != null ? log.getCreatedAt().toString() : null,
                 log.getUserFullName(), log.getEmployeeCode(),
-                log.getEntityType(), log.getAction() != null ? log.getAction() : log.getActionType(),
+                com.eqms.util.AuditMenuModule.forEntityType(log.getEntityType()), log.getAction() != null ? log.getAction() : log.getActionType(),
                 log.getEntityName() != null ? log.getEntityName() : log.getEntityType(),
                 log.isElectronicSignatureApplied(),
                 i.getDecision(), displayLabel(i.getDecision()), i.getDecisionNote(), i.getDecidedAt());

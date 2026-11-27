@@ -29,7 +29,7 @@ import { Avatar as ProfileAvatar } from "@/components/ui/avatar";
 import type { AuditActionKind } from "../../utils/actionKind";
 import type { AuditTrailRecord } from "../../types";
 import { groupByDay, type AuditTimelineItem, type AuditTimelineStyle } from "./auditTimelineModel";
-import { formatAuditModuleLabel } from "../../utils/actionBadge";
+import { auditMenuModule } from "../../utils/actionBadge";
 import "./auditTimeline.css";
 import { tr, trFormat } from "@/i18n";
 
@@ -203,7 +203,7 @@ const CompactMark: React.FC<MarkProps> = ({ item, onOpenDetails, onExport }) => 
           </span>
           {item.record.module && (
             <span>
-              <b>{tr("Module")}</b> {formatAuditModuleLabel(item.record.module)}
+              <b>{tr("Module")}</b> {tr(auditMenuModule(item.record))}
             </span>
           )}
           {item.detail && (

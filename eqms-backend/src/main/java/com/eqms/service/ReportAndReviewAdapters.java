@@ -95,13 +95,13 @@ public class ReportAndReviewAdapters {
 
     @Bean
     PolicyBackedAdapter accessReviewCampaignAdapter(JdbcTemplate jdbc, WorkflowActionPolicyService policies, WorkflowActionPolicyRelationRepository relations) {
-        return campaign(jdbc, policies, relations, "ACCESS_REVIEW_CAMPAIGN", "access_review_campaigns", "access_review_items", "ITEM_SUBJECT",
+        return campaign(jdbc, policies, relations, "SECURITY", "ACCESS_REVIEW_CAMPAIGN", "access_review_campaigns", "access_review_items", "ITEM_SUBJECT",
                 "select user_id from access_review_items where id = ?");
     }
 
     @Bean
     PolicyBackedAdapter auditReviewCampaignAdapter(JdbcTemplate jdbc, WorkflowActionPolicyService policies, WorkflowActionPolicyRelationRepository relations) {
-        return campaign(jdbc, policies, relations, "AUDIT_REVIEW_CAMPAIGN", "audit_trail_review_campaigns", "audit_trail_review_items", "ENTRY_PERFORMER",
+        return campaign(jdbc, policies, relations, "AUDIT_TRAIL", "AUDIT_REVIEW_CAMPAIGN", "audit_trail_review_campaigns", "audit_trail_review_items", "ENTRY_PERFORMER",
                 "select l.user_id from audit_trail_review_items i join audit_logs l on l.id = i.audit_log_id where i.id = ?");
     }
 
@@ -111,9 +111,9 @@ public class ReportAndReviewAdapters {
      * audit entry under review), for Decide Item. The id given to the adapter is the id of the campaign, or the id of one of its items (a decision is asked of the engine on the item, so that the item can
      * be related to the person); the state is always the state of the campaign.
      */
-    private static PolicyBackedAdapter campaign(JdbcTemplate jdbc, WorkflowActionPolicyService policies, WorkflowActionPolicyRelationRepository relations, String type, String table, String itemTable,
+    private static PolicyBackedAdapter campaign(JdbcTemplate jdbc, WorkflowActionPolicyService policies, WorkflowActionPolicyRelationRepository relations, String module, String type, String table, String itemTable,
                                                 String itemRelation, String itemPersonSql) {
-        return new PolicyBackedAdapter(jdbc, policies, relations, "SECURITY_REVIEW", type, type) {
+        return new PolicyBackedAdapter(jdbc, policies, relations, module, type, type) {
             @Override protected String table() { return table; }
 
             @Override public String resolveState(UUID id) {

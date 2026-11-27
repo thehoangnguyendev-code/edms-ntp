@@ -28,7 +28,7 @@ import { cn } from "@/components/ui/utils";
 import { BORDER_RADIUS, COLORS, COMPONENT_PRESETS, PADDING, TYPOGRAPHY } from "@/config/ui-standards";
 import { IconBookmark, IconFileOrientation, IconFileTypePdf } from "@tabler/icons-react";
 import { TableMarkup } from "@/components/ui/table/TablePrimitives";
-import { tr, trFormat } from "@/i18n";
+import { getCatalogLanguage, tr, trFormat } from "@/i18n";
 
 const extractApiMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null) {
@@ -61,16 +61,16 @@ const normalizePublishingMode = (value?: string | null) => {
 
 const formatPublishingMode = (value?: string | null) => {
   const normalized = normalizePublishingMode(value);
-  if (normalized === "COVER_HEADER_FOOTER") return "Cover + Header/Footer";
-  if (normalized === "HEADER_FOOTER_ONLY") return "Header/Footer only";
-  return "Cover only";
+  if (normalized === "COVER_HEADER_FOOTER") return tr("Cover + Header/Footer");
+  if (normalized === "HEADER_FOOTER_ONLY") return tr("Header/Footer only");
+  return tr("Cover only");
 };
 
 const formatPublishingLayout = (value?: string | null) => {
   const normalized = String(value || "").trim().toUpperCase();
-  if (normalized === "LANDSCAPE") return "Landscape";
-  if (normalized === "PORTRAIT") return "Portrait";
-  return "Unknown";
+  if (normalized === "LANDSCAPE") return tr("Landscape");
+  if (normalized === "PORTRAIT") return tr("Portrait");
+  return tr("Unknown");
 };
 
 const buildWorkspacePreviewCacheBuster = (
@@ -338,17 +338,17 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
     }
     const highlights: Array<{ key: string; label: string; from: number; to: number; tone: "emerald" | "slate" | "amber" | "blue" | "rose" }> = [];
     if (coverEnabled) {
-      highlights.push({ key: "cover", label: "Cover", from: 1, to: 1, tone: "emerald" });
+      highlights.push({ key: "cover", label: tr("Cover"), from: 1, to: 1, tone: "emerald" });
     }
-    highlights.push({ key: "body", label: "Body", from: bodyStartPage, to: pageCount, tone: "slate" });
+    highlights.push({ key: "body", label: tr("Body"), from: bodyStartPage, to: pageCount, tone: "slate" });
     if (selectedTemplate?.headerFileName || templateComponentFileName("header")) {
-      highlights.push({ key: "header", label: "Header", from: bodyStartPage, to: pageCount, tone: "blue" });
+      highlights.push({ key: "header", label: tr("Header"), from: bodyStartPage, to: pageCount, tone: "blue" });
     }
     if (selectedTemplate?.footerFileName || templateComponentFileName("footer")) {
-      highlights.push({ key: "footer", label: "Footer", from: bodyStartPage, to: pageCount, tone: "amber" });
+      highlights.push({ key: "footer", label: tr("Footer"), from: bodyStartPage, to: pageCount, tone: "amber" });
     }
     return highlights;
-  }, [workspace?.previewPageCount, coverEnabled, bodyStartPage, selectedTemplate?.headerFileName, selectedTemplate?.footerFileName, selectedTemplate?.components, normalizedSelectedLayout]);
+  }, [workspace?.previewPageCount, coverEnabled, bodyStartPage, selectedTemplate?.headerFileName, selectedTemplate?.footerFileName, selectedTemplate?.components, normalizedSelectedLayout, getCatalogLanguage()]);
 
   const buildPageRangePayload = () => ({
     coverSourcePageFrom: 1,
@@ -380,16 +380,16 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
     const watermarkTo = normalizeDraftNumber(pageRangeDraft.watermarkPageTo, null);
 
     if (headerTo != null && headerTo < headerFrom) {
-      return "Header end page must be greater than or equal to the start page.";
+      return tr("Header end page must be greater than or equal to the start page.");
     }
     if (footerTo != null && footerTo < footerFrom) {
-      return "Footer end page must be greater than or equal to the start page.";
+      return tr("Footer end page must be greater than or equal to the start page.");
     }
     if (watermarkFrom != null && watermarkFrom < 1) {
-      return "Watermark page range must start from page 1 or later.";
+      return tr("Watermark page range must start from page 1 or later.");
     }
     if (watermarkTo != null && watermarkFrom != null && watermarkTo < watermarkFrom) {
-      return "Watermark end page must be greater than or equal to the start page.";
+      return tr("Watermark end page must be greater than or equal to the start page.");
     }
     return null;
   }
@@ -444,7 +444,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
             data.availableLayouts?.[0] ||
             "PORTRAIT",
         );
-        setChangeSummary(data.revision?.revisionNumber ? `Publishing package for revision ${data.revision.revisionNumber}` : "");
+        setChangeSummary(data.revision?.revisionNumber ? trFormat("Publishing package for revision {revision}", { revision: data.revision.revisionNumber }) : "");
         if (data.previewReady) {
           const blob = await documentApi.getPublishingWorkspacePreview(
             revisionId,
@@ -457,7 +457,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         }
       } catch (error) {
         console.error("Failed to load publishing workspace", error);
-        showToast({ type: "error", title: tr("Publishing Workspace"), message: extractApiMessage(error, "Couldn't load workspace.") });
+        showToast({ type: "error", title: tr("Publishing Workspace"), message: extractApiMessage(error, tr("Couldn't load workspace.")) });
       } finally {
         if (alive) {
           setPreviewLoading(false);
@@ -682,7 +682,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
       setPreviewUrl((current) => replaceObjectUrlPreview(current, blob));
     } catch (error) {
       console.error("Failed to generate publishing preview", error);
-      showToast({ type: "error", title: tr("Publishing Preview"), message: extractApiMessage(error, "Couldn't generate preview.") });
+      showToast({ type: "error", title: tr("Publishing Preview"), message: extractApiMessage(error, tr("Couldn't generate preview.")) });
     } finally {
       setSaving(false);
       setSavingAction(null);
@@ -796,7 +796,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
         setForcePublishRelated(false);
         setShowRelatedBlockersModal(true);
       } else {
-        showToast({ type: "error", title: tr("Publish Revision"), message: extractApiMessage(error, "Couldn't publish revision.") });
+        showToast({ type: "error", title: tr("Publish Revision"), message: extractApiMessage(error, tr("Couldn't publish revision.")) });
       }
     } finally {
       setSaving(false);
@@ -806,7 +806,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
   };
 
   if (previewLoading) {
-    return <FullPageLoading text="Loading publishing workspace..." />;
+    return <FullPageLoading text={tr("Loading publishing workspace...")} />;
   }
 
   if (!workspace) {
@@ -951,11 +951,11 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                     { value: "__none__", label: tr("No Template (body only)") },
                     ...templates.map((template: PublishingTemplateResponse) => ({
                       value: template.id || "",
-                      label: `${template.templateName || "Untitled"}${template.documentType ? ` - ${template.documentType}` : ""}`,
+                      label: `${template.templateName || tr("Untitled")}${template.documentType ? ` - ${template.documentType}` : ""}`,
                     })),
                   ]}
                 />
-                {selectedTemplateId && (
+                {/* {selectedTemplateId && (
                   <button
                     type="button"
                     onClick={handleOpenTemplateEditor}
@@ -963,7 +963,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                   >
                     {tr("Open this template in editor with live revision sample")}
                   </button>
-                )}
+                )} */}
               </div>
               {selectedTemplateId && availablePreviewComponents.length > 0 && (
                 <div>
@@ -974,7 +974,7 @@ export const PublishingWorkspaceView: React.FC<PublishingWorkspaceViewProps> = (
                         key={component}
                         checked={componentEnabled[component]}
                         onChange={(checked) => setComponentEnabled((prev) => ({ ...prev, [component]: checked }))}
-                        label={component.charAt(0).toUpperCase() + component.slice(1)}
+                        label={tr(component.charAt(0).toUpperCase() + component.slice(1))}
                       />
                     ))}
                   </div>

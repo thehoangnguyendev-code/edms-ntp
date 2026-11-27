@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import { useState } from "react";
@@ -70,7 +71,7 @@ export function TrainingActivityCreatePage() {
   const workflow = useServerWorkflow("training:ACTIVITY", () => trainingWorkflowApi.newRecord("ACTIVITY"));
   const goBack = useTrainingBack("/training-management/activities");
   const { showToast } = useToast();
-  const [tab, setTab] = useState("basic");
+  const [tab, setTab] = useViewState("TrainingActivityCreatePage.tab", "basic");
   const [busy, setBusy] = useState(false);
   // "Create a Training" from the initial training of a new employee: the kind Initial, the topic of the session and the employee are filled in
   const [prefill] = useSearchParams();
@@ -325,7 +326,7 @@ export function TrainingActivityCreatePage() {
           )}
           {form.kind === "EXTERNAL" && (
             <>
-              <p className="text-xs text-slate-500 md:col-span-2">
+              <p className="-mt-1.5 text-xs text-slate-500 md:col-span-2">
                 {EXTERNAL_TYPE_HINT[form.externalType]}
               </p>
               <FormField

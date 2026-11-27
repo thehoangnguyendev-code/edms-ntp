@@ -13,14 +13,14 @@ type SignedAction = UncontrolledCopyAction;
 /** Meaning codes match the backend's createEntitySignature meanings (UNCONTROLLED_COPY_*). */
 const SIGNED_ACTIONS: Record<SignedAction, { title: string; meaningDisplayName: string; meaningCode: string; toStatus: string; done: string }> = {
   distribute: {
-    title: tr("Distribute Uncontrolled Copy"),
+    get title() { return tr("Distribute Uncontrolled Copy"); },
     meaningDisplayName: "Uncontrolled Copy Distributed",
     meaningCode: "UNCONTROLLED_COPY_DISTRIBUTED",
     toStatus: "Distributed",
     done: "Copy distributed. The recipient e-mail is being sent in the background.",
   },
   cancel: {
-    title: tr("Cancel Uncontrolled Copy Request"),
+    get title() { return tr("Cancel Uncontrolled Copy Request"); },
     meaningDisplayName: "Uncontrolled Copy Cancelled",
     meaningCode: "UNCONTROLLED_COPY_CANCELLED",
     toStatus: "Closed - Cancelled",

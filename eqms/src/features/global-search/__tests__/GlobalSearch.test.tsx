@@ -11,6 +11,7 @@ vi.mock('../useQuickPlaces', () => ({ useQuickPlaces: () => quick.value }));
 vi.mock('react-router-dom', async (original) => ({ ...(await original<typeof import('react-router-dom')>()), useNavigate: () => api.navigate }));
 
 import { GlobalSearchButton } from '../GlobalSearchButton';
+import { setCatalogLanguage, translateLabel } from '@/i18n';
 
 const answer = (groups: unknown[]) => ({ query: 'sop', groups });
 const documents = {
@@ -152,6 +153,21 @@ describe('The search box of the top bar', () => {
     const code = await screen.findByText('TRN/QA/26-371');
     expect(code.tagName).toBe('CODE');
     expect(screen.getByText('E2E-TEST start by Next')).toBeInTheDocument();
+  });
+
+  it('keeps the colour of a status when the word is shown in Vietnamese', async () => {
+    api.globalSearch.mockResolvedValue(answer([{ key: 'revisions', label: 'Revisions', total: 1, unavailable: false, items: [{ id: 'r1', title: 'Balance', badge: 'Effective' }] }]));
+    setCatalogLanguage('vi');
+    try {
+      render(<MemoryRouter><GlobalSearchButton /></MemoryRouter>);
+      act(() => { fireEvent.keyDown(document, { key: 'k', ctrlKey: true }); });
+      fireEvent.change(await screen.findByRole('combobox'), { target: { value: 'balance' } });
+      const word = translateLabel('vi', 'Effective');
+      expect(word).not.toBe('Effective');
+      expect((await screen.findByText(word)).closest('[class*="emerald"]')).not.toBeNull();
+    } finally {
+      setCatalogLanguage('en');
+    }
   });
 
   it('opens the list screen for a kind that has no screen per record', async () => {

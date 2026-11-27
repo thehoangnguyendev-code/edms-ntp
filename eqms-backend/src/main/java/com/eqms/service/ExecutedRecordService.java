@@ -384,9 +384,9 @@ public class ExecutedRecordService {
                 // LEFT join: a record without a source copy must still be found by its own or its document's number.
                 var copyJoin = root.join("sourceControlledCopy", jakarta.persistence.criteria.JoinType.LEFT);
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.<String>get("recordNumber")), pattern),
-                        cb.like(cb.lower(root.get("formDocument").<String>get("documentNumber")), pattern),
-                        cb.like(cb.lower(copyJoin.<String>get("controlledCopyNumber")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.<String>get("recordNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.get("formDocument").<String>get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, copyJoin.<String>get("controlledCopyNumber"), pattern)
                 ));
             }
             java.time.LocalDate from = parseDate(filledFrom);

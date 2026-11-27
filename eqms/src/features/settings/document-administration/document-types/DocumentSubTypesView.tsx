@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useMemo, useState } from "react";
@@ -33,7 +34,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { formatDocumentTypeLookupLabel } from "@/features/documents/shared/documentTypeDisplay";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { useResetPageOnChange } from "@/hooks/useResetPageOnChange";
-import { tr } from "@/i18n";
+import { tr, getCatalogLanguage } from "@/i18n";
 import { statusColor } from "@/components/ui/badge/statusColors";
 
 type ResultModalState = {
@@ -75,10 +76,10 @@ export const DocumentSubTypesView: React.FC = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showToggleModal, setShowToggleModal] = useState(false);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<
+    const [statusFilter, setStatusFilter] = useViewState<
       "All" | "Active" | "Inactive"
-    >("All");
-    const [documentTypeFilter, setDocumentTypeFilter] = useState("");
+    >("DocumentSubTypesView.statusFilter", "All");
+    const [documentTypeFilter, setDocumentTypeFilter] = useViewState("DocumentSubTypesView.documentTypeFilter", "");
     const [modifiedFromDate, setModifiedFromDate] = useState("");
     const [modifiedToDate, setModifiedToDate] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -155,7 +156,7 @@ export const DocumentSubTypesView: React.FC = () => {
         ...activeOptions,
         ...(selected ? [{ label: selected, value: documentTypeFilter }] : []),
       ];
-    }, [documentTypeFilter, documentTypes, items]);
+    }, [documentTypeFilter, documentTypes, items, getCatalogLanguage()]);
 
     const filterDocumentTypeOptions = useMemo<DocumentTypeOption[]>(
       () => [
@@ -165,7 +166,7 @@ export const DocumentSubTypesView: React.FC = () => {
           value: item.id,
         })),
       ],
-      [documentTypes],
+      [documentTypes, getCatalogLanguage()],
     );
 
     const openResultModal = (

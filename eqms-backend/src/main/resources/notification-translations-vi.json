@@ -1,5 +1,42 @@
 [
  {
+  "eventCode": "document.my_action_done",
+  "channel": "IN_APP",
+  "english": "6d65d8e822701e7e1ae8928fbba3fa3ab714e71703297afca4c503ce8cd05a2d",
+  "title": "Đã ghi nhận",
+  "summary": "{{workflowAction}}: {{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}})."
+ },
+ {
+  "eventCode": "document.coauthor_edit_ready",
+  "channel": "EMAIL",
+  "english": "5ce29b6d8762625e94e99b17f9a7ae6001dac98e3eeb6dd4bbf18234094be9ea",
+  "subject": "[EQMS] {{documentNumber}}: mời bạn vào cùng soạn thảo",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bạn là <b>Đồng tác giả</b> tài liệu <b>{{documentNumber}} - {{documentTitle}}</b> (bản sửa đổi {{revisionNumber}}). Tác giả đã upload revision, hãy <b>vào cùng soạn thảo</b>.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+{
+  "eventCode": "document.coauthor_edit_ready",
+  "channel": "IN_APP",
+  "english": "59d843f535d760dfa8c681147b5032cc42c3c002d3f81e322a323cc5612e4b58",
+  "title": "{{documentNumber}}: mời bạn vào cùng soạn thảo",
+  "summary": "Bạn là Đồng tác giả tài liệu {{documentNumber}} — {{documentTitle}} (bản sửa đổi {{revisionNumber}}). Tác giả đã upload revision, hãy vào cùng soạn thảo."
+ },
+ {
+  "eventCode": "document.author_assigned",
+  "channel": "EMAIL",
+  "english": "4ce97ce2c2ca8e5e5ea7f119711f6efab4d17d46a33e69649ef93e0a3f295c7f",
+  "subject": "[EQMS] Bạn đã được chỉ định làm Tác giả tài liệu {{documentNumber}}",
+  "body": "<p>Kính gửi {{recipientName}},</p><p>Bạn đã được chỉ định làm <b>Tác giả</b> tài liệu <b>{{documentNumber}} - {{documentTitle}}</b>, hãy thực hiện <b>upload revision</b>.</p>",
+  "actionLabel": "Mở trong EQMS"
+ },
+{
+  "eventCode": "document.author_assigned",
+  "channel": "IN_APP",
+  "english": "6a088fd2d2495c772c9d0e2e4c8bec6c1fa8dc1f91997c48516020c6c36a9271",
+  "title": "Bạn đã được chỉ định làm Tác giả tài liệu {{documentNumber}}",
+  "summary": "Bạn đã được chỉ định làm Tác giả tài liệu {{documentNumber}} — {{documentTitle}}, hãy thực hiện upload revision."
+ },
+ {
   "eventCode": "access_review.campaign_assigned",
   "channel": "EMAIL",
   "english": "9d9ba7ecd674d2851a877592e88c52f6f69c1e693b8a0e894d851e8807739976",

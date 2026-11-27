@@ -36,7 +36,6 @@ public final class NotificationDefaultChannels {
             "system.retention_blocked_deletion",
             "uncontrolled_copy.request_decided",
             "controlled_copy.destroyed",
-            "controlled_copy.distributed",
             "document.published",
             "document.review_completed",
             "knowledge.document_published",
@@ -58,6 +57,8 @@ public final class NotificationDefaultChannels {
             "document.revision_cancelled",
             "document.submitted_for_review",
             "document.training_required",
+            "document.author_assigned",
+            "document.coauthor_edit_ready",
             "document.upgrade_ready",
             "controlled_copy.distribution_failed",
             "controlled_copy.distribution_notice",
@@ -142,7 +143,9 @@ public final class NotificationDefaultChannels {
             "training.trainer_assigned",
             "training.trainer_removed",
             // owner decision 2026-11-26: Document Control gets the e-mail; the in-app notice is document.training_completed (at the end of the training) and document.published
-            "document.ready_for_publishing"
+            "document.ready_for_publishing",
+            // owner decision 2026-11-27: Document Control is told of an approval by e-mail only
+            "document.approved"
     );
 
     private NotificationDefaultChannels() {

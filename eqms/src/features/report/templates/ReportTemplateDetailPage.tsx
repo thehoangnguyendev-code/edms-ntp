@@ -1,3 +1,5 @@
+import { useViewState } from "@/hooks/useViewState";
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -43,7 +45,7 @@ const LIFECYCLE: Record<
   { label: string; color: "emerald" | "amber" | "slate" }
 > = {
   ACTIVE: { label: "Active", color: "emerald" },
-  PENDING_APPROVAL: { label: tr("Pending Approval"), color: "amber" },
+  PENDING_APPROVAL: { get label() { return tr("Pending Approval"); }, color: "amber" },
   DRAFT: { label: "Draft", color: "slate" },
   INACTIVE: { label: "Inactive", color: "slate" },
 };
@@ -71,7 +73,7 @@ export function ReportTemplateDetailPage({
   const [error, setError] = useState("");
   const [upgrading, setUpgrading] = useState(false);
   const [action, setAction] = useState<"disable" | "enable" | "discard">();
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useViewState("ReportTemplateDetailPage.activeTab", "general");
   // What may be done to this template is decided by the server from the viewer's permissions and the state of the template.
   const { can, loaded } = useReportTemplateCapabilities(
     code,
@@ -205,7 +207,7 @@ export function ReportTemplateDetailPage({
               size="sm"
               variant="outline-emerald"
               className="whitespace-nowrap touch-manipulation"
-              onClick={parent.onClick}
+              onClick={() => navigateBack(navigate, location.state, inAdministration ? ROUTES.REPORT.TEMPLATE_MANAGEMENT : "/report/templates")}
             >
               {tr("Back")}</Button>
             {template &&
@@ -484,7 +486,7 @@ export function ReportTemplateDetailPage({
               size="sm"
               variant="outline-emerald"
               className="whitespace-nowrap touch-manipulation"
-              onClick={parent.onClick}
+              onClick={() => navigateBack(navigate, location.state, inAdministration ? ROUTES.REPORT.TEMPLATE_MANAGEMENT : "/report/templates")}
             >
               {tr("Back")}</Button>
             {!inAdministration && can("createReport") && (

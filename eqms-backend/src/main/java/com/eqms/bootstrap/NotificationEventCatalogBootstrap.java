@@ -169,6 +169,8 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
 
     /** NOTIFICATION-REVIEW-2026-11-25: the e-mail wording of events that were in-app only by default; the administrator edits it in the Notification Administration. */
     private static final java.util.Map<String, String[]> FULL_EMAIL_CONTENT = java.util.Map.ofEntries(
+            java.util.Map.entry("document.coauthor_edit_ready", new String[]{"[EQMS] {{documentNumber}} is ready to co-edit", "<p>Dear {{recipientName}},</p><p>You are a <b>Co-Author</b> of document <b>{{documentNumber}} - {{documentTitle}}</b> (revision {{revisionNumber}}). The file has been uploaded; please <b>join the editing</b>.</p>"}),
+            java.util.Map.entry("document.author_assigned", new String[]{"[EQMS] You are the Author of {{documentNumber}}", "<p>Dear {{recipientName}},</p><p>You have been assigned as the <b>Author</b> of document <b>{{documentNumber}} - {{documentTitle}}</b>. Please <b>upload the revision</b>.</p>"}),
             java.util.Map.entry("access_review.campaign_completed", new String[]{"[EQMS] Access review completed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The access review campaign you created was <b>completed and signed</b>. The result is kept as evidence of the periodic review of access.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("audit.review_campaign_changed", new String[]{"[EQMS] Audit trail review campaign cancelled: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An audit trail review campaign was <b>cancelled</b>. The records it was to cover are not reviewed by this campaign.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("audit_trail.export_completed", new String[]{"[EQMS] Audit trail export ready: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The audit trail export you asked for is <b>ready</b>. Open it from the Audit Trail screen; the file is available only to you.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
@@ -184,7 +186,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
             java.util.Map.entry("report.template_decided", new String[]{"[EQMS] Report template decided: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A report template was <b>approved, enabled or disabled</b> ({{actionName}}). Reports made from it follow the new state from now on.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("report.type_or_property_changed", new String[]{"[EQMS] Report setting changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>report type</b> was enabled or disabled, or the <b>report properties or appearance</b> were changed ({{actionName}}). Reports made from now on use the new setting.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("security.access_profile_changed_audit", new String[]{"[EQMS] Access profile changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An <b>access profile</b>, its permissions or its members were changed ({{actionName}}). The people in the profile may now do more or less than before.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
-            java.util.Map.entry("security.object_access_rule_changed", new String[]{"[EQMS] Object access rule changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>An <b>object access rule</b> was created, changed or deleted ({{actionName}}). It decides which records a person can see.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
+            java.util.Map.entry("security.object_access_rule_changed", new String[]{"[EQMS] Knowledge Base share rule changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>Knowledge Base share rule</b> was created, changed or taken away ({{actionName}}). It decides who can see a folder or a document of the Knowledge Base.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("security.permission_set_changed", new String[]{"[EQMS] Permission set changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>permission set</b> was created, changed or deleted ({{actionName}}). Every profile that holds the set is affected.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("system.configuration_changed", new String[]{"[EQMS] System configuration changed: {{entityName}}", "<p>Dear {{recipientName}},</p><p>The <b>system configuration</b> was changed ({{actionName}}).</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
             java.util.Map.entry("system.retention_blocked_deletion", new String[]{"[EQMS] Retention blocked a deletion: {{entityName}}", "<p>Dear {{recipientName}},</p><p>A <b>deletion was refused</b> because the retention period of the file has not ended. The file is unchanged.</p><p><b>Record:</b> {{entityName}}<br/><b>Done by:</b> {{actorName}}</p><p>{{actionComment}}</p><p>This notice is kept in the Audit Trail of the record.</p>"}),
@@ -474,7 +476,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "A document draft has been submitted and is awaiting reviewer action.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
                         "SUBMIT_FOR_REVIEW", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
-                        new String[]{"REVIEWER"},
+                        new String[]{"REVIEWER", "WORKFLOW_COORDINATOR"},
                         "Document ready for review", "{{documentNumber}} — {{documentTitle}} is awaiting your review."
                 ),
                 new EventSeed(
@@ -482,7 +484,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "All reviewers have completed their review of a document revision.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_MEDIUM,
                         "REVIEW_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
-                        new String[]{"AUTHOR", "APPROVER"},
+                        new String[]{"APPROVER", "WORKFLOW_COORDINATOR"},
                         "Review completed", "{{documentNumber}} — {{documentTitle}} review is complete and ready for approval."
                 ),
                 new EventSeed(
@@ -490,7 +492,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "A Reviewer rejected the revision; it is back in Draft.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "REVIEW_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment",
-                        new String[]{"AUTHOR", "REVIEWER"},
+                        new String[]{"AUTHOR", "CO_AUTHOR", "WORKFLOW_COORDINATOR"},
                         "Review rejected", "{{documentNumber}} — {{documentTitle}} was rejected in review by {{actorName}}: {{workflowComment}}"
                 ),
                 new EventSeed(
@@ -498,7 +500,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "The Approver rejected the revision; it is back in Draft.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "APPROVE_REJECT", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",actorName,workflowComment",
-                        new String[]{"AUTHOR", "REVIEWER"},
+                        new String[]{"AUTHOR", "CO_AUTHOR", "WORKFLOW_COORDINATOR"},
                         "Approval rejected", "{{documentNumber}} — {{documentTitle}} was rejected at approval by {{actorName}}: {{workflowComment}}"
                 ),
                 new EventSeed(
@@ -506,7 +508,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "A document revision has been approved by all approvers.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "APPROVE_COMPLETE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
-                        new String[]{"AUTHOR", "OWNER"},
+                        new String[]{"WORKFLOW_COORDINATOR"},
                         "Document approved", "{{documentNumber}} — {{documentTitle}} has been approved."
                 ),
                 new EventSeed(
@@ -524,6 +526,30 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",knowledgeBase",
                         new String[]{"RECIPIENT"},
                         "New in {{knowledgeBase}}", "{{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}) is now Effective."
+                ),
+                new EventSeed(
+                        "document.my_action_done", "Your Action on a Revision Confirmed",
+                        "A short confirmation, in the app only, to the person who submitted, reviewed, approved, rejected, published or uploaded.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_LOW,
+                        "CONFIRM_ACTION", "DOCUMENT_REVISION", "IN_APP", STD_VARS + ",workflowAction",
+                        new String[]{"ACTOR"},
+                        "Done", "{{workflowAction}}: {{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}})."
+                ),
+                new EventSeed(
+                        "document.author_assigned", "Author Assigned to New Document",
+                        "A new document has its Author, Reviewer and Approver; the Author may now upload the revision.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "ASSIGN_AUTHOR", "DOCUMENT", "IN_APP", STD_VARS,
+                        new String[]{"AUTHOR"},
+                        "You are the Author of {{documentNumber}}", "You have been assigned as the Author of document {{documentNumber}} — {{documentTitle}}. Please upload the revision."
+                ),
+                new EventSeed(
+                        "document.coauthor_edit_ready", "Revision File Ready for Co-Authors",
+                        "The file of a Draft revision was uploaded; its Co-Authors may now edit it together with the Author.",
+                        "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
+                        "UPLOAD_SOURCE", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
+                        new String[]{"RECIPIENT"},
+                        "{{documentNumber}} is ready to co-edit", "You are a Co-Author of document {{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}). The file has been uploaded; please join the editing."
                 ),
                 new EventSeed(
                         "document.upgrade_ready", "Document Ready for Upgrade",
@@ -565,7 +591,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "A document revision has been published and is now the effective version.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "PUBLISH", "DOCUMENT_REVISION", "IN_APP", STD_VARS,
-                        new String[]{"AUTHOR", "REVIEWER", "APPROVER"},
+                        new String[]{"AUTHOR", "CO_AUTHOR", "REVIEWER", "APPROVER"},
                         "Document is now effective", "{{documentNumber}} — {{documentTitle}} (Rev {{revisionNumber}}) is now Effective."
                 ),
                 new EventSeed(
@@ -589,7 +615,7 @@ public class NotificationEventCatalogBootstrap implements ApplicationRunner {
                         "An Active document has reached its Valid Until date. Its controlled copies are voided and no copy can be requested.",
                         "DOCUMENT_CONTROL", NotificationEventDefinition.PRIORITY_HIGH,
                         "EXPIRE", "DOCUMENT", "IN_APP,EMAIL", STD_VARS,
-                        new String[]{"RECIPIENT"},
+                        new String[]{"AUTHOR", "WORKFLOW_COORDINATOR"},
                         "Document expired", "{{documentNumber}} — {{documentTitle}} has passed its Valid Until date. Do not use it."
                 ),
                 new EventSeed(

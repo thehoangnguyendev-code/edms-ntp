@@ -17,11 +17,11 @@ import {
 import { tr, trFormat } from "@/i18n";
 
 const MODES: { label: string; value: PageBackgroundMode }[] = [
-  { label: tr("System default"), value: "default" },
-  { label: tr("Solid color"), value: "solid" },
-  { label: tr("Linear gradient"), value: "linear" },
-  { label: tr("Radial gradient"), value: "radial" },
-  { label: tr("Conic gradient"), value: "conic" },
+  { get label() { return tr("System default"); }, value: "default" },
+  { get label() { return tr("Solid color"); }, value: "solid" },
+  { get label() { return tr("Linear gradient"); }, value: "linear" },
+  { get label() { return tr("Radial gradient"); }, value: "radial" },
+  { get label() { return tr("Conic gradient"); }, value: "conic" },
 ];
 
 /** What "System default" is, for the sign-in page and for the main layout alike: Tailwind's bg-gray-100/50 (gray-100, half transparent). Keep it in step with AUTH_UI.pageWrapper and MainLayout. */

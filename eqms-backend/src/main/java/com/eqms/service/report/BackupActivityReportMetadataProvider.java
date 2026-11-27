@@ -72,8 +72,8 @@ public class BackupActivityReportMetadataProvider implements ReportMetadataProvi
         StringBuilder sql = new StringBuilder("from audit_logs al left join app_users u on u.id=al.acted_by_user_id where (" + MODULE + ")");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (al.entity_type ilike ? escape '\\' or al.action_type ilike ? escape '\\' or coalesce(al.entity_name,'') ilike ? escape '\\'"
-                    + " or coalesce(al.entity_code,'') ilike ? escape '\\' or coalesce(al.user_full_name, u.full_name, '') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(al.entity_type) like eqms_fold(?) escape '\\' or eqms_fold(al.action_type) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(al.entity_name,'')) like eqms_fold(?) escape '\\'"
+                    + " or eqms_fold(coalesce(al.entity_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(al.user_full_name, u.full_name, '')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 5; i++) args.add(term);
         }

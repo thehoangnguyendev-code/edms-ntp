@@ -72,7 +72,7 @@ public class AccessReviewReportMetadataProvider implements ReportMetadataProvide
         StringBuilder sql = new StringBuilder("from access_review_items i join access_review_campaigns c on c.id=i.campaign_id left join app_users db on db.id=i.decided_by where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (c.name ilike ? escape '\\' or coalesce(i.full_name,'') ilike ? escape '\\' or coalesce(i.username,'') ilike ? escape '\\' or coalesce(i.employee_code,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(c.name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(i.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(i.username,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(i.employee_code,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 4; i++) args.add(term);
         }

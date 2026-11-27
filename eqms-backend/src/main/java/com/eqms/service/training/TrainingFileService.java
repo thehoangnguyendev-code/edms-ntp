@@ -15,6 +15,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -146,6 +147,67 @@ public class TrainingFileService {
         store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_ADDED", Map.of("name", checked.name(), "sha256", checked.sha256()), actor.getId());
         store.auditActivity(actor, activity, "TRAINING_MATERIAL_ADDED", null, null, name + " (SHA-256 " + checked.sha256().substring(0, 12) + ")",
                 List.of(TrainingStore.change("Material", null, name), TrainingStore.change("File Name", null, checked.name()), TrainingStore.change("Purpose", null, TrainingStore.words(String.valueOf(kind))), TrainingStore.change("Session", null, sessionLabel(forSession))));
+        return list(actor, activityId);
+    }
+
+    public record LibraryCopyRequest(UUID materialId, UUID sessionId) {}
+
+    /**
+     * The materials of earlier trainings that can be used again (DEC-TRAINING-2026-11-27-01 F6): the content files and links of the activities of the departments the person may act in,
+     * each file once. Using one is a copy into the activity, so the content of the activity is still reviewed and approved (SOP.0003 5.3.5).
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> library(UserAccount actor, String search) {
+        access.require(actor, "training.activity.organize");
+        List<Object> args = new ArrayList<>();
+        String scope = "";
+        if (!access.allDepartments(actor)) {
+            UUID own = access.departmentOf(actor);
+            scope = " and a.organizer_department_id = ?";
+            args.add(own == null ? new UUID(0, 0) : own);
+        }
+        String needle = "";
+        if (search != null && !search.isBlank()) {
+            needle = " and (eqms_fold(m.title) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(m.original_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(a.training_number) like eqms_fold(?) escape '\\')";
+            String like = "%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+            args.add(like); args.add(like); args.add(like);
+        }
+        return TrainingRows.camel(jdbc.queryForList("""
+            select * from (
+              select distinct on (coalesce(m.sha256, m.link_url)) m.id, m.title, m.original_name, m.size_bytes, m.link_url, m.created_at, a.training_number, training_activity_topics(a.id) as training_topics
+                from training_materials m join training_activities a on a.id = m.activity_id
+               where m.purpose = 'CONTENT' and m.removed_at is null and a.status <> 'CANCELLED'""" + scope + needle + """
+               order by coalesce(m.sha256, m.link_url), m.created_at desc) x
+             order by x.created_at desc limit 50
+            """, args.toArray()));
+    }
+
+    @Transactional
+    public Map<String, Object> copyFromLibrary(UserAccount actor, UUID activityId, LibraryCopyRequest request) {
+        Map<String, Object> activity = store.activityForUpdate(activityId).orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        access.require(actor, "training.activity.organize");
+        access.requireScope(actor, (UUID) activity.get("organizer_department_id"));
+        if (!"PLANNED".equals(String.valueOf(activity.get("status")))) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_ACTIVITY_INVALID_TRANSITION");
+        if (contentLocked(activityId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "TRAINING_CONTENT_ALREADY_REVIEWED");
+        if (request == null || request.materialId() == null) throw new IllegalArgumentException("TRAINING_FILE_REJECTED");
+        Map<String, Object> source = jdbc.queryForList("""
+            select m.*, a.organizer_department_id as source_department, a.training_number as source_number from training_materials m join training_activities a on a.id = m.activity_id
+             where m.id = ? and m.purpose = 'CONTENT' and m.removed_at is null
+            """, request.materialId()).stream().findFirst().orElseThrow(() -> new SecurityException(TrainingAccess.DENIED));
+        // a department's material is used by that department, unless the person may act on every department
+        access.requireScope(actor, (UUID) source.get("source_department"));
+        UUID forSession = sessionOf(activityId, request.sessionId());
+        UUID id = UUID.randomUUID();
+        String title = String.valueOf(source.get("title"));
+        if (source.get("link_url") != null) {
+            jdbc.update("insert into training_materials(id, activity_id, session_id, title, purpose, link_url, uploaded_by) values (?,?,?,?,'CONTENT',?,?)", id, activityId, forSession, title, source.get("link_url"), actor.getId());
+        } else {
+            jdbc.update("insert into training_materials(id, activity_id, session_id, title, purpose, original_name, provider, stored_path, content_type, size_bytes, sha256, uploaded_by) values (?,?,?,?,'CONTENT',?,?,?,?,?,?,?)",
+                    id, activityId, forSession, title, source.get("original_name"), source.get("provider"), source.get("stored_path"), source.get("content_type"), source.get("size_bytes"), source.get("sha256"), actor.getId());
+        }
+        store.event(TrainingStore.OBJECT_ACTIVITY, id, activityId, "MATERIAL_ADDED", Map.of("name", title, "copiedFrom", String.valueOf(source.get("source_number"))), actor.getId());
+        store.auditActivity(actor, activity, "TRAINING_MATERIAL_ADDED", null, null, title + " (copied from " + source.get("source_number") + ")",
+                List.of(TrainingStore.change("Material", null, title), TrainingStore.change("Copied From", null, String.valueOf(source.get("source_number"))), TrainingStore.change("Session", null, sessionLabel(forSession))));
         return list(actor, activityId);
     }
 
@@ -494,7 +556,7 @@ public class TrainingFileService {
         StringBuilder where = new StringBuilder();
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(e.original_name) like ? escape '\\' or lower(coalesce(e.form_used,'')) like ? escape '\\' or lower(u.full_name) like ? escape '\\' or lower(coalesce(e.remark,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(e.original_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(e.form_used,'')) like eqms_fold(?) escape '\\' or eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(e.remark,'')) like eqms_fold(?) escape '\\')");
             for (int i = 0; i < 4; i++) args.add(like);
         }
         int safeLimit = Math.min(Math.max(limit, 1), 100);

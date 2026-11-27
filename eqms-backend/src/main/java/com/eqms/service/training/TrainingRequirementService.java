@@ -62,7 +62,9 @@ public class TrainingRequirementService {
         this.users = users;
     }
 
-    public record CreateRequest(Integer year, String kind, UUID departmentId, LocalDate dueBy, LocalDate reviewCompletedOn) {}
+    public record CreateRequest(Integer year, String kind, UUID departmentId, LocalDate dueBy, LocalDate reviewCompletedOn, Boolean plantWide) {
+        public CreateRequest(Integer year, String kind, UUID departmentId, LocalDate dueBy, LocalDate reviewCompletedOn) { this(year, kind, departmentId, dueBy, reviewCompletedOn, null); }
+    }
     public record LineRequest(LocalDate plannedMonth, String topicText, UUID documentId) {}
     public record SaveRequest(Integer version, LocalDate dueBy, List<LineRequest> lines) {}
     public record SubmitRequest(Integer version, String signatureToken, UUID nextApproverUserId) {}
@@ -138,6 +140,7 @@ public class TrainingRequirementService {
         for (String column : List.of("created_by", "prepared_by", "reviewed_by", "approved_by")) {
             out.put(column.replace("_by", "ByName").replaceAll("_(\\w)", "$1"), r.get(column) == null ? null : jdbc.queryForObject("select full_name from app_users where id=?", String.class, r.get(column)));
         }
+        out.put("missingMandatory", "ANNUAL".equals(r.get("kind")) ? mandatoryMissing((UUID) r.get("id")) : List.of());
         out.put("lines", TrainingRows.camel(jdbc.queryForList("""
             select l.id, l.line_no, l.planned_month, l.topic_text, l.document_id, l.activity_id, l.postponed_from, l.postpone_reason, l.qa_comment, l.qa_signed_at, l.qa_signature_id,
                    coalesce(l.topic_text, d.document_name) as title, d.document_number as code,
@@ -190,21 +193,52 @@ public class TrainingRequirementService {
                 Integer.class, TYPE, id, step, actor.getId()) > 0;
     }
 
-    /** Annual topics of the effective matrix of the department that are not yet in any requirement of the year. */
+    /** The contents SOP.0003 5.3.2 names that no line of the requirement covers (a note for the preparer, not a block). */
+    private List<String> mandatoryMissing(UUID requirementId) {
+        return jdbc.queryForList("""
+            select m.name from training_annual_mandatory_topics m
+             where m.active and not exists (select 1 from training_requirement_lines l left join documents d on d.id = l.document_id
+                                             where l.requirement_id = ? and lower(coalesce(l.topic_text, d.document_name, '')) like '%' || lower(m.keyword) || '%')
+             order by m.name
+            """, String.class, requirementId);
+    }
+
+    /**
+     * Annual topics of the effective requirements of the department that are not yet in any requirement of the year. For the plant-wide requirement they come from
+     * every department, each topic once, with the departments that require it.
+     */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> suggestions(UserAccount actor, Integer year, UUID departmentId) {
+        return suggestions(actor, year, departmentId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> suggestions(UserAccount actor, Integer year, UUID departmentId, boolean plantWide) {
         access.require(actor, "training.requirement.prepare");
+        int y = year == null ? LocalDate.now(TrainingNumberService.ZONE).getYear() : year;
+        if (plantWide) {
+            access.require(actor, "training.code.allocate");
+            return TrainingRows.camel(jdbc.queryForList("""
+                select r.topic_text, r.document_id, coalesce(r.topic_text, d.document_name) as title, d.document_number as code,
+                       string_agg(distinct dep.name, ', ' order by dep.name) as departments
+                  from training_effective_requirements r join departments dep on dep.id = r.department_id left join documents d on d.id = r.document_id
+                 where r.annual_required
+                   and not exists (select 1 from training_requirement_lines l join training_requirements q on q.id = l.requirement_id
+                                    where q.plant_wide and q.year = ? and (training_topic_key(l.topic_text) = training_topic_key(r.topic_text) or l.document_id = r.document_id))
+                 group by r.topic_text, r.document_id, d.document_name, d.document_number
+                 order by 3
+                """, y));
+        }
         UUID department = departmentId != null ? departmentId : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
         access.requireScope(actor, department);
-        int y = year == null ? LocalDate.now(TrainingNumberService.ZONE).getYear() : year;
         return TrainingRows.camel(jdbc.queryForList("""
             select r.topic_text, r.document_id, coalesce(r.topic_text, d.document_name) as title, d.document_number as code
-              from training_matrix_versions v join training_matrices m on m.id = v.matrix_id join training_matrix_rows r on r.version_id = v.id
+              from training_effective_requirements r
               left join documents d on d.id = r.document_id
-             where m.department_id = ? and v.status = 'EFFECTIVE' and r.annual_required
+             where r.department_id = ? and r.annual_required
                and not exists (select 1 from training_requirement_lines l join training_requirements q on q.id = l.requirement_id
-                                where q.department_id = m.department_id and q.year = ? and (training_topic_key(l.topic_text) = training_topic_key(r.topic_text) or l.document_id = r.document_id))
+                                where (q.department_id = r.department_id or q.plant_wide) and q.year = ? and (training_topic_key(l.topic_text) = training_topic_key(r.topic_text) or l.document_id = r.document_id))
              order by r.row_no
             """, department, y));
     }
@@ -217,9 +251,18 @@ public class TrainingRequirementService {
         if (request == null || request.year() == null || request.year() < 2000 || request.year() > 2100) throw new IllegalArgumentException("TRAINING_YEAR_INVALID");
         String kind = request.kind() == null ? "ANNUAL" : request.kind();
         if (!Set.of("ANNUAL", "SOP_PERIODIC").contains(kind)) throw new IllegalArgumentException("TRAINING_KIND_INVALID");
+        boolean plantWide = Boolean.TRUE.equals(request.plantWide());
+        // one requirement for the whole plant is prepared by Quality Assurance (the people who give the training numbers), SOP.0003 5.3.2
+        if (plantWide) {
+            if (!"ANNUAL".equals(kind)) throw new IllegalArgumentException("TRAINING_KIND_INVALID");
+            access.require(actor, "training.code.allocate");
+        }
         UUID department = request.departmentId() != null ? request.departmentId() : access.departmentOf(actor);
         if (department == null) throw new IllegalArgumentException("TRAINING_DEPARTMENT_REQUIRED");
         access.requireScope(actor, department);
+        if (plantWide && jdbc.queryForObject("select count(*) from training_requirements where plant_wide and year = ? and kind = 'ANNUAL'", Integer.class, request.year()) > 0) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "TRAINING_REQUIREMENT_PLANT_EXISTS");
+        }
         jdbc.queryForObject("select pg_advisory_xact_lock(hashtext(?))", Object.class, "training-requirement-" + request.year());
         String departmentCode = jdbc.queryForList("select code from departments where id = ?", String.class, department).stream().findFirst().orElse(null);
         String number = codes.next(TrainingCodeService.REQUIREMENT, departmentCode, request.year(),
@@ -233,8 +276,8 @@ public class TrainingRequirementService {
             dueBy = java.time.YearMonth.from(reviewDone).atEndOfMonth();
         }
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into training_requirements(id, request_no, year, kind, department_id, due_by, created_by, prepared_by, review_completed_on) values (?,?,?,?,?,?,?,?,?)",
-                id, number, request.year(), kind, department, dueBy, actor.getId(), actor.getId(), reviewDone);
+        jdbc.update("insert into training_requirements(id, request_no, year, kind, department_id, due_by, created_by, prepared_by, review_completed_on, plant_wide) values (?,?,?,?,?,?,?,?,?,?)",
+                id, number, request.year(), kind, department, dueBy, actor.getId(), actor.getId(), reviewDone, plantWide);
         audit.logAs(actor, TYPE, number, id, "TRAINING_REQUIREMENT_CREATED", null, "DRAFT", "Requirement " + number + " for " + request.year(),
                 java.util.List.of(TrainingStore.change("Year", null, request.year())));
         return get(actor, id);

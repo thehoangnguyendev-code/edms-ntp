@@ -72,6 +72,8 @@ public class TrainingNotifier {
             case "TRAINING_REQUIREMENT" -> "/training-management/requirements/" + id;
             case "TRAINING_LEGACY_EVIDENCE" -> "/training-management/legacy-evidence";
             case "TRAINING_PERSONNEL_REVIEW" -> "/training-management/personnel-reviews/" + id;
+            case "TRAINING_PERSONNEL_EVENTS" -> "/training-management/personnel-reviews";
+            case "TRAINING_MATRIX_LIST" -> "/training-management/matrix";
             case "TRAINING_COMPLIANCE_SUSPENSIONS" -> "/training-management/compliance?tab=suspensions";
             case "TRAINING_REQUIREMENT_LIST" -> "/training-management/requirements";
             // the earlier key of the same screen stays for the notifications that were already sent with it
@@ -87,6 +89,7 @@ public class TrainingNotifier {
             case "CONTENT_APPROVE_FIRST" -> "approve the training content and test (first approval)";
             case "CONTENT_APPROVE" -> "approve the training content and test (second approval)";
             case "ACTIVITY_COMPLETE" -> "confirm that the training is completed";
+            case "MATRIX_REVIEW" -> "review a training matrix";
             case "MATRIX_APPROVE" -> "approve a training matrix";
             case "JOB_ASSIGN_EXCEPTION" -> "approve an exception to a job assignment";
             case "SPECIMEN_CONFIRM" -> "confirm a specimen signature";

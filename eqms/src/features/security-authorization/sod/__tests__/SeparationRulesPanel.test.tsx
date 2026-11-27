@@ -4,7 +4,7 @@ import type { SeparationRule } from "@/services/api";
 import { SeparationRulesPanel, separationRuleSentence } from "../SeparationRulesPanel";
 
 const rule = (over: Partial<SeparationRule>): SeparationRule => ({
-  id: "r1", moduleKey: "SECURITY_REVIEW", moduleLabel: "Access Review & Audit Trail Review", workflowKey: "ACCESS_REVIEW_CAMPAIGN", workflowLabel: "Access Review Campaign",
+  id: "r1", moduleKey: "SECURITY", moduleLabel: "Security & Authorization", workflowKey: "ACCESS_REVIEW_CAMPAIGN", workflowLabel: "Access Review Campaign",
   objectType: "ACCESS_REVIEW_CAMPAIGN", actionCode: "COMPLETE", actionLabel: "Complete", fromStatus: "IN_PROGRESS", fromStatusLabel: "In Progress",
   relationCode: "CAMPAIGN_CREATOR", relationLabel: "Creator of the campaign", description: "The person who created the campaign.",
   enabled: false, policyId: "p1", policyActive: true, ...over,

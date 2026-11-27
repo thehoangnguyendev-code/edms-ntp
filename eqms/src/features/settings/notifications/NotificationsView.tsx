@@ -31,9 +31,9 @@ type Sort = "name" | "channel" | "category" | "status" | "updatedAt";
 type TabId = "all" | "in-app" | "email";
 
 const TABS: (TabItem & { id: TabId })[] = [
-  { id: "all", label: tr("All Notifications") },
-  { id: "in-app", label: tr("In-app Notification") },
-  { id: "email", label: tr("Email Notification") },
+  { id: "all", get label() { return tr("All Notifications"); } },
+  { id: "in-app", get label() { return tr("In-app Notification"); } },
+  { id: "email", get label() { return tr("Email Notification"); } },
 ];
 
 /** The channel a tab is limited to; the first tab shows both. */
@@ -64,8 +64,8 @@ const PRIORITY_OPTIONS = [
 
 const USAGE_OPTIONS = [
   { label: "All", value: ALL },
-  { label: tr("Sent at least once"), value: "SENT" },
-  { label: tr("Never sent"), value: "NEVER_SENT" },
+  { get label() { return tr("Sent at least once"); }, value: "SENT" },
+  { get label() { return tr("Never sent"); }, value: "NEVER_SENT" },
 ];
 
 /** What the Language column says, by the code the server sends. */
@@ -119,6 +119,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
       filters: { channel: ALL, status: ALL, module: ALL, priority: ALL, type: ALL, usage: ALL, updatedFrom: "", updatedTo: "" },
     },
     "The notifications could not be loaded.",
+    `notifications.${tab}`,
   );
 
   const [typeOptions, setTypeOptions] = useState([{ label: "All", value: ALL }]);
@@ -142,8 +143,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
   const allColumns: DataTableColumn<NotificationAdministrationRow>[] = [
     {
       id: "no",
-      header: "No.",
-      label: "No.",
+      header: tr("No."),
+      label: tr("No."),
       locked: true,
       headerClassName: NO,
       cellClassName: TABLE_STYLES.cell30,
@@ -160,9 +161,9 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
             type="button"
             onClick={() => open(row)}
             className="block max-w-full truncate text-left font-semibold text-slate-900 hover:text-emerald-700"
-            title={row.name}
+            title={tr(row.name)}
           >
-            {row.name}
+            {tr(row.name)}
           </button>
           <span className="block truncate font-mono text-xs text-slate-500">{row.code}</span>
           {/* on a narrow screen the channel and the status columns are not shown: they are said here */}
@@ -175,12 +176,12 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "channel",
-      header: "Channel",
-      label: "Channel",
+      header: tr("Channel"),
+      label: tr("Channel"),
       sort: list.sortFor("channel"),
       cell: (row) => (
         <Badge color={channelColor(row.channel)} size="sm">
-          {CHANNEL_LABEL[row.channel]}
+          {tr(CHANNEL_LABEL[row.channel])}
         </Badge>
       ),
     },
@@ -206,13 +207,13 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "details",
-      header: "Details",
-      label: "Details",
+      header: tr("Details"),
+      label: tr("Details"),
       cell: (row) => (
         <div className="flex flex-col items-start gap-1">
           {row.priority ? (
             <Badge color={PRIORITY_COLOR[row.priority] ?? "slate"} size="sm">
-              {priorityLabel(row.priority)}
+              {tr(priorityLabel(row.priority))}
             </Badge>
           ) : null}
           <span className="text-xs text-slate-600">{row.sent ? trFormat("Sent {count} time(s)", { count: row.sent }) : tr("Never sent")}</span>
@@ -221,8 +222,8 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     },
     {
       id: "status",
-      header: "Status",
-      label: "Status",
+      header: tr("Status"),
+      label: tr("Status"),
       sort: list.sortFor("status"),
       cell: (row) => (
         <Badge color={STATUS_COLOR[row.status] ?? "gray"} size="sm">
@@ -245,9 +246,9 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
     id,
     label,
     value: list.filters[id],
-    options,
+    options: options.map((option) => ({ ...option, label: tr(option.label) })),
     defaultValue: ALL,
-    placeholder: "All",
+    placeholder: tr("All"),
     onChange: list.setFilter(id),
     ...extra,
   });
@@ -255,12 +256,12 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
   // the Channel filter shows the channel of a limited tab and cannot be changed; each filter that only one kind has is left out of the other tab
   const filters: ListFilter[] = [
     fixed
-      ? select("channel", "Channel", CHANNEL_OPTIONS.filter((o) => o.value === fixed), { value: fixed, defaultValue: fixed, disabled: true, onChange: () => undefined })
-      : select("channel", "Channel", CHANNEL_OPTIONS),
-    select("status", "Status", STATUS_OPTIONS),
-    ...(fixed === "EMAIL" ? [] : [select("module", "Module", MODULE_OPTIONS)]),
-    select("priority", "Priority", PRIORITY_OPTIONS),
-    ...(fixed === "IN_APP" ? [] : [select("type", "Type", typeOptions), select("usage", "Sent", USAGE_OPTIONS)]),
+        ? select("channel", tr("Channel"), CHANNEL_OPTIONS.filter((o) => o.value === fixed), { value: fixed, defaultValue: fixed, disabled: true, onChange: () => undefined })
+        : select("channel", tr("Channel"), CHANNEL_OPTIONS),
+    select("status", tr("Status"), STATUS_OPTIONS),
+    ...(fixed === "EMAIL" ? [] : [select("module", tr("Module"), MODULE_OPTIONS)]),
+    select("priority", tr("Priority"), PRIORITY_OPTIONS),
+    ...(fixed === "IN_APP" ? [] : [select("type", tr("Type"), typeOptions), select("usage", tr("Sent"), USAGE_OPTIONS)]),
   ];
 
   return (
@@ -280,7 +281,7 @@ const NotificationsList: React.FC<{ tab: TabId; canManage: boolean }> = ({ tab, 
         emptyDescription={tr("No notification matches this filter.")}
         search={list.search}
         onSearch={list.setSearch}
-        searchLabel="Search notifications"
+        searchLabel={tr("Search notifications")}
         searchPlaceholder={tr("Name, code or description…")}
         filters={filters}
         dates={[

@@ -54,6 +54,8 @@ class TrainingSpecimenScanRecordTest {
     @Mock ImageWatermarkService watermark;
 
     private final UUID personId = UUID.randomUUID();
+    private final UUID employeeId = UUID.randomUUID();
+    private final UserAccount employee = mock(UserAccount.class);
     private final UserAccount actor = mock(UserAccount.class);
     private TrainingSpecimenService service;
 
@@ -70,6 +72,10 @@ class TrainingSpecimenScanRecordTest {
         when(actor.getFullName()).thenReturn("An");
         when(actor.getStatus()).thenReturn(UserStatus.Active);
         when(users.findById(personId)).thenReturn(java.util.Optional.of(actor));
+        when(employee.getStatus()).thenReturn(UserStatus.Active);
+        when(employee.getFullName()).thenReturn("Binh");
+        when(users.findById(employeeId)).thenReturn(java.util.Optional.of(employee));
+        when(access.allDepartments(actor)).thenReturn(true);
         when(virusScan.scan(any())).thenReturn(new ClamAvScanService.ScanResult(true, null));
         when(files.storeReportArtifact(anyString(), any(), anyString())).thenReturn(new FileStorageService.StorageWriteResult(null, "path", "LOCAL", "bucket", "key", null, "sha"));
         when(jdbc.queryForObject(contains("coalesce(max(version_no),0)+1"), eq(Number.class), any(UUID.class))).thenReturn(2);
@@ -88,7 +94,7 @@ class TrainingSpecimenScanRecordTest {
     void theScanBecomesTheCurrentRecordAndTheEarlierOneIsSuperseded() throws Exception {
         when(jdbc.queryForObject(contains("status='APPROVED'"), eq(Integer.class), any(UUID.class))).thenReturn(1);
 
-        service.upload(actor, null, scan(), scan(), "Signature changed");
+        service.upload(actor, employeeId, scan(), scan(), "Signature changed", true);
 
         var order = inOrder(jdbc, audit);
         order.verify(jdbc).update(contains("set status='OBSOLETED'"), any(UUID.class));
@@ -99,16 +105,16 @@ class TrainingSpecimenScanRecordTest {
     @Test
     void aFirstScanNeedsNoReasonAndAReplacementDoes() throws Exception {
         when(jdbc.queryForObject(contains("status='APPROVED'"), eq(Integer.class), any(UUID.class))).thenReturn(0);
-        service.upload(actor, null, scan(), scan(), null);
+        service.upload(actor, employeeId, scan(), scan(), null, true);
         verify(jdbc).update(contains("values (?,?,?,'APPROVED',current_date"), any(Object[].class));
 
         when(jdbc.queryForObject(contains("status='APPROVED'"), eq(Integer.class), any(UUID.class))).thenReturn(1);
-        assertThatThrownBy(() -> service.upload(actor, null, scan(), scan(), " ")).hasMessage("TRAINING_REASON_REQUIRED");
+        assertThatThrownBy(() -> service.upload(actor, employeeId, scan(), scan(), " ", true)).hasMessage("TRAINING_REASON_REQUIRED");
     }
 
     @Test
     void bothScansAreRequiredAndNoConfirmationIsAsked() throws Exception {
-        assertThatThrownBy(() -> service.upload(actor, null, scan(), null, null)).hasMessage("TRAINING_SPECIMEN_SECOND_REQUIRED");
+        assertThatThrownBy(() -> service.upload(actor, employeeId, scan(), null, null, true)).hasMessage("TRAINING_SPECIMEN_SECOND_REQUIRED");
         verify(jdbc, never()).update(contains("insert into training_specimen_signatures"), any(Object[].class));
         verify(jdbc, never()).update(contains("training_approval_assignments"), any(Object[].class));
     }
@@ -119,7 +125,7 @@ class TrainingSpecimenScanRecordTest {
         when(watermark.apply(any(ImageWatermarkService.Target.class), any(byte[].class), any(ImageWatermarkService.Stamp.class)))
                 .thenReturn(new ImageWatermarkService.Result(new byte[]{1, 2, 3}, "image/png", true, null, "original", "stamped"));
 
-        service.upload(actor, null, scan(), scan(), null);
+        service.upload(actor, employeeId, scan(), scan(), null, true);
 
         // The two stamped pictures and the two originals.
         verify(files, times(4)).storeReportArtifact(anyString(), any(), eq("image/png"));
@@ -139,7 +145,7 @@ class TrainingSpecimenScanRecordTest {
     void aPictureThatWasNotStampedKeepsNoSecondCopy() throws Exception {
         when(jdbc.queryForObject(contains("status='APPROVED'"), eq(Integer.class), any(UUID.class))).thenReturn(0);
 
-        service.upload(actor, null, scan(), scan(), null);
+        service.upload(actor, employeeId, scan(), scan(), null, true);
 
         verify(files, times(2)).storeReportArtifact(anyString(), any(), anyString());
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
@@ -151,9 +157,9 @@ class TrainingSpecimenScanRecordTest {
     @Test
     void thePictureOnlyPngAndJpegAreAcceptedForANewSpecimen() throws Exception {
         MockMultipartFile webp = new MockMultipartFile("file", "a.webp", "image/webp", "RIFF....WEBPVP8 ................................".getBytes());
-        assertThatThrownBy(() -> service.upload(actor, null, webp, scan(), null)).hasMessage("TRAINING_FILE_REJECTED");
+        assertThatThrownBy(() -> service.upload(actor, employeeId, webp, scan(), null, true)).hasMessage("TRAINING_FILE_REJECTED");
         MockMultipartFile bmp = new MockMultipartFile("file", "a.bmp", "image/bmp", "BM..............................................".getBytes());
-        assertThatThrownBy(() -> service.upload(actor, null, bmp, scan(), null)).hasMessage("TRAINING_FILE_REJECTED");
+        assertThatThrownBy(() -> service.upload(actor, employeeId, bmp, scan(), null, true)).hasMessage("TRAINING_FILE_REJECTED");
         verify(jdbc, never()).update(contains("insert into training_specimen_signatures"), any(Object[].class));
     }
 
@@ -200,5 +206,12 @@ class TrainingSpecimenScanRecordTest {
 
     private static String sha256Of(byte[] bytes) throws Exception {
         return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+    }
+
+    @Test
+    void theEmployeeDoesNotFileTheirOwnSignatureAndThePaperMustCarryTheHeadsSignature() throws Exception {
+        assertThatThrownBy(() -> service.upload(actor, null, scan(), scan(), null, true)).hasMessage("TRAINING_SPECIMEN_NOT_OWN");
+        assertThatThrownBy(() -> service.upload(actor, employeeId, scan(), scan(), null, false)).hasMessage("TRAINING_SPECIMEN_HEAD_SIGNATURE_REQUIRED");
+        verify(jdbc, never()).update(contains("insert into training_specimen_signatures"), any(Object[].class));
     }
 }

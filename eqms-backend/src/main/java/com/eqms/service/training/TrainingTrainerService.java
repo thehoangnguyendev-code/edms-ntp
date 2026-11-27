@@ -63,10 +63,7 @@ public class TrainingTrainerService {
             out.put("reasons", List.of());
             return out;
         }
-        boolean gmp = jdbc.queryForObject("""
-            select count(*) from training_records r left join training_record_voids v on v.record_id = r.id
-             where r.person_user_id=? and v.id is null and r.result <> 'TRAINER' and lower(r.topic_text) like '%gmp%'
-            """, Integer.class, trainer) > 0;
+        boolean gmp = gmpTrained(trainer);
         boolean grantedByQa = users.findById(trainer).map(u -> access.has(u, QUALIFIED)).orElse(false);
         List<Map<String, Object>> topics = new ArrayList<>();
         List<String> reasons = new ArrayList<>();
@@ -95,6 +92,21 @@ public class TrainingTrainerService {
         List<Map<String, Object>> ex = jdbc.queryForList("select id, status, reason, reject_reason from training_trainer_exceptions where session_id=? order by created_at desc limit 1", sessionId);
         out.put("exception", ex.isEmpty() ? null : TrainingRows.camel(ex.getFirst()));
         return out;
+    }
+
+    /**
+     * SOP.0003 5.1: a trainer is trained in GMP. The GMP topics are the rows Quality Assurance marked in the effective matrices (DEC-TRAINING-2026-11-27-01 A2).
+     * While no row is marked anywhere, a record whose topic names GMP counts, as before, so that the upgrade blocks nobody.
+     */
+    private boolean gmpTrained(UUID person) {
+        Boolean marked = jdbc.queryForObject("select exists(select 1 from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id where v.status = 'EFFECTIVE' and r.is_gmp)", Boolean.class);
+        String record = "select exists(select 1 from training_records rec left join training_record_voids vv on vv.record_id = rec.id where rec.person_user_id = ? and vv.id is null and rec.result <> 'TRAINER' and ";
+        if (!Boolean.TRUE.equals(marked)) return Boolean.TRUE.equals(jdbc.queryForObject(record + "lower(rec.topic_text) like '%gmp%')", Boolean.class, person));
+        return Boolean.TRUE.equals(jdbc.queryForObject(record + """
+            exists (select 1 from training_matrix_rows r join training_matrix_versions v on v.id = r.version_id and v.status = 'EFFECTIVE' left join documents d on d.id = r.document_id
+                     where r.is_gmp and ((d.document_number is not null and rec.document_number = d.document_number)
+                                         or (r.topic_text is not null and training_topic_key(rec.topic_text) = training_topic_key(r.topic_text)))))
+            """, Boolean.class, person));
     }
 
     /** True when the session may go ahead with its trainer: qualified, or an exception approved, or not judged (outside trainer). */

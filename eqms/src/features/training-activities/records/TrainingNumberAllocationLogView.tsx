@@ -76,7 +76,7 @@ function TrainingNumberAllocationLog({ ownDepartmentId }: { ownDepartmentId: str
       header: "Remark",
       cell: (r) => (
         <div className="max-w-60 whitespace-normal">
-          {[r.cancelReason ? `Cancelled: ${r.cancelReason}` : "", r.postponements ? `Postponed ${r.postponements} time(s)` : ""].filter(Boolean).join("; ") || "—"}
+          {[r.cancelReason ? `Cancelled: ${r.cancelReason}` : "", r.postponements ? `Postponed ${r.postponements} time(s)${r.postponeReasons ? `: ${r.postponeReasons}` : ""}` : ""].filter(Boolean).join("; ") || "—"}
         </div>
       ),
     },

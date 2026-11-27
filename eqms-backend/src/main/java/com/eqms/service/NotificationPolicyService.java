@@ -90,7 +90,7 @@ public class NotificationPolicyService {
     ) {
         String query = StringUtils.hasText(search) ? search.trim().toLowerCase(Locale.ROOT) : null;
         List<NotificationPolicySummaryResponse> summaries = eventRepository.findAll().stream()
-                .filter(e -> !StringUtils.hasText(module) || moduleKey(module).equals(moduleKey(e.getModule())))
+                .filter(e -> !StringUtils.hasText(module) || com.eqms.util.ModuleKeys.same(module, e.getModule()))
                 .map(event -> {
                     NotificationPolicy policy = policyRepository.findByEventCode(event.getCode()).orElse(null);
                     return toSummary(event, policy);

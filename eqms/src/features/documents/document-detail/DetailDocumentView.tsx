@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -191,7 +192,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   fromOwned = false,
 }) => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
   const { canUseDocumentTemplate } = useDocumentPermissions();
   const { navigateTo, isNavigating: isRouteNavigating } =
@@ -303,7 +304,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const tabFromQuery = searchParams.get("tab");
   const initialActiveTab =
-    tabFromQuery === "audit" || tabFromQuery === "records" ? tabFromQuery : initialTab;
+    ["general", "training", "document", "signatures", "records", "audit"].includes(tabFromQuery ?? "") ? tabFromQuery as TabType : initialTab;
   const revisionWorkspaceMode: WorkspaceNavigationMode =
     state?.workspaceState?.revisionWorkspaceMode === "edit"
       ? "edit"
@@ -714,7 +715,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     void refreshLifecycleState();
   }, { documentId, enabled: Boolean(documentId), debounceMs: 800 });
 
-  const [activeTab, setActiveTab] = useState<TabType>(initialActiveTab);
+  const [activeTab, setActiveTab] = useViewState<TabType>("DetailDocumentView.activeTab", initialActiveTab, Boolean(tabFromQuery));
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [isDocumentFileLoading, setIsDocumentFileLoading] = useState(false);
   const [documentPreviewError, setDocumentPreviewError] = useState<
@@ -801,9 +802,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     };
   }, [activeTab, documentId]);
 
-  useEffect(() => {
+  useViewFilterChange(() => {
     const tab = searchParams.get("tab");
-    setActiveTab(tab === "audit" || tab === "records" ? tab : initialTab);
+    setActiveTab(["general", "training", "document", "signatures", "records", "audit"].includes(tab ?? "") ? tab as TabType : initialTab);
   }, [searchParams, initialTab]);
 
   const handleBack = () => {
@@ -1234,9 +1235,10 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
     note: string,
     useTemplate: boolean,
     templateRevisionId?: string,
+    useEffectiveSource?: boolean,
   ) => {
     if (!canUploadRevision) return;
-    if (!file && !(useTemplate && templateRevisionId)) return;
+    if (!useEffectiveSource && !file && !(useTemplate && templateRevisionId)) return;
 
     setIsRevisionUploadLoading(true);
     try {
@@ -1247,6 +1249,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
           changeDescription:
             note?.trim() || "New revision source uploaded from Document Master.",
           templateRevisionId: useTemplate ? templateRevisionId : undefined,
+          useEffectiveSource,
         },
       );
       setIsUploadRevisionModalOpen(false);
@@ -1514,7 +1517,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
   };
 
   // Sub-tab state (for active documents)
-  const [activeSubTab, setActiveSubTab] = useState<SubTabType>("revisions");
+  const [activeSubTab, setActiveSubTab] = useViewState<SubTabType>("DetailDocumentView.activeSubTab", "revisions");
 
 
   const handleShare = () => {
@@ -1541,6 +1544,9 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
 
   const handleViewHistory = () => {
     setActiveTab("audit");
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "audit");
+    setSearchParams(params, { replace: true });
   };
 
   const tabs = [
@@ -1829,7 +1835,12 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         <TabNav
           tabs={tabs}
           activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as TabType)}
+          onChange={(id) => {
+            setActiveTab(id as TabType);
+            const params = new URLSearchParams(searchParams);
+            params.set("tab", id);
+            setSearchParams(params, { replace: true });
+          }}
           layoutId="doc-detail-main-tab"
         />
 
@@ -2324,6 +2335,7 @@ export const DetailDocumentView: React.FC<DetailDocumentViewProps> = ({
         isOpen={isUploadRevisionModalOpen}
         onClose={() => setIsUploadRevisionModalOpen(false)}
         onConfirm={handleUploadRevisionConfirm}
+        documentId={document.id}
         documentName={document.documentName}
         revisionNumber={document.nextDraftRevisionNumber || ""}
         documentType={document.type}

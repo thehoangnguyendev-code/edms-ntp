@@ -102,6 +102,7 @@ public final class TrainingWorkflows {
 
     private static final List<WorkflowStepResponse> MATRIX_VERSION = List.of(
             step("DRAFT", "Draft"),
+            step("PENDING_REVIEW", "Pending Review"),
             step("PENDING_APPROVAL", "Pending Approval"),
             step("EFFECTIVE", "Effective"),
             end("OBSOLETED", "Obsoleted"));

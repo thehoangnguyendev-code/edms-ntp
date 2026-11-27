@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import React from "react";
 import { useNavigate } from "react-router-dom";
@@ -186,10 +187,10 @@ const formatBytes = (n: number) => {
 type TabId = "application" | "server" | "database" | "stack" | "routing";
 
 const TABS: readonly TabItem[] = [
-  { id: "application", label: tr("Application"), icon: AppWindow },
+  { id: "application", get label() { return tr("Application"); }, icon: AppWindow },
   { id: "server", label: "Server", icon: Server },
   { id: "database", label: "Database", icon: Database },
-  { id: "stack", label: tr("Technology Stack"), icon: Layers },
+  { id: "stack", get label() { return tr("Technology Stack"); }, icon: Layers },
   { id: "routing", label: "Routing", icon: Route },
 ];
 
@@ -205,7 +206,7 @@ export const SystemInformationView: React.FC = () => {
   const [data, setData] = React.useState<SystemInfoResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
-  const [tab, setTab] = React.useState<TabId>("application");
+  const [tab, setTab] = useViewState<TabId>("SystemInformationView.tab", "application");
 
   const load = React.useCallback(() => {
     setLoading(true);

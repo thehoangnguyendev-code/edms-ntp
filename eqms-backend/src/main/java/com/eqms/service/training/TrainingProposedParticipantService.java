@@ -195,7 +195,7 @@ public class TrainingProposedParticipantService {
             String businessUnit, String department, int page, int limit) {
         requireCanChoose(actor);
         String like = "%" + escapeLike((search == null ? "" : search.trim()).toLowerCase(Locale.ROOT)) + "%";
-        String where = " where u.status='Active' and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')";
+        String where = " where u.status='Active' and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\')";
         List<Object> args = new ArrayList<>(List.of(like, like, like));
         if (businessUnit != null && !businessUnit.isBlank()) { where += " and u.business_unit=?"; args.add(businessUnit); }
         if (department != null && !department.isBlank()) { where += " and u.department=?"; args.add(department); }
@@ -225,7 +225,7 @@ public class TrainingProposedParticipantService {
         String like = "%" + escapeLike((search == null ? "" : search.trim()).toLowerCase(Locale.ROOT)) + "%";
         return TrainingRows.camel(jdbc.queryForList("""
             select u.id, u.full_name, u.username, u.email, u.employee_code, u.department, u.position, u.business_unit, u.avatar from app_users u
-             where u.status = 'Active' and (lower(u.full_name) like ? escape '\\' or lower(u.username) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\')
+             where u.status = 'Active' and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\')
              order by u.full_name limit ?
             """, like, like, like, Math.min(Math.max(limit, 1), 50)));
     }

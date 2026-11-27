@@ -325,6 +325,7 @@ public class NotificationDispatcher {
                 : inAppVersion == null ? null : inAppVersion.getActionUrlTemplate();
         String url = render(urlTemplate, variables);
         String html = com.eqms.util.EmailFrameRenderer.paragraphs(message);
+        html = com.eqms.util.EmailFrameRenderer.withGreeting(html, variables.get("recipientName"), vietnamese);
         if (StringUtils.hasText(url) && emailNotificationService != null) {
             String absolute = url.startsWith("http://") || url.startsWith("https://") ? url
                     : emailNotificationService.resolvePublicAppBaseUrl() + (url.startsWith("/") ? url : "/" + url);

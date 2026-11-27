@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { Search } from "lucide-react";
@@ -20,11 +21,11 @@ interface RelationDocumentsTableProps {
 
 /** Related / Correlated Documents list. Search, sort and paging run on the server; only ids are sent from the page. */
 export const RelationDocumentsTable: React.FC<RelationDocumentsTableProps> = ({ documents, relationType }) => {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "documentNumber", direction: "asc" });
+    const [searchQuery, setSearchQuery] = useViewState(`${relationType}:RelationDocumentsTable.searchQuery`, "");
+    const [debouncedSearch, setDebouncedSearch] = useState(searchQuery.trim());
+    const [currentPage, setCurrentPage] = useViewState(`${relationType}:RelationDocumentsTable.currentPage`, 1);
+    const [itemsPerPage, setItemsPerPage] = useViewState(`${relationType}:RelationDocumentsTable.itemsPerPage`, 10);
+    const [sort, setSort] = useViewState<{ key: string; direction: SortDirection }>(`${relationType}:RelationDocumentsTable.sort`, { key: "documentNumber", direction: "asc" });
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), SEARCH_DEBOUNCE_MS);

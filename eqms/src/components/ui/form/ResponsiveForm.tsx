@@ -92,7 +92,7 @@ export const FormField: React.FC<FormFieldProps> = ({
       <div className={cn('flex-1', layout === 'horizontal' && 'md:w-2/3')}>
         {enhancedChildren}
         {hint && !error && (
-          <p id={hintId} className="mt-1 text-2xs sm:text-xs text-slate-500">{hint}</p>
+          <p id={hintId} className="mt-1.5 text-xs text-slate-500">{hint}</p>
         )}
         {error && (
           <p id={errorId} className="mt-1 text-2xs sm:text-xs text-red-600 flex items-center gap-1">

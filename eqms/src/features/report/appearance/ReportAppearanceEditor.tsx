@@ -24,10 +24,10 @@ const papers = [
 ];
 /** The parts a person can point at, in the order of the quick buttons above the page. */
 const QUICK: { zone: ZoneKey; label: string }[] = [
-  { zone: "cover", label: tr("Cover Page") },
+  { zone: "cover", get label() { return tr("Cover Page"); } },
   { zone: "hl", label: "Header" },
   { zone: "logo", label: "Logo" },
-  { zone: "info", label: tr("Information") },
+  { zone: "info", get label() { return tr("Information"); } },
   { zone: "fl", label: "Footer" },
   { zone: "appr", label: "Approval" },
   { zone: "notes", label: "Notes" },

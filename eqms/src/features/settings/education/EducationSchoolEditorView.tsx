@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Landmark, School } from "lucide-react";
@@ -70,7 +71,7 @@ export const EducationSchoolEditorView: React.FC = () => {
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty(form, !loading);
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, isEdit ? tr("Edit School") : tr("New School"), "the list");
-  const goBack = () => go("/settings/education/schools");
+  const goBack = () => navigateBack(go, null, "/settings/education/schools");
 
   const submit = async () => {
     if (!form.name.trim()) return;

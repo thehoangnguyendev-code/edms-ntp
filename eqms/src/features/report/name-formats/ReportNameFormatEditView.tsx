@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -153,7 +154,7 @@ export function ReportNameFormatEditView() {
 
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, "Report Name Format", "the list");
-  const goBack = () => go("/settings/report-name-formats");
+  const goBack = () => navigateBack(go, null, "/settings/report-name-formats");
 
   const save = async (reason: string) => {
     setSaving(true);

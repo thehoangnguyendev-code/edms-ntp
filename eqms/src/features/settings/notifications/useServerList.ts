@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDebounce } from '@/hooks';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 
 type Direction = 'asc' | 'desc';
 
@@ -15,13 +16,14 @@ export function useServerList<R, K extends string>(
   load: (args: { search?: string; filters: Record<string, string>; sortBy: K; sortDirection: Direction; page: number; limit: number }) => Promise<Loaded<R>>,
   initial: { sort: K; direction?: Direction; filters: Record<string, string> },
   failure: string,
+  viewKey = "notification-list",
 ) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useViewState(`${viewKey}.search`, '');
   const debounced = useDebounce(search, SEARCH_DEBOUNCE_MS);
-  const [filters, setFilters] = useState<Record<string, string>>(initial.filters);
-  const [sort, setSort] = useState<{ key: K; direction: Direction }>({ key: initial.sort, direction: initial.direction ?? 'asc' });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [filters, setFilters] = useViewState<Record<string, string>>(`${viewKey}.filters`, initial.filters);
+  const [sort, setSort] = useViewState<{ key: K; direction: Direction }>(`${viewKey}.sort`, { key: initial.sort, direction: initial.direction ?? 'asc' });
+  const [page, setPage] = useViewState(`${viewKey}.page`, 1);
+  const [pageSize, setPageSize] = useViewState(`${viewKey}.pageSize`, 10);
   const [rows, setRows] = useState<R[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -58,7 +60,7 @@ export function useServerList<R, K extends string>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, filterKey, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [debounced, filterKey, pageSize]);
+  useViewFilterChange(() => setPage(1), [debounced, filterKey, pageSize]);
 
   const sortFor = (key: K) => ({
     direction: sort.key === key ? sort.direction : undefined,

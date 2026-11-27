@@ -116,7 +116,7 @@ public class TrainingSuspensionService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.position,'')) like ? escape '\\' or lower(coalesce(s.topic_text,'')) like ? escape '\\' or lower(a.training_number) like ? escape '\\')");
+            where.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.position,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.topic_text,'')) like eqms_fold(?) escape '\\' or eqms_fold(a.training_number) like eqms_fold(?) escape '\\')");
             for (int i = 0; i < 5; i++) args.add(like);
         }
         String from = " from training_work_suspensions s join app_users u on u.id = s.person_user_id join training_activities a on a.id = s.activity_id"

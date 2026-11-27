@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/toast/Toast";
 import { formatDateTime } from "@/utils/format";
 import { cn } from "@/components/ui/utils";
 import type { AuditTrailRecord } from "../types";
-import { formatAuditActionLabel, formatAuditModuleLabel } from "../utils/actionBadge";
+import { auditMenuModule, formatAuditActionLabel } from "../utils/actionBadge";
 import { tr } from "@/i18n";
 
 interface AuditExportModalProps {
@@ -40,7 +40,7 @@ export const AuditExportModal: React.FC<AuditExportModalProps> = ({ isOpen, onCl
           "",
           `Timestamp: ${formatDateTime(record.timestamp)}`,
           `User: ${record.user?.fullName || record.fullName || "Not recorded"}`,
-          `Module: ${record.module ? formatAuditModuleLabel(record.module) : tr("Not recorded")}`,
+          `Module: ${record.module ? auditMenuModule(record) : tr("Not recorded")}`,
           `Action: ${formatAuditActionLabel(record.action)}`,
           `Entity: ${record.entityLabel || record.entityName || "Not recorded"}`,
           `Description: ${record.description || "Not recorded"}`,
@@ -81,7 +81,7 @@ Timestamp: ${formatDateTime(record.timestamp)}
 User: ${record.user?.fullName || record.fullName}${record.user?.employeeCode ? ` (${record.user.employeeCode})` : ""}
 IP Address: ${record.ipAddress}
 Device: ${record.device || "Not recorded"}
-Module: ${formatAuditModuleLabel(record.module)}
+Module: ${auditMenuModule(record)}
 Action: ${formatAuditActionLabel(record.action)}
 Entity: ${record.entityLabel || record.entityName || record.module}
 Description: ${record.description}

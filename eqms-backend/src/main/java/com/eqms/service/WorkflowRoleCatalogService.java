@@ -109,9 +109,9 @@ public class WorkflowRoleCatalogService {
             if (StringUtils.hasText(search)) {
                 String term = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(builder.or(
-                        builder.like(builder.lower(root.get("code")), term),
-                        builder.like(builder.lower(root.get("label")), term),
-                        builder.like(builder.lower(root.get("moduleKey")), term)));
+                        com.eqms.util.SearchText.like(builder, root.get("code"), term),
+                        com.eqms.util.SearchText.like(builder, root.get("label"), term),
+                        com.eqms.util.SearchText.like(builder, root.get("moduleKey"), term)));
             }
             if (StringUtils.hasText(module) && !"ALL".equalsIgnoreCase(module)) {
                 predicates.add(builder.equal(builder.lower(root.get("moduleKey")), module.trim().toLowerCase(Locale.ROOT)));

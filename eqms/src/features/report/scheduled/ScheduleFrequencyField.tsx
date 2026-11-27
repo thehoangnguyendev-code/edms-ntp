@@ -22,7 +22,7 @@ const KINDS: Array<{ value: FrequencyKind; label: string }> = [
   { value: "DAILY", label: "Daily" },
   { value: "WEEKLY", label: "Weekly" },
   { value: "MONTHLY", label: "Monthly" },
-  { value: "CUSTOM", label: tr("Custom cron") },
+  { value: "CUSTOM", get label() { return tr("Custom cron"); } },
 ];
 const two = (n: number) => String(n).padStart(2, "0");
 

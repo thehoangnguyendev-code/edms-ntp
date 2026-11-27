@@ -10,9 +10,9 @@ import { tr, trFormat } from "@/i18n";
 
 /** The three groups of rows of APD.0011 (SOP.0003 5.3.1), in the order of the form. */
 const GROUPS: { id: CompletionColumn["group"]; title: string }[] = [
-  { id: "FACTORY_GENERAL", title: tr("General training of the whole factory") },
-  { id: "DEPARTMENT_GENERAL", title: tr("General training of the department") },
-  { id: "SOP", title: tr("SOP for each Work Position") },
+  { id: "FACTORY_GENERAL", get title() { return tr("General training of the whole factory"); } },
+  { id: "DEPARTMENT_GENERAL", get title() { return tr("General training of the department"); } },
+  { id: "SOP", get title() { return tr("SOP for each Work Position"); } },
 ];
 /** Order of the segments of a bar: done first, then what is under way, then what is missing. */
 const BAR_ORDER: CompletionState[] = ["QUALIFIED", "IN_PROGRESS", "UPDATE_NEEDED", "DUE", "REQUIRED"];

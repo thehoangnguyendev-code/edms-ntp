@@ -622,12 +622,13 @@ export function useUserProfile(userId: string | undefined) {
     }
   };
 
-  const suspendUser = async (reason: string, suspendedUntil: string, signatureToken: string) => {
+  const suspendUser = async (reason: string, suspendedUntil: string, signatureToken: string, suspensionKind?: "LONG_LEAVE" | "OTHER") => {
     try {
       const updated = await settingsApi.suspendUser(userData.id, {
         reason,
         suspendedUntil,
         signatureToken,
+        suspensionKind,
       });
       setUserData(updated);
       setDraft(updated);

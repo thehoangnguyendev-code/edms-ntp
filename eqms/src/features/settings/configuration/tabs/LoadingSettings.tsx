@@ -28,7 +28,7 @@ export function LoadingSettings({ variant, color, onStyleChange, onColorChange }
             onChange={(value) => onStyleChange(loadingStyle(value))}
           />
           <ColorPickerInput label={tr('Loading Color')} value={selectedColor} onChange={onColorChange} />
-          <p className="text-xs text-slate-500">{tr('Applies to every user after Save Changes. Preview changes are not saved yet.')}</p>
+          <p className="!mt-1.5 text-xs text-slate-500">{tr('Applies to every user after Save Changes. Preview changes are not saved yet.')}</p>
         </div>
         <div className="flex min-h-48 min-w-0 flex-col items-center justify-center gap-4 rounded-lg border border-slate-200 bg-white p-4" role="img" aria-label={tr('Loading Preview')}>
           <LoadingVisual key={selected} variant={selected} color={selectedColor} size={56} />

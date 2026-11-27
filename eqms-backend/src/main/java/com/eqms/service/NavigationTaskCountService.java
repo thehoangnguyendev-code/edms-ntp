@@ -5,6 +5,7 @@ import com.eqms.service.report.ReportTemplateRevisionService;
 import com.eqms.service.training.MyTrainingQueryService;
 import com.eqms.service.training.TrainingActivityService;
 import com.eqms.service.training.TrainingImpactService;
+import com.eqms.service.training.TrainingPersonnelEventService;
 import com.eqms.service.training.TrainingJobAssignmentService;
 import com.eqms.service.training.TrainingLegacyEvidenceService;
 import com.eqms.service.training.TrainingMatrixService;
@@ -53,6 +54,7 @@ public class NavigationTaskCountService {
     private final ReportTemplateRevisionService reportRevisions;
 
     private final TrainingImpactService impacts;
+    private final TrainingPersonnelEventService personnelEvents;
     private final AccessReviewService accessReviews;
     private final AuditTrailReviewService auditReviews;
     private final ControlledCopyService controlledCopies;
@@ -63,9 +65,10 @@ public class NavigationTaskCountService {
     public NavigationTaskCountService(MyTrainingQueryService myTraining, TrainingActivityService activities, TrainingRequirementService requirements, TrainingMatrixService matrices,
                                       TrainingJobAssignmentService jobs, TrainingPersonnelReviewService reviews, TrainingSpecimenService specimens, TrainingRecordExportService exports,
                                       TrainingRecordExportBatchService batches, TrainingLegacyEvidenceService evidence, RevisionService revisions, ReportTemplateRevisionService reportRevisions,
-                                      TrainingImpactService impacts, AccessReviewService accessReviews, AuditTrailReviewService auditReviews, ControlledCopyService controlledCopies,
+                                      TrainingImpactService impacts, TrainingPersonnelEventService personnelEvents, AccessReviewService accessReviews, AuditTrailReviewService auditReviews, ControlledCopyService controlledCopies,
                                       UncontrolledCopyService uncontrolledCopies, PermissionEvaluationService permissions, NavigationTaskCountCache cache) {
         this.cache = cache;
+        this.personnelEvents = personnelEvents;
         this.impacts = impacts;
         this.accessReviews = accessReviews;
         this.auditReviews = auditReviews;
@@ -105,7 +108,8 @@ public class NavigationTaskCountService {
         put(counts, "training-requirements", () -> total(requirements.list(actor, null, null, null, TrainingRequirementService.ListFilters.WAITING, null, null, 1, 1)));
         put(counts, "training-matrices", () -> total(matrices.matrices(actor, null, null, true, null, null, 1, 1)));
         put(counts, "training-job-assignments", () -> total(jobs.list(actor, null, null, null, null, 1, 1, WAITING)));
-        put(counts, "training-personnel-reviews", () -> total(reviews.list(actor, null, null, null, null, null, 1, 1, WAITING)));
+        // the reviews that wait for the person to close, and the alerts that ask for a review to be opened
+        put(counts, "training-personnel-reviews", () -> total(reviews.list(actor, null, null, null, null, null, 1, 1, WAITING)) + personnelEvents.openCount(actor));
         put(counts, "training-specimen-signatures", () -> total(specimens.list(actor, null, null, null, null, 1, 1, WAITING)));
         put(counts, "training-record-exports", () -> total(exports.list(actor, null, null, null, null, 1, 1, WAITING)) + total(batches.list(actor, null, null, null, 1, 1, WAITING)));
         put(counts, "training-legacy-evidence", () -> total(evidence.queue(actor, null, null, null, null, 1, 1, WAITING)));

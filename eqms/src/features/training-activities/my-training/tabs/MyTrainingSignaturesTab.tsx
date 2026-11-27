@@ -17,7 +17,7 @@ const OBJECT_LABEL: Record<string, string> = {
   TRAINING_SPECIMEN_SIGNATURE: "Specimen signature", TRAINING_RECORD_EXPORT: "Record export", TRAINING_TRAINER_EXCEPTION: "Trainer exception",
   TRAINING_LEGACY_EVIDENCE: "Legacy evidence", TRAINING_REQUIREMENT: "Training requirement", TRAINING_PERSONNEL_REVIEW: "Training review",
 };
-const SIGNATURE_STEPS: Record<string, string> = { ...STEP_LABEL, RECEIVER_ACCEPT: "Accept your job assignment" };
+const signatureSteps = (): Record<string, string> => ({ ...STEP_LABEL, RECEIVER_ACCEPT: tr("Accept your job assignment") });
 
 export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) => void }) {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) 
     { id: "no", header: "No.", locked: true, cell: (_r, i) => (table.currentPage - 1) * table.itemsPerPage + i + 1 },
     { id: "number", header: tr("Training Number"), sort: sorted("trainingNumber"), cell: (a) => <button type="button" className="font-medium text-emerald-600 hover:underline" onClick={() => open(a)}>{a.trainingNumber}</button> },
     { id: "title", header: "Subject", sort: sorted("subject"), cell: (a) => <div className="max-w-80 whitespace-normal">{a.subject}</div> },
-    { id: "step", header: "Step", sort: sorted("stepCode"), cell: (a) => SIGNATURE_STEPS[a.stepCode] ?? a.stepCode },
+    { id: "step", header: "Step", sort: sorted("stepCode"), cell: (a) => signatureSteps()[a.stepCode] ?? a.stepCode },
     { id: "status", header: "Status", sort: sorted("status"), cell: (a) => STATUS_LABEL[a.status] ?? a.status.replace(/_/g, " ").toLowerCase() },
     { id: "since", header: tr("Waiting since"), sort: sorted("assignedAt"), cell: (a) => day(a.assignedAt) },
   ];
@@ -45,7 +45,7 @@ export function MyTrainingSignaturesTab({ onTotal }: { onTotal: (total: number) 
     onSearch={(value) => { table.setSearchQuery(value); table.setCurrentPage(1); }}
     filters={[
       { id: "objectType", label: "Type", value: objectType, options: [{ label: "All", value: "" }, ...Object.entries(OBJECT_LABEL).map(([value, label]) => ({ value, label }))], onChange: (v) => { setObjectType(v); table.setCurrentPage(1); } },
-      { id: "stepCode", label: "Step", value: stepCode, options: [{ label: "All", value: "" }, ...Object.entries(SIGNATURE_STEPS).map(([value, label]) => ({ value, label }))], onChange: (v) => { setStepCode(v); table.setCurrentPage(1); } },
+      { id: "stepCode", label: "Step", value: stepCode, options: [{ label: "All", value: "" }, ...Object.entries(signatureSteps()).map(([value, label]) => ({ value, label }))], onChange: (v) => { setStepCode(v); table.setCurrentPage(1); } },
     ]}
     dates={[{ id: "assigned", label: tr("Waiting since"), from, to, onChange: (a, b) => { setFrom(a); setTo(b); table.setCurrentPage(1); } }]}
     hasActiveFilters={Boolean(objectType || stepCode || from || to || table.searchQuery)}

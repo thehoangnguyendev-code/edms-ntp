@@ -144,7 +144,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
         <div>
           <label className={LABEL_CLASS} htmlFor="storage-minio-bucket">{tr("Bucket Name")}</label>
           <input id="storage-minio-bucket" type="text" value={storage.minioBucket || ''} onChange={(e) => handleStorageChange('minioBucket', e.target.value)} className={INPUT_CLASS} placeholder={tr("eqms-gmp-revisions")} />
-          <p className="mt-1 text-xs text-slate-500">{tr("A dedicated bucket. The system enables Versioning and Object Lock Compliance.")}</p>
+          <p className="mt-1.5 text-xs text-slate-500">{tr("A dedicated bucket. The system enables Versioning and Object Lock Compliance.")}</p>
         </div>
       </div>
       <div className="border-t border-slate-100 pt-4">
@@ -153,7 +153,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
           <div>
             <label className={LABEL_CLASS} htmlFor="storage-minio-access-key">{tr("Access Key ID")}</label>
             <input id="storage-minio-access-key" type="text" value={storage.minioAccessKeyId || ''} onChange={(e) => handleStorageChange('minioAccessKeyId', e.target.value)} className={INPUT_CLASS} placeholder={tr("eqms-minio")} />
-            <p className="mt-1 text-xs text-slate-500">{tr("MinIO service-account access key with bucket configuration and object read/write permissions.")}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{tr("MinIO service-account access key with bucket configuration and object read/write permissions.")}</p>
           </div>
           <div>
             <label className={LABEL_CLASS} htmlFor="storage-minio-secret">{tr("Secret Access Key")}</label>
@@ -196,7 +196,7 @@ export const IntegrationTab: React.FC<IntegrationTabProps> = ({ config, onChange
           className={CONTROL_STATE_CLASSES.readonlyField}
           placeholder={tr("\\\\\\\\ProjectT7\\\\ShareT7")}
         />
-        <p className="mt-1 text-xs text-slate-500">{tr("Use the exact Synology shared folder name. The backend connects to this SMB path directly.")}</p>
+        <p className="mt-1.5 text-xs text-slate-500">{tr("Use the exact Synology shared folder name. The backend connects to this SMB path directly.")}</p>
       </div>
     </div>
   );

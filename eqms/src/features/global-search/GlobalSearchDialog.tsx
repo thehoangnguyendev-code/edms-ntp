@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef,
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { CornerDownLeft, Search, X } from 'lucide-react';
+import { IconArrowNarrowRight } from '@tabler/icons-react';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { Badge } from '@/components/ui/badge/Badge';
 import { Kbd } from '@/components/ui/kbd';
@@ -9,8 +10,7 @@ import { cn } from '@/components/ui/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { gsap, prefersReducedMotion, useGSAP } from '@/lib/gsap';
 import type { GlobalSearchItem } from '@/services/api/search';
-import { readableCode } from '@/utils/machineText';
-import { STATUS_LABEL as TRAINING_STATUS_LABEL } from '@/features/training-activities/shared/trainingLabels';
+import { badgeLabel } from './badgeLabel';
 import { getStatusBadgeColor } from '@/utils/status';
 import {
   GLOBAL_SEARCH_ICONS,
@@ -23,7 +23,8 @@ import {
 } from './globalSearchModel';
 import { useGlobalSearch } from './useGlobalSearch';
 import { useQuickPlaces } from './useQuickPlaces';
-import { tr, trFormat } from "@/i18n";
+import { menuIconById } from './menuIcon';
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -47,15 +48,6 @@ interface Row {
   /** The id of the option in the list, for the screen readers. */
   optionId: string;
 }
-
-/**
- * The status a person reads. A list that sends a machine value (IN_PROGRESS) is shown by the label of its own screen where there is one (Training), and
- * otherwise by the same words made readable; a status that already is a label ("Pending Training") is left as it is. Display only, never sent back.
- */
-const statusLabel = (groupKey: string, badge: string): string => {
-  if (groupKey === 'training' && TRAINING_STATUS_LABEL[badge]) return TRAINING_STATUS_LABEL[badge];
-  return /^[A-Z][A-Z0-9_]*$/.test(badge) ? readableCode(badge) : badge;
-};
 
 const rowElement = (id: string | undefined) => (id ? (document.getElementById(id) as HTMLElement | null) : null);
 
@@ -89,7 +81,6 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
   const quick = useQuickPlaces(isOpen);
 
   const searching = query.trim().length >= MIN_GLOBAL_SEARCH_LENGTH;
-
   useLayoutEffect(() => {
     if (isOpen) setPresent(true);
   }, [isOpen]);
@@ -128,7 +119,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
       item: { id: place.id, title: place.title }, path: place.path, remember: false, optionId: `${listId}-goto-${place.id}`,
     }));
     return [...attentionRows, ...recentRows, ...goToRows];
-  }, [searching, groups, recent, quick, listId]);
+  }, [searching, groups, recent, quick, listId, getCatalogLanguage()]);
 
   useEffect(() => setActive(0), [rows.length, searching]);
 
@@ -304,13 +295,17 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
                   )}
                 </div>
                 {section.rows.map((row) => {
-                  const Icon = GLOBAL_SEARCH_ICONS[row.groupKey] ?? Search;
+                  // a page shows the icon the sidebar gives it; a record shows the icon of its kind
+                  const Icon = (row.groupKey === 'pages' || row.groupKey === 'goto' ? menuIconById(row.item.id) : undefined) ?? GLOBAL_SEARCH_ICONS[row.groupKey] ?? Search;
                   const index = rows.indexOf(row);
                   const isActive = index === active;
-                  const badge = row.item.badge ? statusLabel(row.groupKey, row.item.badge) : null;
-                  const color = badge ? getStatusBadgeColor(badge) : undefined;
-                  const rawSubtitle = row.sectionKey === 'recent' ? `${row.groupLabel}${row.item.subtitle ? ' · ' : ''}${row.item.subtitle ?? ''}` : row.item.subtitle;
-                  const subtitle = rawSubtitle?.split(' > ').map((part) => tr(part)).join(' > ');
+                  const badge = row.item.badge ? badgeLabel(row.groupKey, row.item.badge) : null;
+                  // the colour comes from the value the server sent, never from the translated word, so it is the colour of that status on its own screen
+                  const color = row.item.badge ? getStatusBadgeColor(row.item.badge) : undefined;
+                  // the server writes a way through the menu as "A > B"; each name is translated on its own and an arrow is drawn for each step
+                  const steps = row.item.subtitle?.split(' > ').map((part) => tr(part.replace(/^(\d+) days$/, '$1 ngày'))) ?? [];
+                  // a recent result also says what kind it is, before the first name of the way
+                  const subtitle = row.sectionKey !== 'recent' ? steps : steps.length > 0 ? [`${row.groupLabel} · ${steps[0]}`, ...steps.slice(1)] : [row.groupLabel];
                   return (
                     <div
                       key={row.optionId}
@@ -329,7 +324,16 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
                           {row.item.code && <code className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-800">{row.item.code}</code>}
                           <span className="block min-w-0 truncate text-sm font-semibold text-slate-900">{tr(row.item.title)}</span>
                         </span>
-                        {subtitle && <span className="mt-0.5 block truncate text-xs text-slate-500">{subtitle}</span>}
+                        {subtitle.length > 0 && (
+                          <span className="mt-0.5 block truncate text-xs text-slate-500">
+                            {subtitle.map((part, step) => (
+                              <React.Fragment key={step}>
+                                {step > 0 && <IconArrowNarrowRight aria-hidden="true" className="mx-1 inline-block h-3.5 w-3.5 align-[-2px] text-slate-400" />}
+                                {part}
+                              </React.Fragment>
+                            ))}
+                          </span>
+                        )}
                       </span>
                       {typeof row.count === 'number' && <Badge color="amber" size="xs">{row.count}</Badge>}
                       {badge && <Badge color={color ?? 'slate'} size="xs">{badge}</Badge>}
@@ -341,7 +345,7 @@ export const GlobalSearchDialog: React.FC<{ isOpen: boolean; onClose: () => void
             ))}
 
             {unavailable.map((group) => (
-              <p key={group.key} className="relative px-3 py-2 text-xs text-amber-700">{group.label} {tr("could not be searched just now. Try again.")}</p>
+              <p key={group.key} className="relative px-3 py-2 text-xs text-amber-700">{tr(group.label)} {tr("could not be searched just now. Try again.")}</p>
             ))}
 
             {failed && !loading && rows.length === 0 && (

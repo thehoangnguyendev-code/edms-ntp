@@ -96,7 +96,7 @@ public class TrainingLegacyEvidenceService {
         }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(d.document_number) like ? escape '\\' or lower(d.document_name) like ? escape '\\' or lower(coalesce(r.revision_number,'')) like ? escape '\\' or lower(coalesce(r.training_number,'')) like ? escape '\\' or lower(coalesce(le.original_name,'')) like ? escape '\\' or lower(coalesce(su.full_name,'')) like ? escape '\\' or lower(coalesce(vu.full_name,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(d.document_number) like eqms_fold(?) escape '\\' or eqms_fold(d.document_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.revision_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(r.training_number,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(le.original_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(su.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(vu.full_name,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("submittedBy"), "su.full_name").contains(more.get("verifiedBy"), "vu.full_name")

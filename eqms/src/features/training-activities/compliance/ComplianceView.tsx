@@ -1,6 +1,7 @@
 import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
+import { useViewState } from "@/hooks/useViewState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IconPrinter } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page/PageHeader";
@@ -20,10 +21,10 @@ import { ComplianceRetentionTab } from "./tabs/ComplianceRetentionTab";
 
 const TABS: TabItem[] = [
   { id: "summary", label: "Summary" },
-  { id: "completion", label: tr("Matrix Completion") },
+  { id: "completion", get label() { return tr("Matrix Completion"); } },
   { id: "gaps", label: "Gap List" },
-  { id: "suspensions", label: tr("Work Suspensions") },
-  { id: "retention", label: tr("Record Retention") },
+  { id: "suspensions", get label() { return tr("Work Suspensions"); } },
+  { id: "retention", get label() { return tr("Record Retention"); } },
 ];
 
 /** Who is trained on what the effective matrix requires, for one department. The department chosen is shared by the tabs; the print button of the header prints the tab that is open. */
@@ -39,7 +40,7 @@ function TrainingCompliance({ ownDepartmentId }: { ownDepartmentId: string }) {
   const initialTab = searchParams.get("tab");
   const [tab, setTab] = useState(TABS.some((t) => t.id === initialTab) ? String(initialTab) : "summary");
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
-  const [departmentId, setDepartmentId] = useState(ownDepartmentId);
+  const [departmentId, setDepartmentId] = useViewState("TrainingCompliance.department", ownDepartmentId);
   // the print routine of the tab that is open (Summary, Matrix Completion, Gap List); the other tabs print nothing
   const [printer, setPrinter] = useState<PrintAction | null>(null);
 

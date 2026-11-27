@@ -203,7 +203,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
               readOnly
               className={CONTROL_STATE_CLASSES.readonlyField}
             />
-            <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
+            <p className="mt-1.5 text-xs text-slate-500 font-normal flex items-center gap-1">
               {isBatchParent
                 ? tr("The Quantity field represents the total number of controlled copies in this batch")
                 : tr("The Copy Number field represents the n'th copy of the related revision")}
@@ -223,7 +223,7 @@ export const DocumentInformationTab: React.FC<DocumentInformationTabProps> = ({
               readOnly
               className={CONTROL_STATE_CLASSES.readonlyField}
             />
-            <p className="text-[11px] sm:text-xs font-normal text-slate-400 flex items-center gap-1">
+            <p className="mt-1.5 text-xs text-slate-500 font-normal flex items-center gap-1">
               {isBatchParent
                 ? tr("The Total Copies Number field matches the total quantity assigned to this batch")
                 : tr("The Total Copies Number field represents the total number of all copies of the related revision")}

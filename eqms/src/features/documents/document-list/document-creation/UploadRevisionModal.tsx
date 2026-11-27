@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Upload, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
+import { RadioGroup } from "@/components/ui/radio";
 import { Select, type SelectOption } from "@/components/ui/select/Select";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { documentApi } from "@/services/api/documents";
@@ -18,7 +19,10 @@ interface UploadRevisionModalProps {
     note: string,
     useTemplate: boolean,
     templateRevisionId?: string,
+    useEffectiveSource?: boolean,
   ) => void;
+  /** The document that gets the revision: lets the dialog offer to start from its Effective revision's file. Leave it out for a new document. */
+  documentId?: string;
   documentName: string;
   revisionNumber: string;
   documentType: string;
@@ -49,8 +53,11 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
   canUseTemplate = false,
   maxFileSizeMB = 25,
   isSubmitting = false,
+  documentId,
 }) => {
   const [note, setNote] = useState("");
+  const [effective, setEffective] = useState<{ available: boolean; revisionNumber?: string | null } | null>(null);
+  const [source, setSource] = useState<"effective" | "new">("new");
   const [useTemplate, setUseTemplate] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -59,7 +66,8 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
   const [previewRevisionId, setPreviewRevisionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasFileOrTemplate = useTemplate ? !!selectedTemplate : !!selectedFile;
+  const fromEffective = source === "effective" && Boolean(effective?.available);
+  const hasFileOrTemplate = fromEffective || (useTemplate ? !!selectedTemplate : !!selectedFile);
   const maxFileSizeBytes = Math.max(maxFileSizeMB, 1) * 1024 * 1024;
   const displayName = `${documentName}_${revisionNumber}`;
 
@@ -85,6 +93,27 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
       setPreviewRevisionId(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEffective(null);
+    setSource("new");
+    if (!isOpen || !documentId) return;
+    documentApi
+      .getEffectiveSourceOption(documentId)
+      .then((option) => {
+        // A document that has never had an Effective revision has no choice to make.
+        if (cancelled || option.unavailableReason === "NO_EFFECTIVE_REVISION") return;
+        setEffective(option);
+        if (option.available) setSource("effective");
+      })
+      .catch(() => {
+        // Without the server's answer only the upload is offered.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, documentId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -162,6 +191,11 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
   };
 
   const handleConfirm = () => {
+    if (fromEffective) {
+      onConfirm(null, note, false, undefined, true);
+      return;
+    }
+
     if (useTemplate && selectedTemplate) {
       onConfirm(null, note, true, selectedTemplate);
       return;
@@ -211,7 +245,7 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
               readOnly
               className={CONTROL_STATE_CLASSES.readonlyField}
             />
-            <p className="text-xs text-slate-500 mt-1.5">
+            <p className="mt-1.5 text-xs text-slate-500">
               {tr("Note: The uploaded file will be renamed to the name above")}
             </p>
           </div>
@@ -241,7 +275,38 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
             />
           </div>
 
-          {canUseTemplate && <div className="space-y-3">
+          <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs sm:text-sm text-amber-900">
+            {tr("The file can be chosen only once. After this, the revision is changed by editing this file online; a new file cannot be uploaded.")}
+          </p>
+
+          {effective && (
+            <div>
+              <RadioGroup
+                label="File source"
+                name="revision-file-source"
+                value={fromEffective ? "effective" : "new"}
+                onChange={(value) => {
+                  setSource(value === "effective" ? "effective" : "new");
+                  setFileError("");
+                }}
+                options={[
+                  {
+                    value: "effective",
+                    label: trFormat("Use the file of effective revision {revision}", { revision: effective.revisionNumber ?? "" }),
+                    disabled: !effective.available,
+                  },
+                  { value: "new", label: "Upload a new file" },
+                ]}
+              />
+              {!effective.available && (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {tr("The effective revision has no Word (.docx) file, so a file must be uploaded.")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {!fromEffective && canUseTemplate && <div className="space-y-3">
             <Checkbox
               id="use-template"
               checked={useTemplate}
@@ -267,14 +332,14 @@ export const UploadRevisionModal: React.FC<UploadRevisionModalProps> = ({
                   debounceMs={SEARCH_DEBOUNCE_MS}
                   minSearchLength={0}
                 />
-                <p className="text-xs text-slate-500">
+                <p className="!mt-1.5 text-xs text-slate-500">
                   {tr("Files can be selected only from active published templates with an effective revision, a stored file, and the same Document Type")}
                 </p>
               </div>
             )}
           </div>}
 
-          {!useTemplate && (
+          {!fromEffective && !useTemplate && (
             <div>
               <input
                 ref={fileInputRef}

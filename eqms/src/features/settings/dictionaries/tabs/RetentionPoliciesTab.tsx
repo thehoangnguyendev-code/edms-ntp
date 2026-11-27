@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import React, { useEffect, useState } from "react";
@@ -55,7 +56,7 @@ export const RetentionPoliciesTab = React.forwardRef<{ openAddModal: () => void 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+  const [statusFilter, setStatusFilter] = useViewState<"All" | "Active" | "Inactive">("RetentionPoliciesTab.statusFilter", "All");
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "date"]));
@@ -652,7 +653,7 @@ const RetentionPolicyModal: React.FC<RetentionPolicyModalProps> = ({ isOpen, onC
             placeholder={tr("Leave blank for permanent retention")}
             disabled={isSaving}
           />
-          <p className="mt-1 text-xs text-slate-500">{tr("Leave blank only when the policy is intended to retain records permanently.")}</p>
+          <p className="mt-1.5 text-xs text-slate-500">{tr("Leave blank only when the policy is intended to retain records permanently.")}</p>
         </div>
 
         <div>

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { TablePagination } from "@/components/ui/table/TablePagination";
@@ -18,10 +19,10 @@ interface UncontrolledCopiesTabProps {
 
 export const UncontrolledCopiesTab: React.FC<UncontrolledCopiesTabProps> = ({ documentId }) => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useViewState("UncontrolledCopiesTab.searchQuery", "");
+  const [currentPage, setCurrentPage] = useViewState("UncontrolledCopiesTab.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("UncontrolledCopiesTab.itemsPerPage", 10);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery.trim());
   const [copies, setCopies] = useState<UncontrolledCopy[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export const UncontrolledCopiesTab: React.FC<UncontrolledCopiesTabProps> = ({ do
   const [totalItems, setTotalItems] = useState(0);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
+  const [sortConfig, setSortConfig] = useViewState<{ key: string; direction: "asc" | "desc" }>("UncontrolledCopiesTab.sortConfig", {
     key: "created",
     direction: "desc",
   });

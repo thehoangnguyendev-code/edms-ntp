@@ -22,7 +22,7 @@ const TRANSFORMS = [
   { value: NO_TRANSFORM, label: "None" },
   { value: "UPPERCASE", label: "Uppercase" },
   { value: "LOWERCASE", label: "Lowercase" },
-  { value: "CAPITALIZE", label: tr("Capitalize each word") },
+  { value: "CAPITALIZE", get label() { return tr("Capitalize each word"); } },
 ];
 
 /** The bundled Noto, Roboto Mono and Oswald files are bold; Times New Roman (Tinos) is regular. A text with no bold setting looks like that, so the button shows it. */

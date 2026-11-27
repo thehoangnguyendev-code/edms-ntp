@@ -256,13 +256,19 @@ public class DocumentController {
             @PathVariable java.util.UUID id,
             @RequestPart(value = "file", required = false) MultipartFile file,
             @RequestPart(value = "changeDescription", required = false) String changeDescription,
-            @RequestPart(value = "templateRevisionId", required = false) String templateRevisionId
+            @RequestPart(value = "templateRevisionId", required = false) String templateRevisionId,
+            @RequestPart(value = "useEffectiveSource", required = false) String useEffectiveSource
     ) {
         return ResponseEntity.ok(revisionService.createRevisionAndUploadFile(
                 id,
                 file,
-                new RevisionCreationRequest(changeDescription, templateRevisionId)
+                new RevisionCreationRequest(changeDescription, templateRevisionId, Boolean.parseBoolean(useEffectiveSource))
         ));
+    }
+
+    @GetMapping("/{id}/effective-source")
+    public ResponseEntity<com.eqms.dto.document.EffectiveSourceOptionResponse> getEffectiveSourceOption(@PathVariable java.util.UUID id) {
+        return ResponseEntity.ok(revisionService.getEffectiveSourceOption(id));
     }
 
     @GetMapping("/legacy-import/check-document-number")

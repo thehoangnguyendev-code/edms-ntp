@@ -74,7 +74,7 @@ import { ColorPickerInput } from "@/components/ui/color-picker/ColorPickerInput"
 import { DEFAULT_BLACK_HEX } from "@/styles/tokens";
 import { displayDateTime } from "@/utils/format";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 type LayoutType = "PORTRAIT" | "LANDSCAPE";
 type ComponentType = "cover" | "header" | "footer";
@@ -104,18 +104,18 @@ const SLOT_GROUPS: Array<{
 }> = [
   {
     componentType: "cover",
-    title: tr("Cover Template"),
-    help: tr("First page only. Body source always starts from page 1. In the final PDF, the cover becomes page 1 and header/footer start from page 2 when cover is enabled. Upload a separate .docx for each supported layout."),
+    get title() { return tr("Cover Template"); },
+    get help() { return tr("First page only. Body source always starts from page 1. In the final PDF, the cover becomes page 1 and header/footer start from page 2 when cover is enabled. Upload a separate .docx for each supported layout."); },
   },
   {
     componentType: "header",
-    title: tr("Header Template"),
-    help: tr("Upload a DOCX that contains only the Word header section. Body content is ignored."),
+    get title() { return tr("Header Template"); },
+    get help() { return tr("Upload a DOCX that contains only the Word header section. Body content is ignored."); },
   },
   {
     componentType: "footer",
-    title: tr("Footer Template"),
-    help: tr("Upload a DOCX that contains only the Word footer section. Body content is ignored."),
+    get title() { return tr("Footer Template"); },
+    get help() { return tr("Upload a DOCX that contains only the Word footer section. Body content is ignored."); },
   },
 ];
 
@@ -127,13 +127,13 @@ const FORM_DEFAULTS: TemplateFormState = {
 };
 
 const PUBLISHING_MODE_OPTIONS = [
-  { value: "COVER_ONLY", label: tr("Cover only") },
-  { value: "COVER_HEADER_FOOTER", label: tr("Cover + Header/Footer") },
-  { value: "HEADER_FOOTER_ONLY", label: tr("Header/Footer only") },
+  { value: "COVER_ONLY", get label() { return tr("Cover only"); } },
+  { value: "COVER_HEADER_FOOTER", get label() { return tr("Cover + Header/Footer"); } },
+  { value: "HEADER_FOOTER_ONLY", get label() { return tr("Header/Footer only"); } },
 ];
 
 const FONT_FAMILY_OPTIONS = [
-  { value: "", label: tr("Use Word style") },
+  { value: "", get label() { return tr("Use Word style"); } },
   { value: "Arial", label: "Arial" },
   { value: "Times New Roman", label: "Times New Roman" },
   { value: "Calibri", label: "Calibri" },
@@ -146,13 +146,13 @@ const TRANSFORM_OPTIONS = [
   { value: "TRIM", label: "Trim" },
   { value: "UPPER", label: "Uppercase" },
   { value: "LOWER", label: "Lowercase" },
-  { value: "TITLE", label: tr("Title Case") },
+  { value: "TITLE", get label() { return tr("Title Case"); } },
 ];
 
 
 
 const NUMBER_FORMAT_OPTIONS = [
-  { value: "", label: tr("No number override") },
+  { value: "", get label() { return tr("No number override"); } },
   { value: "000", label: "001" },
   { value: "0000", label: "0001" },
   { value: "'CC-'0000", label: "CC-0001" },
@@ -286,7 +286,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
   const handleBack = () => {
     confirmLeave(() => {
       if (locationState?.workspaceReturnPath || locationState?.returnTo || locationState?.from) {
-        navigateTo(returnToPath);
+        navigateBack(navigateTo, { from: returnToPath }, returnToPath);
         return;
       }
       navigateBack(navigate, null, ROUTES.DOCUMENTS.ADMIN.PUBLISHING_TEMPLATES);
@@ -394,7 +394,7 @@ export const PublishingTemplateEditorView: React.FC = () => {
       SLOT_GROUPS.filter((group) =>
         requiredComponentTypes.includes(group.componentType),
       ),
-    [requiredComponentTypes],
+    [requiredComponentTypes, getCatalogLanguage()],
   );
 
   const configuredLayouts = useMemo(() => {
@@ -1580,15 +1580,15 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                     enableSearch={false}
                   />
                   {styleForm.visibility === "PUBLISH" ? (
-                    <p className="text-2xs sm:text-xs text-slate-500">
+                    <p className="!mt-1.5 text-xs text-slate-500">
                       {tr("This placeholder is not used in controlled copies, so no distribution-time value is collected.")}
                     </p>
                   ) : isSignaturePlaceholder ? (
-                    <p className="text-2xs sm:text-xs text-slate-500">
+                    <p className="!mt-1.5 text-xs text-slate-500">
                       {tr("Signature placeholders always render the actual electronic signature and cannot be overridden by a DCO-entered value.")}
                     </p>
                   ) : systemPlaceholderKeys.has(selectedStyleKey) ? (
-                    <p className="text-2xs sm:text-xs text-slate-500">
+                    <p className="!mt-1.5 text-xs text-slate-500">
                       {tr("This value is filled in by the system from the controlled copy record and cannot be changed at distribution time.")}
                     </p>
                   ) : (() => {
@@ -1887,7 +1887,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                   ]}
                   placeholder={tr("Select status")}
                 />
-                <p className="mt-1 text-2xs text-slate-400">
+                <p className="mt-1.5 text-xs text-slate-500">
                   {tr("Any number of templates can be Active at once; whoever publishes a document chooses one. A template needs the files its Publishing Mode calls for before it can be Active.")}
                 </p>
               </div>
@@ -2131,7 +2131,7 @@ const selectedPlaceholderType = inferPlaceholderType(selectedStylePlaceholder);
                                 <p className={TYPOGRAPHY.cardSectionTitle}>
                                   {tr("Detected placeholders")}
                                 </p>
-                                <p className="mt-1 text-2xs text-slate-400">{tr("Click a placeholder to edit its style.")}</p>
+                                <p className="mt-1.5 text-xs text-slate-500">{tr("Click a placeholder to edit its style.")}</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {(state.detectedPlaceholders || []).length >
                                   0 ? (

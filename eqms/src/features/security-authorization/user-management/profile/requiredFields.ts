@@ -19,7 +19,7 @@ const TAB_OF_FIELD: Partial<Record<string, ProfileTabId>> = {
 };
 
 /** The fields Create User will not go ahead without, per tab. Same set `validateForm` checks. */
-export const REQUIRED_FIELDS: Record<ProfileTabId, ReadonlyArray<keyof NewUser>> = {
+export const REQUIRED_FIELDS: Record<Exclude<ProfileTabId, "audit">, ReadonlyArray<keyof NewUser>> = {
   personal: ["employeeCode", "fullName", "username", "email"],
   employment: ["businessUnit", "department", "position", "startDate", "employmentType"],
   qualifications: [],

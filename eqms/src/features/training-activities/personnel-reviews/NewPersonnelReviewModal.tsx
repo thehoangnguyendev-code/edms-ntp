@@ -10,6 +10,7 @@ import { TrainingDateField } from "../shared/TrainingDateField";
 import { useDepartmentNameOptions } from "../shared/useListFilters";
 import { REVIEW_KIND_LABEL } from "./personnelReviewLabels";
 import { tr } from "@/i18n";
+import { WorkPositionChecklist } from "../jobs/WorkPositionChecklist";
 
 export interface NewReviewForm {
   personId: string;
@@ -19,6 +20,7 @@ export interface NewReviewForm {
   absenceTo: string;
   departmentTo: string;
   note: string;
+  assigneeId: string;
 }
 
 export const emptyReviewForm: NewReviewForm = {
@@ -29,6 +31,7 @@ export const emptyReviewForm: NewReviewForm = {
   absenceTo: "",
   departmentTo: "",
   note: "",
+  assigneeId: "",
 };
 
 interface NewPersonnelReviewModalProps {
@@ -62,6 +65,7 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
   const [people, setPeople] = useState(initialPeople);
   const [plan, setPlan] = useState<TrainingReviewPlan>();
   const [isSaving, setIsSaving] = useState(false);
+  const [jobRoleIds, setJobRoleIds] = useState<string[]>([]);
   const departments = useDepartmentNameOptions();
 
   const searchPeople = useCallback(async (query: string) => {
@@ -102,12 +106,14 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
     [departments, form.kind, plan?.departmentFrom],
   );
 
+  // The choices belong to one department: another employee or another department starts again.
+  useEffect(() => setJobRoleIds([]), [form.personId, plan?.departmentId]);
   const kindReady = Boolean(form.personId && form.kind);
   const transferReady = !isTransfer || Boolean(form.departmentTo);
   const absenceReady = !isAbsence || Boolean(form.absenceFrom && form.absenceTo && !absenceFromError && !absenceToError);
   const dateEnabled = kindReady && transferReady && absenceReady;
   const dateReady = dateEnabled && Boolean(form.eventDate) && !eventDateError;
-  const isValid = dateReady && Boolean(plan?.closerUserId) && !plan?.problem;
+  const isValid = dateReady && Boolean(plan?.closerUserId) && !plan?.problem && (form.kind !== "DEPT_TRANSFER" || Boolean(form.assigneeId));
 
   const handleCreate = async () => {
     setIsSaving(true);
@@ -120,6 +126,8 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
         absenceTo: isAbsence ? form.absenceTo : undefined,
         departmentTo: isTransfer ? form.departmentTo : undefined,
         note: form.note.trim() || undefined,
+        assigneeUserId: form.kind === "DEPT_TRANSFER" ? form.assigneeId : undefined,
+        jobRoleIds: jobRoleIds.length ? jobRoleIds : undefined,
       });
       showToast({ type: "success", title: tr("Review opened"), message: created.fullName });
       onClose();
@@ -195,10 +203,23 @@ export const NewPersonnelReviewModal: React.FC<NewPersonnelReviewModalProps> = (
         )}
 
         {eventDateField}
+        {form.kind === "DEPT_TRANSFER" && (
+          <FormField label={tr("Employee assigned to review the record")} required hint={tr("The receiving head of department and this employee review the training record (SOP.0003 5.3.11).")}>
+            <Select value={form.assigneeId} onChange={(value) => setForm({ ...form, assigneeId: value })} options={people.filter((p) => p.value !== form.personId)} onSearch={searchPeople} placeholder={tr("Search by name")} />
+          </FormField>
+        )}
         <FormField label={tr("Person Who Closes The Review")} required hint={tr("Set automatically.")}>
           <Input readOnly error={Boolean(planProblem)} value={plan?.closerName ?? ""} placeholder={tr("The head of the department")} />
           {planProblem && <p role="alert" className="mt-1 text-xs text-red-600">{planProblem}</p>}
         </FormField>
+
+        {kindReady && plan?.departmentId && (
+          <div className="md:col-span-2">
+            <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Job Role")}{jobRoleIds.length ? ` (${jobRoleIds.length})` : ""}</p>
+            <p className="mb-2 text-xs text-slate-500">{tr("Optional now. The training of the position comes from the Job Role; the review cannot be closed without one.")}</p>
+            <WorkPositionChecklist departmentId={plan.departmentId} selectedIds={jobRoleIds} excludedIds={[]} onToggle={(p) => setJobRoleIds((old) => (old.includes(p.id) ? old.filter((x) => x !== p.id) : [...old, p.id]))} />
+          </div>
+        )}
 
         <div className="md:col-span-2">
           <FormField label={tr("Description")} hint={tr("Optional. Say why the review is opened, if the date and the event do not tell it.")}>

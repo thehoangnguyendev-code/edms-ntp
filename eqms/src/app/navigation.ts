@@ -256,6 +256,12 @@ const FOUNDATION_MODULES: NavItem[] = [
         path: ROUTES.DOCUMENTS.RECORDS,
         allowedPermissions: ["documents.form.view_executed_records"],
       },
+      {
+        id: "doc-workflow",
+        label: "Workflow",
+        path: ROUTES.DOCUMENTS.WORKFLOW,
+        allowedPermissions: ["documents.workflow_diagram.view", "documents.workflow_diagram.manage"],
+      },
     ],
   },
   {
@@ -410,6 +416,12 @@ const FOUNDATION_MODULES: NavItem[] = [
             allowedPermissions: ["training.activity.view"],
           },
         ],
+      },
+      {
+        id: "training-workflow",
+        label: "Workflow",
+        path: ROUTES.TRAINING.WORKFLOW,
+        allowedPermissions: ["training.workflow_diagram.view", "training.workflow_diagram.manage"],
       },
     ],
   },
@@ -1010,6 +1022,12 @@ const SYSTEM_MODULES: NavItem[] = [
             id: "training-admin-job-roles",
             label: "Work Positions",
             path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.JOB_ROLES,
+            allowedPermissions: ["training.admin.manage"],
+          },
+          {
+            id: "training-admin-review-checklists",
+            label: "Review Checklists",
+            path: ROUTES.SETTINGS.TRAINING_ADMINISTRATION.REVIEW_CHECKLISTS,
             allowedPermissions: ["training.admin.manage"],
           },
           {

@@ -54,7 +54,7 @@ public class ReportAppearanceService {
     /** One page of the appearances: search by name, filters, sort and paging (10 to 100 rows), all on the server. */
     public Map<String, Object> list(UserAccount actor, Filters filters, String sort, String direction, int page, int limit) {
         requireView(actor);
-        var where = new StringBuilder(" where lower(a.name) like ? escape '\\'");
+        var where = new StringBuilder(" where eqms_fold(a.name) like eqms_fold(?) escape '\\'");
         List<Object> args = new ArrayList<>();
         String text = filters.search() == null ? "" : filters.search().trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         args.add("%" + text + "%");

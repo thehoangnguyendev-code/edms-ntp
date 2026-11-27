@@ -33,14 +33,14 @@ type EffectiveDateBasisNoTraining = "AFTER_APPROVAL" | "AFTER_PUBLISH";
  *  choice when the document is first created (Author/DCO decide it then; it is not editable per revision
  *  afterward), so a document without it never has a training completion event to count from. */
 const EFFECTIVE_DATE_BASIS_OPTIONS: { value: EffectiveDateBasis; label: string }[] = [
-  { value: "AFTER_APPROVAL", label: tr("After Approval (last Approver completes)") },
-  { value: "AFTER_TRAINING", label: tr("After Training completion") },
-  { value: "AFTER_PUBLISH", label: tr("After DCO Publish") },
+  { value: "AFTER_APPROVAL", get label() { return tr("After Approval (last Approver completes)"); } },
+  { value: "AFTER_TRAINING", get label() { return tr("After Training completion"); } },
+  { value: "AFTER_PUBLISH", get label() { return tr("After DCO Publish"); } },
 ];
 
 const EFFECTIVE_DATE_BASIS_NO_TRAINING_OPTIONS: { value: EffectiveDateBasisNoTraining; label: string }[] = [
-  { value: "AFTER_APPROVAL", label: tr("After Approval (last Approver completes)") },
-  { value: "AFTER_PUBLISH", label: tr("After DCO Publish") },
+  { value: "AFTER_APPROVAL", get label() { return tr("After Approval (last Approver completes)"); } },
+  { value: "AFTER_PUBLISH", get label() { return tr("After DCO Publish"); } },
 ];
 
 interface DocumentPolicy {
@@ -95,10 +95,10 @@ interface DocumentPolicy {
 
 
 const KNOWLEDGE_VISIBILITY_OPTIONS: { value: KnowledgeVisibilityMode; label: string }[] = [
-  { value: "OWN_DEPARTMENT", label: tr("Own Department (a user sees the Effective documents of their Department)") },
-  { value: "OWN_BUSINESS_UNIT", label: tr("Own Business Unit (a user sees the Effective documents of their whole Business Unit)") },
-  { value: "ALL", label: tr("Everything (a user sees every Effective document of the system)") },
-  { value: "SHARING", label: tr("Sharing (the Heads share folders and documents)") },
+  { value: "OWN_DEPARTMENT", get label() { return tr("Own Department (a user sees the Effective documents of their Department)"); } },
+  { value: "OWN_BUSINESS_UNIT", get label() { return tr("Own Business Unit (a user sees the Effective documents of their whole Business Unit)"); } },
+  { value: "ALL", get label() { return tr("Everything (a user sees every Effective document of the system)"); } },
+  { value: "SHARING", get label() { return tr("Sharing (the Heads share folders and documents)"); } },
 ];
 const RETAIN_VISIBILITY_ROLE_FIELDS = [
   "retainVisibilityForRemovedAuthor",
@@ -115,8 +115,8 @@ const RETAIN_VISIBILITY_ROLE_OPTIONS: { field: (typeof RETAIN_VISIBILITY_ROLE_FI
 ];
 
 const REVISION_SEED_OPTIONS = [
-  { value: "0.0.1", label: tr("0.0.1  — three-part (0.0.1 → 0.0.2 … approve → 1.0.0)") },
-  { value: "0.1", label: tr("0.1  — two-part (0.1 → 0.2 … approve → 1.0)") },
+  { value: "0.0.1", get label() { return tr("0.0.1  — three-part (0.0.1 → 0.0.2 … approve → 1.0.0)"); } },
+  { value: "0.1", get label() { return tr("0.1  — two-part (0.1 → 0.2 … approve → 1.0)"); } },
 ];
 
 /** One short grey line; the full explanation sits behind the (i) next to it. */
@@ -161,7 +161,7 @@ const NumberField: React.FC<{
       }}
       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
-    {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+    {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
   </div>
 );
 
@@ -394,7 +394,7 @@ export const DocumentPropertiesView: React.FC = () => {
                       ...eligibleFormats.map((f) => ({ value: f.id, label: f.name })),
                     ]}
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Fallback when a Document Type has no format of its own. Only formats composed of Document Type + Serial Number are eligible. Manage the full catalog under Document Name Formats.")}
                   </p>
                 </div>
@@ -419,14 +419,14 @@ export const DocumentPropertiesView: React.FC = () => {
                       { value: "MANUAL", label: "Manual" },
                     ]}
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="!mt-1.5 text-xs text-slate-500">
                     {documents.documentNumberEntryMode === "MANUAL"
                       ? tr("The person creating the Document types the number.")
                       : tr("The system generates the number when the Document is first saved.")}
                   </p>
                 </div>
                 {documents.documentNumberEntryMode === "MANUAL" && (
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("The number is the Document Type's code, a dot and exactly the digits set above (for example SOP.0008). The screen warns at once when it is already used. It can be changed, with a reason, only while the Document is a Draft with no source file stored.")}
                   </p>
                 )}
@@ -441,7 +441,7 @@ export const DocumentPropertiesView: React.FC = () => {
                     onChange={(value) => patch({ revisionNumberSeed: value as RevisionSeed })}
                     options={REVISION_SEED_OPTIONS}
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Starting revision number for newly created documents. Existing documents keep their current numbering.")}
                   </p>
                 </div>
@@ -467,7 +467,7 @@ export const DocumentPropertiesView: React.FC = () => {
                       onChange={(v) => patch({ effectiveDateOffsetDaysTrainingRequired: v })}
                     />
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Applies to documents whose Author/DCO flagged \"Requires Training\" when the document was created (this is decided once, at creation, and is not editable per revision afterward). If the revision has no training completion or no approval record when the DCO publishes, the date falls back to the approval date and then the publish date.")}
                   </p>
                 </Group>
@@ -491,7 +491,7 @@ export const DocumentPropertiesView: React.FC = () => {
                       onChange={(v) => patch({ effectiveDateOffsetDaysTrainingNotRequired: v })}
                     />
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("Applies to documents without the \"Requires Training\" flag -- no training event exists for them, so only After Approval or After DCO Publish are offered. If the revision has no approval record when the DCO publishes, the date falls back to the publish date.")}
                   </p>
                 </Group>
@@ -518,7 +518,7 @@ export const DocumentPropertiesView: React.FC = () => {
                   ]}
                   enableSearch={false}
                 />
-                <p className="text-xs text-slate-500">
+                <p className="mt-1.5 text-xs text-slate-500">
                   {documents.parallelReviewEnabled
                     ? tr("Parallel: any assigned Reviewer may act in any order; the Revision still moves on only once every Reviewer has reviewed, and a single Reject sends it back to Draft.")
                     : tr("Sequential (default): Reviewers act one at a time, in the order configured on the Revision.")}{" "}

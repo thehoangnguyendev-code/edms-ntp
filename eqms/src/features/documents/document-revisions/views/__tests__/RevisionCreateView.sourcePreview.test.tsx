@@ -19,6 +19,8 @@ vi.mock("@/services/api/documents", () => ({ documentApi: {
   getRevisionByIdSnapshot: boundary.snapshot,
   uploadRevisionFile: boundary.upload,
   getRevisionOnlyOfficeViewConfig: boundary.viewConfig,
+  getRevisionComparisonInfo: vi.fn(async () => ({ comparisonAvailable: false })),
+  getEffectiveSourceOption: vi.fn(async () => ({ available: false, unavailableReason: "NO_EFFECTIVE_REVISION" })),
 } }));
 vi.mock("@/features/documents/shared/useDocumentPermissions", () => ({
   useDocumentPermissions: () => ({ user: { id: "author-1", fullName: "Author" }, canUseDocumentTemplate: false }),
@@ -84,19 +86,24 @@ function chooseFile(container: HTMLElement) {
 }
 
 describe("Revision source preview refresh", () => {
-  it.each([true, false])("reloads the signed viewer config after upload (existing source: %s)", async (hasSource) => {
-    if (!hasSource) boundary.current = { ...boundary.current, sourceFileChecksum: null, sourceStorageObjectKey: null };
+  it("reloads the signed viewer config after the first upload", async () => {
+    boundary.current = { ...boundary.current, sourceFileChecksum: null, sourceStorageObjectKey: null };
     boundary.upload.mockImplementation(async () => {
       boundary.current = { ...boundary.current, ...storedSource("new") };
       return { success: true }; // The mutation may return only a lightweight action response.
     });
     const { container } = openWorkspace();
-    await screen.findAllByRole("button", { name: hasSource ? "Replace Source File" : "Upload Source File" });
-    if (hasSource) await waitFor(() => expect(boundary.editor).toHaveBeenCalledWith(expect.objectContaining({ document: { key: "old" } })));
+    await screen.findAllByRole("button", { name: "Upload Source File" });
     chooseFile(container);
     await waitFor(() => expect(boundary.editor).toHaveBeenLastCalledWith(expect.objectContaining({ document: { key: "new" } })));
     expect(boundary.snapshot).toHaveBeenCalledWith("revision-1", { force: true });
-    if (hasSource) expect(boundary.destroyed).toHaveBeenCalled();
+  });
+
+  it("offers no way to replace a file the Draft already has", async () => {
+    openWorkspace();
+    await waitFor(() => expect(boundary.editor).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Replace Source File" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Upload Source File" })).toBeNull();
   });
 
   it("keeps the current viewer when upload fails", async () => {

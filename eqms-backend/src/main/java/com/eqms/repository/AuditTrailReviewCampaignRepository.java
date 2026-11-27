@@ -19,10 +19,10 @@ public interface AuditTrailReviewCampaignRepository extends JpaRepository<AuditT
             SELECT campaign FROM AuditTrailReviewCampaign campaign
             LEFT JOIN campaign.reviewer reviewer
             WHERE (:search IS NULL
-                    OR LOWER(COALESCE(campaign.campaignNumber, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(campaign.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(campaign.description, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                    OR LOWER(COALESCE(reviewer.fullName, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+                    OR cast(function('eqms_fold', COALESCE(campaign.campaignNumber, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', campaign.name) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(campaign.description, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string)
+                    OR cast(function('eqms_fold', COALESCE(reviewer.fullName, '')) as string) like cast(function('eqms_fold', CONCAT('%', CAST(:search AS string), '%')) as string))
               AND (:status IS NULL OR campaign.status = :status)
               AND (:waiting = FALSE OR (reviewer.id = :reviewerId AND campaign.status = 'IN_PROGRESS'))
             """)

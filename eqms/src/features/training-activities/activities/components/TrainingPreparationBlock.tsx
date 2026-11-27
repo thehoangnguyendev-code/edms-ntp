@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge/Badge";
 import { Button } from "@/components/ui/button/Button";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { RadioGroup } from "@/components/ui/radio";
+import { Select } from "@/components/ui/select/Select";
+import { dictionaryApi } from "@/services/api/dictionary";
 import { useToast } from "@/components/ui/toast/Toast";
 import { trainingError, trainingPreparationApi, type TrainingActivityDetail, type TrainingPreparationSession, type TrainingPrepItem } from "@/services/api/trainingActivities";
 import { TabBlock } from "../../shared/TrainingDetailLayout";
@@ -12,12 +14,12 @@ import { DELIVERY_LABEL, useTrainingPaper } from "./TrainingPaperBlock";
 import { tr, trFormat } from "@/i18n";
 
 const ITEM_LABEL: Record<TrainingPrepItem, { label: string; hint: string }> = {
-  VENUE: { label: tr("Training room"), hint: tr("The room or place is booked and ready for the session.") },
-  EQUIPMENT: { label: tr("Equipment for practice"), hint: tr("The machines, tools and instruments of a practical session, if any.") },
-  MATERIALS: { label: tr("Training Materials"), hint: tr("The documents, slides and forms are ready to teach with.") },
-  NOTICE: { label: tr("Notice to trainees and trainer"), hint: tr("They know the date, the time, the place and the content.") },
+  VENUE: { get label() { return tr("Training room"); }, get hint() { return tr("The room or place is booked and ready for the session."); } },
+  EQUIPMENT: { get label() { return tr("Equipment for practice"); }, get hint() { return tr("The machines, tools and instruments of a practical session, if any."); } },
+  MATERIALS: { get label() { return tr("Training Materials"); }, get hint() { return tr("The documents, slides and forms are ready to teach with."); } },
+  NOTICE: { get label() { return tr("Notice to trainees and trainer"); }, get hint() { return tr("They know the date, the time, the place and the content."); } },
 };
-const DELIVERY_OPTIONS = Object.entries(DELIVERY_LABEL).map(([value, label]) => ({ value, label }));
+const DELIVERY_OPTIONS = Object.keys(DELIVERY_LABEL).map((value) => ({ value, get label() { return DELIVERY_LABEL[value]; } }));
 const NO_ACTIVITY = { id: "", sessions: [] } as unknown as TrainingActivityDetail;
 
 /** One line of the checklist: an item of the server, or a paper print of the session (ticked by the print itself). */
@@ -38,6 +40,8 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
   const { showToast } = useToast();
   const [sessions, setSessions] = useState<TrainingPreparationSession[]>([]);
   const [busy, setBusy] = useState(false);
+  const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
+  useEffect(() => { if (canManage) dictionaryApi.getDepartments().then((l) => setDepartments(l.map((d) => ({ label: d.name, value: d.id })))).catch(() => setDepartments([])); }, [canManage]);
   const printing = useTrainingPaper(paper?.activity ?? NO_ACTIVITY, paper?.onChanged ?? (() => undefined));
 
   const load = useCallback(() => { trainingPreparationApi.get(activityId).then(setSessions).catch(() => setSessions([])); }, [activityId]);
@@ -55,6 +59,17 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
     }
   };
 
+  /** SOP.0003 5.3.6: the organizer notifies Human Resources and the departments concerned: a line can be given to a department, whose trainers are told. */
+  const giveTo = async (sid: string, item: { itemCode: TrainingPrepItem; status: string }, departmentId: string) => {
+    setBusy(true);
+    try {
+      setSessions(await trainingPreparationApi.update(sid, item.itemCode, { status: item.status, assignedDepartmentId: departmentId || null }));
+    } catch (e) {
+      showToast({ type: "error", title: tr("The change was not saved"), message: trainingError(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
   const shown = sessionId ? sessions.filter((s) => s.sessionId === sessionId) : sessions;
   const multi = !sessionId && shown.length > 1;
   const rows: Row[] = shown.flatMap((s) => s.items.map((item) => ({
@@ -64,6 +79,9 @@ export function TrainingPreparationBlock({ activityId, sessionId, canManage, pap
     ready: item.status !== "PENDING",
     notNeeded: item.status === "NOT_NEEDED",
     onTick: canManage ? (ready: boolean) => void tick(s.sessionId, item.itemCode, ready) : undefined,
+    extra: canManage
+      ? <div className="mt-2 max-w-xs"><Select aria-label={tr("Department asked to prepare")} value={item.assignedDepartmentId ?? ""} onChange={(v) => void giveTo(s.sessionId, item, v)} placeholder={tr("Department asked to prepare (optional)")} options={departments} disabled={busy} /></div>
+      : item.assignedDepartmentName ? <div className="mt-1 text-xs text-slate-600">{trFormat("Asked of {department}", { department: item.assignedDepartmentName })}</div> : undefined,
   })));
 
   const session = paper?.activity.sessions.find((s) => s.id === sessionId);

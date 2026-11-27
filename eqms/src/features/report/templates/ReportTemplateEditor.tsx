@@ -50,10 +50,10 @@ import { tr, trFormat } from "@/i18n";
 type RoleGrant = NonNullable<ReportTemplate["roleScopes"]>[number];
 const tabs = [
   { id: "general", label: "General" },
-  { id: "fields", label: tr("Fields & Defaults") },
+  { id: "fields", get label() { return tr("Fields & Defaults"); } },
   { id: "charts", label: "Charts" },
-  { id: "scope", label: tr("Access & Scope") },
-  { id: "audit", label: tr("Audit Trail") },
+  { id: "scope", get label() { return tr("Access & Scope"); } },
+  { id: "audit", get label() { return tr("Audit Trail"); } },
 ];
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50";
@@ -588,7 +588,7 @@ export function ReportTemplateEditor() {
 
                     {/* What the chosen Report Type reports on */}
                     {sources.find((item) => item.code === value.sourceCode)?.description && (
-                      <p className="text-xs text-slate-500 md:col-span-2 -mt-2">
+                      <p className="-mt-1.5 text-xs text-slate-500 md:col-span-2">
                         {sources.find((item) => item.code === value.sourceCode)?.description}
                       </p>
                     )}
@@ -693,7 +693,7 @@ export function ReportTemplateEditor() {
                     </div>
                   </div>
                   {!create && (
-                    <p className="text-xs text-slate-500">
+                    <p className="!mt-1.5 text-xs text-slate-500">
                       {tr("Report files are kept permanently and never expire by age. Template changes never delete historical report files or audit records.")}
                     </p>
                   )}

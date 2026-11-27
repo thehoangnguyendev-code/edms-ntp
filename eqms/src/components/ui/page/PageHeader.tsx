@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useBreadcrumb } from "@/contexts/BreadcrumbContext";
 import { useBranding } from "@/components/branding/BrandLogo";
 import { resolveConfiguredNavigationLabel } from "@/app/navigation";
-import { useLanguage } from "@/i18n";
+import { useLanguage, getCatalogLanguage } from "@/i18n";
 
 interface PageHeaderProps {
   /** Main page title */
@@ -35,7 +35,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       ...item,
       label: resolveConfiguredNavigationLabel(item.label, navigationLabelOverrides),
     })),
-    [breadcrumbItems, navigationLabelOverrides],
+    [breadcrumbItems, navigationLabelOverrides, getCatalogLanguage()],
   );
   const resolvedTitle = tLabel(resolveConfiguredNavigationLabel(title, navigationLabelOverrides));
 

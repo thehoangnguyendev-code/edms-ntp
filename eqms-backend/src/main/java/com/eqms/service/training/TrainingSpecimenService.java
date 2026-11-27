@@ -92,7 +92,7 @@ public class TrainingSpecimenService {
         if (status != null && !status.isBlank()) { where.append(" and s.status = ?"); args.add(status); }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or lower(coalesce(u.department,'')) like ? escape '\\' or lower(coalesce(s.change_reason,'')) like ? escape '\\' or lower(coalesce(uu.full_name,'')) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.department,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.change_reason,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(uu.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(cu.full_name,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("uploadedBy"), "uu.full_name")
@@ -146,7 +146,7 @@ public class TrainingSpecimenService {
         StringBuilder where = new StringBuilder(" where s.person_user_id = ?");
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (cast(s.version_no as text) like ? escape '\\' or lower(uu.full_name) like ? escape '\\' or lower(coalesce(cu.full_name,'')) like ? escape '\\' or lower(coalesce(s.change_reason,'')) like ? escape '\\')");
+            where.append(" and (cast(s.version_no as text) like ? escape '\\' or eqms_fold(uu.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(cu.full_name,'')) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(s.change_reason,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
         String from = " from training_specimen_signatures s join app_users uu on uu.id = s.uploaded_by left join app_users cu on cu.id = s.confirmed_by";
@@ -222,15 +222,15 @@ public class TrainingSpecimenService {
 
     /** The scans of the paper that a person signed: they become the current record of the person at once; the earlier current record becomes Superseded and stays on record. */
     @Transactional
-    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, MultipartFile file2, String reason) {
+    public Map<String, Object> upload(UserAccount actor, UUID personId, MultipartFile file, MultipartFile file2, String reason, boolean headSigned) {
         UUID person = personId == null ? actor.getId() : personId;
-        boolean self = actor.getId().equals(person);
-        if (self) access.require(actor, "training.self.view", "training.signature.manage");
-        else {
-            access.require(actor, "training.signature.manage");
-            UUID department = access.departmentOf(users.findById(person).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE")));
-            if (!access.allDepartments(actor) && (department == null || !access.inScope(actor, department))) throw new SecurityException(TrainingAccess.DENIED);
-        }
+        // F1 (DEC-TRAINING-2026-11-27-01): the paper FRM.0007 carries the signature of the head of department. The scan is filed by a person who manages the signatures,
+        // never by the employee, and only after that person says the paper is signed (SOP.0003 5.3.9).
+        access.require(actor, "training.signature.manage");
+        if (actor.getId().equals(person)) throw new IllegalArgumentException("TRAINING_SPECIMEN_NOT_OWN");
+        if (!headSigned) throw new IllegalArgumentException("TRAINING_SPECIMEN_HEAD_SIGNATURE_REQUIRED");
+        UUID department = access.departmentOf(users.findById(person).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE")));
+        if (!access.allDepartments(actor) && (department == null || !access.inScope(actor, department))) throw new SecurityException(TrainingAccess.DENIED);
         UserAccount owner = users.findById(person).orElseThrow(() -> new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE"));
         if (owner.getStatus() != UserStatus.Active) throw new IllegalArgumentException("TRAINING_PARTICIPANT_NOT_ELIGIBLE");
         // FRM.0007: the 1st and the 2nd specimen signature; both are required and both are checked the same way.
@@ -277,7 +277,7 @@ public class TrainingSpecimenService {
                 java.sql.Timestamp.from(uploadedAt));
         audit.logAs(actor, TYPE, owner.getEmployeeCode() != null && !owner.getEmployeeCode().isBlank() ? owner.getEmployeeCode() : owner.getFullName(), id, "TRAINING_SPECIMEN_UPLOADED", current != null && current > 0 ? "APPROVED" : null, "APPROVED",
                 reason == null || reason.isBlank() ? "Scan of the signed paper kept as the current record" : reason.trim(),
-                com.eqms.util.AuditChanges.reason("Reason", reason));
+                com.eqms.util.AuditChanges.with("Reason", reason, com.eqms.util.AuditChanges.of("Paper signed by the Head of department", null, "Confirmed by " + actor.getFullName())));
         return TrainingRows.camel(jdbc.queryForList(SELECT + " where s.id=?", id).getFirst());
     }
 

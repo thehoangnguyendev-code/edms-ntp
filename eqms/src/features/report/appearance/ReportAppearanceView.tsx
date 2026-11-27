@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -121,7 +122,7 @@ export const ReportAppearanceView: React.FC = () => {
         actions={
           value ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="outline-emerald" onClick={() => go("/settings/report-appearance")} className="whitespace-nowrap">
+              <Button size="sm" variant="outline-emerald" onClick={() => navigateBack(go, null, "/settings/report-appearance")} className="whitespace-nowrap">
                 {tr("Back")}
               </Button>
               {canManage && (

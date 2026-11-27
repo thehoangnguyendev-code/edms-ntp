@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Info, ListChecks, ShieldCheck, Warehouse } from "lucide-react";
@@ -91,7 +92,7 @@ export const BackupPolicyDetailView: React.FC = () => {
   }, [version, reloadKey]);
 
   const parent = { label: tr("Backup Policy"), path: ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY };
-  const back = () => navigate(ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY);
+  const back = () => navigateBack(navigate, null, ROUTES.SETTINGS.BACKUP_ADMINISTRATION.POLICY);
 
   if (error) {
     return (

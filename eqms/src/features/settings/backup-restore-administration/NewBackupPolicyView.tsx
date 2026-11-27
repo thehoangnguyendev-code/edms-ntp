@@ -229,7 +229,7 @@ export const NewBackupPolicyView: React.FC = () => {
             </Group>
             <Group title={tr("Time of day")}>
               <TimePicker value={time} onChange={setTime} disabled={!dbEnabled} />
-              <p className="text-xs text-slate-500">{tr("Used when the database backup is switched on.")}</p>
+              <p className="mt-1.5 text-xs text-slate-500">{tr("Used when the database backup is switched on.")}</p>
             </Group>
             <Group title={tr("Files backup")}>
               <div className="flex items-center justify-between gap-3">
@@ -240,7 +240,7 @@ export const NewBackupPolicyView: React.FC = () => {
             </Group>
             <Group title={tr("Files time of day")}>
               <TimePicker value={filesTime} onChange={setFilesTime} disabled={!ownSchedule} />
-              <p className="text-xs text-slate-500">{tr("Used when the files have their own time.")}</p>
+              <p className="mt-1.5 text-xs text-slate-500">{tr("Used when the files have their own time.")}</p>
             </Group>
           </div>
         </FormSection>

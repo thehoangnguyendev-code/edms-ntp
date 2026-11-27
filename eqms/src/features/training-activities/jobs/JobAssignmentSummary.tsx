@@ -52,7 +52,8 @@ export function TrainingCheck({ state, check, onRetry }: { state: CheckState; ch
   if (state === "idle" || !check)
     return <p className="text-sm text-slate-500">{tr("Choose an employee and a Work Position to see the training check.")}</p>;
 
-  const open = check.items.filter((i) => !i.lastDone);
+  // what stops the assignment: never trained, or not trained on the revision that needs it (a periodic training that is due does not)
+  const open = check.items.filter((i) => (i.status ? i.status === "MISSING" || i.status === "UPDATE_NEEDED" : !i.lastDone));
   const missing = check.matrixMissing || (check.missingCount ?? 0) > 0;
   return (
     <div role="status" className="space-y-2">
@@ -76,6 +77,7 @@ export function TrainingCheck({ state, check, onRetry }: { state: CheckState; ch
           {open.map((i) => (
             <li key={`${i.code}|${i.title}`} className="py-2 text-sm">
               <div className="font-medium text-slate-800">{i.title}</div>
+              {i.status === "UPDATE_NEEDED" && <div className="text-xs text-amber-700">{trFormat("Trained on revision {last}; revision {required} is not trained yet.", { last: i.lastRevision ?? "—", required: i.requiredRevision ?? "—" })}</div>}
               <div className="text-xs text-slate-500">{[i.code, i.source ? tr(SOURCE_LABEL[i.source] ?? i.source) : ""].filter(Boolean).join(" · ")}</div>
             </li>
           ))}

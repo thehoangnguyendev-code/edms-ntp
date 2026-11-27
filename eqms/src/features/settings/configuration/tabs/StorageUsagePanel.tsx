@@ -29,7 +29,7 @@ const signedSize = (bytes: number) => `${bytes < 0 ? '−' : '+'}${size(Math.abs
 
 const RANGES: TabItem[] = [{ id: '7', label: '7 days' }, { id: '30', label: '30 days' }, { id: '90', label: '90 days' }];
 const VIEWS: TabItem[] = [{ id: 'chart', label: 'Chart' }, { id: 'table', label: 'Table' }];
-const PARTS: TabItem[] = [{ id: 'byDomain', label: tr('By storage domain') }, { id: 'byFileType', label: tr('By file type') }];
+const PARTS: TabItem[] = [{ id: 'byDomain', get label() { return tr('By storage domain'); } }, { id: 'byFileType', get label() { return tr('By file type'); } }];
 const JUMPS_LABEL = 'Biggest jumps';
 const FORECAST_LABEL = 'Estimate at the current growth';
 

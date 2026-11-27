@@ -29,14 +29,8 @@ public class TrainingPersonnelReviewController {
         return ResponseEntity.ok(reviews.list(users.requireCurrentUser(), status, kind, search, sortBy, sortDirection, page, limit, filters));
     }
 
-    @GetMapping("/suggestions")
-    public ResponseEntity<?> suggestions() { return ResponseEntity.ok(reviews.suggestions(users.requireCurrentUser())); }
-
-    @GetMapping("/{id}/matrix-gaps")
-    public ResponseEntity<?> matrixGaps(@PathVariable UUID id) { return ResponseEntity.ok(reviews.matrixGaps(users.requireCurrentUser(), id)); }
-
     @GetMapping("/{id}")
-    public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(reviews.get(users.requireCurrentUser(), id)); }
+    public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(reviews.open(users.requireCurrentUser(), id)); }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody CreateRequest request) { return ResponseEntity.ok(reviews.create(users.requireCurrentUser(), request)); }
@@ -44,13 +38,31 @@ public class TrainingPersonnelReviewController {
     @PutMapping("/{id}/items/{item}")
     public ResponseEntity<?> item(@PathVariable UUID id, @PathVariable String item, @RequestBody ItemRequest request) { return ResponseEntity.ok(reviews.updateItem(users.requireCurrentUser(), id, item, request)); }
 
-    @PostMapping("/{id}/items/{item}/training")
-    public ResponseEntity<?> createTraining(@PathVariable UUID id, @PathVariable String item) { return ResponseEntity.ok(reviews.createActivity(users.requireCurrentUser(), id, item)); }
+    @PutMapping("/{id}/job-roles")
+    public ResponseEntity<?> jobRoles(@PathVariable UUID id, @RequestBody JobRolesRequest request) { return ResponseEntity.ok(reviews.setJobRoles(users.requireCurrentUser(), id, request)); }
+
+    @GetMapping("/{id}/requirements")
+    public ResponseEntity<?> requirements(@PathVariable UUID id) { return ResponseEntity.ok(reviews.requirementChoices(users.requireCurrentUser(), id)); }
+
+    @PutMapping("/{id}/retraining")
+    public ResponseEntity<?> retraining(@PathVariable UUID id, @RequestBody RetrainRequest request) { return ResponseEntity.ok(reviews.setRetraining(users.requireCurrentUser(), id, request)); }
+
+    @GetMapping("/{id}/classes")
+    public ResponseEntity<?> classes(@PathVariable UUID id) { return ResponseEntity.ok(reviews.classes(users.requireCurrentUser(), id)); }
+
+    @PostMapping("/{id}/classes/{activityId}/add")
+    public ResponseEntity<?> addToClass(@PathVariable UUID id, @PathVariable UUID activityId) { return ResponseEntity.ok(reviews.addToClass(users.requireCurrentUser(), id, activityId)); }
+
+    @PostMapping("/{id}/classes")
+    public ResponseEntity<?> createClass(@PathVariable UUID id, @RequestBody(required = false) ClassRequest request) { return ResponseEntity.ok(reviews.createClass(users.requireCurrentUser(), id, request)); }
 
     @GetMapping("/plan")
     public ResponseEntity<?> plan(@RequestParam UUID personId, @RequestParam(required = false) String kind, @RequestParam(required = false) String departmentTo) {
         return ResponseEntity.ok(reviews.plan(users.requireCurrentUser(), personId, kind, departmentTo));
     }
+
+    @GetMapping("/closers")
+    public ResponseEntity<?> closers() { return ResponseEntity.ok(Map.of("data", reviews.closers(users.requireCurrentUser()))); }
 
     @GetMapping("/eligible-closers")
     public ResponseEntity<?> eligibleClosers(@RequestParam UUID personId, @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) {

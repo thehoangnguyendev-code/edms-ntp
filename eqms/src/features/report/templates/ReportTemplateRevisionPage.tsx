@@ -1,3 +1,5 @@
+import { useViewState } from "@/hooks/useViewState";
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/app/routes.constants";
@@ -61,7 +63,7 @@ export function ReportTemplateRevisionPage({
   /** What this revision is compared with: "previous", "effective", or the number of another revision. */
   const [withRevision, setWithRevision] = useState("previous");
   const [others, setOthers] = useState<number[]>([]);
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useViewState("ReportTemplateRevisionPage.activeTab", "general");
 
   useEffect(() => {
     let alive = true;
@@ -209,7 +211,7 @@ export function ReportTemplateRevisionPage({
             size="sm"
             variant="outline-emerald"
             className="whitespace-nowrap touch-manipulation"
-            onClick={parent.onClick}
+            onClick={() => navigateBack(navigate, location.state, templatePath)}
           >
             {tr("Back")}</Button>
         }
@@ -441,7 +443,7 @@ export function ReportTemplateRevisionPage({
               size="sm"
               variant="outline-emerald"
               className="whitespace-nowrap touch-manipulation"
-              onClick={parent.onClick}
+              onClick={() => navigateBack(navigate, location.state, templatePath)}
             >
               {tr("Back")}</Button>
           </div>

@@ -72,8 +72,8 @@ public interface DocumentRevisionRepository extends JpaRepository<DocumentRevisi
             WHERE r.status.code IN :statusCodes
             AND EXISTS (SELECT p FROM DocumentWorkflowParticipant p WHERE p.document.id = r.document.id
                 AND p.user.id = :userId AND p.participantType IN :participantTypes)
-            AND (:search = '' OR LOWER(r.document.documentName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'
-                OR LOWER(r.document.documentNumber) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!')
+            AND (:search = '' OR cast(function('eqms_fold', r.document.documentName) as string) like cast(function('eqms_fold', CONCAT('%', :search, '%')) as string) ESCAPE '!'
+                OR cast(function('eqms_fold', r.document.documentNumber) as string) like cast(function('eqms_fold', CONCAT('%', :search, '%')) as string) ESCAPE '!')
             ORDER BY r.createdAt DESC, r.id ASC
             """)
     List<DocumentRevisionRecord> findMyPendingTasksMatching(@Param("userId") UUID userId,

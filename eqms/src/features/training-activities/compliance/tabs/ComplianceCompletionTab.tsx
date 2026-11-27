@@ -26,7 +26,7 @@ const STATES = Object.keys(STATE_LABEL) as CompletionState[];
 /** The small square of one cell on the phone card: the same six states as the grid, without the words. */
 const DOT: Record<CompletionState, string> = { NOT_REQUIRED: "bg-slate-100", REQUIRED: "bg-red-400", IN_PROGRESS: "bg-sky-400", QUALIFIED: "bg-emerald-500", UPDATE_NEEDED: "bg-amber-400", DUE: "bg-orange-400" };
 
-const VIEWS: TabItem[] = [{ id: "rows", label: tr("By matrix row") }, { id: "people", label: "By person" }];
+const VIEWS: TabItem[] = [{ id: "rows", get label() { return tr("By matrix row"); } }, { id: "people", label: "By person" }];
 
 /** People are loaded this many at a time as the list is scrolled. */
 const PEOPLE_PAGE = 15;

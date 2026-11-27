@@ -92,7 +92,7 @@ export function SessionPanel({ dueDate, busy = false, onSave, onDraft, saveText 
             </div>
           ))}
           <button type="button" onClick={() => setForm({ ...form, moreTopics: [...form.moreTopics, ""] })} className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:underline"><Plus className="h-4 w-4" />{tr("Add another topic")}</button>
-          <p className="text-xs text-slate-500">{tr("Use this when the same trainer teaches the same group more than one subject in this session (SOP.0003 4.2). A different trainer, group, day or place is another session: use Add session.")}</p>
+          <p className="!mt-1.5 text-xs text-slate-500">{tr("Use this when the same trainer teaches the same group more than one subject in this session (SOP.0003 4.2). A different trainer, group, day or place is another session: use Add session.")}</p>
         </div>
         {!external && <Select label={tr("Mode")} value={form.method} enableSearch={false} onChange={(v) => setForm({ ...form, method: v, assessmentMethod: ASSESSMENT_BY_METHOD[v][0] })} options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ label, value }))} />}
         {!external && <Select label={tr("Assessment")} value={form.assessmentMethod} enableSearch={false} onChange={(v) => setForm({ ...form, assessmentMethod: v })} options={Object.entries(ASSESSMENT_LABEL).map(([value, label]) => ({ label: ASSESSMENT_BY_METHOD[form.method].includes(value) ? `${label} (SOP default)` : label, value }))} />}
@@ -181,7 +181,7 @@ export function ParticipantsDraftPanel({ onDraft, initialPeople, initialReason }
     <div className="space-y-4">
       <TrainingAssigneePicker onChange={setSelection} initialPeople={initialPeople} />
       <FormField label={tr("Reason for adding by hand")} required><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></FormField>
-      <p className="text-xs text-slate-500">{count} {tr("selected. They are added to the session when you save. The people the training matrix requires are offered on the next screen, after the activity is saved.")}</p>
+      <p className="!mt-1.5 text-xs text-slate-500">{count} {tr("selected. They are added to the session when you save. The people the training matrix requires are offered on the next screen, after the activity is saved.")}</p>
     </div>
   );
 }

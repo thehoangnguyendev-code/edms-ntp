@@ -1,3 +1,4 @@
+import { useViewState, useViewFilterChange } from "@/hooks/useViewState";
 import { trFormat as __ariaTrFormat } from "@/i18n";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import React, { useCallback, useEffect, useState } from "react";
@@ -56,20 +57,20 @@ export const ExecutedRecordsView: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
 
   // Opened from another screen with ?search=<record number> (the recall screen links each filed scan this way).
-  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
+  const [searchQuery, setSearchQuery] = useViewState("ExecutedRecordsView.searchQuery", () => new URLSearchParams(window.location.search).get("search") ?? "", new URLSearchParams(window.location.search).has("search"));
   const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [receivedTo, setReceivedTo] = useState("");
-  const [recordedFrom, setRecordedFrom] = useState("");
-  const [recordedTo, setRecordedTo] = useState("");
+  const [receivedFrom, setReceivedFrom] = useViewState("ExecutedRecordsView.receivedFrom", "");
+  const [receivedTo, setReceivedTo] = useViewState("ExecutedRecordsView.receivedTo", "");
+  const [recordedFrom, setRecordedFrom] = useViewState("ExecutedRecordsView.recordedFrom", "");
+  const [recordedTo, setRecordedTo] = useViewState("ExecutedRecordsView.recordedTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["received"]));
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [currentPage, setCurrentPage] = useViewState("ExecutedRecordsView.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("ExecutedRecordsView.itemsPerPage", 20);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "created", direction: "desc" });
+  const [sortConfig, setSortConfig] = useViewState<{ key: SortKey; direction: "asc" | "desc" }>("ExecutedRecordsView.sortConfig", { key: "created", direction: "desc" });
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   useEntityChanged(["EXECUTED_RECORD"], reload, { debounceMs: 1200 });
@@ -109,7 +110,7 @@ export const ExecutedRecordsView: React.FC = () => {
     };
   }, [currentPage, itemsPerPage, debouncedSearch, receivedFrom, receivedTo, recordedFrom, recordedTo, reloadKey, sortConfig]);
 
-  useEffect(() => {
+  useViewFilterChange(() => {
     setCurrentPage(1);
   }, [debouncedSearch, receivedFrom, receivedTo, recordedFrom, recordedTo]);
 

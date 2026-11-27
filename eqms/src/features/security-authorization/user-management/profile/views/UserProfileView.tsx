@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { User as UserIcon, Briefcase, GraduationCap, ShieldCheck, AlertTriangle, Camera, ChevronDown, SquareX, RotateCcw, LockOpen } from "lucide-react";
@@ -20,7 +21,9 @@ import { ResetMfaModal } from "../components/ResetMfaModal";
 import { passwordUserTokens } from "../components/passwordUserTokens";
 import { UnlockAccountModal } from "../components/UnlockAccountModal";
 import { UserProfileSummary } from "../components/UserProfileSummary";
-import { ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
+import { AUDIT_PROFILE_TAB, ProfileTabLayout, profileTabItems } from "../components/ProfileTabLayout";
+import { usePermissions } from "@/hooks/usePermissions";
+import { AuditTrailView } from "@/features/audit-trail/AuditTrailView";
 import type { ProfileTabId } from "../components/ProfileTabLayout";
 import { SuspendModal } from "../components/SuspendModal";
 import { TerminateModal } from "../components/TerminateModal";
@@ -89,7 +92,7 @@ export const UserProfileView: React.FC = () => {
   const [reinstateModal, setReinstateModal] = useState(false);
   const [unlockModal, setUnlockModal] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [activeTab, setActiveTab] = useState<MainTab>("personal");
+  const [activeTab, setActiveTab] = useViewState<MainTab>("UserProfileView.activeTab", "personal");
   const [capabilities, setCapabilities] = useState<UserActionCapabilitiesResponse | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
@@ -117,8 +120,8 @@ export const UserProfileView: React.FC = () => {
     setTimeout(() => navigateBack(navigate, location.state, USER_MANAGEMENT_ROUTES.LIST), 600);
   };
 
-  const handleConfirmSuspend = async (reason: string, suspendedUntil: string, signatureToken: string) => {
-    await suspendUser(reason, suspendedUntil, signatureToken);
+  const handleConfirmSuspend = async (reason: string, suspendedUntil: string, signatureToken: string, suspensionKind?: "LONG_LEAVE" | "OTHER") => {
+    await suspendUser(reason, suspendedUntil, signatureToken, suspensionKind);
     await loadCapabilities();
     setSuspendModal(false);
   };
@@ -141,7 +144,10 @@ export const UserProfileView: React.FC = () => {
     setUnlockModal(false);
   };
 
-  const tabs = profileTabItems();
+  const { hasPermissionAlias } = usePermissions();
+  // The user's whole history is the Audit Trail screen of the menu, so it needs the same permission.
+  const canSeeAudit = hasPermissionAlias("audittrail.module.view");
+  const tabs = [...profileTabItems(), ...(canSeeAudit ? [{ id: AUDIT_PROFILE_TAB.id, label: AUDIT_PROFILE_TAB.label, icon: AUDIT_PROFILE_TAB.icon }] : [])];
 
   const handleAvatarClick = () => {
     if (!canPerform("edit")) return;
@@ -293,6 +299,7 @@ export const UserProfileView: React.FC = () => {
         onTabChange={setActiveTab}
         panelBadge={isEditingProfile ? <Badge color="emerald" size="sm">{tr("Editing")}</Badge> : undefined}
       >
+          {activeTab === "audit" && canSeeAudit && <AuditTrailView userId={user.id} />}
           {activeTab === "personal" && (
             <PersonalTab
               user={user}

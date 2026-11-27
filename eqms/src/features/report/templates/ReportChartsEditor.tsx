@@ -109,7 +109,7 @@ export function ReportChartsEditor({
               onChange={(metric) => change(index, { metric: metric as ReportChart["metric"] })}
             />
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="!mt-1.5 text-xs text-slate-500">
             {isTrendChart(chart.type)
               ? tr("Dates are grouped by month. Choose a date field.")
               : trFormat("Count records with the same {field}.", { field: fields.find((f) => f.code === chart.field)?.name ?? tr("field value") })}{" "}

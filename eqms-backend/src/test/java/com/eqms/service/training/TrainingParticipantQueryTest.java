@@ -42,7 +42,7 @@ class TrainingParticipantQueryTest {
         var sql = org.mockito.ArgumentCaptor.forClass(String.class);
         var args = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(sql.capture(), eq(Long.class), args.capture());
-        assertThat(sql.getValue()).contains("p.activity_id=?", "p.session_id=?", "p.person_user_id is not null", "planned_absence", "like ?").doesNotContain("e%_");
+        assertThat(sql.getValue()).contains("p.activity_id=?", "p.session_id=?", "p.person_user_id is not null", "planned_absence", "like eqms_fold(?)").doesNotContain("e%_");
         assertThat(args.getValue()).containsExactly(id, session, "%e\\%\\_%", "%e\\%\\_%");
         verify(jdbc).queryForList(contains("order by lower(p.full_name), p.id limit ? offset ?"), eq(id), eq(session), eq("%e\\%\\_%"), eq("%e\\%\\_%"), eq(10), eq(10L));
         assertThatThrownBy(() -> service.participantPage(actor, id, null, "SQL", null, 1, 10)).isInstanceOf(IllegalArgumentException.class);

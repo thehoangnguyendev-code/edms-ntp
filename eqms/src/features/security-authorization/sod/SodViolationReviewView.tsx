@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftRight, ChevronRight, History, RefreshCw, ScanSearch, ShieldAlert } from "lucide-react";
@@ -37,7 +38,7 @@ export const SodViolationReviewView: React.FC = () => {
 
   const [violations, setViolations] = useState<SodViolationResponse[] | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("ALL");
+  const [severityFilter, setSeverityFilter] = useViewState<SeverityFilter>("SodViolationReviewView.severityFilter", "ALL");
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
 
@@ -45,8 +46,8 @@ export const SodViolationReviewView: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyLimit, setHistoryLimit] = useState(10);
+  const [historyPage, setHistoryPage] = useViewState("SodViolationReviewView.historyPage", 1);
+  const [historyLimit, setHistoryLimit] = useViewState("SodViolationReviewView.historyLimit", 10);
 
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedRunViolations, setSelectedRunViolations] = useState<SodViolationResponse[] | null>(null);

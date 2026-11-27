@@ -527,9 +527,8 @@ public class PermissionSetService {
             if (!isWithinDateRange(psr.createdAt(), createdFrom, createdTo)) return false;
             if (!isWithinDateRange(psr.updatedAt(), updatedFrom, updatedTo)) return false;
             if (q.isEmpty()) return true;
-            return (psr.name() + " " + psr.code() + " " + (psr.description() == null ? "" : psr.description())
-                    + " " + String.join(" ", psr.modules()) + " " + psr.category())
-                    .toLowerCase(java.util.Locale.ROOT).contains(q);
+            return com.eqms.util.SearchText.containsFolded(psr.name() + " " + psr.code() + " " + (psr.description() == null ? "" : psr.description())
+                    + " " + String.join(" ", psr.modules()) + " " + psr.category(), q);
         }).collect(Collectors.toList());
 
         Comparator<PermissionSetResponse> cmp = switch (sortBy == null ? "name" : sortBy) {

@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import { useEffect, useMemo, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { IconDownload, IconEye, IconLock, IconShieldCheck, IconStackCheck } from "@tabler/icons-react";
@@ -66,7 +68,7 @@ export function ReportRunDetailPage() {
     step: "form" | "sign";
   }>();
   const [busy, setBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useViewState("ReportRunDetailPage.activeTab", "general");
   /** The check of a file a person holds against the stored one (REPORT-FILE-VERIFY-2026-11-16). */
   const [verifying, setVerifying] = useState<ReportArtifactSummary | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
@@ -286,7 +288,7 @@ export function ReportRunDetailPage() {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => navigate("/report/history")}
+              onClick={() => navigateBack(navigate, null, "/report/history")}
             >
               {tr("Back")}
             </Button>
@@ -563,7 +565,7 @@ export function ReportRunDetailPage() {
             <Button
               size="sm"
               variant="outline-emerald"
-              onClick={() => navigate("/report/history")}
+              onClick={() => navigateBack(navigate, null, "/report/history")}
             >
               {tr("Back")}
             </Button>

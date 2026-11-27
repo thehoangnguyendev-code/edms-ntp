@@ -12,8 +12,8 @@ export type CreateBackupInput = CreateBackupPayload;
 const MAX_REASON = 500;
 
 const PARTS: { value: BackupPart; label: string; hint: string }[] = [
-  { value: "DATABASE", label: "Database", hint: tr("All records and the system settings: documents, revisions, workflow, training, audit trail, e-signatures, users, configuration, roles and permissions.") },
-  { value: "OBJECT_STORE", label: "Files", hint: tr("Every stored file: documents, revisions, copies, images, tests, scans and reports. Only what is new since the last backup is copied.") },
+  { value: "DATABASE", label: "Database", get hint() { return tr("All records and the system settings: documents, revisions, workflow, training, audit trail, e-signatures, users, configuration, roles and permissions."); } },
+  { value: "OBJECT_STORE", label: "Files", get hint() { return tr("Every stored file: documents, revisions, copies, images, tests, scans and reports. Only what is new since the last backup is copied."); } },
 ];
 
 /**

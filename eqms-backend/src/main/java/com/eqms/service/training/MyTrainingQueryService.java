@@ -111,7 +111,7 @@ public class MyTrainingQueryService {
             where.append(" and (");
             for (int i = 0; i < columns.length; i++) {
                 if (i > 0) where.append(" or ");
-                where.append("lower(coalesce(q.").append(columns[i]).append(",'')) like ? escape '\\'");
+                where.append("eqms_fold(coalesce(q.").append(columns[i]).append(",'')) like eqms_fold(?) escape '\\'");
                 args.add("%" + search.trim().toLowerCase(java.util.Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
             }
             where.append(")");

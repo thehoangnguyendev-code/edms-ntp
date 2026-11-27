@@ -57,7 +57,7 @@ const NumberField: React.FC<{
       }}
       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
     />
-    {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+    {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
   </div>
 );
 
@@ -178,7 +178,7 @@ export const ReportPropertiesView: React.FC = () => {
                       onChange={(e) => patch({ templateNumberPrefix: e.target.value.toUpperCase() })}
                       className="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50"
                     />
-                    <p className={`text-xs mt-1 ${prefixValid ? "text-slate-500" : "text-red-600"}`}>{tr("2 to 10 upper-case letters or digits, starting with a letter.")}</p>
+                    <p className={`mt-1.5 text-xs ${prefixValid ? "text-slate-500" : "text-red-600"}`}>{tr("2 to 10 upper-case letters or digits, starting with a letter.")}</p>
                   </div>
                   <NumberField
                     label={tr("Digits of the Serial Number")}
@@ -198,7 +198,7 @@ export const ReportPropertiesView: React.FC = () => {
                     <input type="text" readOnly value={properties.lastTemplateSerial} className={CONTROL_STATE_CLASSES.readonlyField} />
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="mt-1.5 text-xs text-slate-500">
                   {tr("The system gives every new report template its number; nobody types it. The serial only moves forward, so a number is never issued twice. A change applies only to numbers issued after saving; templates that exist keep their number.")}
                 </p>
               </Group>

@@ -104,9 +104,9 @@ type ControlledCopyRow = ControlledCopy & {
 };
 
 const CONTROLLED_COPY_TABS: TabItem[] = [
-  { id: "all", label: tr("All Controlled Copies") },
-  { id: "ready", label: tr("Ready for Distribution") },
-  { id: "distributed", label: tr("Distributed Copies") },
+  { id: "all", get label() { return tr("All Controlled Copies"); } },
+  { id: "ready", get label() { return tr("Ready for Distribution"); } },
+  { id: "distributed", get label() { return tr("Distributed Copies"); } },
 ];
 
 const mapBatchToRow = (batch: ControlledCopyDistributionBatch): ControlledCopyRow => {

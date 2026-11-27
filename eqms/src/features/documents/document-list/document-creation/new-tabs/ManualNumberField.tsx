@@ -206,8 +206,8 @@ export const ManualNumberField: React.FC<ManualNumberFieldProps> = ({
             aria-invalid={tone === "error"}
             className={cn(BOX, borderClass)}
           />
-          {blockedReason && <p className="text-xs text-slate-500">{blockedReason}</p>}
-                {!blockedReason && !typed.trim() && formatHint && <p className="text-xs text-slate-500">{tr("Format:")} {formatHint}</p>}
+          {blockedReason && <p className="mt-1.5 text-xs text-slate-500">{blockedReason}</p>}
+                {!blockedReason && !typed.trim() && formatHint && <p className="mt-1.5 text-xs text-slate-500">{tr("Format:")} {formatHint}</p>}
           {!blockedReason && !typed.trim() && suggestion && (
             <button
               type="button"
@@ -217,7 +217,7 @@ export const ManualNumberField: React.FC<ManualNumberFieldProps> = ({
               {tr("Use")} {suggestion}
             </button>
           )}
-          {!blockedReason && typed.trim() && checking && <p className="text-xs text-slate-500">{tr("Checking...")}</p>}
+          {!blockedReason && typed.trim() && checking && <p className="mt-1.5 text-xs text-slate-500">{tr("Checking...")}</p>}
           {!blockedReason && typed.trim() && !checking && result && (
             <p className={cn("text-xs", messageClass)}>
               {result.message ?? (result.valid ? tr("This number is free to use.") : tr("This number cannot be used."))}

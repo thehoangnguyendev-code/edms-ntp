@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useState } from "react";
 import { Check, MoreVertical, Search, ShieldCheck, ShieldX, X } from "lucide-react";
 import { IconFilter2, IconTrash } from "@tabler/icons-react";
@@ -52,14 +53,14 @@ export const KnowledgeSharesPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("KnowledgeSharesPanel.search", "");
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [departmentId, setDepartmentId] = useState("");
   const [effect, setEffect] = useState("ALL");
-  const [sortKey, setSortKey] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortKey, setSortKey] = useViewState("KnowledgeSharesPanel.sortKey", "createdAt");
+  const [sortDir, setSortDir] = useViewState<"asc" | "desc">("KnowledgeSharesPanel.sortDir", "desc");
+  const [currentPage, setCurrentPage] = useViewState("KnowledgeSharesPanel.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("KnowledgeSharesPanel.itemsPerPage", 10);
   const [version, setVersion] = useState(0);
   const [departments, setDepartments] = useState<SelectOption[]>([]);
   // "All" is added while drawing, so it follows a language switch.

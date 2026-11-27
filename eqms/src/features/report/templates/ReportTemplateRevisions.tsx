@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr } from "@/i18n";
 import { useEffect, useState } from "react";
 import { MoreVertical } from "lucide-react";
@@ -31,7 +32,7 @@ export const REVISION_STATUS: Record<
   { label: string; color: "emerald" | "amber" | "slate" }
 > = {
   EFFECTIVE: { label: "Effective", color: "emerald" },
-  PENDING_APPROVAL: { label: tr("Pending Approval"), color: "amber" },
+  PENDING_APPROVAL: { get label() { return tr("Pending Approval"); }, color: "amber" },
   DRAFT: { label: "Draft", color: "slate" },
   OBSOLETE: { label: "Obsoleted", color: "slate" },
   DISCARDED: { label: "Discarded", color: "slate" },
@@ -49,9 +50,9 @@ export function ReportTemplateRevisions({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useViewState("ReportTemplateRevisions.search", "");
+  const [page, setPage] = useViewState("ReportTemplateRevisions.page", 1);
+  const [pageSize, setPageSize] = useViewState("ReportTemplateRevisions.pageSize", 10);
   const [sort, setSort] = useState<{
     field: string;
     direction: "asc" | "desc";

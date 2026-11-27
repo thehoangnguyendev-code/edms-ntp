@@ -40,8 +40,8 @@ public class TrainingJobRoleService {
     private static final String SELECT = """
         select r.id, r.code, r.name, r.department_id, d.name as department_name, r.title_position_id, tp.name as title_position_name, r.description, r.jurisdiction, r.is_active as active, r.version, r.senior_management,
                (select count(*) from training_person_positions pp where pp.position_id = r.id and pp.valid_to is null) as holders,
-               (select count(*) from training_matrix_rows mr join training_matrix_versions v on v.id = mr.version_id and v.status = 'EFFECTIVE' join training_matrices mm on mm.id = v.matrix_id
-                 where mm.department_id = r.department_id and (mr.all_employees or exists (select 1 from training_matrix_cells c where c.row_id = mr.id and c.position_id = r.id))) as effective_topics
+               (select count(*) from training_effective_requirements mr
+                 where mr.department_id = r.department_id and (mr.all_employees or exists (select 1 from training_matrix_cells c where c.row_id = mr.id and c.position_id = r.id))) as effective_topics
           from training_job_roles r join departments d on d.id = r.department_id left join positions tp on tp.id = r.title_position_id
         """;
 
@@ -94,8 +94,8 @@ public class TrainingJobRoleService {
         UUID department = (UUID) role.get("department_id");
         if (!access.inScope(actor, department)) throw new SecurityException(TrainingAccess.DENIED);
         Map<String, Object> out = new LinkedHashMap<>();
-        List<Map<String, Object>> effective = jdbc.queryForList("select v.id, v.version_no, m.code from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", department);
-        List<Map<String, Object>> draft = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status in ('DRAFT','PENDING_APPROVAL') order by v.version_no desc", department);
+        List<Map<String, Object>> effective = jdbc.queryForList("select v.id, v.version_no, m.code from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and m.scope = 'DEPARTMENT' and v.status = 'EFFECTIVE'", department);
+        List<Map<String, Object>> draft = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and m.scope = 'DEPARTMENT' and v.status in ('DRAFT','PENDING_REVIEW','PENDING_APPROVAL') order by v.version_no desc", department);
         out.put("draftVersionId", draft.isEmpty() ? null : draft.getFirst().get("id"));
         if (effective.isEmpty()) {
             out.put("effectiveVersionId", null);
@@ -107,10 +107,10 @@ public class TrainingJobRoleService {
         out.put("versionNo", effective.getFirst().get("version_no"));
         out.put("items", TrainingRows.camel(jdbc.queryForList("""
             select r.row_no, r.row_group, r.annual_required, coalesce(r.topic_text, d.document_name) as title, d.document_number as code, (r.document_id is not null) as is_document
-              from training_matrix_rows r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
+              from training_effective_requirements r left join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
               left join documents d on d.id = r.document_id
-             where r.version_id = ? and (c.row_id is not null or r.all_employees) order by r.row_no
-            """, id, effective.getFirst().get("id"))));
+             where r.department_id = ? and (c.row_id is not null or r.all_employees) order by r.factory desc, r.row_no
+            """, id, department)));
         return out;
     }
 

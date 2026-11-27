@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useEffect, useState, type ReactNode } from "react";
 import { TableEmptyState } from "@/components/ui/table/TableEmptyState";
 import { Search } from "lucide-react";
@@ -39,10 +40,10 @@ interface RevisionsCardProps<T extends { id: string; current: boolean }> {
  * sorted and paged by the server. The revision that is open is marked, and every other one opens through its first column.
  */
 export function RevisionsCard<T extends { id: string; current: boolean }>({ tabLabel, searchPlaceholder, defaultSortKey, columns, fetchPage, signature, objectId }: RevisionsCardProps<T>) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useViewState("RevisionsCard.searchQuery", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery.trim());
+  const [currentPage, setCurrentPage] = useViewState("RevisionsCard.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("RevisionsCard.itemsPerPage", 10);
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: defaultSortKey, direction: "desc" });
 
   useEffect(() => {

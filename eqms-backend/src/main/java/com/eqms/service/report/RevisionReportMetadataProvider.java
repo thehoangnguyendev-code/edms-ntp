@@ -129,7 +129,7 @@ public class RevisionReportMetadataProvider implements ReportMetadataProvider {
         ReportQueryKit.and(sql, args, visibility.revisions(actor, "r"));
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (r.document_number ilike ? escape '\\' or r.document_name ilike ? escape '\\' or r.revision_number ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(r.document_number) like eqms_fold(?) escape '\\' or eqms_fold(r.document_name) like eqms_fold(?) escape '\\' or eqms_fold(r.revision_number) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             args.add(term); args.add(term); args.add(term);
         }

@@ -9,7 +9,7 @@ import { metadataApi } from "@/services/api/metadata";
 import { Approver } from "./types";
 import { TableMarkup, TABLE_STYLES } from "@/components/ui/table/TablePrimitives";
 import { SEARCH_DEBOUNCE_MS } from "@/constants/search";
-import { tr } from "@/i18n";
+import { tr, useLanguage } from "@/i18n";
 
 interface AppUser {
     id: string;
@@ -36,6 +36,7 @@ interface UserSelectionModalProps {
 }
 
 const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose, onSelect }) => {
+    const { tLabel } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedId, setSelectedId] = useState<string>("");
     const [users, setUsers] = useState<AppUser[]>([]);
@@ -102,9 +103,9 @@ const UserSelectionModal: React.FC<UserSelectionModalProps> = ({ isOpen, onClose
             isOpen={isOpen}
             onClose={onClose}
             onConfirm={handleSave}
-            title={tr("Setup Approver")}
-            description={tr("Select the final approver for this document.")}
-            confirmText={tr("Commit Selection")}
+            title={tLabel("Setup Approver")}
+            description={tLabel("Select the final approver for this document.")}
+            confirmText={tLabel("Commit Selection")}
             confirmDisabled={!selectedId}
             size="lg"
         >

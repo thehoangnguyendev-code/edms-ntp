@@ -1,0 +1,28 @@
+import sys, time, collections
+sys.stdout.reconfigure(encoding="utf-8")
+S = sys.argv[1]
+src = open(S + "/flow_e2e.py", encoding="utf-8").read()
+exec(src[:src.index("# review rejected")].replace("sys.argv", "['x', S]"))
+parallel(False)
+doc, rid = draft_in_review()
+def mine(user, since):
+    time.sleep(3)
+    return sql(f"select n.title||' / '||n.message from user_notifications n join app_users u on u.id=n.recipient_user_id where u.username='{user}' and n.created_at > '{since}' and n.action_url like '%{rid}%' and n.title not like 'You are%' and n.title not like '%mời bạn%'").splitlines()
+t0 = sql("select now()")
+check("author sees upload confirmation", any("Revision File Uploaded" in m for m in mine("author.test1", sql("select now() - interval '1 minute'"))), mine("author.test1", sql("select now() - interval '1 minute'")))
+t = sql("select now()"); call("POST", f"/revisions/{rid}/submit-review", tok["author.test1"], sign("author.test1"))
+m = mine("author.test1", t); check("author: submit confirmed, short", len(m) == 1 and "Submitted for Review" in m[0], m)
+t = sql("select now()"); call("POST", f"/revisions/{rid}/review/complete", tok["reviewer.test1"], sign("reviewer.test1"))
+m = mine("reviewer.test1", t); check("Vietnamese reviewer: complete confirmed in Vietnamese", len(m) == 1 and "Đã rà soát xong" in m[0] and "Đã ghi nhận" in m[0], m)
+t = sql("select now()"); call("POST", f"/revisions/{rid}/review/complete", tok["reviewer.test2"], sign("reviewer.test2"))
+t = sql("select now()"); call("POST", f"/revisions/{rid}/approve/reject", tok["approver.test1"], sign("approver.test1"))
+m = mine("approver.test1", t); check("approver: reject confirmed", len(m) == 1 and "Approval Rejected" in m[0], m)
+doc, rid = draft_in_review()
+for u in ("reviewer.test1", "reviewer.test2"): call("POST", f"/revisions/{rid}/submit-review", tok["author.test1"], sign("author.test1")) if u == "reviewer.test1" else None
+call("POST", f"/revisions/{rid}/review/complete", tok["reviewer.test1"], sign("reviewer.test1")); call("POST", f"/revisions/{rid}/review/complete", tok["reviewer.test2"], sign("reviewer.test2"))
+mark = sql("select now()"); call("POST", f"/revisions/{rid}/approve/complete", tok["approver.test1"], sign("approver.test1")); time.sleep(4)
+dco_inapp = sql(f"select count(*) from user_notifications n join app_users u on u.id=n.recipient_user_id where n.created_at > '{mark}' and n.action_url like '%{rid}%' and u.username<>'approver.test1'")
+mails = sql(f"select count(*) from notification_email_outbox where created_at > '{mark}'")
+check("approved: Document Control gets e-mail, no in-app", dco_inapp == "0" and int(mails) >= 1, (dco_inapp, mails))
+check("approver sees approval confirmed", any("Approval Completed" in x for x in mine("approver.test1", mark)))
+print(f"\n{sum(results)}/{len(results)} passed")

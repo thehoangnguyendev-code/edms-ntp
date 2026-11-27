@@ -20,8 +20,8 @@ export interface TableExportModalProps {
 }
 
 const FORMATS: { value: TableExportFormat; label: string; description: string; icon: React.ReactNode }[] = [
-  { value: 'xlsx', label: 'Excel', description: tr('.xlsx workbook'), icon: <IconFileTypeXls className="h-5 w-5" /> },
-  { value: 'csv', label: 'CSV', description: tr('.csv text file'), icon: <IconFileTypeCsv className="h-5 w-5" /> },
+  { value: 'xlsx', label: 'Excel', get description() { return tr('.xlsx workbook'); }, icon: <IconFileTypeXls className="h-5 w-5" /> },
+  { value: 'csv', label: 'CSV', get description() { return tr('.csv text file'); }, icon: <IconFileTypeCsv className="h-5 w-5" /> },
 ];
 
 /** A rough size per cell: an Excel file is zipped, a CSV is plain text (measured on DEV: Excel 5-8 bytes, CSV 12-13 bytes per cell). Only for the "About ..." line; the server makes the real file. */

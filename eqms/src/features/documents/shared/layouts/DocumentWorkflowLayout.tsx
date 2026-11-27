@@ -53,15 +53,15 @@ interface DocumentWorkflowLayoutProps {
 
 // --- Default Tabs ---
 export const DEFAULT_WORKFLOW_TABS: TabItem[] = [
-    { id: "general", label: tr("General Information") },
-    { id: "workingNotes", label: tr("Working Notes") },
-    { id: "documentInfo", label: tr("Information from Document") },
-    { id: "training", label: tr("Training Information") },
+    { id: "general", get label() { return tr("General Information"); } },
+    { id: "workingNotes", get label() { return tr("Working Notes"); } },
+    { id: "documentInfo", get label() { return tr("Information from Document"); } },
+    { id: "training", get label() { return tr("Training Information"); } },
     { id: "reviewers", label: "Reviewers" },
     { id: "approvers", label: "Approvers" },
-    { id: "signatures", label: tr("Signatures") },
+    { id: "signatures", get label() { return tr("Signatures"); } },
     { id: "document", label: "Document" },
-    { id: "audit", label: tr("Audit Trail") },
+    { id: "audit", get label() { return tr("Audit Trail"); } },
 ];
 
 // --- Main Component ---

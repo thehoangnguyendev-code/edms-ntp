@@ -11,17 +11,35 @@ import java.util.Map;
 public final class ModuleKeys {
     private static final Map<String, String> CANONICAL_BY_COMPACT = Map.ofEntries(
             Map.entry("documents", "documents"), Map.entry("document", "documents"), Map.entry("documentcontrol", "documents"), Map.entry("doccontrol", "documents"),
-            Map.entry("controlledcopies", "controlled-copies"), Map.entry("accessreview", "access-review"),
+            // a module is a level-1 menu: the sub-menus are found under the menu they are in
+            Map.entry("controlledcopies", "documents"), Map.entry("controlledcopy", "documents"), Map.entry("uncontrolledcopies", "documents"),
+            Map.entry("uncontrolledcopy", "documents"), Map.entry("documentreview", "documents"),
+            Map.entry("accessreview", "security"), Map.entry("securityandaccess", "security"),
+            Map.entry("knowledge", "self_service"), Map.entry("knowledgebase", "self_service"), Map.entry("dashboard", "self_service"),
+            Map.entry("notifications", "notifications"), Map.entry("preferences", "preferences"), Map.entry("systeminformation", "system-information"),
             Map.entry("training", "training"), Map.entry("trainingmanagement", "training"),
             Map.entry("report", "reports"), Map.entry("reports", "reports"),
             Map.entry("audittrail", "audit-trail"),
             Map.entry("backup", "backup"), Map.entry("backuprestore", "backup"), Map.entry("backup&restore", "backup"),
             Map.entry("security", "security"), Map.entry("securityauthorization", "security"),
             Map.entry("settings", "settings"), Map.entry("appsettings", "settings"), Map.entry("applicationsettings", "settings"),
-            Map.entry("systemadmin", "system-admin"), Map.entry("systemadministration", "system-admin"),
+            Map.entry("systemadmin", "system-admin"), Map.entry("systemadministration", "system-admin"), Map.entry("system", "system-admin"),
             Map.entry("selfservice", "self_service"));
 
     private ModuleKeys() {}
+
+    /**
+     * The menu name of the module held by a column, as an SQL expression, so a report shows and filters by the name and never by the stored key.
+     * A key that is not known stays as it is. The names and keys are fixed text of this application; the column is given by the calling code, never input.
+     */
+    public static String menuNameSql(String column) {
+        Map<String, java.util.List<String>> byName = new java.util.TreeMap<>();
+        CANONICAL_BY_COMPACT.forEach((spelling, key) -> byName.computeIfAbsent(DisplayLabels.module(key), name -> new java.util.ArrayList<>()).add("'" + spelling + "'"));
+        StringBuilder sql = new StringBuilder("(case");
+        byName.forEach((name, spellings) -> sql.append(" when regexp_replace(lower(").append(column).append("), '[[:space:]._-]+', '', 'g') in (")
+                .append(spellings.stream().sorted().collect(java.util.stream.Collectors.joining(","))).append(") then '").append(name).append("'"));
+        return sql.append(" else coalesce(").append(column).append(", '') end)").toString();
+    }
 
     private static String compact(String key) {
         return key.toLowerCase(Locale.ROOT).replaceAll("[\\s._-]+", "");

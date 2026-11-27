@@ -107,7 +107,7 @@ public class ReportNameFormatService {
             case "DISABLED" -> "and active = false ";
             default -> "";
         };
-        String where = "where (name ilike ? or code ilike ?) " + statusClause;
+        String where = "where (eqms_fold(name) like eqms_fold(?) or eqms_fold(code) like eqms_fold(?)) " + statusClause;
         List<Object> dateArgs = new ArrayList<>();
         if (modifiedFrom != null && !modifiedFrom.isBlank()) { where += "and updated_at >= cast(? as date) "; dateArgs.add(date(modifiedFrom)); }
         if (modifiedTo != null && !modifiedTo.isBlank()) { where += "and updated_at < cast(? as date) + interval '1 day' "; dateArgs.add(date(modifiedTo)); }

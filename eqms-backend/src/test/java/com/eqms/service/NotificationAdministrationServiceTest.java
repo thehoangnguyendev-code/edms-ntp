@@ -125,7 +125,8 @@ class NotificationAdministrationServiceTest {
 
     @Test
     void aFilterThatOnlyOneKindHasLeavesOutTheOtherKind() {
-        assertThat(names(service.list(query(null, null, "DOCUMENT_CONTROL", null, null, null, null, null), true, true))).containsExactly("Document Approved", "Review Request");
+        // Controlled Copies is a sub-menu of Document Control: the filter of the module finds its notifications too
+        assertThat(names(service.list(query(null, null, "documents", null, null, null, null, null), true, true))).containsExactly("Controlled Copy Recalled", "Document Approved", "Review Request");
         assertThat(names(service.list(query(null, null, null, "password-reset", null, null, null, null), true, true))).containsExactly("Password Reset Link");
         assertThat(names(service.list(query(null, null, null, null, "NEVER_SENT", null, null, null), true, true))).containsExactly("Controlled Copy Recalled", "Document Approved", "Review Request", "Review Request");
         assertThat(names(service.list(query(null, null, null, null, "SENT", null, null, null), true, true))).containsExactly("Password Reset Link");

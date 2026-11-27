@@ -16,8 +16,8 @@ const FONT_OPTIONS = [
 ];
 
 const PAGE_OPTIONS = [
-  { label: tr("Every page"), value: "ALL" },
-  { label: tr("First page only"), value: "FIRST" },
+  { get label() { return tr("Every page"); }, value: "ALL" },
+  { get label() { return tr("First page only"); }, value: "FIRST" },
 ];
 
 const FIELD_INPUT =
@@ -27,7 +27,7 @@ const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode 
   <div className="min-w-0">
     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     {children}
-    {hint && <p className="mt-1 text-2xs text-slate-400 break-words">{hint}</p>}
+    {hint && <p className="mt-1.5 text-xs text-slate-500 break-words">{hint}</p>}
   </div>
 );
 

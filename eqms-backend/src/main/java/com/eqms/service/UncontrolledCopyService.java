@@ -281,10 +281,10 @@ public class UncontrolledCopyService {
             if (StringUtils.hasText(search)) {
                 String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.<String>get("uncontrolledCopyNumber")), pattern),
-                        cb.like(cb.lower(root.<String>get("documentNumber")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.<String>get("documentTitle"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.<String>get("reason"), "")), pattern)
+                        com.eqms.util.SearchText.like(cb, root.<String>get("uncontrolledCopyNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, root.<String>get("documentNumber"), pattern),
+                        com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("documentTitle"), ""), pattern),
+                        com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("reason"), ""), pattern)
                 ));
             }
             LocalDate from = parseDate(createdFrom);
@@ -846,8 +846,7 @@ public class UncontrolledCopyService {
                     if ("INACTIVE".equalsIgnoreCase(status) && r.active()) return false;
                     String q = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
                     if (q.isEmpty()) return true;
-                    return (r.documentTypeName() == null ? "any" : r.documentTypeName())
-                            .toLowerCase(Locale.ROOT).contains(q);
+                    return com.eqms.util.SearchText.containsFolded(r.documentTypeName() == null ? "any" : r.documentTypeName(), q);
                 })
                 .sorted(comparator.thenComparing(UncontrolledCopyEligibilityRuleResponse::id))
                 .toList();

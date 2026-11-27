@@ -24,7 +24,7 @@ public class ReportScheduleAdministrationService {
         if(search.length()>200||!Set.of("","ACTIVE","PAUSED","SUSPENDED_AUTHORIZATION_CHANGED","SUSPENDED_INVALID_SCHEDULE","SUSPENDED_TEMPLATE_NOT_APPROVED","SUSPENDED_TEMPLATE_DISABLED","SUSPENDED_SIGNATURE_REQUIRED").contains(status)||!Set.of("asc","desc").contains(direction))throw new IllegalArgumentException("REPORT_SCHEDULE_FILTER_INVALID");
         String order=switch(sort){case "scheduleNumber"->"s.schedule_number";case "name"->"s.name";case "nextRunAt"->"s.next_run_at";case "status"->"s.status";default->throw new IllegalArgumentException("REPORT_SORT_NOT_ALLOWED");};
         boolean all=permissions.hasPermission(actor,"reports.schedule.manage");
-        String where=" from report_schedules s where (s.name ilike ? or coalesce(s.schedule_number,'') ilike ?) and (?='' or s.status=?)"+(all?"":" and s.creator_user_id=?");
+        String where=" from report_schedules s where (eqms_fold(s.name) like eqms_fold(?) or eqms_fold(coalesce(s.schedule_number,'')) like eqms_fold(?)) and (?='' or s.status=?)"+(all?"":" and s.creator_user_id=?");
         var like="%"+search.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";var args=new ArrayList<Object>(List.of(like,like,status,status));if(!all)args.add(actor.getId());
         long total=Objects.requireNonNullElse(jdbc.queryForObject("select count(*)"+where,Long.class,args.toArray()),0L);
         int safePage=Math.max(1,page);args.add((safePage-1L)*10);

@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -162,7 +163,7 @@ export const DocumentNameFormatEditorView: React.FC = () => {
   }, [selected, separator, isLoading, descriptionTouched]);
 
   // Back asks first when there is a change that was not saved; the move after a successful Save is not a leave.
-  const goBack = () => go(ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
+  const goBack = () => navigateBack(go, location.state, ROUTES.DOCUMENTS.ADMIN.NAME_FORMATS);
 
   // Navigates to the dedicated "New Document Component" page, carrying the current in-progress
   // edit as router state so it can be restored on return (see the draft-hydration effect above)

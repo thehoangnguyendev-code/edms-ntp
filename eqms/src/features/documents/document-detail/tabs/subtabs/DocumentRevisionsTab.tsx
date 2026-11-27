@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { StatusBadge } from "@/components/ui";
@@ -54,10 +55,10 @@ export const DocumentRevisionsTab: React.FC<DocumentRevisionsTabProps> = ({
     correlatedDocuments = []
 }) => {
   const { navigateTo, navigateToPrepared } = useNavigateWithLoading();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useViewState("DocumentRevisionsTab.searchQuery", "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery.trim());
+  const [currentPage, setCurrentPage] = useViewState("DocumentRevisionsTab.currentPage", 1);
+  const [itemsPerPage, setItemsPerPage] = useViewState("DocumentRevisionsTab.itemsPerPage", 10);
   // Default: newest revision first. Search, sort and paging are all done by the server.
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "revisionNumber", direction: "desc" });
 

@@ -98,6 +98,15 @@ public class EmailNotificationService {
         sendToRecipients(templateType, recipients, variables, "DOCUMENT");
     }
 
+    /** Raises only the registry event the variables name ({@code notificationEventCode}); no old e-mail template is sent besides it. */
+    public void sendDocumentWorkflowEvent(Collection<UserAccount> recipients, Map<String, String> variables) {
+        for (UserAccount recipient : recipients) {
+            if (recipient != null) {
+                dispatchPolicyNotification(recipient, buildUserVariables(recipient, null, variables));
+            }
+        }
+    }
+
     public void sendControlledCopyNotification(String templateType, Collection<UserAccount> recipients, Map<String, String> variables) {
         sendToRecipients(templateType, recipients, variables, "CONTROLLED_COPY");
     }

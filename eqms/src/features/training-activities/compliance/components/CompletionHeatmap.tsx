@@ -9,11 +9,11 @@ import { tr } from "@/i18n";
 /** How a cell of each state looks: the whole cell is tinted and carries an icon and the name of the state, so it reads at a glance. */
 export const STATE_STYLE: Record<CompletionState, { label: string; fill: string; text: string; icon: ReactNode }> = {
   QUALIFIED: { label: "Qualified", fill: "bg-emerald-50 hover:bg-emerald-100", text: "text-emerald-700", icon: <Check className="h-4 w-4" strokeWidth={3} /> },
-  IN_PROGRESS: { label: tr("In Progress"), fill: "bg-sky-50 hover:bg-sky-100", text: "text-sky-700", icon: <Clock className="h-4 w-4" /> },
-  UPDATE_NEEDED: { label: tr("Update needed"), fill: "bg-amber-50 hover:bg-amber-100", text: "text-amber-700", icon: <TriangleAlert className="h-4 w-4" /> },
-  DUE: { label: tr("Annual due"), fill: "bg-orange-50 hover:bg-orange-100", text: "text-orange-700", icon: <RefreshCw className="h-4 w-4" /> },
+  IN_PROGRESS: { get label() { return tr("In Progress"); }, fill: "bg-sky-50 hover:bg-sky-100", text: "text-sky-700", icon: <Clock className="h-4 w-4" /> },
+  UPDATE_NEEDED: { get label() { return tr("Update needed"); }, fill: "bg-amber-50 hover:bg-amber-100", text: "text-amber-700", icon: <TriangleAlert className="h-4 w-4" /> },
+  DUE: { get label() { return tr("Annual due"); }, fill: "bg-orange-50 hover:bg-orange-100", text: "text-orange-700", icon: <RefreshCw className="h-4 w-4" /> },
   REQUIRED: { label: "Required", fill: "bg-red-50 hover:bg-red-100", text: "text-red-700", icon: <X className="h-4 w-4" strokeWidth={3} /> },
-  NOT_REQUIRED: { label: tr("Not required"), fill: "", text: "text-slate-300", icon: <Minus className="h-4 w-4" /> },
+  NOT_REQUIRED: { get label() { return tr("Not required"); }, fill: "", text: "text-slate-300", icon: <Minus className="h-4 w-4" /> },
 };
 const STATE_ORDER = Object.keys(STATE_STYLE) as CompletionState[];
 const GROUP_TAG: Record<CompletionColumn["group"], string> = { FACTORY_GENERAL: "Factory", DEPARTMENT_GENERAL: "Department", SOP: "SOP" };

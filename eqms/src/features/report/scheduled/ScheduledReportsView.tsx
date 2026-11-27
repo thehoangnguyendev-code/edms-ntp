@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button/Button";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -68,12 +69,12 @@ export function ScheduledReportsView() {
     "reports.schedule.manage",
     "report.module.export",
   ]);
-  const [input, setInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [sort, setSort] = useState("name");
-  const [direction, setDirection] = useState<"asc" | "desc">("asc");
+  const [input, setInput] = useViewState("ScheduledReportsView.input", "");
+  const [search, setSearch] = useViewState("ScheduledReportsView.search", "");
+  const [status, setStatus] = useViewState("ScheduledReportsView.status", "");
+  const [page, setPage] = useViewState("ScheduledReportsView.page", 1);
+  const [sort, setSort] = useViewState("ScheduledReportsView.sort", "name");
+  const [direction, setDirection] = useViewState<"asc" | "desc">("ScheduledReportsView.direction", "asc");
   const [refresh, setRefresh] = useState(0);
   const [data, setData] = useState<ReportSchedulePage>({
     data: [],
@@ -131,7 +132,7 @@ export function ScheduledReportsView() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(input);
-      setPage(1);
+      if (input !== search) setPage(1);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [input]);

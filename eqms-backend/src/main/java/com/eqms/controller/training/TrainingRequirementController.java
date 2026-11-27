@@ -38,8 +38,8 @@ public class TrainingRequirementController {
     }
 
     @GetMapping("/suggestions")
-    public ResponseEntity<?> suggestions(@RequestParam(required = false) Integer year, @RequestParam(required = false) UUID departmentId) {
-        return ResponseEntity.ok(Map.of("data", requirements.suggestions(users.requireCurrentUser(), year, departmentId)));
+    public ResponseEntity<?> suggestions(@RequestParam(required = false) Integer year, @RequestParam(required = false) UUID departmentId, @RequestParam(defaultValue = "false") boolean plantWide) {
+        return ResponseEntity.ok(Map.of("data", requirements.suggestions(users.requireCurrentUser(), year, departmentId, plantWide)));
     }
 
     @PostMapping

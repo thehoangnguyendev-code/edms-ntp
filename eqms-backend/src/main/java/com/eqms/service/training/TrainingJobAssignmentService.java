@@ -86,7 +86,7 @@ public class TrainingJobAssignmentService {
         if (status != null && !status.isBlank()) { where.append(" and j.status = ?"); args.add(status); }
         if (search != null && !search.isBlank()) {
             String like = "%" + search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            where.append(" and (lower(u.full_name) like ? escape '\\' or lower(coalesce(u.employee_code,'')) like ? escape '\\' or exists (select 1 from training_job_assignment_roles sr join training_job_roles sj on sj.id = sr.job_role_id where sr.assignment_id = j.id and lower(sj.name) like ? escape '\\') or lower(coalesce(d.name,'')) like ? escape '\\')");
+            where.append(" and (eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\' or exists (select 1 from training_job_assignment_roles sr join training_job_roles sj on sj.id = sr.job_role_id where sr.assignment_id = j.id and eqms_fold(sj.name) like eqms_fold(?) escape '\\') or eqms_fold(coalesce(d.name,'')) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().equal("j.person_user_id", uuid(more.get("personId"))).equal("j.case_type", more.get("caseType")).equal("j.department_id", uuid(more.get("departmentId"))).raw(uuid(more.get("positionId")) == null ? "true" : "exists (select 1 from training_job_assignment_roles fr where fr.assignment_id = j.id and fr.job_role_id = ?)", uuid(more.get("positionId")) == null ? new Object[0] : new Object[]{uuid(more.get("positionId"))})
@@ -132,14 +132,14 @@ public class TrainingJobAssignmentService {
         int safeLimit = Math.min(100, Math.max(1, limit));
         Long count = jdbc.queryForObject("""
             select count(*) from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id
-             where ar.assignment_id = ? and lower(r.name) like ? escape '\\'
+             where ar.assignment_id = ? and eqms_fold(r.name) like eqms_fold(?) escape '\\'
             """, Long.class, id, like);
         long total = count == null ? 0 : count;
         List<Map<String, Object>> rows = TrainingRows.camel(jdbc.queryForList("""
             select r.id::text as id, r.name, coalesce(d.name, '') as department, ar.carried
               from training_job_assignment_roles ar join training_job_roles r on r.id = ar.job_role_id
               left join departments d on d.id = r.department_id
-             where ar.assignment_id = ? and lower(r.name) like ? escape '\\' order by ar.sort_order, r.id
+             where ar.assignment_id = ? and eqms_fold(r.name) like eqms_fold(?) escape '\\' order by ar.sort_order, r.id
              limit ? offset ?
             """, id, like, safeLimit, (long) (safePage - 1) * safeLimit));
         return Map.of("data", rows, "pagination", Map.of("page", safePage, "limit", safeLimit, "total", total,
@@ -301,23 +301,21 @@ public class TrainingJobAssignmentService {
         for (Map<String, Object> r : jdbc.queryForList("""
             select coalesce(r.topic_text, d.document_name) as title, d.document_number as code, r.annual_required, r.topic_text as match_name, d.document_number as match_number
               from app_users u join departments dp on lower(trim(dp.name)) = lower(trim(u.department))
-              join training_matrices m on m.department_id = dp.id join training_matrix_versions v on v.matrix_id = m.id and v.status = 'EFFECTIVE'
-              join training_matrix_rows r on r.version_id = v.id and r.all_employees left join documents d on d.id = r.document_id
-             where u.id = ? order by r.row_no
+              join training_effective_requirements r on r.department_id = dp.id and r.all_employees left join documents d on d.id = r.document_id
+             where u.id = ? order by r.factory desc, r.row_no
             """, personId)) {
             if (items.stream().anyMatch(i -> java.util.Objects.equals(i.get("title"), r.get("title")) && java.util.Objects.equals(i.get("code"), r.get("code")))) continue;
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("title", r.get("title"));
             item.put("code", r.get("code"));
             item.put("annualRequired", Boolean.TRUE.equals(r.get("annual_required")));
-            java.sql.Date done = lastDone(personId, (String) r.get("match_name"), (String) r.get("match_number"));
-            item.put("lastDone", done == null ? null : done.toLocalDate().toString());
+            putStanding(item, personId, (String) r.get("match_name"), (String) r.get("match_number"), Boolean.TRUE.equals(r.get("annual_required")));
             item.put("source", "ALL_EMPLOYEES");
             item.put("jobRoleName", "All employees");
             items.add(item);
         }
         addChosen(personId, items, chosen);
-        List<Map<String, Object>> missing = items.stream().filter(i -> i.get("lastDone") == null).toList();
+        List<Map<String, Object>> missing = items.stream().filter(TrainingJobAssignmentService::stillToTrain).toList();
         out.put("matrixMissing", matrixMissing);
         out.put("matrixVersionId", matrixVersionId);
         out.put("items", items);
@@ -349,16 +347,22 @@ public class TrainingJobAssignmentService {
         }
     }
 
-    /** The last day the person completed a training on a topic (by its name) or a document (by its number), voided records left out. */
-    private java.sql.Date lastDone(UUID personId, String topicName, String documentNumber) {
-        return jdbc.queryForObject("""
-            select max(rec.completed_on) from training_records rec left join training_record_voids v2 on v2.record_id = rec.id
-             where rec.person_user_id = ? and v2.id is null and ((?::text is not null and rec.document_number = ?) or (?::text is not null and training_topic_key(rec.topic_text) = training_topic_key(?)))
-            """, java.sql.Date.class, personId, documentNumber, documentNumber, topicName, topicName);
+    /** Where the person stands on a topic (by its name) or a document (by its number), by the one rule of training_requirement_state. */
+    private void putStanding(Map<String, Object> item, UUID personId, String topicName, String documentNumber, boolean annual) {
+        Map<String, Object> standing = jdbc.queryForMap("select status, last_done, last_revision, required_revision from training_requirement_state(?, ?, ?, ?)", personId, documentNumber, topicName, annual);
+        item.put("status", standing.get("status"));
+        item.put("lastDone", standing.get("last_done") == null ? null : standing.get("last_done").toString());
+        item.put("lastRevision", standing.get("last_revision"));
+        item.put("requiredRevision", standing.get("required_revision"));
+    }
+
+    /** What stops an assignment (SOP.0003 5.3.8): never trained, or not trained on the revision that needs it. A periodic training that is due is shown and does not stop it. */
+    static boolean stillToTrain(Map<String, Object> item) {
+        return "MISSING".equals(item.get("status")) || "UPDATE_NEEDED".equals(item.get("status"));
     }
 
     private Map<String, Object> eligibilityFor(UUID personId, UUID positionId, UUID department, List<Object[]> chosen) {
-        List<UUID> effective = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and v.status = 'EFFECTIVE'", UUID.class, department);
+        List<UUID> effective = jdbc.queryForList("select v.id from training_matrix_versions v join training_matrices m on m.id = v.matrix_id where m.department_id = ? and m.scope = 'DEPARTMENT' and v.status = 'EFFECTIVE'", UUID.class, department);
         Map<String, Object> out = new LinkedHashMap<>();
         // D-12: work suspended after a failed assessment is only shown here; it does not block the assignment.
         out.put("openSuspensions", jdbc.queryForObject("select count(*) from training_work_suspensions where person_user_id = ? and status = 'OPEN'", Integer.class, personId));
@@ -370,18 +374,15 @@ public class TrainingJobAssignmentService {
             return out;
         }
         List<Map<String, Object>> items = TrainingRows.camel(jdbc.queryForList("""
-            select * from (
-              select coalesce(r.topic_text, d.document_name) as title, d.document_number as code, r.annual_required,
-                     (select max(rec.completed_on) from training_records rec left join training_record_voids v2 on v2.record_id = rec.id
-                       where rec.person_user_id = ? and v2.id is null
-                         and ((d.document_number is not null and rec.document_number = d.document_number) or (r.topic_text is not null and training_topic_key(rec.topic_text) = training_topic_key(r.topic_text)))) as last_done
-                from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
-                left join documents d on d.id = r.document_id
-               where r.version_id = ?) x
-            """, personId, positionId, effective.getFirst()));
+            select coalesce(r.topic_text, d.document_name) as title, d.document_number as code, r.annual_required, st.status, st.last_done, st.last_revision, st.required_revision
+              from training_matrix_rows r join training_matrix_cells c on c.row_id = r.id and c.position_id = ?
+              left join documents d on d.id = r.document_id
+              cross join lateral training_requirement_state(?, d.document_number, r.topic_text, r.annual_required) st
+             where r.version_id = ?
+            """, positionId, personId, effective.getFirst()));
         for (Map<String, Object> i : items) i.put("source", "MATRIX");
         addChosen(personId, items, chosen);
-        List<Map<String, Object>> missing = items.stream().filter(i -> i.get("lastDone") == null).toList();
+        List<Map<String, Object>> missing = items.stream().filter(TrainingJobAssignmentService::stillToTrain).toList();
         out.put("matrixVersionId", effective.getFirst());
         out.put("items", items);
         out.put("complete", missing.isEmpty());
@@ -400,8 +401,7 @@ public class TrainingJobAssignmentService {
             item.put("title", row.get("title"));
             item.put("code", row.get("code"));
             item.put("annualRequired", false);
-            java.sql.Date done = lastDone(personId, (String) row.get("match_name"), (String) row.get("match_number"));
-            item.put("lastDone", done == null ? null : done.toLocalDate().toString());
+            putStanding(item, personId, (String) row.get("match_name"), (String) row.get("match_number"), false);
             item.put("source", "CHOSEN");
             items.add(item);
         }

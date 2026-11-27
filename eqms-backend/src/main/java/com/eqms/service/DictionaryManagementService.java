@@ -996,7 +996,7 @@ public class DictionaryManagementService {
         }
         List<Predicate> orPredicates = new java.util.ArrayList<>();
         for (jakarta.persistence.criteria.Path<String> field : fields) {
-            orPredicates.add(cb.like(cb.lower(field), "%" + normalizedSearch + "%"));
+            orPredicates.add(com.eqms.util.SearchText.like(cb, field, "%" + normalizedSearch + "%"));
         }
         predicates.add(cb.or(orPredicates.toArray(new Predicate[0])));
     }

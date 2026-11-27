@@ -874,7 +874,7 @@ export const documentApi = {
   createRevisionWithUpload: async (
     id: string,
     file: File | null,
-    data?: { changeDescription?: string; templateRevisionId?: string }
+    data?: { changeDescription?: string; templateRevisionId?: string; useEffectiveSource?: boolean }
   ) => {
     const response = await uploadFile(
       `${DOCUMENTS_ENDPOINT}/${id}/revisions/upload`,
@@ -883,6 +883,7 @@ export const documentApi = {
       {
         changeDescription: data?.changeDescription,
         templateRevisionId: data?.templateRevisionId,
+        useEffectiveSource: data?.useEffectiveSource ? "true" : undefined,
       }
     );
     clearDocumentDetailCaches(id);
@@ -1593,6 +1594,42 @@ export const documentApi = {
   /** POST /revisions/:revisionId/upload  upload file Ä‘Ã­nh kÃ¨m */
   uploadRevisionFile: async (revisionId: string, file: File) => {
     return uploadFile(`${REVISIONS_ENDPOINT}/${revisionId}/upload`, file);
+  },
+
+  /** Whether the next revision may start from the Word file of the Effective revision. */
+  getEffectiveSourceOption: async (documentId: string) => {
+    const response = await api.get<{ available: boolean; unavailableReason?: string | null; revisionNumber?: string | null }>(`${DOCUMENTS_ENDPOINT}/${documentId}/effective-source`);
+    return response.data;
+  },
+
+  /** Replaces the file of a Draft with a copy of the Effective revision's Word file. */
+  useEffectiveRevisionSource: async (revisionId: string) => {
+    const response = await api.post(`${REVISIONS_ENDPOINT}/${revisionId}/source-from-effective`);
+    return response.data;
+  },
+
+  getRevisionComparisonInfo: async (revisionId: string) => {
+    const response = await api.get<{ comparisonAvailable: boolean; unavailableReason?: string | null; baselineRevisionNumber?: string | null }>(`${REVISIONS_ENDPOINT}/${revisionId}/comparison-info`);
+    return response.data;
+  },
+
+  /** The revisions that are or were Effective that this one can be compared with; the Effective one first. */
+  getRevisionComparisonBaselines: async (revisionId: string) => {
+    const response = await api.get<{ revisionId: string; revisionNumber: string; statusCode: "EFFECTIVE" | "OBSOLETED"; effectiveDate?: string | null }[]>(`${REVISIONS_ENDPOINT}/${revisionId}/comparison-baselines`);
+    return response.data ?? [];
+  },
+
+  /** The two read-only viewers of the side-by-side comparison: the chosen revision and the one being worked on. */
+  getRevisionSideBySideConfig: async (revisionId: string, baselineId: string) => {
+    type Pane = { revisionId: string; revisionNumber: string; statusCode: string; sourceChecksum?: string | null; config: Record<string, unknown> };
+    const response = await api.get<{ baseline: Pane; current: Pane }>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/side-by-side-config`, { params: { baselineId, logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` } });
+    return response.data;
+  },
+
+  /** Read-only OnlyOffice config of the comparison with the Effective revision; the server makes the comparison first, so it can take a while. */
+  getRevisionComparisonConfig: async (revisionId: string, baselineId?: string) => {
+    const response = await api.get<Record<string, unknown>>(`${REVISIONS_ENDPOINT}/${revisionId}/onlyoffice/compare-config`, { params: { baselineId, logoUrl: `${getBrowserReachableApiBaseUrl()}/branding/logo` }, timeout: 200000 });
+    return response.data;
   },
 
   /** Session-authenticated: returns the full OnlyOffice editor config (document/editorConfig/token), already scoped to the caller's permitted mode by the backend. */

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr } from "@/i18n";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -37,12 +38,12 @@ export function ReportTemplateRevisionsView({ pendingApproval = false }: { pendi
   const location = useLocation();
   const drag = useTableDragScroll();
   const { openId, position, getRef, toggle, close } = usePortalDropdown();
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [filters, setFilters] = useState<Filters>(defaults);
-  const [updated, setUpdated] = useState({ from: "", to: "" });
-  const [sort, setSort] = useState<{ field: string; direction: "asc" | "desc" }>({ field: "lastChangedAt", direction: "desc" });
+  const [search, setSearch] = useViewState("ReportTemplateRevisionsView.search", "");
+  const [page, setPage] = useViewState("ReportTemplateRevisionsView.page", 1);
+  const [pageSize, setPageSize] = useViewState("ReportTemplateRevisionsView.pageSize", 10);
+  const [filters, setFilters] = useViewState<Filters>("ReportTemplateRevisionsView.filters", defaults);
+  const [updated, setUpdated] = useViewState("ReportTemplateRevisionsView.updated", { from: "", to: "" });
+  const [sort, setSort] = useViewState<{ field: string; direction: "asc" | "desc" }>("ReportTemplateRevisionsView.sort", { field: "lastChangedAt", direction: "desc" });
   const [result, setResult] = useState<ReportRevisionListPage>();
   const [sources, setSources] = useState<ReportSource[]>([]);
   const [loading, setLoading] = useState(true);

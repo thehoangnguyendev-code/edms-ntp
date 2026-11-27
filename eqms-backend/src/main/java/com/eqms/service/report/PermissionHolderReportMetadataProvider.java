@@ -18,7 +18,7 @@ public class PermissionHolderReportMetadataProvider implements ReportMetadataPro
     static {
         column("permissionCode", "Permission Code", "p.code");
         column("permission", "Permission", "p.name");
-        column("module", "Module", "coalesce(p.module_key, '')");
+        column("module", "Module", com.eqms.util.ModuleKeys.menuNameSql("p.module_key"));
         column("category", "Category", "coalesce(p.category, '')");
         column("employeeCode", "Employee Code", "u.employee_code");
         column("fullName", "Person", "u.full_name");
@@ -62,7 +62,7 @@ public class PermissionHolderReportMetadataProvider implements ReportMetadataPro
                 Map.of("code", "lastLoginFrom", "name", "Last sign-in from", "type", "DATE"),
                 Map.of("code", "lastLoginTo", "name", "Last sign-in to", "type", "DATE"));
     }
-    public Map<String, String> lookupColumns() { return Map.of("permission", "p.code", "module", "coalesce(p.module_key, '')", "status", "u.status", "department", "u.department"); }
+    public Map<String, String> lookupColumns() { return Map.of("permission", "p.code", "module", com.eqms.util.ModuleKeys.menuNameSql("p.module_key"), "status", "u.status", "department", "u.department"); }
     public Map<String, String> filterColumns() { return Map.of("permission", "permissionCode", "module", "module", "status", "status", "department", "department", "lastLoginFrom", "lastLoginAt", "lastLoginTo", "lastLoginAt"); }
 
     public Query query(UserAccount actor, List<String> scopes, Map<String, Object> filters) {
@@ -78,12 +78,12 @@ public class PermissionHolderReportMetadataProvider implements ReportMetadataPro
                 + "join app_users u on u.id=uap.user_id where true");
         String search = ReportQueryKit.text(filters.get("search"));
         if (!search.isBlank()) {
-            sql.append(" and (p.code ilike ? escape '\\' or p.name ilike ? escape '\\' or u.full_name ilike ? escape '\\' or u.username ilike ? escape '\\' or coalesce(u.employee_code,'') ilike ? escape '\\')");
+            sql.append(" and (eqms_fold(p.code) like eqms_fold(?) escape '\\' or eqms_fold(p.name) like eqms_fold(?) escape '\\' or eqms_fold(u.full_name) like eqms_fold(?) escape '\\' or eqms_fold(u.username) like eqms_fold(?) escape '\\' or eqms_fold(coalesce(u.employee_code,'')) like eqms_fold(?) escape '\\')");
             String term = ReportQueryKit.likeTerm(search);
             for (int i = 0; i < 5; i++) args.add(term);
         }
         Map<String, String> equals = new LinkedHashMap<>();
-        equals.put("permission", "p.code"); equals.put("module", "coalesce(p.module_key, '')"); equals.put("status", "u.status"); equals.put("department", "u.department");
+        equals.put("permission", "p.code"); equals.put("module", com.eqms.util.ModuleKeys.menuNameSql("p.module_key")); equals.put("status", "u.status"); equals.put("department", "u.department");
         ReportQueryKit.equalsFilters(sql, args, filters, equals);
         ReportQueryKit.dates(sql, args, filters, "lastLogin", "u.last_login_at::date");
         return new Query(sql.toString(), args);

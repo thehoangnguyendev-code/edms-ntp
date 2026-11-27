@@ -1,3 +1,4 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useFormDirty } from "@/hooks/useFormDirty";
 import React, { useEffect, useId, useMemo, useState } from "react";
@@ -78,7 +79,7 @@ const Field: React.FC<{
         </p>
       ) : (
         hint && (
-          <p id={noteId} className="mt-1 text-2xs text-slate-500 sm:text-xs">
+          <p id={noteId} className="mt-1.5 text-xs text-slate-500">
             {hint}
           </p>
         )
@@ -88,7 +89,7 @@ const Field: React.FC<{
 };
 
 const SEVERITY_OPTIONS: { label: string; value: AnnouncementSeverity }[] = [
-  { label: tr("Information"), value: "INFO" },
+  { get label() { return tr("Information"); }, value: "INFO" },
   { label: "Warning", value: "WARNING" },
   { label: "Critical", value: "CRITICAL" },
 ];
@@ -157,7 +158,7 @@ export const AnnouncementEditorView: React.FC = () => {
   // Back and the breadcrumb ask first when there is a change that was not saved (also the sidebar and a reload); the move after a successful Save is not a leave.
   const { isDirty } = useFormDirty(values, !loading);
   const { go, modal: leaveModal } = useLeaveGuard(isDirty, creating ? tr("New Announcement") : tr("Edit Announcement"), "the list");
-  const back = () => go(ROUTES.SETTINGS.ANNOUNCEMENTS);
+  const back = () => navigateBack(go, null, ROUTES.SETTINGS.ANNOUNCEMENTS);
   const breadcrumbs = useMemo(
     () =>
       creating
@@ -333,7 +334,7 @@ export const AnnouncementEditorView: React.FC = () => {
                     error={errors.endsAt}
                   />
                 </div>
-                <p className="mt-1.5 text-2xs text-slate-500 sm:text-xs">
+                <p className="mt-1.5 text-xs text-slate-500">
                   {tr("Times are in your browser's time zone.")}
                 </p>
               </div>
@@ -342,7 +343,7 @@ export const AnnouncementEditorView: React.FC = () => {
                   <span className="text-xs font-medium text-slate-700 sm:text-sm">
                     {tr("Switched on")}
                   </span>
-                  <p className="mt-0.5 text-2xs text-slate-500 sm:text-xs">
+                  <p className="mt-1.5 text-xs text-slate-500">
                     {tr("When turned off, notifications are saved but not displayed to the user.")}
                   </p>
                 </div>

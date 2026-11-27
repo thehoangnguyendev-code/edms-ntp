@@ -296,9 +296,9 @@ public class KnowledgeSharingService {
             }
             if (!q.isEmpty()) {
                 String like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-                p.add(cb.or(cb.like(cb.lower(root.get("fullName")), like, '\\'),
-                        cb.like(cb.lower(root.get("employeeCode")), like, '\\'),
-                        cb.like(cb.lower(root.get("username")), like, '\\')));
+                p.add(cb.or(com.eqms.util.SearchText.like(cb, root.get("fullName"), like, '\\'),
+                        com.eqms.util.SearchText.like(cb, root.get("employeeCode"), like, '\\'),
+                        com.eqms.util.SearchText.like(cb, root.get("username"), like, '\\')));
             }
             return cb.and(p.toArray(Predicate[]::new));
         };

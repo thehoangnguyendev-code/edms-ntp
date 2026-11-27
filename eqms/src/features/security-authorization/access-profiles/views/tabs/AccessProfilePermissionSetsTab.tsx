@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Search } from "lucide-react";
@@ -42,10 +43,10 @@ export const PermissionSetsTab: React.FC<{
   const [rows, setRows] = useState<PermissionSetResponse[]>([]);
   const [originalIds, setOriginalIds] = useState<string[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useViewState("PermissionSetsTab.search", "");
   const searchTerm = useDebounce(search, SEARCH_DEBOUNCE_MS);
   const [sort, setSort] = useState<{ key: SortKey; direction: DataTableSortDirection }>({ key: "name", direction: "asc" });
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useViewState("PermissionSetsTab.page", 1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

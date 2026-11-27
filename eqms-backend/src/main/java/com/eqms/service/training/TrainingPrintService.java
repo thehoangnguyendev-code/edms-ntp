@@ -133,7 +133,7 @@ public class TrainingPrintService {
                 if ("OK".equals(g.get("status"))) continue;
                 String last = g.get("lastDone") == null ? "never" : DateTimeFormatUtils.display(g.get("lastDone"));
                 body.add(new String[]{String.valueOf(++n), g.get("fullName") + (g.get("employeeCode") == null ? "" : " (" + g.get("employeeCode") + ")") + (g.get("positionName") == null ? "" : ", " + g.get("positionName")),
-                        (g.get("code") == null ? "" : g.get("code") + " ") + g.get("title"), ("MISSING".equals(g.get("status")) ? "Not trained" : "Annual training due") + "; last trained " + last});
+                        (g.get("code") == null ? "" : g.get("code") + " ") + g.get("title"), ("MISSING".equals(g.get("status")) ? "Not trained" : "UPDATE_NEEDED".equals(g.get("status")) ? "New revision not trained" : "Annual training due") + "; last trained " + last});
             }
             Map<String, Object> pg = (Map<String, Object>) r.get("pagination");
             if (page >= ((Number) pg.get("totalPages")).intValue()) break;

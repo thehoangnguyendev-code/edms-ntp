@@ -52,7 +52,7 @@ class NotificationRecipientsFoundationTest {
     @Test
     void everyKindHasAWordingAndIsEitherAContextOrAnAudience() {
         assertThat(NotificationRecipientRules.all()).extracting(NotificationRecipientRules.Rule::type)
-                .containsExactly("OWNER", "AUTHOR", "ASSIGNEE", "REVIEWER", "APPROVER", "RECIPIENT", "ACTOR", "AFFECTED_USERS", "ALL_USERS", "PERMISSION", "ROLE", "DEPARTMENT");
+                .containsExactly("OWNER", "AUTHOR", "CO_AUTHOR", "WORKFLOW_COORDINATOR", "ASSIGNEE", "REVIEWER", "APPROVER", "RECIPIENT", "ACTOR", "AFFECTED_USERS", "ALL_USERS", "PERMISSION", "ROLE", "DEPARTMENT");
         assertThat(NotificationRecipientRules.all()).allSatisfy(rule -> {
             assertThat(rule.label()).isNotBlank();
             assertThat(rule.description()).isNotBlank();

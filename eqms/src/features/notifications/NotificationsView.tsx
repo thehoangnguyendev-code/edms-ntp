@@ -39,18 +39,18 @@ import { tr, useLanguage } from "@/i18n";
 import { priorityColor } from "@/components/ui/badge/statusColors";
 
 /** The modules that send notifications, for the filter of the inbox (the names of the menu; the server finds every spelling of a module in the table). */
-const INBOX_MODULES = ["documents", "controlled-copies", "training", "reports", "access-review", "security", "backup", "audit-trail"];
+const INBOX_MODULES = ["self_service", "documents", "training", "reports", "audit-trail", "backup", "security", "system-admin"];
 /** The tab "High": the server takes several priorities separated by commas, and Critical is drawn like High. */
 const URGENT = "critical,high";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "all" },
-  { label: tr("Unread Only"), value: "unread" },
+  { get label() { return tr("Unread Only"); }, value: "unread" },
   { label: "Read Only", value: "read" },
 ];
 const PRIORITY_OPTIONS = [
   { label: "All", value: "all" },
-  { label: tr("Critical / High"), value: URGENT },
+  { get label() { return tr("Critical / High"); }, value: URGENT },
   { label: "Critical", value: "critical" },
   { label: "High", value: "high" },
   { label: "Medium", value: "medium" },

@@ -160,7 +160,7 @@ public class TrainingAssessmentLibraryService {
         StringBuilder where = new StringBuilder(" where 1=1");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.name) like ? escape '\\' or d.revision_number like ? escape '\\')");
+            where.append(" and (eqms_fold(d.code) like eqms_fold(?) escape '\\' or eqms_fold(d.name) like eqms_fold(?) escape '\\' or d.revision_number like ? escape '\\')");
             args.add(like); args.add(like); args.add(like);
         }
         TrainingListFilter extra = new TrainingListFilter().contains(more.get("updatedBy"), "u.full_name").equal("d.revision_number", more.get("revision"))
@@ -209,7 +209,7 @@ public class TrainingAssessmentLibraryService {
         StringBuilder where = new StringBuilder(" where d.status = 'EFFECTIVE'");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (lower(d.code) like ? escape '\\' or lower(d.name) like ? escape '\\')");
+            where.append(" and (eqms_fold(d.code) like eqms_fold(?) escape '\\' or eqms_fold(d.name) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like);
         }
         if (kind != null && Set.of("QUESTIONS", "CHECKLIST").contains(kind)) { where.append(" and d.kind = ?"); args.add(kind); }
@@ -234,7 +234,7 @@ public class TrainingAssessmentLibraryService {
         StringBuilder where = new StringBuilder(" where d.code = ?");
         if (search != null && !search.isBlank()) {
             String like = "%" + escape(search.trim().toLowerCase(Locale.ROOT)) + "%";
-            where.append(" and (d.revision_number like ? escape '\\' or lower(d.name) like ? escape '\\' or lower(u.full_name) like ? escape '\\')");
+            where.append(" and (d.revision_number like ? escape '\\' or eqms_fold(d.name) like eqms_fold(?) escape '\\' or eqms_fold(u.full_name) like eqms_fold(?) escape '\\')");
             args.add(like); args.add(like); args.add(like);
         }
         String from = " from training_assessment_defs d join app_users u on u.id = d.created_by";

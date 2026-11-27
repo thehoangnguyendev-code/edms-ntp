@@ -45,11 +45,11 @@ public final class SystemAnnouncementSpecifications {
         return (root, query, cb) -> {
             List<Predicate> where = new ArrayList<>();
             where.add(cb.or(
-                    cb.like(cb.lower(cb.coalesce(root.<String>get("announcementNumber"), "")), c.pattern(), ESCAPE),
-                    cb.like(cb.lower(root.get("title")), c.pattern(), ESCAPE),
-                    cb.like(cb.lower(root.get("message")), c.pattern(), ESCAPE),
-                    cb.like(cb.lower(cb.coalesce(root.<String>get("createdBy"), "")), c.pattern(), ESCAPE),
-                    cb.like(cb.lower(cb.coalesce(root.<String>get("updatedBy"), "")), c.pattern(), ESCAPE)));
+                    com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("announcementNumber"), ""), c.pattern(), ESCAPE),
+                    com.eqms.util.SearchText.like(cb, root.get("title"), c.pattern(), ESCAPE),
+                    com.eqms.util.SearchText.like(cb, root.get("message"), c.pattern(), ESCAPE),
+                    com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("createdBy"), ""), c.pattern(), ESCAPE),
+                    com.eqms.util.SearchText.like(cb, cb.coalesce(root.<String>get("updatedBy"), ""), c.pattern(), ESCAPE)));
             Predicate stateFilter = stateFilter(c, root, cb);
             if (stateFilter != null) {
                 where.add(stateFilter);

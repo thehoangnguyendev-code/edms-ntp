@@ -2,23 +2,27 @@ import { tr as __ariaTr } from "@/i18n";
 import { tr } from "@/i18n";
 import React, { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Briefcase, GraduationCap, ShieldCheck, User as UserIcon, UserCog } from "lucide-react";
+import { Briefcase, GraduationCap, History, ShieldCheck, User as UserIcon, UserCog } from "lucide-react";
 import { FormSection } from "@/components/ui/form/FormSection";
 import { TabNav } from "@/components/ui/tabs/TabNav";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { TabItem } from "@/components/ui/tabs/TabNav";
 import { IconUserCheck } from "@tabler/icons-react";
 
-export type ProfileTabId = "personal" | "employment" | "qualifications" | "account" | "security";
+export type ProfileTabId = "personal" | "employment" | "qualifications" | "account" | "security" | "audit";
 
 /** The five areas of a user record. The profile and the Add User screen show the same ones. */
 export const PROFILE_TABS: ReadonlyArray<{ id: ProfileTabId; label: string; icon: React.ElementType }> = [
-  { id: "personal", label: tr("Personal & Identity"), icon: UserIcon },
-  { id: "employment", label: tr("Employment Record"), icon: Briefcase },
-  { id: "qualifications", label: tr("Training & Competency"), icon: GraduationCap },
-  { id: "account", label: tr("Account Status"), icon: IconUserCheck },
-  { id: "security", label: tr("Security & Compliance"), icon: ShieldCheck },
+  { id: "personal", get label() { return tr("Personal & Identity"); }, icon: UserIcon },
+  { id: "employment", get label() { return tr("Employment Record"); }, icon: Briefcase },
+  { id: "qualifications", get label() { return tr("Training & Competency"); }, icon: GraduationCap },
+  { id: "account", get label() { return tr("Account Status"); }, icon: IconUserCheck },
+  { id: "security", get label() { return tr("Security & Compliance"); }, icon: ShieldCheck },
 ];
+
+/** The sixth tab of a saved profile: everything the user did (not part of Add User). */
+export const AUDIT_PROFILE_TAB = { id: "audit" as const, get label() { return tr("Audit Trail"); }, icon: History };
+const ALL_PROFILE_TABS: ReadonlyArray<{ id: ProfileTabId; label: string; icon: React.ElementType }> = [...PROFILE_TABS, AUDIT_PROFILE_TAB];
 
 /** `TabItem`s for the five areas; `extra` adds a description or a count to a tab. */
 export const profileTabItems = (extra?: (id: ProfileTabId) => Partial<TabItem>): TabItem[] =>
@@ -50,14 +54,14 @@ export const ProfileTabLayout: React.FC<ProfileTabLayoutProps> = ({
   panelBadge,
   children,
 }) => {
-  const current = PROFILE_TABS.find((tab) => tab.id === activeTab) ?? PROFILE_TABS[0];
+  const current = ALL_PROFILE_TABS.find((tab) => tab.id === activeTab) ?? PROFILE_TABS[0];
   const Icon = current.icon;
   const isWide = useMediaQuery("(min-width: 1024px)");
 
   // The content comes in from the side the tab sits on: a tab further down the list brings it up from below, one further up brings it down
   // from above. The first view does not animate, and a person who asks for less motion only gets the fade.
   const reduceMotion = useReducedMotion();
-  const order = PROFILE_TABS.findIndex((tab) => tab.id === activeTab);
+  const order = ALL_PROFILE_TABS.findIndex((tab) => tab.id === activeTab);
   const previousOrder = useRef(order);
   const hasMounted = useRef(false);
   const direction = order >= previousOrder.current ? 1 : -1;
@@ -87,7 +91,7 @@ export const ProfileTabLayout: React.FC<ProfileTabLayoutProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       >
-        {activeTab === "qualifications" ? (
+        {activeTab === "qualifications" || activeTab === "audit" ? (
           // Its three lists are cards of their own; an outer card would put a card in a card.
           children
         ) : (

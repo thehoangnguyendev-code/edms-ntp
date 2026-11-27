@@ -61,7 +61,7 @@ export const RetentionControl: React.FC<RetentionControlProps> = ({ years, saved
           </p>
         </div>
       </div>
-      {changed && <p className="mt-2 text-xs text-slate-500">{tr("You are asked to confirm this change when you press Save.")}</p>}
+      {changed && <p className="mt-1.5 text-xs text-slate-500">{tr("You are asked to confirm this change when you press Save.")}</p>}
     </div>
   );
 };

@@ -7,13 +7,13 @@ import type { Revision } from "./types";
 import { revisionRowActions, type RevisionRowAction, type RevisionRowActionOptions } from "./revisionRowActions";
 
 const ROW_ACTION_ITEMS: Record<RevisionRowAction, { icon: React.ReactNode; label: string }> = {
-  edit: { icon: <IconPencilMinus className="h-4 w-4" />, label: tr("Edit Revision") },
-  view: { icon: <IconInfoCircle className="h-4 w-4" />, label: tr("View Details") },
-  review: { icon: <IconCheck className="h-4 w-4" />, label: tr("Review Revision") },
-  approve: { icon: <IconChecks className="h-4 w-4" />, label: tr("Approve Revision") },
-  training: { icon: <IconChecklist className="h-4 w-4" />, label: tr("Training Revision") },
-  controlledCopy: { icon: <FileStack className="h-4 w-4" />, label: tr("Request Controlled Copy") },
-  publish: { icon: <IconArrowUpRight className="h-4 w-4" />, label: tr("Publish Revision") },
+  edit: { icon: <IconPencilMinus className="h-4 w-4" />, get label() { return tr("Edit Revision"); } },
+  view: { icon: <IconInfoCircle className="h-4 w-4" />, get label() { return tr("View Details"); } },
+  review: { icon: <IconCheck className="h-4 w-4" />, get label() { return tr("Review Revision"); } },
+  approve: { icon: <IconChecks className="h-4 w-4" />, get label() { return tr("Approve Revision"); } },
+  training: { icon: <IconChecklist className="h-4 w-4" />, get label() { return tr("Training Revision"); } },
+  controlledCopy: { icon: <FileStack className="h-4 w-4" />, get label() { return tr("Request Controlled Copy"); } },
+  publish: { icon: <IconArrowUpRight className="h-4 w-4" />, get label() { return tr("Publish Revision"); } },
 };
 
 /** The row's entries for RevisionTableView, which shows the menu button only when there is at least one. */

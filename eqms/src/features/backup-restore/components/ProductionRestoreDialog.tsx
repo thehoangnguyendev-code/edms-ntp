@@ -24,8 +24,8 @@ const PAGE_SIZE = 5;
 const CONTENT_SHORT: Record<string, string> = { DATABASE: "Database", OBJECT_STORE: "Files", CONFIGURATION: "Settings" };
 
 const PART_LABEL: Record<BackupPart, { label: string; hint: string }> = {
-  DATABASE: { label: "Database", hint: tr("Replaces the live database. It contains the settings.") },
-  OBJECT_STORE: { label: "Files", hint: tr("Adds the files the store is missing. Nothing is overwritten.") },
+  DATABASE: { label: "Database", get hint() { return tr("Replaces the live database. It contains the settings."); } },
+  OBJECT_STORE: { label: "Files", get hint() { return tr("Adds the files the store is missing. Nothing is overwritten."); } },
 };
 
 const ORDER: BackupPart[] = ["DATABASE", "OBJECT_STORE"];

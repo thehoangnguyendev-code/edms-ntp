@@ -37,15 +37,15 @@ const FIELD_INPUT =
   "w-full h-9 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500";
 
 const PAGE_OPTIONS = [
-  { label: tr("Every page"), value: "ALL" },
-  { label: tr("First page only"), value: "FIRST" },
+  { get label() { return tr("Every page"); }, value: "ALL" },
+  { get label() { return tr("First page only"); }, value: "FIRST" },
 ];
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
   <div className="min-w-0">
     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">{label}</label>
     {children}
-    {hint && <p className="mt-1 text-2xs text-slate-400 break-words">{hint}</p>}
+    {hint && <p className="mt-1.5 text-xs text-slate-500 break-words">{hint}</p>}
   </div>
 );
 
@@ -270,8 +270,8 @@ export const StampFields: React.FC<{
 const QR_POSITION_OPTIONS = [
   { label: "Top left", value: "TOP_LEFT" },
   { label: "Top right", value: "TOP_RIGHT" },
-  { label: tr("Bottom left"), value: "BOTTOM_LEFT" },
-  { label: tr("Bottom right"), value: "BOTTOM_RIGHT" },
+  { get label() { return tr("Bottom left"); }, value: "BOTTOM_LEFT" },
+  { get label() { return tr("Bottom right"); }, value: "BOTTOM_RIGHT" },
 ];
 
 export interface QrCodeValue {
@@ -316,12 +316,12 @@ export const QrCodeFields: React.FC<{
         disabled={disabled}
       />
     </div>
-    <p className="text-2xs text-slate-500">
+    <p className="!mt-1.5 text-xs text-slate-500">
       {positioned
         ? tr("Placed by hand on the preview. Choosing a corner puts it back there.")
         : tr("Drag the code on the preview to place it anywhere on the page; drag a corner handle to resize it.")}
     </p>
-    <p className="text-2xs text-slate-500">
+    <p className="!mt-1.5 text-xs text-slate-500">
       {value.qrCodePages === "FIRST"
         ? tr("First page only: a whole copy can be matched from its first page, but loose pages scanned together cannot be sorted back into their copies.")
         : tr("Every page: each page carries its own code with its page number, so pages of many copies scanned as one file are sorted back into their copies and into order.")}
@@ -341,7 +341,7 @@ export const ShowToggles: React.FC<{
         <div key={item.label} className="flex items-center justify-between gap-3 py-2 sm:border-b sm:border-slate-100">
           <div className="min-w-0">
             <span className="text-xs sm:text-sm font-medium text-slate-900 break-words">{item.label}</span>
-            {item.note && <p className="text-2xs text-slate-400 mt-0.5 break-words">{item.note}</p>}
+            {item.note && <p className="text-xs text-slate-500 mt-0.5 break-words">{item.note}</p>}
           </div>
           <Switch checked={item.checked} onChange={item.onChange} size="sm" disabled={disabled} />
         </div>

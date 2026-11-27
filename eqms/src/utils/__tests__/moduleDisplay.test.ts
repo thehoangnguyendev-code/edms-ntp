@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { NAV_CONFIG } from "@/app/navigation";
+import { MODULE_OPTIONS } from "@/features/settings/notifications/labels";
 import { canonicalModuleKey, knownModuleName, moduleDisplayName, moduleOrderFromMenu, moduleSelectOptions, sortModulesLikeMenu } from "../moduleDisplay";
 
 describe("a module is shown by the name of its menu", () => {
@@ -21,14 +23,17 @@ describe("a module is shown by the name of its menu", () => {
     ["settings", "Application Settings"],
     ["system-admin", "System Administration"],
     ["self_service", "Self-Service"],
-    ["CONTROLLED_COPIES", "Controlled Copies"],
-    ["ACCESS_REVIEW", "Access Review"],
-    ["SECURITY_REVIEW", "Access Review & Audit Trail Review"],
+    ["CONTROLLED_COPIES", "Document Control"],
+    ["Controlled Copy", "Document Control"],
+    ["Document Review", "Document Control"],
+    ["KNOWLEDGE", "Self-Service"],
+    ["System", "System Administration"],
+    ["ACCESS_REVIEW", "Security & Authorization"],
+    ["AUDIT_TRAIL", "Audit Trail"],
   ])("%s -> %s", (key, name) => expect(moduleDisplayName(key)).toBe(name));
 
   it("a key that is not named yet is made readable, and nothing is shown as Other", () => {
     expect(moduleDisplayName("some_new-module")).toBe("Some New Module");
-    expect(moduleDisplayName("System")).toBe("System");
     expect(moduleDisplayName("")).toBe("Other");
     expect(moduleDisplayName(null)).toBe("Other");
   });
@@ -52,10 +57,19 @@ describe("a module is shown by the name of its menu", () => {
   });
 });
 
+describe("the Module filter of Notifications Administration", () => {
+  it("offers every level-1 menu of the sidebar, by its name and in its order", () => {
+    expect(MODULE_OPTIONS.slice(1).map((option) => option.label)).toEqual(NAV_CONFIG.map((item) => item.label));
+    // each name is what the module is shown as, and each option has a key of its own
+    MODULE_OPTIONS.slice(1).forEach((option) => expect(moduleDisplayName(option.value)).toBe(option.label));
+    expect(new Set(MODULE_OPTIONS.map((option) => option.value)).size).toBe(MODULE_OPTIONS.length);
+  });
+});
+
 describe("module order like the sidebar", () => {
   it("reads the order of the top-level items of the menu, with Dashboard after Self-Service", () => {
     const menu = [{ id: "notifications" }, { id: "self-service" }, { id: "doc-control" }, { id: "report" }, { id: "unknown-item" }, { id: "settings" }];
-    expect(moduleOrderFromMenu(menu)).toEqual(["Notifications", "Self-Service", "Dashboard", "Document Control", "Reports", "Application Settings"]);
+    expect(moduleOrderFromMenu(menu)).toEqual(["Notifications", "Self-Service", "Document Control", "Reports", "Application Settings"]);
   });
 
   it("sorts the chips in menu order and puts a module the menu does not know last", () => {

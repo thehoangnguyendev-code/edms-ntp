@@ -132,7 +132,7 @@ public class NotificationAdministrationService {
         List<Row> shown = rows.stream()
                 .filter(r -> channel.isEmpty() || channel.equals(r.channel()))
                 .filter(r -> !StringUtils.hasText(q.status()) || statusKey(q.status()).equals(r.status()))
-                .filter(r -> !StringUtils.hasText(q.module()) || (r.module() != null && key(q.module()).equals(key(r.module()))))
+                .filter(r -> !StringUtils.hasText(q.module()) || (r.module() != null && com.eqms.util.ModuleKeys.same(q.module(), r.module())))
                 .filter(r -> !StringUtils.hasText(q.type()) || q.type().equalsIgnoreCase(r.type()))
                 .filter(r -> !StringUtils.hasText(q.priority()) || q.priority().trim().equalsIgnoreCase(r.priority()))
                 .filter(r -> usageMatches(q.usage(), r))

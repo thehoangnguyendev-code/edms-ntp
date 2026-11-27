@@ -10,7 +10,7 @@ import { useServerTable } from '@/features/settings/shared/hooks/useServerTable'
 import { ReportListToolbar, pickerDateToIso, type ReportSelectFilter } from '@/features/report/shared/ReportListToolbar';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { displayDateTime } from '@/utils/format';
-import { moduleDisplayName } from '@/utils/moduleDisplay';
+import { moduleDisplayName, moduleSelectOptions } from '@/utils/moduleDisplay';
 import { readableCode } from '@/utils/machineText';
 import { notificationApi, type NotificationDeliveryFailure } from '@/services/api/notifications';
 import { tr, trFormat } from "@/i18n";
@@ -79,7 +79,7 @@ export const DeliveryFailuresTable: React.FC = () => {
   const filters: ReportSelectFilter[] = [
     { id: 'status', label: 'Status', value: status, options: [{ label: tr('All statuses'), value: '' }, ...STATUS_OPTIONS], onChange: reset(setStatus) },
     { id: 'channel', label: 'Channel', value: channel, options: [{ label: tr('All channels'), value: '' }, ...CHANNEL_OPTIONS], onChange: reset(setChannel) },
-    { id: 'eventDomain', label: tr('Event Domain'), value: eventDomain, options: [{ label: tr('All event domains'), value: '' }, ...domains.map((d) => ({ label: moduleDisplayName(d), value: d }))], onChange: reset(setEventDomain) },
+    { id: 'eventDomain', label: tr('Event Domain'), value: eventDomain, options: [{ label: tr('All event domains'), value: '' }, ...moduleSelectOptions(domains)], onChange: reset(setEventDomain) },
   ];
 
   return (

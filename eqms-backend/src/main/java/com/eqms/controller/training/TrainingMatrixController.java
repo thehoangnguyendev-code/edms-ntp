@@ -18,7 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/training")
 public class TrainingMatrixController {
-    public record CreateMatrixRequest(UUID departmentId) {}
+    public record CreateMatrixRequest(UUID departmentId, Boolean factory) {}
 
     private final TrainingMatrixService matrices;
     private final CurrentUserService users;
@@ -46,7 +46,7 @@ public class TrainingMatrixController {
     }
 
     @PostMapping("/matrices")
-    public ResponseEntity<?> create(@RequestBody CreateMatrixRequest request) { return ResponseEntity.ok(matrices.createMatrix(users.requireCurrentUser(), request.departmentId())); }
+    public ResponseEntity<?> create(@RequestBody CreateMatrixRequest request) { return ResponseEntity.ok(matrices.createMatrix(users.requireCurrentUser(), request.departmentId(), Boolean.TRUE.equals(request.factory()))); }
 
     @GetMapping("/matrices/{id}")
     public ResponseEntity<?> get(@PathVariable UUID id) { return ResponseEntity.ok(matrices.matrix(users.requireCurrentUser(), id)); }
@@ -75,6 +75,9 @@ public class TrainingMatrixController {
 
     @PostMapping("/matrix-versions/{id}/submit")
     public ResponseEntity<?> submit(@PathVariable UUID id, @RequestBody SubmitRequest request) { return ResponseEntity.ok(matrices.submit(users.requireCurrentUser(), id, request)); }
+
+    @PostMapping("/matrix-versions/{id}/review")
+    public ResponseEntity<?> review(@PathVariable UUID id, @RequestBody SubmitRequest request) { return ResponseEntity.ok(matrices.review(users.requireCurrentUser(), id, request)); }
 
     @PostMapping("/matrix-versions/{id}/approve")
     public ResponseEntity<?> approve(@PathVariable UUID id, @RequestBody SignRequest request) { return ResponseEntity.ok(matrices.approve(users.requireCurrentUser(), id, request)); }

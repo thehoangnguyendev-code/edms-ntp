@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
@@ -71,7 +72,7 @@ export const DocumentTypesView: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+  const [statusFilter, setStatusFilter] = useViewState<"All" | "Active" | "Inactive">("DocumentTypesView.statusFilter", "All");
   const [modifiedFromDate, setModifiedFromDate] = useState("");
   const [modifiedToDate, setModifiedToDate] = useState("");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["status", "date"]));
@@ -698,7 +699,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
             readOnly={shortCodeLocked}
             disabled={isSaving || shortCodeLocked}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-500">
             {shortCodeLocked
                   ? tr("Locked — a document number has already been issued for this Document Type, so the code is frozen into existing document / revision numbers.")
               : tr("Uppercase letters and digits (hyphen, underscore, slash allowed; no spaces or dots), up to 20 characters. Appears in every document number (e.g. SOP.0006) and cannot be changed once the first document number is issued.")}
@@ -723,7 +724,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
             disabled={isSaving || isEdit}
           />
           {isEdit && (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-slate-500">
               {tr("Issued Sequence is managed automatically when a document number is allocated.")}
             </p>
           )}
@@ -738,7 +739,7 @@ const DocumentTypeModal: React.FC<DocumentTypeModalProps> = ({ isOpen, onClose, 
             placeholder={tr("Use default (Standard)")}
             disabled={isSaving}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-500">
             {tr("Only formats composed of Document Type + Serial Number are eligible for real numbering today. Manage the full catalog under Document Name Formats.")}
           </p>
         </div>

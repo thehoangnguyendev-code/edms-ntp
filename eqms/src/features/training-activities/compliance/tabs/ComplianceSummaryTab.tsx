@@ -10,7 +10,7 @@ import { usePrintAction, type RegisterPrint } from "../usePrintAction";
 import { tr, trFormat } from "@/i18n";
 
 const percent = (value: number | null | undefined) => (value == null ? "—" : `${Math.round(value)}%`);
-const BAR = { ok: "bg-emerald-500", due: "bg-amber-500", missing: "bg-red-500" };
+const BAR = { ok: "bg-emerald-500", due: "bg-amber-500", updateNeeded: "bg-amber-300", missing: "bg-red-500" };
 
 /** One number of the department with its colour bar on the left; the number is big because the page is read for it. */
 function Stat({ value, label, tone }: { value: ReactNode; label: string; tone: "green" | "red" | "amber" | "slate" }) {
@@ -33,11 +33,11 @@ function Chip({ label, value }: { label: string; value: number }) {
 
 /** Trained, annual training due and not trained as shares of the requirement lines of one position, drawn from the numbers the server counted. */
 function CoverageBar({ position }: { position: TrainingComplianceSummaryPosition }) {
-  const total = position.ok + position.due + position.missing;
-  const label = `${tr("Trained")}: ${position.ok}, ${tr("Annual training due")}: ${position.due}, ${tr("Not trained")}: ${position.missing}`;
+  const total = position.ok + position.due + (position.updateNeeded ?? 0) + position.missing;
+  const label = `${tr("Trained")}: ${position.ok}, ${tr("Annual training due")}: ${position.due}, ${tr("New revision not trained")}: ${position.updateNeeded ?? 0}, ${tr("Not trained")}: ${position.missing}`;
   return (
     <div role="img" aria-label={label} title={label} className="flex h-2 w-full gap-px overflow-hidden rounded-full bg-slate-100">
-      {total > 0 && ([["ok", position.ok], ["due", position.due], ["missing", position.missing]] as const).filter(([, n]) => n > 0).map(([key, n]) => (
+      {total > 0 && ([["ok", position.ok], ["due", position.due], ["updateNeeded", position.updateNeeded ?? 0], ["missing", position.missing]] as const).filter(([, n]) => n > 0).map(([key, n]) => (
         <span key={key} className={BAR[key]} style={{ width: `${(n / total) * 100}%` }} />
       ))}
     </div>
@@ -78,6 +78,7 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment, 
     { id: "people", header: "People", label: "People", headerClassName: "text-right", cellClassName: "text-right tabular-nums", cell: (p) => p.people },
     { id: "coverage", header: "Coverage", label: "Coverage", cellClassName: "min-w-48", cell: (p) => <CoverageBar position={p} /> },
     { id: "missing", header: tr("Not trained"), label: tr("Not trained"), headerClassName: "text-right", cellClassName: (p) => `text-right tabular-nums ${p.missing > 0 ? "text-red-700" : ""}`, cell: (p) => p.missing },
+    { id: "updateNeeded", header: tr("New revision"), label: tr("New revision"), headerClassName: "text-right", cellClassName: "text-right tabular-nums", cell: (p) => p.updateNeeded ?? 0 },
     { id: "due", header: "Due", label: "Due", headerClassName: "text-right", cellClassName: "text-right tabular-nums", cell: (p) => p.due },
     { id: "met", header: "Met", label: "Met", headerClassName: "text-right", cellClassName: (p) => `text-right font-semibold tabular-nums ${(p.percentTrained ?? 100) < 60 ? "text-red-700" : "text-slate-900"}`, cell: (p) => percent(p.percentTrained) },
   ];
@@ -92,14 +93,16 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment, 
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{tr("This department has no effective training matrix, so there is nothing to measure yet.")}</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-5">
             <Stat value={percent(summary.percentTrained)} label={trFormat("requirements met · {ok} / {required}", { ok: summary.ok, required: summary.required })} tone="green" />
             <Stat value={summary.missing} label={tr("not trained")} tone={summary.missing > 0 ? "red" : "slate"} />
+            <Stat value={summary.updateNeeded ?? 0} label={tr("new revision not trained")} tone={(summary.updateNeeded ?? 0) > 0 ? "amber" : "slate"} />
             <Stat value={summary.due} label={tr("annual training due")} tone={summary.due > 0 ? "amber" : "slate"} />
             <Stat value={summary.overdueActivities} label={tr("overdue trainings")} tone={summary.overdueActivities > 0 ? "red" : "slate"} />
           </div>
           <ul className="flex flex-wrap gap-2" aria-label={tr("Also needs attention")}>
             <Chip label={tr("Without a Work Position")} value={summary.peopleWithoutPosition} />
+            <Chip label={tr("Department not in the dictionary")} value={summary.peopleWithoutDepartment ?? 0} />
             <Chip label={tr("Open reviews")} value={summary.openReviews ?? 0} />
             <Chip label={tr("Beyond SOP window")} value={summary.linesBeyondSopWindow ?? 0} />
             <Chip label={tr("Due in 14 days")} value={summary.dueSoonActivities} />
@@ -117,7 +120,7 @@ export function ComplianceSummaryTab({ departmentId, departments, onDepartment, 
                     <span className="min-w-0 text-sm font-medium text-slate-900">{p.name}</span>
                     <span className={`shrink-0 text-sm font-semibold tabular-nums ${(p.percentTrained ?? 100) < 60 ? "text-red-700" : "text-slate-900"}`}>{percent(p.percentTrained)}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-500">{trFormat("{count} people", { count: p.people })} · {p.missing} {tr("not trained")} · {p.due} {tr("Due").toLowerCase()}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{trFormat("{count} people", { count: p.people })} · {p.missing} {tr("not trained")} · {p.updateNeeded ?? 0} {tr("new revision not trained")} · {p.due} {tr("Due").toLowerCase()}</p>
                   <div className="mt-2"><CoverageBar position={p} /></div>
                 </li>
               ))}

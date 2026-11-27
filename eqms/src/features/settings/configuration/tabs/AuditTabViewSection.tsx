@@ -6,10 +6,10 @@ import { tr } from "@/i18n";
 type TimelineStyle = NonNullable<GeneralConfig['appearance']['auditTabTimelineStyle']>;
 
 const STYLES: { value: TimelineStyle; label: string; description: string }[] = [
-  { value: 'RAIL', label: tr('Rail and cards'), description: tr('A line on the left, a card for each record. The easiest to read.') },
-  { value: 'CENTER', label: tr('Centre spine'), description: tr('Records alternate left and right of a centre line, the time opposite.') },
-  { value: 'COMPACT', label: tr('Compact log'), description: tr('One line for each record; hover for the details. Shows the most records.') },
-  { value: 'SCROLL_LIT', label: tr('Date column'), description: tr('A big date on the left; the line lights up as you scroll.') },
+  { value: 'RAIL', get label() { return tr('Rail and cards'); }, get description() { return tr('A line on the left, a card for each record. The easiest to read.'); } },
+  { value: 'CENTER', get label() { return tr('Centre spine'); }, get description() { return tr('Records alternate left and right of a centre line, the time opposite.'); } },
+  { value: 'COMPACT', get label() { return tr('Compact log'); }, get description() { return tr('One line for each record; hover for the details. Shows the most records.'); } },
+  { value: 'SCROLL_LIT', get label() { return tr('Date column'); }, get description() { return tr('A big date on the left; the line lights up as you scroll.'); } },
 ];
 
 /** A few strokes that show the shape of each look, so that the choice is made by seeing it. */

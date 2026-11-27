@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button/Button";
 import { DateTimePicker } from "@/components/ui/datetime-picker/DateTimePicker";
 import { ESignatureModal } from "@/components/ui/esign-modal/ESignatureModal";
 import { FormModal } from "@/components/ui/modal/FormModal";
+import { Radio } from "@/components/ui/radio";
 import { cn } from "@/components/ui/utils";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
 import { tr } from "@/i18n";
@@ -13,7 +14,7 @@ import { tr } from "@/i18n";
 interface SuspendModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (reason: string, suspendedUntil: string, signatureToken: string) => void | Promise<void>;
+  onConfirm: (reason: string, suspendedUntil: string, signatureToken: string, suspensionKind?: "LONG_LEAVE" | "OTHER") => void | Promise<void>;
   userName: string;
 }
 
@@ -25,26 +26,34 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
 }) => {
   const [reason, setReason] = useState("");
   const [suspendedUntil, setSuspendedUntil] = useState("");
+  const [kind, setKind] = useState<"LONG_LEAVE" | "OTHER" | "">("");
   const [error, setError] = useState("");
+  const [kindError, setKindError] = useState("");
   const [eSignOpen, setESignOpen] = useState(false);
 
   const resetForm = () => {
     setReason("");
     setSuspendedUntil("");
+    setKind("");
     setError("");
+    setKindError("");
     setESignOpen(false);
   };
 
   const handleConfirm = () => {
     if (!reason.trim()) {
-      setError("Suspension reason is required");
+      setError(tr("Suspension reason is required"));
+      return;
+    }
+    if (!kind) {
+      setKindError(tr("Choose the kind of suspension"));
       return;
     }
     setESignOpen(true);
   };
 
   const handleESignConfirm = async (signatureToken: string) => {
-    await onConfirm(reason.trim(), suspendedUntil, signatureToken);
+    await onConfirm(reason.trim(), suspendedUntil, signatureToken, kind || undefined);
     resetForm();
   };
 
@@ -86,13 +95,32 @@ export const SuspendModal: React.FC<SuspendModalProps> = ({
           </div>
 
           <div>
+            <p className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">{tr("Kind of suspension")} <span className="text-red-500">*</span></p>
+            <div role="radiogroup" aria-label={tr("Kind of suspension")} className="space-y-1.5">
+              {([["LONG_LEAVE", tr("Long leave: the person is away for a long time (leave, maternity, sickness)")], ["OTHER", tr("Other reason: security or administration")]] as const).map(([value, label]) => (
+                <Radio
+                  key={value}
+                  name="suspension-kind"
+                  value={value}
+                  checked={kind === value}
+                  onChange={() => { setKind(value); setKindError(""); }}
+                  label={label}
+                  className="items-start [&>input]:mt-0.5"
+                />
+              ))}
+            </div>
+            {kindError && <p role="alert" className="mt-1.5 text-xs text-red-600">{kindError}</p>}
+            <p className="mt-1.5 text-xs text-slate-500">{tr("When a person returns after a long leave, Training Management is told so that a training review can be opened (SOP.0003 5.1.1).")}</p>
+          </div>
+
+          <div>
             <DateTimePicker
-              label={tr("Suspended Until (optional)")}
+              label={tr("Đình chỉ đến ngày (không bắt buộc)")}
               value={suspendedUntil}
               onChange={setSuspendedUntil}
               placeholder={tr("Leave empty for indefinite")}
             />
-            <p className="text-2xs sm:text-xs font-normal text-slate-400 flex items-center gap-1">{tr("Leave empty to suspend indefinitely")}</p>
+            <p className="mt-1.5 text-xs text-slate-500 font-normal flex items-center gap-1">{tr("Leave empty to suspend indefinitely")}</p>
           </div>
 
           <WarningBanner

@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from"react-router-dom";
 import { Button } from"@/components/ui/button/Button";
@@ -107,7 +108,7 @@ export const AddUserView: React.FC = () => {
     mfaRequiredByAdmin: false,
   });
  const [isUsernameEdited, setIsUsernameEdited] = useState(false);
- const [activeTab, setActiveTab] = useState<ProfileTabId>("personal");
+ const [activeTab, setActiveTab] = useViewState<ProfileTabId>("AddUserView.activeTab", "personal");
 
  // Education & Certifications -- same multi-entry table + Add/Edit/Delete UI as the Detail/Edit
  // screen's Training & Competency tab (QualificationsTab, reused directly below). The user

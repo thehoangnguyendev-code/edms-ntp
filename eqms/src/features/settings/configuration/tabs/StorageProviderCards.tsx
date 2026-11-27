@@ -18,7 +18,7 @@ const PROVIDERS: ReadonlyArray<{ value: Provider; name: string; text: string; ic
     name: 'MinIO',
     text: 'S3 API object storage. The system enables Versioning and Object Lock Compliance on the bucket.',
     icon: <IconDatabase className="h-5 w-5" />,
-    badge: <Badge semantic="success">{tr("Recommended")}</Badge>,
+    get badge() { return <Badge semantic="success">{tr("Recommended")}</Badge>; },
   },
   {
     value: 'nas',
@@ -31,7 +31,7 @@ const PROVIDERS: ReadonlyArray<{ value: Provider; name: string; text: string; ic
     name: 'Local Server',
     text: 'A folder on the application server. It is not part of the backup, so a lost disk loses the files.',
     icon: <IconServer className="h-5 w-5" />,
-    badge: <Badge semantic="warning">{tr("Not backed up")}</Badge>,
+    get badge() { return <Badge semantic="warning">{tr("Not backed up")}</Badge>; },
   },
 ];
 

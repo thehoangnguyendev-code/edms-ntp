@@ -18,8 +18,8 @@ import { day, localized } from "../shared/trainingLabels";
 import { tr, trFormat } from "@/i18n";
 import { statusColor } from "@/components/ui/badge/statusColors";
 
-const STATUS_LABEL: Record<string, string> = localized({ DRAFT: "Draft", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" });
-const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ label, value }))];
+const STATUS_LABEL: Record<string, string> = localized({ DRAFT: "Draft", PENDING_REVIEW: "Pending Review", PENDING_APPROVAL: "Pending Approval", EFFECTIVE: "Effective", OBSOLETED: "Obsoleted" });
+const STATUS_OPTIONS = [{ label: "All", value: "" }, ...Object.keys(STATUS_LABEL).map((value) => ({ value, get label() { return STATUS_LABEL[value]; } }))];
 const rowName = (r: TrainingMatrixRow) => (r.topicText ? r.topicText : `${r.documentNumber} — ${r.documentName}`);
 type Diff = Awaited<ReturnType<typeof trainingMatrixApi.compare>>;
 

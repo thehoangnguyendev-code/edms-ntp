@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import React, { useEffect, useMemo, useState } from "react";
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
@@ -38,11 +39,11 @@ type TabId = "general" | "permissions" | "permission-sets" | "workflow" | "users
 
 const TABS: TabItem[] = [
   { id: "general", label: "General" },
-  { id: "users", label: tr("Assigned Users") },
+  { id: "users", get label() { return tr("Assigned Users"); } },
   { id: "permissions", label: "Permissions" },
-  { id: "permission-sets", label: tr("Shared Permission Sets (Advanced)") },
-  { id: "workflow", label: tr("Workflow Eligibility (Advanced)") },
-  { id: "audit", label: tr("Audit Trail") },
+  { id: "permission-sets", get label() { return tr("Shared Permission Sets (Advanced)"); } },
+  { id: "workflow", get label() { return tr("Workflow Eligibility (Advanced)"); } },
+  { id: "audit", get label() { return tr("Audit Trail"); } },
 ];
 
 export type AssignKind = "permissionSets" | "workflowRoles" | "users";
@@ -63,7 +64,7 @@ export const AccessProfileDetailView: React.FC = () => {
   const { requestSignature, signatureModal } = useSecurityESign();
 
   const isEditRoute = location.pathname.endsWith("/edit");
-  const [activeTab, setActiveTab] = useState<TabId>("general");
+  const [activeTab, setActiveTab] = useViewState<TabId>("AccessProfileDetailView.activeTab", "general");
   const [profile, setProfile] = useState<AccessProfileDetailResponse | null>(null);
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

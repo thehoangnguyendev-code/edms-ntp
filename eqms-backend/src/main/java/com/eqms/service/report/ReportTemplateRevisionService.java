@@ -181,7 +181,7 @@ public class ReportTemplateRevisionService {
         int safeLimit = Math.max(1, Math.min(limit, MAX_PAGE));
         int safePage = Math.max(1, page);
         StringBuilder where = new StringBuilder(" from report_template_revisions r left join app_users c on c.id=r.created_by_user_id left join app_users a on a.id=r.approved_by_user_id"
-                + " where r.definition_code=? and (coalesce(r.change_reason,'') ilike ? or cast(r.revision as text) ilike ? or "+LABEL_SQL+" ilike ? or coalesce(c.full_name,'') ilike ? or coalesce(a.full_name,'') ilike ?)");
+                + " where r.definition_code=? and (eqms_fold(coalesce(r.change_reason,'')) like eqms_fold(?) or eqms_fold(cast(r.revision as text)) like eqms_fold(?) or "+"eqms_fold("+LABEL_SQL+") like eqms_fold(?) or eqms_fold(coalesce(c.full_name,'')) like eqms_fold(?) or eqms_fold(coalesce(a.full_name,'')) like eqms_fold(?))");
         List<Object> args = new ArrayList<>(List.of(code, pattern, pattern, pattern, pattern, pattern));
         if (status != null && !status.isBlank() && !"ALL".equals(status)) { where.append(" and r.status=?"); args.add(status); }
         long total = Objects.requireNonNullElse(jdbc.queryForObject("select count(*)" + where, Long.class, args.toArray()), 0L);
@@ -228,8 +228,8 @@ public class ReportTemplateRevisionService {
         int safePage = Math.max(1, page);
         StringBuilder where = new StringBuilder(" from report_template_revisions r join report_definitions d on d.code=r.definition_code"
                 + " left join app_users c on c.id=r.created_by_user_id left join app_users l on l.id=r.last_changed_by_user_id left join app_users a on a.id=r.approved_by_user_id"
-                + " where d.deleted_at is null and (d.code ilike ? or coalesce(r.snapshot->>'displayName', d.display_name) ilike ? or " + LABEL_SQL + " ilike ?"
-                + " or coalesce(c.full_name,'') ilike ? or coalesce(l.full_name,'') ilike ? or coalesce(r.change_reason,'') ilike ?)");
+                + " where d.deleted_at is null and (eqms_fold(d.code) like eqms_fold(?) or eqms_fold(coalesce(r.snapshot->>'displayName', d.display_name)) like eqms_fold(?) or eqms_fold(" + LABEL_SQL + ") like eqms_fold(?)"
+                + " or eqms_fold(coalesce(c.full_name,'')) like eqms_fold(?) or eqms_fold(coalesce(l.full_name,'')) like eqms_fold(?) or eqms_fold(coalesce(r.change_reason,'')) like eqms_fold(?))");
         List<Object> args = new ArrayList<>(List.of(pattern, pattern, pattern, pattern, pattern, pattern));
         if (status != null && !status.isBlank() && !"ALL".equals(status)) { where.append(" and r.status=?"); args.add(status); }
         if ("YES".equals(gmp)) where.append(" and ").append(GMP_SQL);

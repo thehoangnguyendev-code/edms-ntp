@@ -55,6 +55,8 @@ const openItems = async () => fireEvent.click(await screen.findByRole("tab", { n
 const totalField = () => screen.getByLabelText("Total Score") as HTMLInputElement;
 
 beforeEach(() => {
+  // the page keeps its open tab for the browser tab (useViewState): each test starts without that memory
+  window.sessionStorage.clear();
   window.matchMedia = window.matchMedia ?? ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false }) as MediaQueryList);
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   Object.values(api).forEach((f) => f.mockReset());

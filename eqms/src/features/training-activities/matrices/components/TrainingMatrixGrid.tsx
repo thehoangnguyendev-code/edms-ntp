@@ -19,9 +19,9 @@ const keyOf = (r: TrainingMatrixRow) => (r.topicText ? `T${r.topicText.trim().re
 
 /** The three groups of rows of APD.0011 (SOP.0003 5.3.1): the training of the whole factory, of the department, and the SOP for each Work Position. */
 const GROUPS: { id: TrainingMatrixRow["rowGroup"]; title: string }[] = [
-  { id: "FACTORY_GENERAL", title: tr("General training of the whole factory") },
-  { id: "DEPARTMENT_GENERAL", title: tr("General training of the department") },
-  { id: "SOP", title: tr("SOP for each Work Position") },
+  { id: "FACTORY_GENERAL", get title() { return tr("General training of the whole factory"); } },
+  { id: "DEPARTMENT_GENERAL", get title() { return tr("General training of the department"); } },
+  { id: "SOP", get title() { return tr("SOP for each Work Position"); } },
 ];
 
 const rowCode = (r: TrainingMatrixRow) => (r.topicText ? "" : r.documentNumber) ?? "";
@@ -46,13 +46,15 @@ const STICKY_TITLE = { left: W_NO + W_CODE };
  * heading, and "Annual training required (Yes / No)". Rows are in the three groups of SOP.0003 5.3.1. The first three columns and the headings stay in
  * view while the table scrolls; pointing at a cell lights its row and its position so that the crossing is easy to read.
  */
-export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onToggle, onAnnual, onRemove, onAllEmployees, onLock, canLock, lockedPositionIds, baseline, baselineNo }: {
+export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onToggle, onAnnual, onRemove, onAllEmployees, onLock, onGmp, canLock, lockedPositionIds, baseline, baselineNo }: {
   rows: TrainingMatrixRow[];
   positions: TrainingPosition[];
   editing: boolean;
   onToggle: (index: number, positionId: string) => void;
   onAnnual: (index: number, annual: boolean) => void;
   onRemove: (index: number) => void;
+  /** Quality Assurance marks a row as the GMP training a trainer must have had. */
+  onGmp?: (index: number, value: boolean) => void;
   /** Ticks or unticks the column All employees of a row (a row that Quality Assurance requires cannot be unticked). */
   onAllEmployees?: (index: number, value: boolean) => void;
   /** Quality Assurance locks a row for all employees (the head of department cannot take it out) or unlocks it. */
@@ -184,7 +186,7 @@ export function TrainingMatrixGrid({ rows, positions: allPositions, editing, onT
                     <MotionRow key={keyOf(x.row)} className="group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={expandTransition}>
                       <TableMarkup.Cell style={STICKY_NO} className="w-8 min-w-8 md:w-12 md:min-w-12 md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-center text-xs tabular-nums text-slate-500 group-hover:bg-emerald-50">{expandContent(<div className="py-1.5">{x.index + 1}</div>)}</TableMarkup.Cell>
                       <TableMarkup.Cell style={STICKY_CODE} className="w-[84px] min-w-[84px] md:w-[120px] md:min-w-[120px] md:sticky z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="py-1.5">{rowCode(x.row)}</div>)}</TableMarkup.Cell>
-                      <TableMarkup.Cell style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky md:shadow-[6px_0_8px_-6px_rgba(15,23,42,0.28)] z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-900 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="whitespace-normal py-1.5 leading-snug">{x.row.locked && <span className="mr-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">{tr("Required by QA")}</span>}{editing && canLock && x.row.allEmployees && onLock && <button type="button" onClick={() => onLock(x.index, !x.row.locked)} className="mr-1.5 rounded-full border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">{x.row.locked ? tr("Unlock") : tr("Lock for QA")}</button>}{change?.kind === "added" && <span className="mr-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">{tr("New")}</span>}{rowName(x.row)}</div>)}</TableMarkup.Cell>
+                      <TableMarkup.Cell style={STICKY_TITLE} className="w-36 min-w-36 md:w-[260px] md:min-w-[260px] md:sticky md:shadow-[6px_0_8px_-6px_rgba(15,23,42,0.28)] z-20 border-b border-r border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-900 md:px-3 md:text-xs group-hover:bg-emerald-50">{expandContent(<div className="whitespace-normal py-1.5 leading-snug">{x.row.locked && <span className="mr-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">{tr("Required by QA")}</span>}{editing && canLock && x.row.allEmployees && onLock && <button type="button" onClick={() => onLock(x.index, !x.row.locked)} className="mr-1.5 rounded-full border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">{x.row.locked ? tr("Unlock") : tr("Lock for QA")}</button>}{x.row.gmp && <span className="mr-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">{tr("GMP topic")}</span>}{editing && canLock && onGmp && <button type="button" onClick={() => onGmp(x.index, !x.row.gmp)} className="mr-1.5 rounded-full border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-50">{x.row.gmp ? tr("Not a GMP topic") : /gmp/i.test(rowName(x.row)) ? tr("Mark as GMP topic (suggested)") : tr("Mark as GMP topic")}</button>}{change?.kind === "added" && <span className="mr-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">{tr("New")}</span>}{rowName(x.row)}</div>)}</TableMarkup.Cell>
                       <TableMarkup.Cell className="border-b border-r border-slate-200 bg-blue-50/40 p-0 text-center group-hover:bg-blue-50">
                         {expandContent(editing && (!x.row.locked || canLock) ? (
                           <button type="button" role="checkbox" aria-checked={Boolean(x.row.allEmployees)} aria-label={trFormat("All employees: {code} {name}", { code: rowCode(x.row), name: rowName(x.row) })} onClick={() => onAllEmployees?.(x.index, !x.row.allEmployees)}

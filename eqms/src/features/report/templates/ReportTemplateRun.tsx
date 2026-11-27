@@ -528,7 +528,7 @@ export function ReportTemplateRun({
                     key.current = undefined;
                   }}
                 />
-                <p className="text-xs text-slate-500">
+                <p className="!mt-1.5 text-xs text-slate-500">
                   {tr("The report is made from your current access and is listed in Report Run History when it is ready.")}
                   {template.runNeedsSignature ? ` ${tr("It is signed electronically when you generate it; you give the reason in the signature window.")}` : ""}
                 </p>

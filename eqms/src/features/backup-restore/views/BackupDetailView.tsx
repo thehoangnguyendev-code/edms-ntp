@@ -1,3 +1,5 @@
+import { navigateBack } from "@/app/navigation/backNavigation";
+import { useViewState } from "@/hooks/useViewState";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge/Badge";
@@ -58,8 +60,8 @@ export const BackupDetailView: React.FC = () => {
   const [rehearsing, setRehearsing] = useState(false);
   const [rehearseReason, setRehearseReason] = useState("");
   const [rehearseBusy, setRehearseBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<MainTab>("general");
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>("verifications");
+  const [activeTab, setActiveTab] = useViewState<MainTab>("BackupDetailView.activeTab", "general");
+  const [activeSubTab, setActiveSubTab] = useViewState<SubTab>("BackupDetailView.activeSubTab", "verifications");
 
   useEffect(() => {
     let active = true;
@@ -112,7 +114,7 @@ export const BackupDetailView: React.FC = () => {
   };
 
   const parent = { label: tr("Backup History"), path: ROUTES.BACKUP_RESTORE.BACKUPS };
-  const back = () => navigate(ROUTES.BACKUP_RESTORE.BACKUPS);
+  const back = () => navigateBack(navigate, null, ROUTES.BACKUP_RESTORE.BACKUPS);
 
   if (error) {
     return (

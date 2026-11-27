@@ -10,7 +10,7 @@ import { Popover } from "@/components/ui/popover/Popover";
 import { cn } from "@/components/ui/utils";
 import { CONTROL_STATE_CLASSES } from "@/components/ui/controlState";
 import { knowledgeApi } from "@/services/api/knowledge";
-import { tr, trFormat } from "@/i18n";
+import { tr, trFormat, getCatalogLanguage } from "@/i18n";
 
 type SelectOption = { label: string; value: string };
 type DepartmentOption = SelectOption & { businessUnit?: string };
@@ -130,17 +130,17 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
 
   const authorDisplayValue = useMemo(
     () => getOptionLabel(authorOptions ?? [], formData.author),
-    [authorOptions, formData.author],
+    [authorOptions, formData.author, getCatalogLanguage()],
   );
 
   const businessUnitDisplayValue = useMemo(
     () => getOptionLabel(businessUnitOptions ?? [], formData.businessUnit),
-    [businessUnitOptions, formData.businessUnit],
+    [businessUnitOptions, formData.businessUnit, getCatalogLanguage()],
   );
 
   const departmentDisplayValue = useMemo(
     () => getOptionLabel(filteredDepartmentOptions, formData.department) || getOptionLabel(departmentOptions, formData.department),
-    [departmentOptions, filteredDepartmentOptions, formData.department],
+    [departmentOptions, filteredDepartmentOptions, formData.department, getCatalogLanguage()],
   );
 
   // The Knowledge Base is decided by the default Knowledge Categories Hierarchy's determinator field
@@ -170,11 +170,11 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
       formData.knowledgeBase ||
       "—"
     );
-  }, [knowledgeField, businessUnitOptions, departmentOptions, documentTypeOptions, filteredDepartmentOptions, formData]);
+  }, [knowledgeField, businessUnitOptions, departmentOptions, documentTypeOptions, filteredDepartmentOptions, formData, getCatalogLanguage()]);
 
   const documentTypeDisplayValue = useMemo(
     () => getOptionLabel(documentTypeOptions ?? [], formData.type),
-    [documentTypeOptions, formData.type],
+    [documentTypeOptions, formData.type, getCatalogLanguage()],
   );
 
   const subTypeDisplayOptions = useMemo(() => {

@@ -14,16 +14,16 @@ import { tr, trFormat } from "@/i18n";
 
 const OPTION_TEXT: Record<DocumentControlVisibilityChoice, { label: string; description: string }> = {
   NAMED_IN_FLOW: {
-    label: tr("Only records where the person is named"),
-    description: tr("The default. Documents and Revisions where the person is named in the flow, and the copies of those revisions."),
+    get label() { return tr("Only records where the person is named"); },
+    get description() { return tr("The default. Documents and Revisions where the person is named in the flow, and the copies of those revisions."); },
   },
   DEPARTMENT: {
-    label: tr("Records of the person's department"),
-    description: tr("Adds every Document and Revision of the person's own Department, drafts included (read-only)."),
+    get label() { return tr("Records of the person's department"); },
+    get description() { return tr("Adds every Document and Revision of the person's own Department, drafts included (read-only)."); },
   },
   VIEW_EVERYTHING: {
-    label: tr("All records"),
-    description: tr("Every Document, Revision and Copy of every department, drafts included (read-only)."),
+    get label() { return tr("All records"); },
+    get description() { return tr("Every Document, Revision and Copy of every department, drafts included (read-only)."); },
   },
 };
 

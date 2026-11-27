@@ -4,8 +4,8 @@ import { Badge } from '../../ui/badge/Badge';
 import { systemEnvironmentApi, type DeploymentEnvironment } from '@/services/api/systemEnvironment';
 
 const LABEL: Record<Exclude<DeploymentEnvironment, 'PROD'>, { text: string; title: string; color: 'blue' | 'amber' }> = {
-  DEV: { text: 'DEV', title: tr('Development environment. Data here is not a GMP record.'), color: 'blue' },
-  TEST: { text: 'TEST', title: tr('Validation environment. Synthetic data only; not a GMP record.'), color: 'amber' },
+  DEV: { text: 'DEV', get title() { return tr('Development environment. Data here is not a GMP record.'); }, color: 'blue' },
+  TEST: { text: 'TEST', get title() { return tr('Validation environment. Synthetic data only; not a GMP record.'); }, color: 'amber' },
 };
 
 let cached: DeploymentEnvironment | undefined;

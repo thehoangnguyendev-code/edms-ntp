@@ -63,7 +63,7 @@ public class AuthorizationResourceLookupService {
         int capped = Math.max(1, Math.min(limit, 50));
         String text = search == null ? "" : search.trim();
         String sql = "select id::text, (" + t[1] + ") as label, (" + t[2] + ") as state from " + t[0]
-                + (text.isEmpty() ? "" : " where (" + t[1] + ") ilike ?") + " order by 2 desc limit " + capped;
+                + (text.isEmpty() ? "" : " where eqms_fold(" + t[1] + ") like eqms_fold(?)") + " order by 2 desc limit " + capped;
         return text.isEmpty()
                 ? jdbc.query(sql, (rs, n) -> new Found(rs.getString(1), rs.getString(2), rs.getString(3)))
                 : jdbc.query(sql, (rs, n) -> new Found(rs.getString(1), rs.getString(2), rs.getString(3)), "%" + text.replace("%", "\\%").replace("_", "\\_") + "%");

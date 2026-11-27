@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { tr as __ariaTr } from "@/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
@@ -37,11 +38,11 @@ type DetailTab =
   "information" | "recipient" | "document" | "timeline" | "audit";
 
 const DETAIL_TABS: TabItem[] = [
-  { id: "information", label: tr("General Information") },
-  { id: "recipient", label: tr("Recipient & Validity") },
+  { id: "information", get label() { return tr("General Information"); } },
+  { id: "recipient", get label() { return tr("Recipient & Validity"); } },
   { id: "document", label: "Document" },
   { id: "timeline", label: "Timeline" },
-  { id: "audit", label: tr("Audit Trail") },
+  { id: "audit", get label() { return tr("Audit Trail"); } },
 ];
 
 /** Detail view for one Uncontrolled Copy. Server capabilities remain the authority for every file/action request. */
@@ -54,7 +55,7 @@ export const UncontrolledCopyDetailView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<DetailTab>("information");
+  const [activeTab, setActiveTab] = useViewState<DetailTab>("UncontrolledCopyDetailView.activeTab", "information");
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   const { runAction, openFile, busyId, signatureModal } =
     useUncontrolledCopyActions(reload);

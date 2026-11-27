@@ -1,4 +1,4 @@
-import { tr as __ariaTr } from "@/i18n";
+import { tr as __ariaTr, getCatalogLanguage } from "@/i18n";
 ﻿import React from 'react';
 import { SecurityConfig } from '../types';
 import { Checkbox } from '@/components/ui/checkbox/Checkbox';
@@ -11,9 +11,9 @@ import { ConfigHistory } from './ConfigHistory';
 import type { SecurityTabId } from './securityTabs';
 
 const ALL_TABS = [
-  { id: 'password-rules', label: tr('Password Rules'), icon: IconPasswordUser },
-  { id: 'sessions-accounts', label: tr('Sessions & Accounts'), icon: IconShieldLock },
-  { id: 'network-access', label: tr('Network Access'), icon: IconNetwork },
+  { id: 'password-rules', get label() { return tr('Password Rules'); }, icon: IconPasswordUser },
+  { id: 'sessions-accounts', get label() { return tr('Sessions & Accounts'); }, icon: IconShieldLock },
+  { id: 'network-access', get label() { return tr('Network Access'); }, icon: IconNetwork },
   HISTORY_TAB,
 ] as const;
 
@@ -47,7 +47,7 @@ const headingClass = 'mb-3 text-sm font-semibold text-slate-900';
 
 export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, activeTab: activeTabProp, onTabChange, savedConfig, networkPanel, networkChanged, onNetworkReset }) => {
   const [ownTab, setOwnTab] = React.useState<SecurityTabId>('password-rules');
-  const tabs = React.useMemo(() => ALL_TABS.filter((tab) => tab.id !== 'network-access' || networkPanel), [networkPanel]);
+  const tabs = React.useMemo(() => ALL_TABS.filter((tab) => tab.id !== 'network-access' || networkPanel), [networkPanel, getCatalogLanguage()]);
   const requested = activeTabProp ?? ownTab;
   const activeTab = tabs.some((tab) => tab.id === requested) ? requested : tabs[0].id;
   const selectTab = (tab: SecurityTabId) => { setOwnTab(tab); onTabChange?.(tab); };
@@ -101,7 +101,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={8}
                   max={128}
                 />
-                <p className="mt-1 text-xs text-slate-500">{tr("Minimum: 8 characters")}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("Minimum: 8 characters")}</p>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={0}
                   max={64}
                 />
-                <p className="mt-1 text-xs text-slate-500">{tr("Number of different characters required. 0 = not enforced.")}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("Number of different characters required. 0 = not enforced.")}</p>
               </div>
               <div>
                 <label className={labelClass}>{tr("Maximum Repeated Characters in a Row")}</label>
@@ -151,7 +151,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                   min={0}
                   max={10}
                 />
-                <p className="mt-1 text-xs text-slate-500">{tr("E.g. 2 rejects \"aaa\". 0 = not enforced.")}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{tr("E.g. 2 rejects \"aaa\". 0 = not enforced.")}</p>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ config, onChange, acti
                     max={1440}
                     step={1}
                   />
-                  <p className="mt-1 text-xs text-slate-500">{tr("Minimum: 1 minute. Maximum: 1440 minutes.")}</p>
+                  <p className="mt-1.5 text-xs text-slate-500">{tr("Minimum: 1 minute. Maximum: 1440 minutes.")}</p>
                 </div>
               </div>
             )}

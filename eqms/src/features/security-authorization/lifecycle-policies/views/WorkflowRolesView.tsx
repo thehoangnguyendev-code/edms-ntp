@@ -1,3 +1,4 @@
+import { useViewState } from "@/hooks/useViewState";
 import { ClearFiltersButton } from "@/components/ui/filter/ClearFiltersButton";
 import { ConfiguredDesktopFilters } from '@/components/ui/filter/ConfiguredDesktopFilters';
 import { WarningBanner } from "@/components/ui/banner/WarningBanner";
@@ -124,28 +125,28 @@ export const WorkflowRolesView = React.forwardRef<WorkflowRolesViewHandle>((_pro
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<WorkflowRoleFormState | null>(null);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [updatedFrom, setUpdatedFrom] = useState("");
-  const [updatedTo, setUpdatedTo] = useState("");
+  const [search, setSearch] = useViewState("WorkflowRolesView.search", "");
+  const [moduleFilter, setModuleFilter] = useViewState("WorkflowRolesView.moduleFilter", "ALL");
+  const [typeFilter, setTypeFilter] = useViewState("WorkflowRolesView.typeFilter", "ALL");
+  const [statusFilter, setStatusFilter] = useViewState("WorkflowRolesView.statusFilter", "ALL");
+  const [createdFrom, setCreatedFrom] = useViewState("WorkflowRolesView.createdFrom", "");
+  const [createdTo, setCreatedTo] = useViewState("WorkflowRolesView.createdTo", "");
+  const [updatedFrom, setUpdatedFrom] = useViewState("WorkflowRolesView.updatedFrom", "");
+  const [updatedTo, setUpdatedTo] = useViewState("WorkflowRolesView.updatedTo", "");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["module", "type", "status"]),
   );
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useViewState("WorkflowRolesView.pagination", {
     page: 1,
     limit: 10,
     total: 0,
     totalPages: 0,
   });
-  const [sort, setSort] = useState<{
+  const [sort, setSort] = useViewState<{
     field: SortField;
     direction: "asc" | "desc";
-  }>({ field: "displayOrder", direction: "asc" });
+  }>("WorkflowRolesView.sort", { field: "displayOrder", direction: "asc" });
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
 
   React.useLayoutEffect(() => {
@@ -910,7 +911,7 @@ const WorkflowRoleForm: React.FC<{
         className={inputClass}
       />
       {form.id && (
-        <p className="mt-1 text-2xs text-slate-400">
+        <p className="mt-1.5 text-xs text-slate-500">
           {tr("Code is immutable once created. Rename the role through Label.")}
         </p>
       )}

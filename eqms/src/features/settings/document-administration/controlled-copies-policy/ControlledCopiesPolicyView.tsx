@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch/Switch";
 import { Checkbox } from "@/components/ui/checkbox/Checkbox";
 import { FullPageLoading } from "@/components/ui/loading/Loading";
 import { FormSection } from "@/components/ui/form/FormSection";
-import { IconFileTypePdf } from "@tabler/icons-react";
+import { IconFileTypePdf, IconDownload, IconEye, IconPrinter, IconUsersShare } from "@tabler/icons-react";
 import { FormModal } from "@/components/ui/modal/FormModal";
 import { useToast } from "@/components/ui/toast/Toast";
 import { controlledCopiesPolicy as controlledCopiesPolicyBreadcrumbs } from "@/components/ui/breadcrumb/breadcrumbs/settings";
@@ -56,8 +56,8 @@ import { tr, trFormat } from "@/i18n";
 type PolicyTabKey = "policy" | "markings";
 
 const POLICY_TABS: TabItem[] = [
-  { id: "policy", label: tr("Distribution & Lifecycle") },
-  { id: "markings", label: tr("PDF Markings") },
+  { id: "policy", get label() { return tr("Distribution & Lifecycle"); } },
+  { id: "markings", get label() { return tr("PDF Markings"); } },
 ];
 
 type MarkingTabKey = "ISSUED" | ControlledCopyStatusMarkingKey;
@@ -66,9 +66,9 @@ const MARKING_TABS: {
   key: MarkingTabKey;
   label: string;
 }[] = [
-  { key: "ISSUED", label: tr("Distributed Copy") },
-  { key: "OBSOLETED", label: "Obsoleted" },
-  { key: "CLOSED_CANCELLED", label: tr("Closed - Cancelled") },
+  { key: "ISSUED", get label() { return tr("Distributed Copy"); } },
+  { key: "OBSOLETED", get label() { return tr("Obsoleted"); } },
+  { key: "CLOSED_CANCELLED", get label() { return tr("Closed - Cancelled"); } },
 ];
 
 interface PolicyState {
@@ -196,24 +196,24 @@ const DURATION_UNIT_OPTIONS: {
   example: string;
 }[] = [
   {
-    label: "Hours",
+    get label() { return tr("Hours"); },
     value: "HOURS",
-    example: "e.g. 24 Hours → the link stops working 1 day after the e-mail is sent",
+    get example() { return tr("e.g. 24 Hours → the link stops working 1 day after the e-mail is sent"); },
   },
   {
-    label: "Days",
+    get label() { return tr("Days"); },
     value: "DAYS",
-    example: "e.g. 30 Days → the link stops working 1 month after the e-mail is sent",
+    get example() { return tr("e.g. 30 Days → the link stops working 1 month after the e-mail is sent"); },
   },
   {
-    label: "Weeks",
+    get label() { return tr("Weeks"); },
     value: "WEEKS",
-    example: "e.g. 2 Weeks → the link stops working 14 days after the e-mail is sent",
+    get example() { return tr("e.g. 2 Weeks → the link stops working 14 days after the e-mail is sent"); },
   },
   {
-    label: "Months",
+    get label() { return tr("Months"); },
     value: "MONTHS",
-    example: "e.g. 6 Months → the link stops working half a year after the e-mail is sent",
+    get example() { return tr("e.g. 6 Months → the link stops working half a year after the e-mail is sent"); },
   },
 ];
 
@@ -308,51 +308,100 @@ const SessionLengthField: React.FC<{
     minutes > SESSION_MAX_MINUTES;
   return (
     <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,12rem)]">
-        <div className="min-w-0">
-          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 capitalize">
-            {tr("Session length")}
-          </label>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={Number.isFinite(shown) ? shown : ""}
-            disabled={disabled}
-            onChange={(e) => {
-              const value =
-                e.target.value === "" ? NaN : Number(e.target.value);
-              onChange(
-                Number.isFinite(value)
-                  ? Math.round(value * (unit === "HOURS" ? 60 : 1))
-                  : 0,
-              );
-            }}
-            className={`w-full h-9 px-3 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-500 ${
-              invalid ? "border-red-300 bg-red-50" : "border-slate-200"
-            }`}
-          />
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="viewer-session-length" className="text-xs sm:text-sm text-slate-700">
+          {tr("Each viewing session of an external recipient lasts")}
+        </label>
+        <input
+          id="viewer-session-length"
+          type="number"
+          min={1}
+          step={1}
+          value={Number.isFinite(shown) ? shown : ""}
+          disabled={disabled}
+          onChange={(e) => {
+            const value =
+              e.target.value === "" ? NaN : Number(e.target.value);
+            onChange(
+              Number.isFinite(value)
+                ? Math.round(value * (unit === "HOURS" ? 60 : 1))
+                : 0,
+            );
+          }}
+          className={`h-9 w-20 rounded-lg border px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500 ${
+            invalid ? "border-red-300 bg-red-50" : "border-slate-200"
+          }`}
+        />
         <Select
-          label={tr("Unit")}
+          className="w-28"
           value={unit}
           onChange={(v) => setUnit(v as "MINUTES" | "HOURS")}
           options={[
-            { label: "Minutes", value: "MINUTES" },
-            { label: "Hours", value: "HOURS" },
+            { label: tr("Minutes"), value: "MINUTES" },
+            { label: tr("Hours"), value: "HOURS" },
           ]}
           enableSearch={false}
           disabled={disabled}
         />
       </div>
-      <p
-        className={`mt-1.5 text-2xs ${invalid ? "text-red-600" : "text-slate-400"}`}
-      >
-        {trFormat("Between {min} minutes and 8 hours ({max} minutes). Currently {current} minutes. Default: 2 hours.", { min: SESSION_MIN_MINUTES, max: SESSION_MAX_MINUTES, current: minutes })}
+      <p className={`mt-1.5 text-xs ${invalid ? "text-red-600" : "text-slate-500"}`}>
+        {trFormat("From {min} minutes to 8 hours. Default: 2 hours.", { min: SESSION_MIN_MINUTES })}
       </p>
     </div>
   );
 };
+
+/** How many times an allowed action can be done with one controlled copy. */
+const UseLimit: React.FC<{
+  action: string;
+  once: boolean;
+  onChange: (once: boolean) => void;
+  disabled?: boolean;
+}> = ({ action, once, onChange, disabled }) => (
+  <div className="flex flex-wrap items-center gap-2">
+    <span className="text-xs sm:text-sm text-slate-700">{tr("Times allowed for each copy")}</span>
+    <div aria-disabled={disabled || undefined} className={disabled ? "pointer-events-none opacity-60" : undefined}>
+      <TabNav
+        variant="pill"
+        className="w-60 p-0.5 [&_[role=tab]]:py-1 [&_[role=tab]_span]:!text-xs [&_[role=tab]_span]:!normal-case"
+        ariaLabel={`${action}: ${tr("Times allowed for each copy")}`}
+        tabs={[
+          { id: "UNLIMITED", label: tr("Unlimited") },
+          { id: "ONCE", label: tr("Only once") },
+        ]}
+        activeTab={once ? "ONCE" : "UNLIMITED"}
+        onChange={(id) => {
+          if (!disabled) onChange(id === "ONCE");
+        }}
+      />
+    </div>
+  </div>
+);
+
+/** One thing the policy allows or not: what it is and its switch on one line, and its own settings under it while it is allowed. */
+const AllowanceRow: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  children?: React.ReactNode;
+}> = ({ icon, title, description, checked, onChange, disabled, children }) => (
+  <div className="px-4 py-3">
+    <div className="flex items-center gap-3">
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${checked ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-slate-900 break-words">{title}</p>
+        <p className="text-xs text-slate-500 mt-0.5 break-words">{description}</p>
+      </div>
+      <Switch checked={checked} onChange={onChange} size="sm" disabled={disabled} />
+    </div>
+    {checked && children && <div className="mt-3 border-t border-dashed border-slate-200 pt-3 sm:ml-12">{children}</div>}
+  </div>
+);
 
 const SwitchRow: React.FC<{
   label: string;
@@ -367,7 +416,7 @@ const SwitchRow: React.FC<{
         {label}
       </span>
       {note && (
-        <p className="text-2xs sm:text-xs text-slate-400 mt-0.5 break-words">{note}</p>
+        <p className="text-xs text-slate-500 mt-0.5 break-words">{note}</p>
       )}
     </div>
     <Switch
@@ -940,86 +989,76 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               {/* Distribution & Access */}
               <FormSection
                 title={tr("Distribution & Access")}
-                icon={<Mail className="h-4 w-4" />}
+                icon={<IconUsersShare className="h-4 w-4" />}
               >
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                <div className="space-y-5">
                   <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      {tr("Channels")}
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {tr("Who a copy can be sent to")}
                     </p>
-                    <div className="divide-y divide-slate-100 -my-2">
-                      <SwitchRow
-                        label={tr("Email distribution")}
-                        checked={
-                          policy.distributionSecurity.allowEmailDistribution
-                        }
+                    <div className="rounded-lg border border-slate-200">
+                      <AllowanceRow
+                        icon={<Mail className="h-4 w-4" />}
+                        title={tr("Send to external recipients by email")}
+                        description={tr("When off, controlled copies are issued inside the organisation only.")}
+                        checked={policy.distributionSecurity.allowEmailDistribution}
                         onChange={(v) => setDS("allowEmailDistribution", v)}
                         disabled={!canManagePolicy}
-                        note={tr("Allow distribution notifications and links by email.")}
                       />
-                      <SwitchRow
-                        label={tr("Portal view")}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {tr("What a recipient can do with a copy")}
+                    </p>
+                    <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+                      <AllowanceRow
+                        icon={<IconEye className="h-4 w-4" />}
+                        title={tr("View the copy")}
+                        description={tr("Open the copy from its link or the controlled-copy portal.")}
                         checked={policy.distributionSecurity.allowPortalView}
                         onChange={(v) => setDS("allowPortalView", v)}
                         disabled={!canManagePolicy}
-                        note={tr("Allow recipients to open the controlled-copy portal.")}
                       />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      {tr("Recipient Actions")}
-                    </p>
-                    <div className="divide-y divide-slate-100 -my-2">
-                      <SwitchRow
-                        label={tr("Download")}
+                      <div className="px-4 py-3 sm:pl-16">
+                        <SessionLengthField
+                          minutes={policy.distributionSecurity.previewSessionMinutes}
+                          onChange={setPreviewSessionMinutes}
+                          disabled={!canManagePolicy}
+                        />
+                      </div>
+                      <AllowanceRow
+                        icon={<IconDownload className="h-4 w-4" />}
+                        title={tr("Download the PDF")}
+                        description={tr("Save a PDF file of the copy.")}
                         checked={policy.distributionSecurity.allowDownload}
                         onChange={(v) => setDS("allowDownload", v)}
                         disabled={!canManagePolicy}
-                        note={tr("Allow downloading a PDF copy.")}
-                      />
-                      {policy.distributionSecurity.allowDownload && (
-                        <div className="pl-3 border-l-2 border-emerald-100 ml-1">
-                          <SwitchRow
-                            label={tr("One download per record")}
-                            checked={policy.distributionSecurity.downloadOnce}
-                            onChange={(v) => setDS("downloadOnce", v)}
-                            disabled={!canManagePolicy}
-                          />
-                        </div>
-                      )}
-                      <SwitchRow
-                        label={tr("Print")}
+                      >
+                        <UseLimit
+                          action={tr("Download the PDF")}
+                          once={policy.distributionSecurity.downloadOnce}
+                          onChange={(v) => setDS("downloadOnce", v)}
+                          disabled={!canManagePolicy}
+                        />
+                      </AllowanceRow>
+                      <AllowanceRow
+                        icon={<IconPrinter className="h-4 w-4" />}
+                        title={tr("Print the copy")}
+                        description={tr("Use the Print command of the viewer or Ctrl+P.")}
                         checked={policy.distributionSecurity.allowPrint}
                         onChange={(v) => setDS("allowPrint", v)}
                         disabled={!canManagePolicy}
-                        note={tr("Allow the viewer Print command and Ctrl+P.")}
-                      />
-                      {policy.distributionSecurity.allowPrint && (
-                        <div className="pl-3 border-l-2 border-emerald-100 ml-1">
-                          <SwitchRow
-                            label={tr("One print per record")}
-                            checked={policy.distributionSecurity.printOnce}
-                            onChange={(v) => setDS("printOnce", v)}
-                            disabled={!canManagePolicy}
-                          />
-                        </div>
-                      )}
+                      >
+                        <UseLimit
+                          action={tr("Print the copy")}
+                          once={policy.distributionSecurity.printOnce}
+                          onChange={(v) => setDS("printOnce", v)}
+                          disabled={!canManagePolicy}
+                        />
+                      </AllowanceRow>
                     </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 pt-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">
-                      {tr("External Viewer Session")}
-                    </p>
-                    <SessionLengthField
-                      minutes={
-                        policy.distributionSecurity.previewSessionMinutes
-                      }
-                      onChange={setPreviewSessionMinutes}
-                      disabled={!canManagePolicy}
-                    />
                   </div>
                 </div>
               </FormSection>
@@ -1029,21 +1068,23 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                 title={tr("DCO Delivery Routing")}
                 icon={<UserCheck className="h-4 w-4" />}
               >
-                <div className="divide-y divide-slate-100 -my-2">
-                  <SwitchRow
-                    label={tr("Redirect delivery to DCO")}
+                <div className="rounded-lg border border-slate-200">
+                  <AllowanceRow
+                    icon={<UserCheck className="h-4 w-4" />}
+                    title={tr("Redirect delivery to DCO")}
+                    description={tr("The Document Control Officer chosen here receives the copy; the requester is only told about it.")}
                     checked={policy.delivery.redirectDeliveryToDco}
                     onChange={(v) => setDelivery("redirectDeliveryToDco", v)}
                     disabled={!canManagePolicy}
-                  />
-                  {policy.delivery.redirectDeliveryToDco && (
-                    <div className="pl-3 border-l-2 border-sky-200 ml-1 pt-3 pb-1 space-y-2">
+                  >
+                    <div className="space-y-2">
                       {dcoUsersLoaded && dcoUsers.length === 0 && (
                         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
                           {tr("No user currently holds the \"Receive Controlled Copies as DCO\" permission yet, so there is no one to select below. Grant it to at least one user via Access Profiles / Permission Sets, then come back and pick them here -- this switch can stay on in the meantime, but saving needs a recipient.")}
                         </p>
                       )}
                       <Select
+                        className="max-w-xl"
                         label={tr("DCO Recipient")}
                         placeholder={tr("Select the user who will receive controlled copies")}
                         options={dcoUsers.map((u) => ({
@@ -1065,7 +1106,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                           </p>
                         )}
                     </div>
-                  )}
+                  </AllowanceRow>
                 </div>
               </FormSection>
 
@@ -1205,7 +1246,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
 
           {activeTab === "markings" && (
             <div>
-              <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)] xl:gap-6">
+              <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(440px,38%)_minmax(0,1fr)] xl:gap-6">
                 <div className="min-w-0 space-y-4">
                   <div
                     role="tablist"
@@ -1258,7 +1299,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                                 setMarking("stampShowCopyNumber", v),
                             },
                             {
-                              label: "Recipient",
+                              label: tr("Recipient"),
                               checked: policy.marking.stampShowRecipient,
                               onChange: (v) =>
                                 setMarking("stampShowRecipient", v),
@@ -1318,7 +1359,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
                               onChange: (v) => setDS("watermarkCopyNumber", v),
                             },
                             {
-                              label: "Recipient",
+                              label: tr("Recipient"),
                               checked:
                                 policy.distributionSecurity.watermarkRecipient,
                               onChange: (v) => setDS("watermarkRecipient", v),
@@ -1543,7 +1584,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               <Select
                 label={tr("Document Type")}
                 options={[
-                  { label: "Any", value: "" },
+                  { label: tr("Any"), value: "" },
                   ...documentTypes.map((d) => ({ label: d.name, value: d.id })),
                 ]}
                 value={limitForm.documentTypeId}
@@ -1554,7 +1595,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               <Select
                 label={tr("Department")}
                 options={[
-                  { label: "Any", value: "" },
+                  { label: tr("Any"), value: "" },
                   ...departments.map((d) => ({ label: d.name, value: d.id })),
                 ]}
                 value={limitForm.departmentId}
@@ -1594,7 +1635,7 @@ export const ControlledCopiesPolicyView: React.FC = () => {
               }
             />
           </div>
-          <p className="text-2xs text-slate-400">
+          <p className="!mt-1.5 text-xs text-slate-500">
             {selectedDurationUnit.example}
           </p>
           {isLaxerThanOverridden && overriddenLimit && (

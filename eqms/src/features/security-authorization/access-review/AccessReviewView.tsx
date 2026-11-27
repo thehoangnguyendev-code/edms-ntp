@@ -55,8 +55,8 @@ const textareaClass = "w-full px-3 py-2 text-sm border border-slate-200 rounded-
 
 const PAGE_TABS: TabItem[] = [
   { id: "campaigns", label: "Campaigns" },
-  { id: "shares", label: tr("Knowledge Shares") },
-  { id: "links", label: tr("Knowledge Links") },
+  { id: "shares", get label() { return tr("Knowledge Shares"); } },
+  { id: "links", get label() { return tr("Knowledge Links"); } },
 ];
 
 export const AccessReviewView: React.FC = () => {
